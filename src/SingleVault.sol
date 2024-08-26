@@ -18,7 +18,17 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, TimelockControllerUpgr
         _disableInitializers();
     }
 
-    /// @inheritdoc ISingleVault
+    /**
+     * @dev Initializes the SingleVault contract.
+     * @param asset_ The address of the ERC20 asset.
+     * @param name_ The name of the ERC20 asset.
+     * @param symbol_ The symbol of the ERC20 asset.
+     * @param admin_ The address of the admin.
+     * @param operator_ The address of the operator.
+     * @param minDelay_ The minimum delay for timelock.
+     * @param proposers_ The addresses of the proposers.
+     * @param executors_ The addresses of the executors.
+     */
     function initialize(
         IERC20 asset_,
         string memory name_,
