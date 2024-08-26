@@ -1,7 +1,11 @@
 ## YieldNest Vault
 
 
-This is a general purpose starter vault for rapid deployment against new opportunies. 
+This is a general purpose starter vault for rapid deployment against new opportunies.
+
+## Overview
+
+The initial version is a SingleAsset 4626 vault that is a TimelockController to send arbitrary transactions.
 
 
 ## Test Deployment
