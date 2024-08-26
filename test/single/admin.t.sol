@@ -3,13 +3,12 @@ pragma solidity ^0.8.24;
 
 import "lib/forge-std/src/Test.sol";
 import {SingleVault} from "src/SingleVault.sol";
-import {IERC20,TimelockControllerUpgradeable} from "src/Common.sol";
+import {IERC20, TimelockControllerUpgradeable} from "src/Common.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {LocalActors} from "script/Actors.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
-import {DeployFactory,VaultFactory} from "test/helpers/DeployFactory.sol";
-import {SingleVault,ISingleVault} from "src/SingleVault.sol";
-
+import {DeployFactory, VaultFactory} from "test/helpers/DeployFactory.sol";
+import {SingleVault, ISingleVault} from "src/SingleVault.sol";
 
 contract TimelockTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
@@ -71,7 +70,6 @@ contract TimelockTest is Test, LocalActors, TestConstants {
         assertEq(vault.isOperation(id), true);
 
         uint256 previousBalance = asset.balanceOf(ADMIN);
-
 
         //execute the transaction
         vm.warp(10);

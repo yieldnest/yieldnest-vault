@@ -89,15 +89,7 @@ contract VaultFactory is AccessControlUpgradeable {
             singleVaultImpl,
             address(proxyAdmin),
             abi.encodeWithSignature(
-                funcSig,
-                asset_,
-                name_,
-                symbol_,
-                admin_,
-                operator_,
-                minDelay_,
-                proposers_,
-                executors_
+                funcSig, asset_, name_, symbol_, admin_, operator_, minDelay_, proposers_, executors_
             )
         );
 
