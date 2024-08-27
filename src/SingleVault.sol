@@ -6,8 +6,7 @@ import {
     AccessControlUpgradeable,
     ReentrancyGuardUpgradeable,
     TimelockControllerUpgradeable,
-    IERC20,
-    IERC4626
+    IERC20
 } from "src/Common.sol";
 
 import {ISingleVault} from "src/ISingleVault.sol";

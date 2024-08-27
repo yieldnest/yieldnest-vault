@@ -10,6 +10,7 @@ interface IActors {
     function PROPOSER_2() external view returns (address);
     function EXECUTOR_1() external view returns (address);
     function EXECUTOR_2() external view returns (address);
+    function KERNEL_VAULT() external view returns (address);
 }
 
 contract LocalActors is IActors {
@@ -22,6 +23,8 @@ contract LocalActors is IActors {
 
     address public constant EXECUTOR_1 = address(3);
     address public constant EXECUTOR_2 = address(4);
+
+    address public constant KERNEL_VAULT = address(420);
 }
 
 contract AnvilActors is IActors {
@@ -34,6 +37,8 @@ contract AnvilActors is IActors {
 
     address public constant EXECUTOR_1 = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
     address public constant EXECUTOR_2 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+
+    address public constant KERNEL_VAULT = address(420);
 }
 
 contract HoleskyActors is IActors {
@@ -46,4 +51,6 @@ contract HoleskyActors is IActors {
 
     address public constant EXECUTOR_1 = 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913;
     address public constant EXECUTOR_2 = 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39;
+
+    address public constant KERNEL_VAULT = address(420);
 }
