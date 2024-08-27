@@ -16,9 +16,11 @@ contract AccessControlTest is Test, LocalActors, TestConstants {
     function setUp() public {
         vm.startPrank(ADMIN);
         asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
+
         DeployFactory deployFactory = new DeployFactory();
         VaultFactory factory = deployFactory.deploy(0);
-
+        asset.approve(address(factory), 1 ether);
+        asset.transfer(address(factory), 1 ether);
         address vaultAddress = factory.createSingleVault(
             asset,
             VAULT_NAME,

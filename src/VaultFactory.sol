@@ -6,7 +6,8 @@ import {
     TransparentUpgradeableProxy,
     TimelockController,
     ProxyAdmin,
-    IERC20
+    IERC20,
+    IERC4626
 } from "src/Common.sol";
 
 contract VaultFactory is AccessControlUpgradeable {
@@ -91,6 +92,11 @@ contract VaultFactory is AccessControlUpgradeable {
             abi.encodeWithSignature(funcSig, asset_, name_, symbol_, admin_, minDelay_, proposers_, executors_)
         );
         vaults[symbol_] = Vault(address(proxy), address(timelock), name_, symbol_, VaultType.SingleAsset);
+
+        // bootstrap 1 ether of underlying to prevent donation attacks
+        IERC20(asset_).approve(address(proxy), 1 ether);
+        IERC4626(address(proxy)).deposit(1 ether, address(this));
+        
         emit NewVault(address(proxy), name_, symbol_, VaultType.SingleAsset);
         return address(proxy);
     }

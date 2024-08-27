@@ -17,6 +17,7 @@ contract CreateTest is Test, LocalActors, TestConstants {
     address[] executors;
 
     function setUp() public {
+        vm.startPrank(ADMIN);
         asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
         proposers = [PROPOSER_1, PROPOSER_2];
         executors = [EXECUTOR_1, EXECUTOR_2];
@@ -26,7 +27,8 @@ contract CreateTest is Test, LocalActors, TestConstants {
     }
 
     function testCreateSingleVault() public {
-        vm.startPrank(ADMIN);
+        asset.approve(address(factory), 1 ether);
+        asset.transfer(address(factory), 1 ether);
         address vault =
             factory.createSingleVault(asset, VAULT_NAME, VAULT_SYMBOL, ADMIN, minDelay, proposers, executors);
         (address vaultAddress,,,,) = factory.vaults(VAULT_SYMBOL);

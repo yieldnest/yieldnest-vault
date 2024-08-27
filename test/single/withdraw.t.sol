@@ -20,7 +20,8 @@ contract WithdrawTest is Test, LocalActors, TestConstants {
         asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
         DeployFactory deployFactory = new DeployFactory();
         VaultFactory factory = deployFactory.deploy(0);
-
+        asset.approve(address(factory), 1 ether);
+        asset.transfer(address(factory), 1 ether);
         address vaultAddress = factory.createSingleVault(
             asset,
             VAULT_NAME,
@@ -49,8 +50,8 @@ contract WithdrawTest is Test, LocalActors, TestConstants {
         assertEq(assetsReceived, expectedAssets, "Assets received should be equal to the expected amount");
         assertEq(newNetBalance, expectedAssets, "User should have received the expected amount of assets");
         assertEq(vault.balanceOf(ADMIN), 0, "User's balance in the vault should be zero after withdrawal");
-        assertEq(vault.totalAssets(), 0, "Vault totalAssets should be zero after withdrawal");
-        assertEq(vault.totalSupply(), 0, "Vault totalSupply should be zero after withdrawal");
+        assertEq(vault.totalAssets(), 1 ether, "Vault totalAssets should be 1 ether after withdrawal");
+        assertEq(vault.totalSupply(), 1 ether, "Vault totalSupply should be 1 ether after withdrawal");
         vm.stopPrank();
     }
 

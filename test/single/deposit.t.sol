@@ -18,7 +18,8 @@ contract DepositTest is Test, LocalActors, TestConstants {
         asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
         DeployFactory deployFactory = new DeployFactory();
         VaultFactory factory = deployFactory.deploy(0);
-
+        asset.approve(address(factory), 1 ether);
+        asset.transfer(address(factory), 1 ether);
         address vaultAddress = factory.createSingleVault(
             asset,
             VAULT_NAME,
@@ -38,9 +39,9 @@ contract DepositTest is Test, LocalActors, TestConstants {
         uint256 shares = vault.deposit(amount, ADMIN);
         assertEq(shares, amount, "Shares should be equal to the amount deposited");
         assertEq(vault.balanceOf(ADMIN), shares, "Balance of the user should be updated");
-        assertEq(asset.balanceOf(address(vault)), amount, "Vault should have received the asset");
-        assertEq(vault.totalAssets(), amount, "Vault totalAsset should be amount deposited");
-        assertEq(vault.totalSupply(), amount, "Vault totalSupply should be amount deposited");
+        assertEq(asset.balanceOf(address(vault)), amount + 1 ether, "Vault should have received the asset");
+        assertEq(vault.totalAssets(), amount + 1 ether, "Vault totalAsset should be amount deposited");
+        assertEq(vault.totalSupply(), amount + 1 ether, "Vault totalSupply should be amount deposited");
     }
 
     function skip_testDepositRevertsIfNotApproved() public {
