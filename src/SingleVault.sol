@@ -12,9 +12,7 @@ import {
 
 import {ISingleVault} from "src/ISingleVault.sol";
 
-
 contract SingleVault is ISingleVault, ERC4626Upgradeable, TimelockControllerUpgradeable, ReentrancyGuardUpgradeable {
-
     constructor() {
         _disableInitializers();
     }

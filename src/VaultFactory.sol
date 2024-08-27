@@ -88,9 +88,7 @@ contract VaultFactory is AccessControlUpgradeable {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             singleVaultImpl,
             address(timelock),
-            abi.encodeWithSignature(
-                funcSig, asset_, name_, symbol_, admin_, minDelay_, proposers_, executors_
-            )
+            abi.encodeWithSignature(funcSig, asset_, name_, symbol_, admin_, minDelay_, proposers_, executors_)
         );
         vaults[symbol_] = Vault(address(proxy), address(timelock), name_, symbol_, VaultType.SingleAsset);
         emit NewVault(address(proxy), name_, symbol_, VaultType.SingleAsset);
