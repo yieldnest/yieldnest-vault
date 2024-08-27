@@ -96,7 +96,7 @@ contract VaultFactory is AccessControlUpgradeable {
         // bootstrap 1 ether of underlying to prevent donation attacks
         IERC20(asset_).approve(address(proxy), 1 ether);
         IERC4626(address(proxy)).deposit(1 ether, address(this));
-        
+
         emit NewVault(address(proxy), name_, symbol_, VaultType.SingleAsset);
         return address(proxy);
     }
