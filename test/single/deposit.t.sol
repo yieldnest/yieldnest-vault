@@ -24,7 +24,6 @@ contract DepositTest is Test, LocalActors, TestConstants {
             VAULT_NAME,
             VAULT_SYMBOL,
             ADMIN,
-            OPERATOR,
             0, // time delay
             deployFactory.getProposers(),
             deployFactory.getExecutors()

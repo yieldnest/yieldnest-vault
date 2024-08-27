@@ -28,8 +28,8 @@ contract CreateTest is Test, LocalActors, TestConstants {
     function testCreateSingleVault() public {
         vm.startPrank(ADMIN);
         address vault =
-            factory.createSingleVault(asset, VAULT_NAME, VAULT_SYMBOL, ADMIN, OPERATOR, minDelay, proposers, executors);
-        (address vaultAddress,,,) = factory.vaults(VAULT_SYMBOL);
+            factory.createSingleVault(asset, VAULT_NAME, VAULT_SYMBOL, ADMIN, minDelay, proposers, executors);
+        (address vaultAddress,,,,) = factory.vaults(VAULT_SYMBOL);
         assertEq(vaultAddress, vault, "Vault address should match the expected address");
     }
 
@@ -37,16 +37,8 @@ contract CreateTest is Test, LocalActors, TestConstants {
         assertTrue(factory.hasRole(factory.DEFAULT_ADMIN_ROLE(), ADMIN));
     }
 
-    function testProxyOwner() public view {
-        ProxyAdmin proxyAdmin = ProxyAdmin(factory.proxyAdmin());
-        address proxyOwner = proxyAdmin.owner();
-        address timelock = address(factory.timelock());
-
-        assertEq(proxyOwner, timelock);
-    }
-
     function skip_testCreateSingleVaultRevertsIfNotAdmin() public {
         vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("AccessControl: must have admin role"))));
-        factory.createSingleVault(asset, VAULT_NAME, VAULT_SYMBOL, ADMIN, OPERATOR, minDelay, proposers, executors);
+        factory.createSingleVault(asset, VAULT_NAME, VAULT_SYMBOL, ADMIN, minDelay, proposers, executors);
     }
 }

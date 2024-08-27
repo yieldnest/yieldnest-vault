@@ -32,7 +32,6 @@ contract TimelockTest is Test, LocalActors, TestConstants {
             VAULT_NAME,
             VAULT_SYMBOL,
             ADMIN,
-            OPERATOR,
             0, // admin tx time delay
             deployFactory.getProposers(),
             deployFactory.getExecutors()

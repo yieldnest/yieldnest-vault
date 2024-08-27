@@ -27,7 +27,6 @@ contract InitializeTest is Test, LocalActors, TestConstants {
             VAULT_NAME,
             VAULT_SYMBOL,
             ADMIN,
-            OPERATOR,
             0, // time delay
             deployFactory.getProposers(),
             deployFactory.getExecutors()
@@ -41,12 +40,11 @@ contract InitializeTest is Test, LocalActors, TestConstants {
             address(vaultImplementation),
             address(this),
             abi.encodeWithSignature(
-                "initialize(address,string,string,address,address,uint256,address[],address[])",
+                "initialize(address,string,string,address,uint256,address[],address[])",
                 asset,
                 VAULT_NAME,
                 VAULT_SYMBOL,
                 ADMIN,
-                OPERATOR,
                 0,
                 deployFactory.getProposers(),
                 deployFactory.getExecutors()
@@ -56,7 +54,6 @@ contract InitializeTest is Test, LocalActors, TestConstants {
         ISingleVault newVault = ISingleVault(address(proxy));
 
         assertEq(newVault.asset(), address(asset));
-        assertEq(newVault.hasRole(vault.OPERATOR_ROLE(), OPERATOR), true);
         assertEq(newVault.hasRole(vault.DEFAULT_ADMIN_ROLE(), ADMIN), true);
         assertEq(newVault.symbol(), VAULT_SYMBOL);
         assertEq(newVault.name(), VAULT_NAME);

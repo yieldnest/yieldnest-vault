@@ -12,7 +12,6 @@ import {
 contract VaultFactory is AccessControlUpgradeable {
     string public constant version = "0.1.0";
 
-    ProxyAdmin public proxyAdmin;
     TimelockController public timelock;
 
     address public singleVaultImpl;
@@ -20,6 +19,7 @@ contract VaultFactory is AccessControlUpgradeable {
 
     struct Vault {
         address vault;
+        address timelock;
         string name;
         string symbol;
         VaultType vaultType;
@@ -54,8 +54,10 @@ contract VaultFactory is AccessControlUpgradeable {
         address admin
     ) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        // NOTES: There are two timelocks. This timelock is for vault upgrades but
+        // the vault is the second timelock controller, which has the same proposers and executors
+        // as the proxy admins
         timelock = new TimelockController(minDelay, proposers, executors, admin);
-        proxyAdmin = new ProxyAdmin(address(timelock));
         singleVaultImpl = singleVaultImpl_;
     }
 
@@ -65,7 +67,6 @@ contract VaultFactory is AccessControlUpgradeable {
      * @param name_ The name of the vault.
      * @param symbol_ The symbol of the vault.
      * @param admin_ The address of the admin.
-     * @param operator_ The address of the operator.
      * @param minDelay_ The timelock delay for transactions.
      * @param proposers_ Array of transaction proposers.
      * @param executors_ Array of transaction executors.
@@ -76,24 +77,22 @@ contract VaultFactory is AccessControlUpgradeable {
         string memory name_,
         string memory symbol_,
         address admin_,
-        address operator_,
         uint256 minDelay_,
         address[] memory proposers_,
         address[] memory executors_
     ) public onlyRole(DEFAULT_ADMIN_ROLE) returns (address) {
         if (vaults[symbol_].vault != address(0)) revert SymbolUsed();
 
-        string memory funcSig = "initialize(address,string,string,address,address,uint256,address[],address[])";
+        string memory funcSig = "initialize(address,string,string,address,uint256,address[],address[])";
 
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             singleVaultImpl,
-            address(proxyAdmin),
+            address(timelock),
             abi.encodeWithSignature(
-                funcSig, asset_, name_, symbol_, admin_, operator_, minDelay_, proposers_, executors_
+                funcSig, asset_, name_, symbol_, admin_, minDelay_, proposers_, executors_
             )
         );
-
-        vaults[symbol_] = Vault(address(proxy), name_, symbol_, VaultType.SingleAsset);
+        vaults[symbol_] = Vault(address(proxy), address(timelock), name_, symbol_, VaultType.SingleAsset);
         emit NewVault(address(proxy), name_, symbol_, VaultType.SingleAsset);
         return address(proxy);
     }

@@ -24,7 +24,6 @@ contract AccessControlTest is Test, LocalActors, TestConstants {
             VAULT_NAME,
             VAULT_SYMBOL,
             ADMIN,
-            OPERATOR,
             0, // time delay
             deployFactory.getProposers(),
             deployFactory.getExecutors()
@@ -38,8 +37,8 @@ contract AccessControlTest is Test, LocalActors, TestConstants {
 
     function testAdminCanGrantRole() public {
         vm.startPrank(ADMIN);
-        vault.grantRole(vault.OPERATOR_ROLE(), OPERATOR);
-        assertEq(vault.hasRole(vault.OPERATOR_ROLE(), OPERATOR), true);
+        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), OPERATOR);
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), OPERATOR), true);
     }
 
     function skip_testNonAdminCannotGrantRole() public {
@@ -49,13 +48,13 @@ contract AccessControlTest is Test, LocalActors, TestConstants {
                 IAccessControl.AccessControlUnauthorizedAccount.selector, UNAUTHORIZED, vault.DEFAULT_ADMIN_ROLE()
             )
         );
-        vault.grantRole(vault.OPERATOR_ROLE(), address(4));
+        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(4));
     }
 
     function testAdminCanRevokeRole() public {
         vm.startPrank(ADMIN);
-        vault.revokeRole(vault.OPERATOR_ROLE(), OPERATOR);
-        assertFalse(vault.hasRole(vault.OPERATOR_ROLE(), OPERATOR));
+        vault.revokeRole(vault.DEFAULT_ADMIN_ROLE(), OPERATOR);
+        assertFalse(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), OPERATOR));
     }
 
     function skip_testNonAdminCannotRevokeRole() public {
@@ -65,6 +64,6 @@ contract AccessControlTest is Test, LocalActors, TestConstants {
                 IAccessControl.AccessControlUnauthorizedAccount.selector, UNAUTHORIZED, vault.DEFAULT_ADMIN_ROLE()
             )
         );
-        vault.revokeRole(vault.OPERATOR_ROLE(), OPERATOR);
+        vault.revokeRole(vault.DEFAULT_ADMIN_ROLE(), OPERATOR);
     }
 }
