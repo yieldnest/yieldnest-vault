@@ -1,66 +1,25 @@
-## Foundry
+## YieldNest Vault
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This is a general purpose starter vault for rapid deployment against new opportunies.
 
-Foundry consists of:
+## Overview
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+The initial version is a SingleAsset 4626 Vault with TimelockController to send Admin transactions.
+This vault is the Base version used for pre-depositing assets ahead of settled DeFi functionality.
 
-## Documentation
+## Test Deployment
 
-https://book.getfoundry.sh/
+```
+anvil // --fork-url https://holesky-rpc
 
-## Usage
+export ACCOUNT_NAME=deployer
+make account
 
-### Build
+export RPC_URL=
+export ETHERSCAN_KEY=
 
-```shell
-$ forge build
+make factory
 ```
 
-### Test
+This will deploy the factory, from which you can create a new vault.
 
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```

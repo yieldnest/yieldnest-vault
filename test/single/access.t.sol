@@ -2,26 +2,35 @@
 pragma solidity ^0.8.24;
 
 import "lib/forge-std/src/Test.sol";
-import {SingleVault} from "src/SingleVault.sol";
-import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
-import {MockERC20} from "test/mocks/MockERC20.sol";
-import {
-    AccessControlUpgradeable,
-    IAccessControl
-} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
-import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
+import {AccessControlUpgradeable, IAccessControl, IERC20, IAccessControl} from "src/Common.sol";
 import {LocalActors} from "script/Actors.sol";
+import {SingleVault, ISingleVault} from "src/SingleVault.sol";
+import {TestConstants} from "test/helpers/Constants.sol";
+import {MockERC20} from "test/mocks/MockERC20.sol";
+import {DeployFactory, VaultFactory} from "test/helpers/DeployFactory.sol";
 
-contract AccessControlTest is Test, LocalActors {
+contract AccessControlTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
     IERC20 public asset;
 
     function setUp() public {
-        asset = IERC20(address(new MockERC20("Test Asset", "TST")));
-        vault = new SingleVault();
+        vm.startPrank(ADMIN);
+        asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
 
-        vm.prank(address(1));
-        vault.initialize(asset, "Test Vault", "ynTEST", ADMIN, OPERATOR);
+        DeployFactory deployFactory = new DeployFactory();
+        VaultFactory factory = deployFactory.deploy(0);
+        asset.approve(address(factory), 1 ether);
+        asset.transfer(address(factory), 1 ether);
+        address vaultAddress = factory.createSingleVault(
+            asset,
+            VAULT_NAME,
+            VAULT_SYMBOL,
+            ADMIN,
+            0, // time delay
+            deployFactory.getProposers(),
+            deployFactory.getExecutors()
+        );
+        vault = SingleVault(payable(vaultAddress));
     }
 
     function testAdminRoleSet() public view {
@@ -30,8 +39,8 @@ contract AccessControlTest is Test, LocalActors {
 
     function testAdminCanGrantRole() public {
         vm.startPrank(ADMIN);
-        vault.grantRole(vault.OPERATOR_ROLE(), OPERATOR);
-        assertEq(vault.hasRole(vault.OPERATOR_ROLE(), OPERATOR), true);
+        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), OPERATOR);
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), OPERATOR), true);
     }
 
     function skip_testNonAdminCannotGrantRole() public {
@@ -41,13 +50,13 @@ contract AccessControlTest is Test, LocalActors {
                 IAccessControl.AccessControlUnauthorizedAccount.selector, UNAUTHORIZED, vault.DEFAULT_ADMIN_ROLE()
             )
         );
-        vault.grantRole(vault.OPERATOR_ROLE(), address(4));
+        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(4));
     }
 
     function testAdminCanRevokeRole() public {
         vm.startPrank(ADMIN);
-        vault.revokeRole(vault.OPERATOR_ROLE(), OPERATOR);
-        assertFalse(vault.hasRole(vault.OPERATOR_ROLE(), OPERATOR));
+        vault.revokeRole(vault.DEFAULT_ADMIN_ROLE(), OPERATOR);
+        assertFalse(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), OPERATOR));
     }
 
     function skip_testNonAdminCannotRevokeRole() public {
@@ -57,6 +66,6 @@ contract AccessControlTest is Test, LocalActors {
                 IAccessControl.AccessControlUnauthorizedAccount.selector, UNAUTHORIZED, vault.DEFAULT_ADMIN_ROLE()
             )
         );
-        vault.revokeRole(vault.OPERATOR_ROLE(), OPERATOR);
+        vault.revokeRole(vault.DEFAULT_ADMIN_ROLE(), OPERATOR);
     }
 }
