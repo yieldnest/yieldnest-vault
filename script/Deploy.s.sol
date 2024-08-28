@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "lib/forge-std/src/Script.sol";
 
 import {VaultFactory} from "src/VaultFactory.sol";
-import {AnvilActors, HoleskyActors, IActors} from "script/Actors.sol";
+import {AnvilActors,HoleskyActors,ChapelActors,IActors} from "script/Actors.sol";
 import {SingleVault} from "src/SingleVault.sol";
 
 contract DeployVaultFactory is Script {
@@ -23,8 +23,11 @@ contract DeployVaultFactory is Script {
             deployVaultFactory(actors, minDelay);
         }
 
-        if (block.chainid == 1) {
-            // TODO
+        if (block.chainid == 97) {
+            vm.startBroadcast();
+            ChapelActors actors = new ChapelActors();
+            uint256 minDelay = 10; // seconds
+            deployVaultFactory(actors, minDelay);
         }
     }
 

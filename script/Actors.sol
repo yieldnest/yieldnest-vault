@@ -54,3 +54,17 @@ contract HoleskyActors is IActors {
 
     address public constant KERNEL_VAULT = address(420);
 }
+
+contract ChapelActors is IActors {
+    address public constant ADMIN = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
+    address public constant OPERATOR = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
+    address public constant UNAUTHORIZED = address(0);
+
+    address public constant PROPOSER_1 = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
+    address public constant PROPOSER_2 = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
+
+    address public constant EXECUTOR_1 = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
+    address public constant EXECUTOR_2 = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
+
+    address public constant KERNEL_VAULT = address(420);
+}
