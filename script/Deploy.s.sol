@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import "lib/forge-std/src/Script.sol";
 
 import {VaultFactory} from "src/VaultFactory.sol";
-import {AnvilActors,HoleskyActors,ChapelActors,IActors} from "script/Actors.sol";
+import {AnvilActors, HoleskyActors, ChapelActors, IActors} from "script/Actors.sol";
 import {SingleVault} from "src/SingleVault.sol";
 
 contract DeployVaultFactory is Script {
