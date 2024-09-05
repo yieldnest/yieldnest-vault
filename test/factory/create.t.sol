@@ -31,7 +31,7 @@ contract CreateTest is Test, LocalActors, TestConstants {
         asset.transfer(address(factory), 1 ether);
         address vault =
             factory.createSingleVault(asset, VAULT_NAME, VAULT_SYMBOL, ADMIN, minDelay, proposers, executors);
-        (,,string memory symbol,) = factory.vaults(vault);
+        (,, string memory symbol,) = factory.vaults(vault);
         assertEq(symbol, VAULT_SYMBOL, "Vault timelock should match the expected address");
     }
 

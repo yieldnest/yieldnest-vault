@@ -8,7 +8,6 @@ import {AnvilActors, HoleskyActors, ChapelActors, IActors} from "script/Actors.s
 import {SingleVault} from "src/SingleVault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
 
-
 contract DeployVaultFactory is Script {
     function run() public {
         if (block.chainid == 31337) {
