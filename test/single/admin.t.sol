@@ -6,11 +6,12 @@ import {SingleVault} from "src/SingleVault.sol";
 import {IERC20, TimelockControllerUpgradeable} from "src/Common.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {LocalActors} from "script/Actors.sol";
+import {ChapelContracts} from "script/Contracts.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
 import {DeployFactory, VaultFactory} from "test/helpers/DeployFactory.sol";
 import {SingleVault, ISingleVault} from "src/SingleVault.sol";
 
-contract TimelockTest is Test, LocalActors, TestConstants {
+contract TimelockTest is Test, LocalActors, TestConstants, ChapelContracts {
     SingleVault public vault;
     IERC20 public asset;
 
@@ -43,7 +44,8 @@ contract TimelockTest is Test, LocalActors, TestConstants {
         // schedule a transaction
         address target = address(asset);
         uint256 value = 0;
-        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, KERNEL_VAULT, shares);
+        address kernelVault = address(3);
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, kernelVault, shares);
         bytes32 predecessor = bytes32(0);
         bytes32 salt = keccak256("chad");
         uint256 delay = 1;
@@ -62,14 +64,14 @@ contract TimelockTest is Test, LocalActors, TestConstants {
         assertEq(vault.isOperationDone(id), false);
         assertEq(vault.isOperation(id), true);
 
-        uint256 previousBalance = asset.balanceOf(KERNEL_VAULT);
+        uint256 previousBalance = asset.balanceOf(kernelVault);
 
         //execute the transaction
         vm.warp(10);
         vm.startPrank(EXECUTOR_1);
         vault.execute(target, value, data, predecessor, salt);
 
-        uint256 currentBalance = asset.balanceOf(KERNEL_VAULT);
+        uint256 currentBalance = asset.balanceOf(kernelVault);
         uint256 expectedBalance = currentBalance - previousBalance;
 
         // // Verify the transaction was executed successfully
