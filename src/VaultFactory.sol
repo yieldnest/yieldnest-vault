@@ -19,7 +19,6 @@ contract VaultFactory is AccessControlUpgradeable {
     address public multiVaultImpl;
 
     struct Vault {
-        address vault;
         address timelock;
         string name;
         string symbol;
@@ -31,12 +30,11 @@ contract VaultFactory is AccessControlUpgradeable {
         MultiAsset
     }
 
-    mapping(string => Vault) public vaults;
+    mapping(address => Vault) public vaults;
 
     event NewVault(address indexed vault, string name, string symbol, VaultType vaultType);
     event SetVersion(address indexed implementation, VaultType vaultType);
 
-    error SymbolUsed();
     error ZeroAddress();
 
     /**
@@ -82,8 +80,6 @@ contract VaultFactory is AccessControlUpgradeable {
         address[] memory proposers_,
         address[] memory executors_
     ) public onlyRole(DEFAULT_ADMIN_ROLE) returns (address) {
-        if (vaults[symbol_].vault != address(0)) revert SymbolUsed();
-
         string memory funcSig = "initialize(address,string,string,address,uint256,address[],address[])";
 
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
@@ -91,7 +87,7 @@ contract VaultFactory is AccessControlUpgradeable {
             address(timelock),
             abi.encodeWithSignature(funcSig, asset_, name_, symbol_, admin_, minDelay_, proposers_, executors_)
         );
-        vaults[symbol_] = Vault(address(proxy), address(timelock), name_, symbol_, VaultType.SingleAsset);
+        vaults[address(proxy)] = Vault(address(timelock), name_, symbol_, VaultType.SingleAsset);
 
         // bootstrap 1 ether of underlying to prevent donation attacks
         IERC20(asset_).approve(address(proxy), 1 ether);

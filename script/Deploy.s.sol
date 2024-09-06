@@ -6,6 +6,7 @@ import "lib/forge-std/src/Script.sol";
 import {VaultFactory} from "src/VaultFactory.sol";
 import {AnvilActors, HoleskyActors, ChapelActors, IActors} from "script/Actors.sol";
 import {SingleVault} from "src/SingleVault.sol";
+import {TransparentUpgradeableProxy} from "src/Common.sol";
 
 contract DeployVaultFactory is Script {
     function run() public {
