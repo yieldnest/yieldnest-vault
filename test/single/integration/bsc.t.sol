@@ -25,7 +25,13 @@ contract KsilsBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
 
     address USER = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
 
-    function setUp() public {
+    modifier onlyBsc() {
+        if (block.chainid != 56) return;
+        _;
+    }
+
+
+    function setUp() onlyBsc public {
         sils = IERC20(silsBNB);
         get_silsBNB(address(this), 10_000 ether);
         factory = VaultFactory(address(VAULT_FACTORY));
@@ -82,12 +88,12 @@ contract KsilsBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
         vm.stopPrank();
     }
 
-    function test_ynBNB_deposit_withdraw() public {
+    function test_ynBNB_deposit_withdraw() onlyBsc public {
         depositForUser(USER, 3 ether);
         withdrawForUser(USER, 3 ether);
     }
 
-    function test_KsilsBNB_deposit() public {
+    function test_KsilsBNB_deposit() onlyBsc public {
         sils.transfer(USER, 1 ether);
         vm.startPrank(USER);
         sils.approve(address(ksils), 1 ether);
