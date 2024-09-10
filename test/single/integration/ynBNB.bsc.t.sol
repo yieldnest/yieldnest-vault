@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import { BscContracts } from "script/Contracts.sol";
-import { BscActors } from "script/Actors.sol";
-import { VaultFactory } from "src/VaultFactory.sol";
-import { SingleVault } from "src/SingleVault.sol";
-import { ynBNBConstants } from "script/Constants.sol";
-import { IERC20, IERC4626 } from "src/Common.sol";
-import { AssetHelper } from "test/helpers/Assets.sol";
+import {BscContracts} from "script/Contracts.sol";
+import {BscActors} from "script/Actors.sol";
+import {VaultFactory} from "src/VaultFactory.sol";
+import {SingleVault} from "src/SingleVault.sol";
+import {ynBNBConstants} from "script/Constants.sol";
+import {IERC20, IERC4626} from "src/Common.sol";
+import {AssetHelper} from "test/helpers/Assets.sol";
 
 import "lib/forge-std/src/Test.sol";
 
 interface IKarakVaultSupervisor {
-    function deposit(address vault,uint256 amount,uint256 minSharesOut) external;
+    function deposit(address vault, uint256 amount, uint256 minSharesOut) external;
 }
-
 
 contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHelper {
     VaultFactory public factory;
@@ -30,8 +29,7 @@ contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
         _;
     }
 
-
-    function setUp() onlyBsc public {
+    function setUp() public onlyBsc {
         slis = IERC20(slisBNB);
         get_slisBNB(address(this), 10_000 ether);
         factory = VaultFactory(address(VAULT_FACTORY));
@@ -47,15 +45,8 @@ contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
         executors[1] = EXECUTOR_2;
 
         vm.startPrank(ADMIN);
-        address vaultAddress = factory.createSingleVault(
-            IERC20(slisBNB),
-            VAULT_NAME,
-            VAULT_SYMBOL,
-            ADMIN,
-            MIN_DELAY,
-            proposers,
-            executors
-        );
+        address vaultAddress =
+            factory.createSingleVault(IERC20(slisBNB), VAULT_NAME, VAULT_SYMBOL, ADMIN, MIN_DELAY, proposers, executors);
         ynBNB = SingleVault(payable(vaultAddress));
         assertEq(ynBNB.symbol(), VAULT_SYMBOL);
         vm.stopPrank();
@@ -88,12 +79,12 @@ contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
         vm.stopPrank();
     }
 
-    function test_ynBNB_deposit_withdraw() onlyBsc public {
+    function test_ynBNB_deposit_withdraw() public onlyBsc {
         depositForUser(USER, 3 ether);
         withdrawForUser(USER, 3 ether);
     }
 
-    function test_KslisBNB_deposit() onlyBsc public {
+    function test_KslisBNB_deposit() public onlyBsc {
         slis.transfer(USER, 1 ether);
         vm.startPrank(USER);
         slis.approve(address(kslis), 1 ether);

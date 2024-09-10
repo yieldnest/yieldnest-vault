@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-
 contract ChapelContracts {
     address public constant ACTORS = 0xbA02225f0fdB684c80ad1e829FC31f048c416Ce6;
     address public constant VAULT_FACTORY = 0x964C6d4050e052D627b8234CAD9CdF0981E40EB3;
