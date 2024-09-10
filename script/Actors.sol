@@ -53,3 +53,14 @@ contract ChapelActors is IActors {
     address public constant EXECUTOR_1 = 0x9f0A34ccb5ba9C71336F0c8Cd6181205928B8404;
     address public constant EXECUTOR_2 = 0x9f0A34ccb5ba9C71336F0c8Cd6181205928B8404;
 }
+
+contract BscActors is IActors {
+    address public constant ADMIN = 0x721688652DEa9Cabec70BD99411EAEAB9485d436;
+    address public constant UNAUTHORIZED = address(0);
+
+    address public constant PROPOSER_1 = 0x721688652DEa9Cabec70BD99411EAEAB9485d436;
+    address public constant PROPOSER_2 = 0x721688652DEa9Cabec70BD99411EAEAB9485d436;
+
+    address public constant EXECUTOR_1 = 0x721688652DEa9Cabec70BD99411EAEAB9485d436;
+    address public constant EXECUTOR_2 = 0x721688652DEa9Cabec70BD99411EAEAB9485d436;
+}
