@@ -16,11 +16,11 @@ interface IKarakVaultSupervisor {
 }
 
 
-contract KsilsBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHelper {
+contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHelper {
     VaultFactory public factory;
     SingleVault public ynBNB;
-    IERC20 public sils;
-    IERC4626 ksils = IERC4626(KARAK_KsilsBNB);
+    IERC20 public slis;
+    IERC4626 kslis = IERC4626(KARAK_KslisBNB);
     IKarakVaultSupervisor ksup = IKarakVaultSupervisor(KARAK_VAULT_SUPERVISOR);
 
     address USER = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
@@ -32,11 +32,11 @@ contract KsilsBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
 
 
     function setUp() onlyBsc public {
-        sils = IERC20(silsBNB);
-        get_silsBNB(address(this), 10_000 ether);
+        slis = IERC20(slisBNB);
+        get_slisBNB(address(this), 10_000 ether);
         factory = VaultFactory(address(VAULT_FACTORY));
-        sils.approve(address(factory), 1 ether);
-        sils.transfer(address(factory), 1 ether);
+        slis.approve(address(factory), 1 ether);
+        slis.transfer(address(factory), 1 ether);
 
         address[] memory proposers = new address[](2);
         proposers[0] = PROPOSER_1;
@@ -48,7 +48,7 @@ contract KsilsBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
 
         vm.startPrank(ADMIN);
         address vaultAddress = factory.createSingleVault(
-            IERC20(silsBNB),
+            IERC20(slisBNB),
             VAULT_NAME,
             VAULT_SYMBOL,
             ADMIN,
@@ -62,11 +62,11 @@ contract KsilsBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
     }
 
     function depositForUser(address user, uint256 amount) public returns (uint256 shares) {
-        sils.approve(user, amount);
-        sils.transfer(user, amount);
+        slis.approve(user, amount);
+        slis.transfer(user, amount);
 
         vm.startPrank(user);
-        sils.approve(address(ynBNB), amount);
+        slis.approve(address(ynBNB), amount);
         shares = ynBNB.deposit(amount, user);
 
         assertEq(ynBNB.totalSupply(), shares + 1 ether);
@@ -93,10 +93,10 @@ contract KsilsBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
         withdrawForUser(USER, 3 ether);
     }
 
-    function test_KsilsBNB_deposit() onlyBsc public {
-        sils.transfer(USER, 1 ether);
+    function test_KslisBNB_deposit() onlyBsc public {
+        slis.transfer(USER, 1 ether);
         vm.startPrank(USER);
-        sils.approve(address(ksils), 1 ether);
-        ksup.deposit(address(ksils), 1 ether, 1 ether);
+        slis.approve(address(kslis), 1 ether);
+        ksup.deposit(address(kslis), 1 ether, 1 ether);
     }
 }
