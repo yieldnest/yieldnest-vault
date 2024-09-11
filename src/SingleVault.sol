@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {ERC4626Upgradeable, ReentrancyGuardUpgradeable, TimelockControllerUpgradeable, IERC20} from "src/Common.sol";
+import {ERC4626Upgradeable, ReentrancyGuardUpgradeable, TimelockControllerUpgradeable, IERC20, IERC4626} from "src/Common.sol";
 
 import {ISingleVault} from "src/ISingleVault.sol";
 
 contract SingleVault is ISingleVault, ERC4626Upgradeable, TimelockControllerUpgradeable, ReentrancyGuardUpgradeable {
+
+    bytes32 private constant ERC4626StorageLocation = 0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00;
+
     constructor() {
         _disableInitializers();
     }
@@ -53,4 +56,22 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, TimelockControllerUpgr
         if (proposers_.length == 0) revert ProposersEmpty();
         if (executors_.length == 0) revert ExecutorsEmpty();
     }
+
+    function _retrieveERC4626Storage() internal pure returns (ERC4626Storage storage $) {
+        assembly {
+            $.slot := ERC4626StorageLocation
+        }
+    }
+
+    function totalAssets() public view override(ERC4626Upgradeable, IERC4626) returns (uint256) {
+        ERC4626Storage storage $ = _retrieveERC4626Storage();
+        uint256 assetBalance = $._asset.balanceOf(address(this));
+        uint256 bnbPrice = getLatestBNBPrice();
+        return assetBalance * bnbPrice;
+    }
+
+    function getLatestBNBPrice() public pure returns (uint256) {
+        return 1;
+    }
+
 }
