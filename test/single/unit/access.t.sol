@@ -8,6 +8,8 @@ import {SingleVault, ISingleVault} from "src/SingleVault.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
+import {Etches} from "test/helpers/Etches.sol";
+
 
 contract AccessControlTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
@@ -17,6 +19,9 @@ contract AccessControlTest is Test, LocalActors, TestConstants {
         vm.startPrank(ADMIN);
         asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
 
+        Etches etches = new Etches();
+        etches.mockListaStakeManager();
+        
         SetupHelper setup = new SetupHelper();
         vault = setup.createVault(asset);
     }

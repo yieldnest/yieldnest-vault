@@ -10,6 +10,8 @@ import {SingleVault, ISingleVault} from "src/SingleVault.sol";
 import {IVaultFactory} from "src/IVaultFactory.sol";
 import {DeployVaultFactory} from "script/Deploy.s.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
+import {Etches} from "test/helpers/Etches.sol";
+
 
 contract DepositTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
@@ -18,6 +20,9 @@ contract DepositTest is Test, LocalActors, TestConstants {
     function setUp() public {
         vm.startPrank(ADMIN);
         asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
+
+        Etches etches = new Etches();
+        etches.mockListaStakeManager();
 
         SetupHelper setup = new SetupHelper();
         vault = setup.createVault(asset);
@@ -28,14 +33,17 @@ contract DepositTest is Test, LocalActors, TestConstants {
         asset.mint(amount);
         asset.approve(address(vault), amount);
         address USER = address(33);
-        uint256 bootstrap = 1 ether;
 
+        uint256 previewAmount = vault.previewDeposit(amount);
         uint256 shares = vault.deposit(amount, USER);
-        assertEq(shares, amount, "Shares should be equal to the amount deposited");
+
+        uint256 totalShares = vault.convertToShares(amount + 1 ether);
+
+        assertEq(shares, previewAmount, "Shares should be equal to the amount deposited");
         assertEq(vault.balanceOf(USER), shares, "Balance of the user should be updated");
-        assertEq(asset.balanceOf(address(vault)), amount + bootstrap, "Vault should have received the asset");
-        assertEq(vault.totalAssets(), amount + bootstrap, "Vault totalAsset should be amount deposited");
-        assertEq(vault.totalSupply(), amount + bootstrap, "Vault totalSupply should be amount deposited");
+        assertEq(asset.balanceOf(address(vault)), amount + 1 ether, "Vault should have received the asset");
+        assertEq(vault.totalAssets(), ((amount + 1 ether) * 1.02 ether) / 1 ether, "Vault totalAsset should be amount deposited");
+        assertEq(vault.totalSupply(), totalShares, "Vault totalSupply should be amount deposited");
     }
 
     function skip_testDepositRevertsIfNotApproved() public {

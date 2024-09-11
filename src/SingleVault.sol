@@ -1,13 +1,23 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {ERC4626Upgradeable, ReentrancyGuardUpgradeable, TimelockControllerUpgradeable, IERC20, IERC4626} from "src/Common.sol";
+import {
+    ERC4626Upgradeable, 
+    ReentrancyGuardUpgradeable, 
+    TimelockControllerUpgradeable, 
+    IERC20, 
+    IERC4626,
+    IStakeManager,
+    Math
+} from "src/Common.sol";
 
 import {ISingleVault} from "src/ISingleVault.sol";
 
 contract SingleVault is ISingleVault, ERC4626Upgradeable, TimelockControllerUpgradeable, ReentrancyGuardUpgradeable {
+    using Math for uint256;
 
     bytes32 private constant ERC4626StorageLocation = 0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00;
+    IStakeManager constant stakeManager = IStakeManager(0x1adB950d8bB3dA4bE104211D5AB038628e477fE6);
 
     constructor() {
         _disableInitializers();
@@ -66,12 +76,25 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, TimelockControllerUpgr
     function totalAssets() public view override(ERC4626Upgradeable, IERC4626) returns (uint256) {
         ERC4626Storage storage $ = _retrieveERC4626Storage();
         uint256 assetBalance = $._asset.balanceOf(address(this));
-        uint256 bnbPrice = getLatestBNBPrice();
-        return assetBalance * bnbPrice;
+        return _convertSnBnbToBnb(assetBalance);
     }
 
-    function getLatestBNBPrice() public pure returns (uint256) {
-        return 1;
+    function _convertSnBnbToBnb(uint256 amount) internal view returns (uint256) {
+        return stakeManager.convertSnBnbToBnb(amount);
+    }
+
+    function _convertBnbToSnBNB(uint256 amount) internal view returns (uint256) {
+        return stakeManager.convertBnbToSnBnb(amount);
+    }
+
+    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view override returns (uint256) {
+        uint256 bnbAssets = _convertSnBnbToBnb(assets);
+        return bnbAssets.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
+    }
+
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view override returns (uint256) {
+        uint256 bnbShares = shares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** _decimalsOffset(), rounding);
+        return _convertBnbToSnBNB(bnbShares);
     }
 
 }
