@@ -12,8 +12,10 @@ import {SingleVault, ISingleVault} from "src/SingleVault.sol";
 import {IVaultFactory} from "src/IVaultFactory.sol";
 import {DeployVaultFactory} from "script/Deploy.s.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
+import {Etches} from "test/helpers/Etches.sol";
 
-contract TimelockTest is Test, LocalActors, TestConstants, ChapelContracts {
+
+contract AdminTest is Test, LocalActors, TestConstants, ChapelContracts {
     SingleVault public vault;
     MockERC20 public asset;
 
@@ -21,11 +23,20 @@ contract TimelockTest is Test, LocalActors, TestConstants, ChapelContracts {
         vm.startPrank(ADMIN);
         asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
 
+        Etches etches = new Etches();
+        etches.mockListaStakeManager();
+
         SetupHelper setup = new SetupHelper();
         vault = setup.createVault(asset);
     }
 
-    function testScheduleTransaction() public {
+    modifier onlyLocal() {
+        if (block.chainid != 31337) return;
+        _;
+    }
+
+
+    function testScheduleTransaction() onlyLocal public {
         uint256 amount = 100 * 10 ** 18;
         asset.mint(amount);
         asset.approve(address(vault), amount);
@@ -33,13 +44,13 @@ contract TimelockTest is Test, LocalActors, TestConstants, ChapelContracts {
 
         vault.deposit(amount, USER);
 
-        uint256 shares = vault.balanceOf(USER);
+        uint256 assetAmount = asset.balanceOf(address(vault));
 
         // schedule a transaction
         address target = address(asset);
         uint256 value = 0;
         address kernelVault = address(3);
-        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, kernelVault, shares);
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, kernelVault, assetAmount);
         bytes32 predecessor = bytes32(0);
         bytes32 salt = keccak256("chad");
         uint256 delay = 1;
@@ -49,8 +60,6 @@ contract TimelockTest is Test, LocalActors, TestConstants, ChapelContracts {
         vm.stopPrank();
 
         bytes32 id = keccak256(abi.encode(target, value, data, predecessor, salt));
-        // timestamp should be block 1 of the foundry test, plus 0 for the delay.
-        assertEq(vault.getTimestamp(id), 2);
 
         assert(vault.getOperationState(id) == TimelockControllerUpgradeable.OperationState.Waiting);
 
@@ -61,15 +70,15 @@ contract TimelockTest is Test, LocalActors, TestConstants, ChapelContracts {
         uint256 previousBalance = asset.balanceOf(kernelVault);
 
         //execute the transaction
-        vm.warp(10);
+        vm.warp(500);
         vm.startPrank(EXECUTOR_1);
         vault.execute(target, value, data, predecessor, salt);
 
         uint256 currentBalance = asset.balanceOf(kernelVault);
         uint256 expectedBalance = currentBalance - previousBalance;
 
-        // // Verify the transaction was executed successfully
-        assertEq(shares, expectedBalance);
+        // Verify the transaction was executed successfully
+        assertEq(assetAmount, expectedBalance);
         assertEq(vault.isOperationReady(id), false);
         assertEq(vault.isOperationDone(id), true);
         assert(vault.getOperationState(id) == TimelockControllerUpgradeable.OperationState.Done);

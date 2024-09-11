@@ -9,6 +9,8 @@ import {TestConstants} from "test/helpers/Constants.sol";
 import {SingleVault} from "src/SingleVault.sol";
 import {VaultFactory} from "src/VaultFactory.sol";
 import {DeployVaultFactory} from "script/Deploy.s.sol";
+import {Etches} from "test/helpers/Etches.sol";
+
 
 contract CreateTest is Test, LocalActors, TestConstants {
     VaultFactory public factory;
@@ -21,6 +23,9 @@ contract CreateTest is Test, LocalActors, TestConstants {
         vm.startPrank(ADMIN);
         asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
         actors = new LocalActors();
+
+        Etches etches = new Etches();
+        etches.mockListaStakeManager();
 
         proposers = [PROPOSER_1, PROPOSER_2];
         executors = [EXECUTOR_1, EXECUTOR_2];

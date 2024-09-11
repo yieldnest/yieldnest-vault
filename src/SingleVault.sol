@@ -83,7 +83,7 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, TimelockControllerUpgr
         return stakeManager.convertSnBnbToBnb(amount);
     }
 
-    function _convertBnbToSnBNB(uint256 amount) internal view returns (uint256) {
+    function _convertBnbToSnBnb(uint256 amount) internal view returns (uint256) {
         return stakeManager.convertBnbToSnBnb(amount);
     }
 
@@ -94,7 +94,7 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, TimelockControllerUpgr
 
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view override returns (uint256) {
         uint256 bnbShares = shares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** _decimalsOffset(), rounding);
-        return _convertBnbToSnBNB(bnbShares);
+        return _convertBnbToSnBnb(bnbShares);
     }
 
 }
