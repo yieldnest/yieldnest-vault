@@ -8,35 +8,25 @@ import {MockERC20} from "test/mocks/MockERC20.sol";
 import {LocalActors} from "script/Actors.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
-import {DeployFactory, VaultFactory} from "test/helpers/DeployFactory.sol";
 import {SingleVault, ISingleVault} from "src/SingleVault.sol";
+import {SetupHelper} from "test/helpers/Setup.sol";
 
 contract WithdrawTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
-    IERC20 public asset;
+    MockERC20 public asset;
 
     function setUp() public {
         vm.startPrank(ADMIN);
-        asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
-        DeployFactory deployFactory = new DeployFactory();
-        VaultFactory factory = deployFactory.deploy(0);
-        asset.approve(address(factory), 1 ether);
-        asset.transfer(address(factory), 1 ether);
-        address vaultAddress = factory.createSingleVault(
-            asset,
-            VAULT_NAME,
-            VAULT_SYMBOL,
-            ADMIN,
-            0, // admin tx time delay
-            deployFactory.getProposers(),
-            deployFactory.getExecutors()
-        );
-        vault = SingleVault(payable(vaultAddress));
+        asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
+
+        SetupHelper setup = new SetupHelper();
+        vault = setup.createVault(asset);
     }
 
     function testWithdraw() public {
         vm.startPrank(ADMIN);
         uint256 amount = 100 * 10 ** 18;
+        asset.mint(amount);
         asset.approve(address(vault), amount);
         vault.deposit(amount, ADMIN);
 
@@ -50,8 +40,8 @@ contract WithdrawTest is Test, LocalActors, TestConstants {
         assertEq(assetsReceived, expectedAssets, "Assets received should be equal to the expected amount");
         assertEq(newNetBalance, expectedAssets, "User should have received the expected amount of assets");
         assertEq(vault.balanceOf(ADMIN), 0, "User's balance in the vault should be zero after withdrawal");
-        assertEq(vault.totalAssets(), 1 ether, "Vault totalAssets should be 1 ether after withdrawal");
-        assertEq(vault.totalSupply(), 1 ether, "Vault totalSupply should be 1 ether after withdrawal");
+        assertEq(vault.totalAssets(), 0, "Vault totalAssets should be 0 after withdrawal");
+        assertEq(vault.totalSupply(), 0, "Vault totalSupply should be 0 after withdrawal");
         vm.stopPrank();
     }
 

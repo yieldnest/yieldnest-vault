@@ -7,7 +7,7 @@ import {LocalActors} from "script/Actors.sol";
 import {SingleVault, ISingleVault} from "src/SingleVault.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
-import {DeployFactory, VaultFactory} from "test/helpers/DeployFactory.sol";
+import {SetupHelper} from "test/helpers/Setup.sol";
 
 contract AccessControlTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
@@ -17,20 +17,8 @@ contract AccessControlTest is Test, LocalActors, TestConstants {
         vm.startPrank(ADMIN);
         asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
 
-        DeployFactory deployFactory = new DeployFactory();
-        VaultFactory factory = deployFactory.deploy(0);
-        asset.approve(address(factory), 1 ether);
-        asset.transfer(address(factory), 1 ether);
-        address vaultAddress = factory.createSingleVault(
-            asset,
-            VAULT_NAME,
-            VAULT_SYMBOL,
-            ADMIN,
-            0, // time delay
-            deployFactory.getProposers(),
-            deployFactory.getExecutors()
-        );
-        vault = SingleVault(payable(vaultAddress));
+        SetupHelper setup = new SetupHelper();
+        vault = setup.createVault(asset);
     }
 
     function testAdminRoleSet() public view {

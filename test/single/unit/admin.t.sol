@@ -8,38 +8,32 @@ import {MockERC20} from "test/mocks/MockERC20.sol";
 import {LocalActors} from "script/Actors.sol";
 import {ChapelContracts} from "script/Contracts.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
-import {DeployFactory, VaultFactory} from "test/helpers/DeployFactory.sol";
 import {SingleVault, ISingleVault} from "src/SingleVault.sol";
+import {IVaultFactory} from "src/IVaultFactory.sol";
+import {DeployVaultFactory} from "script/Deploy.s.sol";
+import {SetupHelper} from "test/helpers/Setup.sol";
 
 contract TimelockTest is Test, LocalActors, TestConstants, ChapelContracts {
     SingleVault public vault;
-    IERC20 public asset;
+    MockERC20 public asset;
 
     function setUp() public {
         vm.startPrank(ADMIN);
-        asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
-        DeployFactory deployFactory = new DeployFactory();
-        VaultFactory factory = deployFactory.deploy(0);
-        asset.approve(address(factory), 1 ether);
-        asset.transfer(address(factory), 1 ether);
-        address vaultAddress = factory.createSingleVault(
-            asset,
-            VAULT_NAME,
-            VAULT_SYMBOL,
-            ADMIN,
-            0, // admin tx time delay
-            deployFactory.getProposers(),
-            deployFactory.getExecutors()
-        );
-        vault = SingleVault(payable(vaultAddress));
+        asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
+
+        SetupHelper setup = new SetupHelper();
+        vault = setup.createVault(asset);
     }
 
     function testScheduleTransaction() public {
         uint256 amount = 100 * 10 ** 18;
+        asset.mint(amount);
         asset.approve(address(vault), amount);
-        vault.deposit(amount, ADMIN);
+        address USER = address(33);
 
-        uint256 shares = vault.balanceOf(ADMIN);
+        vault.deposit(amount, USER);
+
+        uint256 shares = vault.balanceOf(USER);
 
         // schedule a transaction
         address target = address(asset);
