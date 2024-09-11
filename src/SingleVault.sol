@@ -2,10 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {
-    ERC4626Upgradeable, 
-    ReentrancyGuardUpgradeable, 
-    TimelockControllerUpgradeable, 
-    IERC20, 
+    ERC4626Upgradeable,
+    ReentrancyGuardUpgradeable,
+    TimelockControllerUpgradeable,
+    IERC20,
     IERC4626,
     IStakeManager,
     Math
@@ -96,5 +96,4 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, TimelockControllerUpgr
         uint256 bnbShares = shares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** _decimalsOffset(), rounding);
         return _convertBnbToSnBnb(bnbShares);
     }
-
 }

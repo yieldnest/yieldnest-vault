@@ -14,7 +14,6 @@ import {DeployVaultFactory} from "script/Deploy.s.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
 import {Etches} from "test/helpers/Etches.sol";
 
-
 contract AdminTest is Test, LocalActors, TestConstants, ChapelContracts {
     SingleVault public vault;
     MockERC20 public asset;
@@ -35,8 +34,7 @@ contract AdminTest is Test, LocalActors, TestConstants, ChapelContracts {
         _;
     }
 
-
-    function testScheduleTransaction() onlyLocal public {
+    function testScheduleTransaction() public onlyLocal {
         uint256 amount = 100 * 10 ** 18;
         asset.mint(amount);
         asset.approve(address(vault), amount);

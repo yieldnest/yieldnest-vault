@@ -12,7 +12,6 @@ import {SingleVault, ISingleVault} from "src/SingleVault.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
 import {Etches} from "test/helpers/Etches.sol";
 
-
 contract WithdrawTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
     MockERC20 public asset;
@@ -52,7 +51,9 @@ contract WithdrawTest is Test, LocalActors, TestConstants {
 
         assertEq(newNetBalance, expectedAssets, "User should have received the expected amount of assets");
         assertEq(vault.balanceOf(USER), 0, "User's balance in the vault should be zero after withdrawal");
-        assertEq(vault.totalAssets(), previousTotalAssets, "Vault totalAssets should be previousTotalAssets after withdrawal");
+        assertEq(
+            vault.totalAssets(), previousTotalAssets, "Vault totalAssets should be previousTotalAssets after withdrawal"
+        );
         assertEq(vault.totalSupply(), previousTotalSupply, "Vault totalSupply should be 0 after withdrawal");
         vm.stopPrank();
     }

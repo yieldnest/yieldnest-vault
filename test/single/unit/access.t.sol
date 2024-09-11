@@ -10,7 +10,6 @@ import {MockERC20} from "test/mocks/MockERC20.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
 import {Etches} from "test/helpers/Etches.sol";
 
-
 contract AccessControlTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
     IERC20 public asset;
@@ -21,7 +20,7 @@ contract AccessControlTest is Test, LocalActors, TestConstants {
 
         Etches etches = new Etches();
         etches.mockListaStakeManager();
-        
+
         SetupHelper setup = new SetupHelper();
         vault = setup.createVault(asset);
     }

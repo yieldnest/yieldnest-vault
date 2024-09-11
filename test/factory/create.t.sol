@@ -11,7 +11,6 @@ import {VaultFactory} from "src/VaultFactory.sol";
 import {DeployVaultFactory} from "script/Deploy.s.sol";
 import {Etches} from "test/helpers/Etches.sol";
 
-
 contract CreateTest is Test, LocalActors, TestConstants {
     VaultFactory public factory;
     IERC20 public asset;

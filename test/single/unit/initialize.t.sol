@@ -11,7 +11,6 @@ import {SingleVault, ISingleVault} from "src/SingleVault.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
 import {Etches} from "test/helpers/Etches.sol";
 
-
 contract InitializeTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
     IERC20 public asset;
