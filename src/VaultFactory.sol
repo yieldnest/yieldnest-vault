@@ -13,7 +13,7 @@ import {
 import {IVaultFactory} from "src/IVaultFactory.sol";
 
 contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
-    /// @dev This timelock is the Vault Admin.
+    /// @dev This timelock is the Vault Proxy Admin.
     TimelockControllerUpgradeable public timelock;
 
     /// @dev The address of the SingleVault implementation contract.
