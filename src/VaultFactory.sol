@@ -4,8 +4,6 @@ pragma solidity ^0.8.24;
 import {
     AccessControlUpgradeable,
     TransparentUpgradeableProxy,
-    TimelockControllerUpgradeable,
-    ProxyAdmin,
     IERC20,
     IERC4626
 } from "src/Common.sol";
@@ -14,7 +12,7 @@ import {IVaultFactory} from "src/IVaultFactory.sol";
 
 contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
     /// @dev This timelock is the Vault Proxy Admin.
-    TimelockControllerUpgradeable public timelock;
+    address public timelock;
 
     /// @dev The address of the SingleVault implementation contract.
     address public singleVaultImpl;
@@ -46,7 +44,7 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
         // the vault is the second timelock controller, which has the same proposers and executors
         // as the proxy admins
         singleVaultImpl = singleVaultImpl_;
-        timelock = TimelockControllerUpgradeable(payable(timelock_));
+        timelock = timelock_;
     }
 
     /**
@@ -73,7 +71,7 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
 
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             singleVaultImpl,
-            address(timelock),
+            timelock,
             abi.encodeWithSignature(funcSig, asset_, name_, symbol_, admin_, minDelay_, proposers_, executors_)
         );
         vaults[address(proxy)] = Vault(address(timelock), name_, symbol_, VaultType.SingleAsset);

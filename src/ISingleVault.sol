@@ -13,8 +13,8 @@ interface ISingleVault is IERC20, IERC4626, IAccessControl {
 
     function initialize(
         IERC20 asset_,
-        string memory name_,
-        string memory symbol_,
+        string calldata name_,
+        string calldata symbol_,
         address admin_,
         uint256 minDelay_,
         address[] calldata proposers_,

@@ -11,20 +11,20 @@ import {TestConstants} from "test/helpers/Constants.sol";
 contract SetupHelper is Test, LocalActors, TestConstants {
     IVaultFactory public factory;
 
+    constructor() {
+        IActors actors = new LocalActors();
+        DeployVaultFactory factoryDeployer = new DeployVaultFactory();
+        factory = IVaultFactory(factoryDeployer.deployVaultFactory(actors, 0));
+    }
+
     function createVault(IERC20 asset) public returns (SingleVault vault) {
         vm.startPrank(ADMIN);
-
-        IActors actors = new LocalActors();
-
         address[] memory proposers = new address[](2);
         proposers[0] = PROPOSER_1;
         proposers[1] = PROPOSER_2;
         address[] memory executors = new address[](2);
         executors[0] = EXECUTOR_1;
         executors[1] = EXECUTOR_2;
-
-        DeployVaultFactory factoryDeployer = new DeployVaultFactory();
-        factory = IVaultFactory(factoryDeployer.deployVaultFactory(actors, 0));
 
         asset.approve(address(factory), 1 ether);
         asset.transfer(address(factory), 1 ether);

@@ -17,7 +17,7 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, TimelockControllerUpgr
     using Math for uint256;
 
     bytes32 private constant ERC4626StorageLocation = 0x0773e532dfede91f04b12a73d3d2acd361424f41f76b4fb79f090161e36b4e00;
-    IStakeManager constant stakeManager = IStakeManager(0x1adB950d8bB3dA4bE104211D5AB038628e477fE6);
+    IStakeManager private constant stakeManager = IStakeManager(0x1adB950d8bB3dA4bE104211D5AB038628e477fE6);
 
     constructor() {
         _disableInitializers();
@@ -56,8 +56,8 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, TimelockControllerUpgr
         string memory name_,
         string memory symbol_,
         address admin_,
-        address[] memory proposers_,
-        address[] memory executors_
+        address[] calldata proposers_,
+        address[] calldata executors_
     ) internal pure {
         if (asset_ == IERC20(address(0))) revert AssetZeroAddress();
         if (bytes(name_).length == 0) revert NameEmpty();

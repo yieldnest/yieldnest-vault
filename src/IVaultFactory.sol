@@ -23,6 +23,8 @@ interface IVaultFactory is IAccessControl {
         VaultType vaultType;
     }
 
+    function timelock() external view returns (address);
+
     function singleVaultImpl() external view returns (address);
 
     function multiVaultImpl() external view returns (address);
