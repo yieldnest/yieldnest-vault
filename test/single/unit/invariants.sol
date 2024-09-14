@@ -16,7 +16,7 @@ contract SingleInvariantTests is Test, LocalActors, TestConstants {
 
     SingleVault public vault;
     MockERC20 public asset;
-    address USER = address(33);
+    address public USER = address(33);
 
     function setUp() public {
         vm.startPrank(ADMIN);

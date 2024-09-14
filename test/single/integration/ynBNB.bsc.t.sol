@@ -19,10 +19,10 @@ contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
     VaultFactory public factory;
     SingleVault public ynBNB;
     IERC20 public slis;
-    IERC4626 kslis = IERC4626(KARAK_KslisBNB);
-    IKarakVaultSupervisor ksup = IKarakVaultSupervisor(KARAK_VAULT_SUPERVISOR);
+    IERC4626 public kslis = IERC4626(KARAK_KslisBNB);
+    IKarakVaultSupervisor public ksup = IKarakVaultSupervisor(KARAK_VAULT_SUPERVISOR);
 
-    address USER = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
+    address public USER = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
 
     modifier onlyBsc() {
         if (block.chainid != 56) return;
@@ -31,7 +31,7 @@ contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
 
     function setUp() public onlyBsc {
         slis = IERC20(slisBNB);
-        get_slisBNB(address(this), 10_000 ether);
+        get_slisBNB(address(this), 100_000 ether);
         factory = VaultFactory(address(VAULT_FACTORY));
         slis.approve(address(factory), 1 ether);
         slis.transfer(address(factory), 1 ether);
@@ -89,5 +89,46 @@ contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
         vm.startPrank(USER);
         slis.approve(address(kslis), 1 ether);
         ksup.deposit(address(kslis), 1 ether, 1 ether);
+    }
+
+    function test_ynBNB_deposit_withdraw_sameAmount_fuzz(uint256 amount, uint256 rewards) public onlyBsc {
+        address user = USER;
+        vm.assume(amount > 0 && amount <= 10000 ether);
+        vm.assume(rewards >= 0 && rewards <= 10000 ether);
+
+        slis.approve(user, amount);
+        slis.transfer(user, amount);
+
+        slis.transfer(address(ynBNB), rewards);
+
+        vm.startPrank(user);
+        slis.approve(address(ynBNB), amount);
+        uint256 shares = ynBNB.deposit(amount, user);
+
+        assertEq(ynBNB.totalSupply(), shares + 1 ether, "Total supply should equal shares plus initial 1 ether");
+        assertEq(
+            ynBNB.totalAssets(), amount + rewards + 1 ether, "Total assets should equal shares plus initial 1 ether"
+        );
+        vm.stopPrank();
+
+        // Withdraw shares and assert received amount
+        vm.startPrank(user);
+        uint256 preWithdrawBalance = slis.balanceOf(user);
+        uint256 assetsReceived = ynBNB.redeem(shares, user, user);
+        uint256 postWithdrawBalance = slis.balanceOf(user);
+
+        assertEq(
+            postWithdrawBalance - preWithdrawBalance, assetsReceived, "User balance delta should equal assetsReceived"
+        );
+
+        assertGe(amount, assetsReceived, "Amount deposited should be greater than or equal to assets received");
+
+        uint256 assetLoss = amount - assetsReceived;
+        uint256 maxLoss = (amount > rewards ? amount : rewards) / 1e18;
+        assertLe(assetLoss, maxLoss + 2, "Asset loss should be less than or equal to maxLoss");
+
+        assertEq(ynBNB.totalSupply(), 1 ether, "Total supply should return to initial 1 ether");
+        assertEq(ynBNB.totalAssets(), rewards + 1 ether + assetLoss, "Total assets should return to initial 1 ether");
+        vm.stopPrank();
     }
 }
