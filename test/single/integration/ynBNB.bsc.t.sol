@@ -19,10 +19,10 @@ contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
     VaultFactory public factory;
     SingleVault public ynBNB;
     IERC20 public slis;
-    IERC4626 kslis = IERC4626(KARAK_KslisBNB);
-    IKarakVaultSupervisor ksup = IKarakVaultSupervisor(KARAK_VAULT_SUPERVISOR);
+    IERC4626 public kslis = IERC4626(KARAK_KslisBNB);
+    IKarakVaultSupervisor public ksup = IKarakVaultSupervisor(KARAK_VAULT_SUPERVISOR);
 
-    address USER = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
+    address public USER = 0x0c099101d43e9094E4ae9bC2FC38f8b9875c23c5;
 
     modifier onlyBsc() {
         if (block.chainid != 56) return;

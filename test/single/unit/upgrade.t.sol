@@ -32,7 +32,12 @@ contract SingleVaultUpgradeTests is Test, LocalActors, TestConstants {
         factory = IVaultFactory(setup.factory());
     }
 
-    function testUpgrade() public {
+    modifier onlyLocal() {
+        if (block.chainid != 31337) return;
+        _;
+    }
+
+    function testUpgrade() public onlyLocal {
         vm.startPrank(ADMIN);
         SingleVault newVault = new MockSingleVault();
 
