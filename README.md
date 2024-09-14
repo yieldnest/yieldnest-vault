@@ -100,3 +100,8 @@ export EXECUTOR_2="your_executor_2"
 make single-vault
 ```
 
+## Security Notes
+
+There's a loss incurred by the user that's roughly less than `Max(amount, rewards) / 1e18` when he withdraws the exact same shares he received  when compared to what he deposited.
+
+I believe this is  because of that decimal offset in OZ 46426Upgradeable to prevent donation attacks. The loss maxes out at 10000 wei for 10000 ether amounts so it's small.

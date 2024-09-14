@@ -91,12 +91,9 @@ contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
         ksup.deposit(address(kslis), 1 ether, 1 ether);
     }
 
-    function test_ynBNB_deposit_withdraw_sameAmount_fuzz(
-        uint256 amount,
-        uint256 rewards
-        ) public onlyBsc {
+    function test_ynBNB_deposit_withdraw_sameAmount_fuzz(uint256 amount, uint256 rewards) public onlyBsc {
         address user = USER;
-        vm.assume(amount > 0 && amount <= 10000 ether);        
+        vm.assume(amount > 0 && amount <= 10000 ether);
         vm.assume(rewards >= 0 && rewards <= 10000 ether);
 
         slis.approve(user, amount);
@@ -109,7 +106,9 @@ contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
         uint256 shares = ynBNB.deposit(amount, user);
 
         assertEq(ynBNB.totalSupply(), shares + 1 ether, "Total supply should equal shares plus initial 1 ether");
-        assertEq(ynBNB.totalAssets(), amount + rewards + 1 ether, "Total assets should equal shares plus initial 1 ether");
+        assertEq(
+            ynBNB.totalAssets(), amount + rewards + 1 ether, "Total assets should equal shares plus initial 1 ether"
+        );
         vm.stopPrank();
 
         // Withdraw shares and assert received amount
@@ -118,12 +117,14 @@ contract KslisBNB_Test is Test, BscActors, BscContracts, ynBNBConstants, AssetHe
         uint256 assetsReceived = ynBNB.redeem(shares, user, user);
         uint256 postWithdrawBalance = slis.balanceOf(user);
 
-        assertEq(postWithdrawBalance - preWithdrawBalance, assetsReceived, "User balance delta should equal assetsReceived");
+        assertEq(
+            postWithdrawBalance - preWithdrawBalance, assetsReceived, "User balance delta should equal assetsReceived"
+        );
 
         assertGe(amount, assetsReceived, "Amount deposited should be greater than or equal to assets received");
 
         uint256 assetLoss = amount - assetsReceived;
-        uint256 maxLoss = (amount > rewards ? amount: rewards) / 1e18;
+        uint256 maxLoss = (amount > rewards ? amount : rewards) / 1e18;
         assertLe(assetLoss, maxLoss + 2, "Asset loss should be less than or equal to maxLoss");
 
         assertEq(ynBNB.totalSupply(), 1 ether, "Total supply should return to initial 1 ether");
