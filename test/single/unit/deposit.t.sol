@@ -6,42 +6,47 @@ import {IERC20, IERC4626} from "src/Common.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {LocalActors} from "script/Actors.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
-import {DeployFactory, VaultFactory} from "test/helpers/DeployFactory.sol";
 import {SingleVault, ISingleVault} from "src/SingleVault.sol";
+import {IVaultFactory} from "src/IVaultFactory.sol";
+import {DeployVaultFactory} from "script/Deploy.s.sol";
+import {SetupHelper} from "test/helpers/Setup.sol";
+import {Etches} from "test/helpers/Etches.sol";
 
 contract DepositTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
-    IERC20 public asset;
+    MockERC20 public asset;
 
     function setUp() public {
         vm.startPrank(ADMIN);
-        asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
-        DeployFactory deployFactory = new DeployFactory();
-        VaultFactory factory = deployFactory.deploy(0);
-        asset.approve(address(factory), 1 ether);
-        asset.transfer(address(factory), 1 ether);
-        address vaultAddress = factory.createSingleVault(
-            asset,
-            VAULT_NAME,
-            VAULT_SYMBOL,
-            ADMIN,
-            0, // time delay
-            deployFactory.getProposers(),
-            deployFactory.getExecutors()
-        );
-        vault = SingleVault(payable(vaultAddress));
+        asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
+
+        Etches etches = new Etches();
+        etches.mockListaStakeManager();
+
+        SetupHelper setup = new SetupHelper();
+        vault = setup.createVault(asset);
     }
 
     function testDeposit() public {
         uint256 amount = 100 * 10 ** 18; // Assuming 18 decimals for the asset
+        asset.mint(amount);
         asset.approve(address(vault), amount);
+        address USER = address(33);
 
-        uint256 shares = vault.deposit(amount, ADMIN);
-        assertEq(shares, amount, "Shares should be equal to the amount deposited");
-        assertEq(vault.balanceOf(ADMIN), shares, "Balance of the user should be updated");
+        uint256 previewAmount = vault.previewDeposit(amount);
+        uint256 shares = vault.deposit(amount, USER);
+
+        uint256 totalShares = vault.convertToShares(amount + 1 ether);
+
+        assertEq(shares, previewAmount, "Shares should be equal to the amount deposited");
+        assertEq(vault.balanceOf(USER), shares, "Balance of the user should be updated");
         assertEq(asset.balanceOf(address(vault)), amount + 1 ether, "Vault should have received the asset");
-        assertEq(vault.totalAssets(), amount + 1 ether, "Vault totalAsset should be amount deposited");
-        assertEq(vault.totalSupply(), amount + 1 ether, "Vault totalSupply should be amount deposited");
+        assertEq(
+            vault.totalAssets(),
+            ((amount + 1 ether) * 1.02 ether) / 1 ether,
+            "Vault totalAsset should be amount deposited"
+        );
+        assertEq(vault.totalSupply(), totalShares, "Vault totalSupply should be amount deposited");
     }
 
     function skip_testDepositRevertsIfNotApproved() public {

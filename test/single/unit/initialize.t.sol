@@ -7,36 +7,35 @@ import {IERC20, TransparentUpgradeableProxy} from "src/Common.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {LocalActors} from "script/Actors.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
-import {DeployFactory, VaultFactory} from "test/helpers/DeployFactory.sol";
 import {SingleVault, ISingleVault} from "src/SingleVault.sol";
+import {SetupHelper} from "test/helpers/Setup.sol";
+import {Etches} from "test/helpers/Etches.sol";
 
 contract InitializeTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
-    DeployFactory public deployFactory;
-    VaultFactory public factory;
     IERC20 public asset;
 
     function setUp() public {
         vm.startPrank(ADMIN);
         asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
-        deployFactory = new DeployFactory();
-        factory = deployFactory.deploy(0);
-        asset.approve(address(factory), 1 ether);
-        asset.transfer(address(factory), 1 ether);
-        address vaultAddress = factory.createSingleVault(
-            asset,
-            VAULT_NAME,
-            VAULT_SYMBOL,
-            ADMIN,
-            0, // time delay
-            deployFactory.getProposers(),
-            deployFactory.getExecutors()
-        );
-        vault = SingleVault(payable(vaultAddress));
+
+        Etches etches = new Etches();
+        etches.mockListaStakeManager();
+
+        SetupHelper setup = new SetupHelper();
+        vault = setup.createVault(asset);
     }
 
     function testInitialize() public {
         SingleVault vaultImplementation = new SingleVault();
+
+        address[] memory proposers = new address[](2);
+        proposers[0] = PROPOSER_1;
+        proposers[1] = PROPOSER_2;
+        address[] memory executors = new address[](2);
+        executors[0] = EXECUTOR_1;
+        executors[1] = EXECUTOR_2;
+
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(vaultImplementation),
             address(this),
@@ -47,8 +46,8 @@ contract InitializeTest is Test, LocalActors, TestConstants {
                 VAULT_SYMBOL,
                 ADMIN,
                 0,
-                deployFactory.getProposers(),
-                deployFactory.getExecutors()
+                proposers,
+                executors
             )
         );
 

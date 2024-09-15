@@ -4,9 +4,10 @@ pragma solidity ^0.8.24;
 import "lib/forge-std/src/Script.sol";
 
 import {VaultFactory} from "src/VaultFactory.sol";
-import {AnvilActors, HoleskyActors, ChapelActors, IActors} from "script/Actors.sol";
+import {IVaultFactory} from "src/IVaultFactory.sol";
+import {AnvilActors, HoleskyActors, ChapelActors, BscActors, IActors} from "script/Actors.sol";
 import {SingleVault} from "src/SingleVault.sol";
-import {TransparentUpgradeableProxy} from "src/Common.sol";
+import {TransparentUpgradeableProxy, TimelockController} from "src/Common.sol";
 
 contract DeployVaultFactory is Script {
     function run() public {
@@ -30,9 +31,17 @@ contract DeployVaultFactory is Script {
             uint256 minDelay = 10; // seconds
             deployVaultFactory(actors, minDelay);
         }
+
+        if (block.chainid == 56) {
+            vm.startBroadcast();
+            BscActors actors = new BscActors();
+            uint256 minDelay = 86400; // 24 hours in seconds
+            deployVaultFactory(actors, minDelay);
+        }
     }
 
-    function deployVaultFactory(IActors actors, uint256 minDelay) internal {
+    function deployVaultFactory(IActors actors, uint256 minDelay) public returns (address) {
+        address vaultFactoryImpl = address(new VaultFactory());
         address singleVaultImpl = address(new SingleVault());
 
         address[] memory proposers = new address[](2);
@@ -45,6 +54,15 @@ contract DeployVaultFactory is Script {
 
         address admin = actors.ADMIN();
 
-        new VaultFactory(singleVaultImpl, proposers, executors, minDelay, admin);
+        string memory funcSig = "initialize(address,address,address)";
+
+        TimelockController timelock = new TimelockController(minDelay, proposers, executors, admin);
+
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            vaultFactoryImpl,
+            address(timelock),
+            abi.encodeWithSignature(funcSig, singleVaultImpl, admin, address(timelock))
+        );
+        return address(proxy);
     }
 }

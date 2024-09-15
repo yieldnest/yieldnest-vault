@@ -1,35 +1,21 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {
-    AccessControlUpgradeable,
-    TransparentUpgradeableProxy,
-    TimelockController,
-    ProxyAdmin,
-    IERC20,
-    IERC4626
-} from "src/Common.sol";
+import {AccessControlUpgradeable, TransparentUpgradeableProxy, IERC20, IERC4626} from "src/Common.sol";
 
-contract VaultFactory is AccessControlUpgradeable {
-    string public constant version = "0.1.0";
+import {IVaultFactory} from "src/IVaultFactory.sol";
 
-    TimelockController public timelock;
+contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
+    /// @dev This timelock is the Vault Proxy Admin.
+    address public timelock;
 
+    /// @dev The address of the SingleVault implementation contract.
     address public singleVaultImpl;
+
+    /// @dev The address of the MultiVault implementation contract.
     address public multiVaultImpl;
 
-    struct Vault {
-        address timelock;
-        string name;
-        string symbol;
-        VaultType vaultType;
-    }
-
-    enum VaultType {
-        SingleAsset,
-        MultiAsset
-    }
-
+    /// @dev Mapping of vault addresses to their respective Vault structs.
     mapping(address => Vault) public vaults;
 
     event NewVault(address indexed vault, string name, string symbol, VaultType vaultType);
@@ -37,27 +23,23 @@ contract VaultFactory is AccessControlUpgradeable {
 
     error ZeroAddress();
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @dev Initializes the VaultFactory contract.
      * @param singleVaultImpl_ The address of the SingleVault implementation contract.
-     * @param proposers Array of addresses that can propose transactions.
-     * @param executors Array of addresses that can execute transactions.
-     * @param minDelay The minimum delay in seconds before a proposed transaction can be executed.
      * @param admin The address of the administrator.
+     * @param timelock_ The Vault admin for proxy upgrades
      */
-    constructor(
-        address singleVaultImpl_,
-        address[] memory proposers,
-        address[] memory executors,
-        uint256 minDelay,
-        address admin
-    ) {
+    function initialize(address singleVaultImpl_, address admin, address timelock_) external initializer {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         // NOTES: There are two timelocks. This timelock is for vault upgrades but
         // the vault is the second timelock controller, which has the same proposers and executors
         // as the proxy admins
-        timelock = new TimelockController(minDelay, proposers, executors, admin);
         singleVaultImpl = singleVaultImpl_;
+        timelock = timelock_;
     }
 
     /**
@@ -84,14 +66,14 @@ contract VaultFactory is AccessControlUpgradeable {
 
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             singleVaultImpl,
-            address(timelock),
+            timelock,
             abi.encodeWithSignature(funcSig, asset_, name_, symbol_, admin_, minDelay_, proposers_, executors_)
         );
         vaults[address(proxy)] = Vault(address(timelock), name_, symbol_, VaultType.SingleAsset);
 
         // bootstrap 1 ether of underlying to prevent donation attacks
         IERC20(asset_).approve(address(proxy), 1 ether);
-        IERC4626(address(proxy)).deposit(1 ether, address(this));
+        IERC4626(address(proxy)).deposit(1 ether, admin_);
         emit NewVault(address(proxy), name_, symbol_, VaultType.SingleAsset);
         return address(proxy);
     }

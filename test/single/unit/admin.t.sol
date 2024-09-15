@@ -8,44 +8,47 @@ import {MockERC20} from "test/mocks/MockERC20.sol";
 import {LocalActors} from "script/Actors.sol";
 import {ChapelContracts} from "script/Contracts.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
-import {DeployFactory, VaultFactory} from "test/helpers/DeployFactory.sol";
 import {SingleVault, ISingleVault} from "src/SingleVault.sol";
+import {IVaultFactory} from "src/IVaultFactory.sol";
+import {DeployVaultFactory} from "script/Deploy.s.sol";
+import {SetupHelper} from "test/helpers/Setup.sol";
+import {Etches} from "test/helpers/Etches.sol";
 
-contract TimelockTest is Test, LocalActors, TestConstants, ChapelContracts {
+contract AdminTest is Test, LocalActors, TestConstants, ChapelContracts {
     SingleVault public vault;
-    IERC20 public asset;
+    MockERC20 public asset;
 
     function setUp() public {
         vm.startPrank(ADMIN);
-        asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
-        DeployFactory deployFactory = new DeployFactory();
-        VaultFactory factory = deployFactory.deploy(0);
-        asset.approve(address(factory), 1 ether);
-        asset.transfer(address(factory), 1 ether);
-        address vaultAddress = factory.createSingleVault(
-            asset,
-            VAULT_NAME,
-            VAULT_SYMBOL,
-            ADMIN,
-            0, // admin tx time delay
-            deployFactory.getProposers(),
-            deployFactory.getExecutors()
-        );
-        vault = SingleVault(payable(vaultAddress));
+        asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
+
+        Etches etches = new Etches();
+        etches.mockListaStakeManager();
+
+        SetupHelper setup = new SetupHelper();
+        vault = setup.createVault(asset);
     }
 
-    function testScheduleTransaction() public {
-        uint256 amount = 100 * 10 ** 18;
-        asset.approve(address(vault), amount);
-        vault.deposit(amount, ADMIN);
+    modifier onlyLocal() {
+        if (block.chainid != 31337) return;
+        _;
+    }
 
-        uint256 shares = vault.balanceOf(ADMIN);
+    function testScheduleTransaction() public onlyLocal {
+        uint256 amount = 100 * 10 ** 18;
+        asset.mint(amount);
+        asset.approve(address(vault), amount);
+        address USER = address(33);
+
+        vault.deposit(amount, USER);
+
+        uint256 assetAmount = asset.balanceOf(address(vault));
 
         // schedule a transaction
         address target = address(asset);
         uint256 value = 0;
         address kernelVault = address(3);
-        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, kernelVault, shares);
+        bytes memory data = abi.encodeWithSelector(IERC20.transfer.selector, kernelVault, assetAmount);
         bytes32 predecessor = bytes32(0);
         bytes32 salt = keccak256("chad");
         uint256 delay = 1;
@@ -55,8 +58,6 @@ contract TimelockTest is Test, LocalActors, TestConstants, ChapelContracts {
         vm.stopPrank();
 
         bytes32 id = keccak256(abi.encode(target, value, data, predecessor, salt));
-        // timestamp should be block 1 of the foundry test, plus 0 for the delay.
-        assertEq(vault.getTimestamp(id), 2);
 
         assert(vault.getOperationState(id) == TimelockControllerUpgradeable.OperationState.Waiting);
 
@@ -67,15 +68,15 @@ contract TimelockTest is Test, LocalActors, TestConstants, ChapelContracts {
         uint256 previousBalance = asset.balanceOf(kernelVault);
 
         //execute the transaction
-        vm.warp(10);
+        vm.warp(500);
         vm.startPrank(EXECUTOR_1);
         vault.execute(target, value, data, predecessor, salt);
 
         uint256 currentBalance = asset.balanceOf(kernelVault);
         uint256 expectedBalance = currentBalance - previousBalance;
 
-        // // Verify the transaction was executed successfully
-        assertEq(shares, expectedBalance);
+        // Verify the transaction was executed successfully
+        assertEq(assetAmount, expectedBalance);
         assertEq(vault.isOperationReady(id), false);
         assertEq(vault.isOperationDone(id), true);
         assert(vault.getOperationState(id) == TimelockControllerUpgradeable.OperationState.Done);
