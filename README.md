@@ -17,7 +17,7 @@ See the makefile for deployment scripts. Deploy a factory first, then use it to 
 ### BSC Mainnet
 | Name | Address |
 |-----------------------|----------------------------------------------|
-| ynBNB                 | [0x304B5845b9114182ECb4495Be4C91a273b74B509](https://testnet.bscscan.com/address/0x304B5845b9114182ECb4495Be4C91a273b74B509)   |
+| ynBNB                 | [0x304B5845b9114182ECb4495Be4C91a273b74B509](https://bscscan.com/address/0x304B5845b9114182ECb4495Be4C91a273b74B509)   |
 | slisBNB               | [0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B](https://bscscan.com/address/0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B)   				|
 | Vault Factory         | [0x8F74AC4a934Db365720fa4A0e7aE62FF2457DE41](https://bscscan.com/address/0x8f74ac4a934db365720fa4a0e7ae62ff2457de41)   				|
 | VaultFactory Impl			| [0x53dd506c5fC655634F2ab7ca0c1801a08e0Cb607](https://bscscan.com/address/0x53dd506c5fc655634f2ab7ca0c1801a08e0cb607)					|
