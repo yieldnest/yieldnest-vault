@@ -78,6 +78,30 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
         return address(proxy);
     }
 
+    function createMetaVault(
+        IERC20[] assets_,
+        string memory name_,
+        string memory symbol_,
+        address memory admin_,
+        uint256 minDelay_,
+        address[] memory proposers_,
+        address[] memory executors_
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) returns (address) {
+        string memory funcSig = "initialize(address,string,string,address,uint256,address[],address[])";
+
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            singleVaultImpl,
+            timelock,
+            abi.encodeWithSignature(funcSig, assets_, name_, symbol_, admin_, minDelay_, proposers_, executors_)
+        );
+        vaults[address(proxy)] = Vault(address(timelock), name_, symbol_, VaultType.SingleAsset);
+
+        // bootstrap 1 ether of underlying to prevent donation attacks
+        IERC20(asset_).approve(address(proxy), 1 ether);
+        IERC4626(address(proxy)).deposit(1 ether, admin_);
+        emit NewVault(address(proxy), name_, symbol_, VaultType.SingleAsset);
+        return address(proxy);
+    }
     /**
      * @dev Sets the SingleVault implementation contract address.
      * @param implementation_ The address of the SingleVault implementation contract.

@@ -19,5 +19,9 @@ import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAcces
 import {ERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {IStakeManager} from "lib/synclub-contracts/contracts/interfaces/IStakeManager.sol";
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "lib/openzeppelin-contracts/contracts/utils/Address.sol";
+import {ER20Upgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
+import {StorageSlot} from "lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol";
 
 contract Common {}

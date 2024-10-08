@@ -20,4 +20,5 @@ contract BscContracts {
     address public constant KARAK_VAULT_SUPERVISOR = 0x4a2b015CcB8658998692Db9eD4522B8e846962eD;
     address public constant slisBNB = 0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B;
     address public constant ListaStakeManager = 0x1adB950d8bB3dA4bE104211D5AB038628e477fE6;
+    address public constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
 }

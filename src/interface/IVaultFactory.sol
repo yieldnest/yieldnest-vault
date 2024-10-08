@@ -6,7 +6,8 @@ import {IERC20, IERC4626, IAccessControl} from "src/Common.sol";
 interface IVaultFactory is IAccessControl {
     enum VaultType {
         SingleAsset,
-        MultiAsset
+        MetaVault,
+        Strategy
     }
 
     /**
