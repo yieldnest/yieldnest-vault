@@ -5,14 +5,17 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import "./YnAsset.sol";
 import "./IRateProvider.sol";
 
 
 contract AssetPool is Initializable, AccessControlUpgradeable {
     using SafeERC20 for IERC20;
+    using Address for address;
 
     bytes32 public constant ASSET_ADMIN_ROLE = keccak256("ASSET_ADMIN_ROLE");
+    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
     struct Asset {
         bool active;
@@ -43,6 +46,23 @@ contract AssetPool is Initializable, AccessControlUpgradeable {
         strategyList.push(strategy);
     }
 
+
+    function manage(
+        address[] calldata targets,
+        bytes[] calldata data,
+        uint256[] calldata values
+    )
+    external
+    onlyRole(MANAGER_ROLE)
+    returns (bytes[] memory results)
+    {
+        uint256 targetsLength = targets.length;
+        results = new bytes[](targetsLength);
+        for (uint256 i; i < targetsLength; ++i) {
+            results[i] = targets[i].functionCallWithValue(data[i], values[i]);
+        }
+    }
+
     function deposit(address asset, uint256 _amount, address _receiver) external {
         require(assets[asset].active, "Asset not supported");
         IERC20(asset).safeTransferFrom(msg.sender, address(this), _amount);
@@ -52,28 +72,8 @@ contract AssetPool is Initializable, AccessControlUpgradeable {
     }
 
     function mintRewards() external onlyRole(ASSET_ADMIN_ROLE) {
-        uint256 totalValue = 0;
-
-        // Calculate total value of assets
-        for (uint256 i = 0; i < assetList.length; i++) {
-            IERC20 asset = assetList[i];
-            uint256 balance = asset.balanceOf(address(this));
-            totalValue += rateProvider.convert(address(asset), balance);
-        }
-
-        // Calculate total value of strategies
-        for (uint256 i = 0; i < strategyList.length; i++) {
-            IERC20 strategy = strategyList[i];
-            uint256 balance = strategy.balanceOf(address(this));
-            totalValue += rateProvider.convert(address(strategy), balance);
-        }
-
-        // Calculate the amount of ynAsset to mint
-        uint256 currentSupply = ynAsset.totalSupply();
-        if (totalValue > currentSupply) {
-            uint256 amountToMint = totalValue - currentSupply;
-            ynAsset.mint(exoVault, amountToMint);
-        }
+        uint256 amountToMint = 0; // todo: how to calculate 
+        ynAsset.mint(exoVault, amountToMint);
     }
 
     // TODO: add async redemption logic or YnAsset
