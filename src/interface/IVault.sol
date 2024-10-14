@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IERC20, IAccessControl} from "../Common.sol";
+import {IERC4626, IAccessControl} from "../Common.sol";
 
-interface IMetaVault is IERC20, IAccessControl {
+interface IVault is IERC4626, IAccessControl {
 
     error ZeroAddress();
     error InvalidString();
@@ -14,18 +14,16 @@ interface IMetaVault is IERC20, IAccessControl {
     struct VaultStorage {
         // Version
         uint8 version;
-        // Deciamls of the Vault token
-        uint8 decimals;
+        // Decimals of the Vault token
+        uint8 baseDecimals;
         // Base underlying asset of the Vault
-        address denominationAsset;
-        // Address of the Vault Module
-        address metaModule;
-        // Balance of total assets priced in denomination asset
-        uint256 totalDebt;
+        address baseAsset;
+        // Balance of total assets priced in base asset
+        uint256 totalAssets;
     }
 
     struct AssetParams {
-        // Address of the asset token
+        // ERC20 asset token
         address asset;
         // Activated or Deactivated
         bool active;
@@ -33,36 +31,49 @@ interface IMetaVault is IERC20, IAccessControl {
         uint8 index;
         // The decmials of the asset
         uint8 decimals;
-        // Current vault balance of this asset
-        uint256 currentBalance;
-        // Outstanding Vault obligations in this asset
-        uint256 currentDebt;
+        // Current vault deposit balance of this asset
+        uint256 idleAssets;
+        // deployedBalance
+        // QUESTION: Is this required? We are counting this balance in 
+        // the strategy.assets
+        uint256 deployedAssets;
     }
 
     struct AssetStorage {
         mapping(address => AssetParams) assets;
         address[256] assetList;
     }
-
     struct StrategyParams {
         // Address of the Strategy
         address strategy;
         // Activated or Deactivated
         bool active;
-        // The index of this straegy in the map
+        // The index of this strategy in the map
         uint8 index;
-        // Timestamp when the strategy was added.
-        uint256 activation;
-        // Timestamp of the strategies last accounting process.
-        uint256 lastProcess;
+        // The percent in 100 * 100 Basis
+        // QUESTION: Should this be on the Vault storage?
+        uint8 ratio;
         // The Asset Address and allocated balance.
-        mapping(address => uint256) allocations;
+        mapping(address => uint256) assets;
     }
 
     struct StrategyStorage {
         mapping(address => StrategyParams) strategies;
         address[256] strategyList;
     }
+
+    // taken from oz ERC20Upgradeable
+    struct ERC20Storage {
+        mapping(address account => uint256) _balances;
+
+        mapping(address account => mapping(address spender => uint256)) _allowances;
+
+        uint256 _totalSupply;
+
+        string _name;
+        string _symbol;
+    }
+
 
     // read
     function assets() external view returns (address[] memory assets_);
@@ -83,6 +94,13 @@ interface IMetaVault is IERC20, IAccessControl {
     function getStrategies() external view returns (address[] memory);
     function isStrategyActive(address strategy) external view returns (bool);
     
+    // New function signatures for structs
+    function getVaultStorage() external view returns (VaultStorage memory);
+    function getAssetParams(address asset) external view returns (AssetParams memory);
+    function getAssetStorage() external view returns (AssetStorage memory);
+    function getStrategyParams(address strategy) external view returns (StrategyParams memory);
+    function getStrategyStorage() external view returns (StrategyStorage memory);
+
     // write
     function deposit(uint256 assets, address receiver) external returns (uint256);
     function depositAsset(address asset, uint256 assets, address receiver) external returns (uint256);

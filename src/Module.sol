@@ -1,55 +1,17 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {
-    IERC20,
-    SafeERC20,
-    Address,
-    ERC20Upgradeable
-} from "./Common.sol";
+import {IERC20Metadata, ERC20Upgradeable, Storage} from "src/Common.sol";
 
-contract MetaVault is IAssetVault, ERC20Upgradeable {
-    
-    using SafeERC20 for IERC20;
-    using Address for address;
+contract Module {
 
-    bytes32 private constant VAULT_STORAGE_POSITION = keccak256("yieldnest.storage.vault");
-    bytes32 private constant ASSET_STORAGE_POSITION = keccak256("yieldnest.storage.asset");
-    bytes32 private constant STRAT_STORAGE_POSITION = keccak256("yieldnest.storage.strat");
-
-    function _getVaultStorage() private pure returns (VaultStorage storage $) {
-        assembly {
-            $.slot := VAULT_STORAGE_POSITION
-        }
-    }
-
-    function _getAssetStorage() private pure returns (AssetStorage storage $) {
-        assembly {
-            $.slot := ASSET_STORAGE_POSITION
-        }
-    }
-
-    function _getStrategyStorage() private pure returns (StrategyStorage storage $) {
-        assembly {
-            $.slot := STRAT_STORAGE_POSITION
-        }
-    }
-
-    /** @dev See {IERC4626-decimals}. */
-    function decimals() public view virtual override(IERC20Metadata, ERC20Upgradeable) returns (uint8) {
-        VaultStorage storage $ = _getVaultStorage();
-        return $.underlyingDecimals + _decimalsOffset();
-    }
-
-    /** @dev See {IERC4626-assets}. */
-    function asset() public view virtual returns (address) {
-        VaultStorage storage $ = _getVaultStorage();
-        return $.denominationAsset;
+    function _asset() internal view virtual returns (address) {
+        VaultStorage storage $ = VaultLib.getVaultStorage();
+        return $.baseAsset;
     }
     
-    /** @dev Returns all the underlying assets */
-    function assets() public view returns (address[] memory assets_) {
-        AssetStorage storage $ = _getAssetStorage();
+    function _assets() internal view returns (address[] memory assets_) {
+        AssetStorage storage $ = Storage.getAssetStorage();
         uint256 assetListLength = $.assetList.length;
         assets_ = new address[](assetListLength);
         for (uint256 i = 0; i < assetListLength; i++) {
@@ -57,39 +19,29 @@ contract MetaVault is IAssetVault, ERC20Upgradeable {
         }
     }
 
-    /** @dev See {IERC4626-totalAssets}. */
-    function totalAssets() public view virtual returns (uint256) {
-        AssetStorage storage $ = _getVaultStorage();
-        return $.totalDebt;
+    function _decimals() internal view virtual override(IERC20Metadata, ERC20Upgradeable) returns (uint8) {
+        VaultStorage storage $ = Storage.getVaultStorage();
+        return $.baseDecimals + _decimalsOffset();
     }
 
-    /** @dev See {IERC4626-convertToShares}. */
-    function convertToShares(uint256 assets) public view virtual returns (uint256) {
-        return MetaModule.convertToShares(assets, Math.Rounding.Floor);
+    function _totalAssets() internal view virtual returns (uint256) {
+        AssetStorage storage $ = Storage.getVaultStorage();
+        return $.totalAssets;
     }
 
-    /** @dev See {IERC4626-convertToAssets}. */
-    function convertToAssets(uint256 shares) public view virtual returns (uint256) {
-        return MetaModule.convertToAssets(shares, Math.Rounding.Floor);
-    }
-
-    /** @dev See {IERC4626-maxDeposit}. */
-    function maxDeposit(address) public view virtual returns (uint256) {
+    function _maxDeposit(address) internal view virtual returns (uint256) {
         return type(uint256).max;
     }
 
-    /** @dev See {IERC4626-maxMint}. */
-    function maxMint(address) public view virtual returns (uint256) {
+    function _maxMint(address) internal view virtual returns (uint256) {
         return type(uint256).max;
     }
 
-    /** @dev See {IERC4626-maxWithdraw}. */
-    function maxWithdraw(address owner) public view virtual returns (uint256) {
-        // return _convertToAssets(balanceOf(owner), Math.Rounding.Floor);
+    function _maxWithdraw(address owner) internal view virtual returns (uint256) {
+        return _convertToAssets(balanceOf(owner), Math.Rounding.Floor);
     }
 
-    /** @dev See {IERC4626-maxRedeem}. */
-    function maxRedeem(address owner) public view virtual returns (uint256) {
+    function _maxRedeem(address owner) public view virtual returns (uint256) {
         // return balanceOf(owner);
     }
 
@@ -244,4 +196,21 @@ contract MetaVault is IAssetVault, ERC20Upgradeable {
     function _decimalsOffset() internal view virtual returns (uint8) {
         return 0;
     }
+
+    function _getStrategyWithLowestBalance() internal view returns (address strategyAddress, uint256 lowestBalance) {
+        StrategyStorage storage $ = Storage.getStrategyStorage();
+        uint256 lowestBalanceFound = type(uint256).max;
+        address strategyWithLowestBalance;
+
+        for (uint256 i = 0; i < $.strategyList.length; i++) {
+            address strategy = $.strategyList[i];
+            uint256 currentBalance = $.strategies[strategy].currentBalance;
+            if (currentBalance < lowestBalanceFound) {
+                lowestBalanceFound = currentBalance;
+                strategyWithLowestBalance = strategy;
+            }
+        }
+
+        return (strategyWithLowestBalance, lowestBalanceFound);
+    }    
 }
