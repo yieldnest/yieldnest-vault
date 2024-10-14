@@ -10,48 +10,28 @@ import {
     Storage
 } from "./Common.sol";
 
-contract Vault is IVault, Storage {
+contract Vault is IVault, Storage, Module {
     
     using SafeERC20 for IERC20;
     using Address for address;
 
-    /** @dev See {IERC4626-decimals}. */
-    function decimals() public view virtual override(IERC20Metadata, ERC20Upgradeable) returns (uint8) {
-        VaultStorage storage $ = VaultLib.getVaultStorage();
-        return $.underlyingDecimals + _decimalsOffset();
-    }
-
     /** @dev See {IERC4626-assets}. */
     function asset() public view virtual returns (address) {
-        VaultStorage storage $ = VaultLib.getVaultStorage();
-        return $.denominationAsset;
+        return _asset();
     }
     
     /** @dev Returns all the underlying assets */
     function assets() public view returns (address[] memory assets_) {
-        AssetStorage storage $ = VaultLib.getAssetStorage();
-        uint256 assetListLength = $.assetList.length;
-        assets_ = new address[](assetListLength);
-        for (uint256 i = 0; i < assetListLength; i++) {
-            assets_[i] = $.assetList[i];
-        }
+        return _assets();
+    }
+
+    /** @dev See {IERC4626-decimals}. */
+    function decimals() public view virtual override(IERC20Metadata, ERC20Upgradeable) returns (uisnt8) {
+        return _decimals();
     }
 
     function getStrategyWithLowestBalance() public view returns (address strategyAddress, uint256 lowestBalance) {
-        StrategyStorage storage $ = VaultLib.getStrategyStorage();
-        uint256 lowestBalanceFound = type(uint256).max;
-        address strategyWithLowestBalance;
-
-        for (uint256 i = 0; i < $.strategyList.length; i++) {
-            address strategy = $.strategyList[i];
-            uint256 currentBalance = $.strategies[strategy].currentBalance;
-            if (currentBalance < lowestBalanceFound) {
-                lowestBalanceFound = currentBalance;
-                strategyWithLowestBalance = strategy;
-            }
-        }
-
-        return (strategyWithLowestBalance, lowestBalanceFound);
+        return _getStrategyWithLowestBalance();
     }
 
     /** @dev See {IERC4626-totalAssets}. */

@@ -42,27 +42,24 @@ contract Module {
     }
 
     function _maxRedeem(address owner) public view virtual returns (uint256) {
-        // return balanceOf(owner);
+        ERC20Storage storage $ = Storage._getERC20Storage();
+        return $.balanceOf(owner);
     }
 
-    /** @dev See {IERC4626-previewDeposit}. */
     function previewDeposit(uint256 assets) public view virtual returns (uint256) {
-        // return _convertToShares(assets, Math.Rounding.Floor);
+        return _convertToShares(assets, Math.Rounding.Floor);
     }
 
-    /** @dev See {IERC4626-previewMint}. */
     function previewMint(uint256 shares) public view virtual returns (uint256) {
-        // return _convertToAssets(shares, Math.Rounding.Ceil);
+        return _convertToAssets(shares, Math.Rounding.Ceil);
     }
 
-    /** @dev See {IERC4626-previewWithdraw}. */
     function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Ceil);
     }
 
-    /** @dev See {IERC4626-previewRedeem}. */
     function previewRedeem(uint256 shares) public view virtual returns (uint256) {
-        // return _convertToAssets(shares, Math.Rounding.Floor);
+        return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
     /** @dev See {IERC4626-deposit}. */
