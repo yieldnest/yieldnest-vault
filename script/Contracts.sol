@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
+contract MainnetContracts {
+    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+    address public constant METH = 0xd5F7838F5C461fefF7FE49ea5ebaF7728bB0ADfa;
+    address public constant OETH = 0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3;
+    address public constant RETH = 0xae78736Cd615f374D3085123A210448E74Fc6393;
+}
+
 contract ChapelContracts {
     address public constant ACTORS = 0xbA02225f0fdB684c80ad1e829FC31f048c416Ce6;
     address public constant VAULT_FACTORY = 0x964C6d4050e052D627b8234CAD9CdF0981E40EB3;
