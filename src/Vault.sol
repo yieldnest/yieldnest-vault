@@ -10,7 +10,7 @@ import {
     ERC20PermitUpgradeable
 } from "./Common.sol";
 
-abstract contract Vault is IVault, Storage, ERC20PermitUpgradeable {
+contract Vault is IVault, Storage, ERC20PermitUpgradeable {
     
     using SafeERC20 for IERC20;
     using Address for address;
@@ -60,10 +60,17 @@ abstract contract Vault is IVault, Storage, ERC20PermitUpgradeable {
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
+    function previewDepositAsset(uint256 assets) public view virtual returns (uint256) {
+        return _convertToShares(assets, Math.Rounding.Floor);
+    }    
+
     function previewMint(uint256 shares) public view virtual returns (uint256) {
         return _convertToAssets(shares, Math.Rounding.Ceil);
     }
 
+    function previewMintAsset(uint256 shares) public view virtual returns (uint256) {
+        return _convertToAssets(shares, Math.Rounding.Ceil);
+    }
     function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Ceil);
     }
@@ -74,15 +81,15 @@ abstract contract Vault is IVault, Storage, ERC20PermitUpgradeable {
 
     /** @dev See {IERC4626-deposit}. */
     function deposit(uint256 assets, address receiver) public virtual returns (uint256) {
-        // uint256 maxAssets = maxDeposit(receiver);
-        // if (assets > maxAssets) {
-        //     revert ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
-        // }
+        uint256 maxAssets = maxDeposit(receiver);
+        if (assets > maxAssets) {
+            revert ExceededMaxDeposit(receiver, assets, maxAssets);
+        }
 
-        // uint256 shares = previewDeposit(assets);
-        // _deposit(_msgSender(), receiver, assets, shares);
+        uint256 shares = previewDeposit(assets);
+        _deposit(_msgSender(), receiver, assets, shares);
 
-        // return shares;
+        return shares;
     }
 
     /** @dev See {IAssetVault-depositAsset}. */
@@ -144,7 +151,10 @@ abstract contract Vault is IVault, Storage, ERC20PermitUpgradeable {
     /**
      * @dev Internal conversion function (from assets to shares) with support for rounding direction.
      */
-    function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual returns (uint256) {
+    function _convertToShares(address asset, uint256 assets, Math.Rounding rounding) internal view virtual returns (uint256) {
+        
+        uint256 convertedAssets = _convertToBasePrice(asset, assets);
+        
         return assets.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
     }
 

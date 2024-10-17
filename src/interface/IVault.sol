@@ -8,7 +8,8 @@ interface IVault is IERC4626, IAccessControl {
     error ZeroAddress();
     error InvalidString();
     error InvalidArray();
-
+    error ExceededMaxDeposit();
+    
     event DepositAsset(address indexed asset, address indexed vault, uint256 amount, address indexed receiver);
 
     // Internal storage vs balanceOf storage
@@ -16,10 +17,10 @@ interface IVault is IERC4626, IAccessControl {
     struct VaultStorage {
         // Version
         uint8 version;
-        // Decimals of the Vault token
-        uint8 baseDecimals;
         // Base underlying asset of the Vault
-        address baseAsset; // ETH, WETH
+        address asset; // WETH
+        // Decimals of the Vault token
+        uint8 underlyingDecimals;
         // Balance of total assets priced in base asset
         uint256 totalAssets;
     }
@@ -90,8 +91,8 @@ interface IVault is IERC4626, IAccessControl {
     function maxWithdraw(address owner) external view returns (uint256);
     function maxRedeem(address owner) external view returns (uint256);
 
-    function previewDeposit(uint256 assets) external view returns (uint256);
-    function previewMint(uint256 shares) external view returns (uint256);
+    function previewDepositAsset(uint256 assets) external view returns (uint256);
+    function previewMintAsset(uint256 shares) external view returns (uint256);
     function previewWithdraw(uint256 assets) external view returns (uint256);
     function previewRedeem(uint256 shares) external view returns (uint256);
 
