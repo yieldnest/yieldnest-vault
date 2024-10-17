@@ -3,15 +3,16 @@ pragma solidity ^0.8.24;
 
 import {IERC20Metadata, ERC20Upgradeable, Storage} from "src/Common.sol";
 
-contract Module {
+contract Module is IVault, Storage {
+
 
     function _asset() internal view virtual returns (address) {
-        VaultStorage storage $ = VaultLib.getVaultStorage();
+        VaultStorage storage $ = _getVaultStorage();
         return $.baseAsset;
     }
     
     function _assets() internal view returns (address[] memory assets_) {
-        AssetStorage storage $ = Storage.getAssetStorage();
+        AssetStorage storage $ = _getAssetStorage();
         uint256 assetListLength = $.assetList.length;
         assets_ = new address[](assetListLength);
         for (uint256 i = 0; i < assetListLength; i++) {
@@ -135,7 +136,7 @@ contract Module {
      * @dev Internal conversion function (from assets to shares) with support for rounding direction.
      */
     function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual returns (uint256) {
-        // return assets.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
+        return assets.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
     }
 
     /**
@@ -209,5 +210,22 @@ contract Module {
         }
 
         return (strategyWithLowestBalance, lowestBalanceFound);
-    }    
+    }
+  
+    function processAccounting() public {
+        // get the balances of the assets
+        AssetStorage storage assetStorage = _getAssetStorage();
+        
+        for (uint256 i = 0; i < assetsStorage.list.length; i++) {
+            address asset = assets[i];
+            idleBalance = asset.balanceOf(address(vault));
+        }
+        // get the balances of the strategies
+
+        // call convertToAssets on the strategie?
+
+
+
+        // NOTE: Get the loops out of the public calls
+    } 
 }

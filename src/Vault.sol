@@ -6,88 +6,70 @@ import {
     IERC20,
     IVault,
     SafeERC20,
-    Module,
-    Storage
+    Storage,
+    ERC20PermitUpgradeable
 } from "./Common.sol";
 
-contract Vault is IVault, Storage, Module {
+abstract contract Vault is IVault, Storage, ERC20PermitUpgradeable {
     
     using SafeERC20 for IERC20;
     using Address for address;
 
-    /** @dev See {IERC4626-assets}. */
     function asset() public view virtual returns (address) {
-        return _asset();
+        VaultStorage storage $ = _getVaultStorage();
+        return $.baseAsset;
     }
     
-    /** @dev Returns all the underlying assets */
     function assets() public view returns (address[] memory assets_) {
-        return _assets();
+        AssetStorage storage $ = _getAssetStorage();
+        uint256 assetListLength = $.assetList.length;
+        assets_ = new address[](assetListLength);
+        for (uint256 i = 0; i < assetListLength; i++) {
+            assets_[i] = $.assetList[i];
+        }
     }
 
-    /** @dev See {IERC4626-decimals}. */
-    function decimals() public view virtual override(IERC20Metadata, ERC20Upgradeable) returns (uisnt8) {
-        return _decimals();
+    function decimals() public view virtual override(IERC20Metadata, ERC20Upgradeable) returns (uint8) {
+        VaultStorage storage $ = Storage.getVaultStorage();
+        return $.baseDecimals + _decimalsOffset();
     }
 
-    function getStrategyWithLowestBalance() public view returns (address strategyAddress, uint256 lowestBalance) {
-        return _getStrategyWithLowestBalance();
-    }
-
-    /** @dev See {IERC4626-totalAssets}. */
     function totalAssets() public view virtual returns (uint256) {
-        AssetStorage storage $ = VaultLib.getVaultStorage();
+        AssetStorage storage $ = Storage.getVaultStorage();
         return $.totalAssets;
     }
 
-    /** @dev See {IERC4626-convertToShares}. */
-    function convertToShares(uint256 assets) public view virtual returns (uint256) {
-        return MetaModule.convertToShares(assets, Math.Rounding.Floor);
-    }
-
-    /** @dev See {IERC4626-convertToAssets}. */
-    function convertToAssets(uint256 shares) public view virtual returns (uint256) {
-        return MetaModule.convertToAssets(shares, Math.Rounding.Floor);
-    }
-
-    /** @dev See {IERC4626-maxDeposit}. */
     function maxDeposit(address) public view virtual returns (uint256) {
         return type(uint256).max;
     }
 
-    /** @dev See {IERC4626-maxMint}. */
     function maxMint(address) public view virtual returns (uint256) {
         return type(uint256).max;
     }
 
-    /** @dev See {IERC4626-maxWithdraw}. */
     function maxWithdraw(address owner) public view virtual returns (uint256) {
-        return MetaModule.convertToAssets(balanceOf(owner), Math.Rounding.Floor);
+        return _convertToAssets(balanceOf(owner), Math.Rounding.Floor);
     }
 
-    /** @dev See {IERC4626-maxRedeem}. */
     function maxRedeem(address owner) public view virtual returns (uint256) {
-        // return balanceOf(owner);
+        ERC20Storage storage $ = Storage._getERC20Storage();
+        return $.balanceOf(owner);
     }
 
-    /** @dev See {IERC4626-previewDeposit}. */
     function previewDeposit(uint256 assets) public view virtual returns (uint256) {
-        // return _convertToShares(assets, Math.Rounding.Floor);
+        return _convertToShares(assets, Math.Rounding.Floor);
     }
 
-    /** @dev See {IERC4626-previewMint}. */
     function previewMint(uint256 shares) public view virtual returns (uint256) {
-        // return _convertToAssets(shares, Math.Rounding.Ceil);
+        return _convertToAssets(shares, Math.Rounding.Ceil);
     }
 
-    /** @dev See {IERC4626-previewWithdraw}. */
     function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Ceil);
     }
 
-    /** @dev See {IERC4626-previewRedeem}. */
     function previewRedeem(uint256 shares) public view virtual returns (uint256) {
-        // return _convertToAssets(shares, Math.Rounding.Floor);
+        return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
     /** @dev See {IERC4626-deposit}. */
@@ -163,7 +145,7 @@ contract Vault is IVault, Storage, Module {
      * @dev Internal conversion function (from assets to shares) with support for rounding direction.
      */
     function _convertToShares(uint256 assets, Math.Rounding rounding) internal view virtual returns (uint256) {
-        // return assets.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
+        return assets.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
     }
 
     /**
@@ -221,4 +203,38 @@ contract Vault is IVault, Storage, Module {
     function _decimalsOffset() internal view virtual returns (uint8) {
         return 0;
     }
+
+    function _getStrategyWithLowestBalance() internal view returns (address strategyAddress, uint256 lowestBalance) {
+        StrategyStorage storage $ = Storage.getStrategyStorage();
+        uint256 lowestBalanceFound = type(uint256).max;
+        address strategyWithLowestBalance;
+
+        for (uint256 i = 0; i < $.strategyList.length; i++) {
+            address strategy = $.strategyList[i];
+            uint256 currentBalance = $.strategies[strategy].currentBalance;
+            if (currentBalance < lowestBalanceFound) {
+                lowestBalanceFound = currentBalance;
+                strategyWithLowestBalance = strategy;
+            }
+        }
+
+        return (strategyWithLowestBalance, lowestBalanceFound);
+    }
+  
+    function processAccounting() public {
+        // get the balances of the assets
+        AssetStorage storage assetStorage = _getAssetStorage();
+        
+        for (uint256 i = 0; i < assetsStorage.list.length; i++) {
+            address asset = assets[i];
+            idleBalance = asset.balanceOf(address(vault));
+        }
+        // get the balances of the strategies
+
+        // call convertToAssets on the strategie?
+
+
+
+        // NOTE: Get the loops out of the public calls
+    } 
 }

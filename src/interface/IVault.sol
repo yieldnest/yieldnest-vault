@@ -11,17 +11,21 @@ interface IVault is IERC4626, IAccessControl {
 
     event DepositAsset(address indexed asset, address indexed vault, uint256 amount, address indexed receiver);
 
+    // Internal storage vs balanceOf storage
+    // QUESTION: What issues are there with lending markets or other issues
     struct VaultStorage {
         // Version
         uint8 version;
         // Decimals of the Vault token
         uint8 baseDecimals;
         // Base underlying asset of the Vault
-        address baseAsset;
+        address baseAsset; // ETH, WETH
         // Balance of total assets priced in base asset
         uint256 totalAssets;
     }
 
+    // QUESTION: Update the rate instead of the totalAssets?
+    // QUESTION: How to avoid recalculating everything everytime
     struct AssetParams {
         // ERC20 asset token
         address asset;
@@ -41,8 +45,9 @@ interface IVault is IERC4626, IAccessControl {
 
     struct AssetStorage {
         mapping(address => AssetParams) assets;
-        address[256] assetList;
+        address[] list;
     }
+
     struct StrategyParams {
         // Address of the Strategy
         address strategy;
@@ -59,7 +64,7 @@ interface IVault is IERC4626, IAccessControl {
 
     struct StrategyStorage {
         mapping(address => StrategyParams) strategies;
-        address[256] strategyList;
+        address[] list;
     }
 
     // taken from oz ERC20Upgradeable
@@ -73,7 +78,6 @@ interface IVault is IERC4626, IAccessControl {
         string _name;
         string _symbol;
     }
-
 
     // read
     function assets() external view returns (address[] memory assets_);
@@ -104,7 +108,9 @@ interface IVault is IERC4626, IAccessControl {
     // write
     function deposit(uint256 assets, address receiver) external returns (uint256);
     function depositAsset(address asset, uint256 assets, address receiver) external returns (uint256);
+
     function mint(uint256 shares, address receiver) external returns (uint256);
+    function mintAsset(address asset, uint25 shares, address receiver) external returns (uint256);
 
     function withdraw(uint256 assets, address receiver, address owner) external returns (uint256);
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256);
@@ -113,4 +119,6 @@ interface IVault is IERC4626, IAccessControl {
     function initialize(IERC20[] memory assets_, address admin_, string memory name_, string memory symbol_) external;
     function addStrategy(address strategy) external;
     function removeStrategy(address strategy) external;
+
+    function processAccounting() external returns (uint256);
 }
