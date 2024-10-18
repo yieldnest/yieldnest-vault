@@ -28,6 +28,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     function assets() public view returns (address[] memory assets_) {
         return Storage.getAllAssets();
     }
+
     function decimals() public view virtual override returns (uint8) {
         return Storage.getBaseDecimals();
     }
@@ -151,7 +152,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         // return assets;
     }
 
-     /// @dev Being Multi asset, we need to add the asset param here to deposit the user's asset accordingly.
+    /// @dev Being Multi asset, we need to add the asset param here to deposit the user's asset accordingly.
     function _deposit(address asset_, address caller, address receiver, uint256 assets_, uint256 shares)
         internal
         virtual
@@ -162,7 +163,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         _mint(receiver, shares);
         emit Deposit(caller, receiver, assets_, shares);
     }
-
 
     // QUESTION: How might we
     function _withdraw(address caller, address receiver, address owner, uint256 assetAmount, uint256 shares)
@@ -216,13 +216,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
         uint256 newIndex = assetStorage.list.length;
 
-        assetStorage.assets[asset_] = AssetParams({
-            active: true,
-            index: newIndex,
-            decimals: decimals_,
-            idleAssets: 0,
-            deployedAssets: 0
-        });
+        assetStorage.assets[asset_] =
+            AssetParams({active: true, index: newIndex, decimals: decimals_, idleAssets: 0, deployedAssets: 0});
 
         assetStorage.list.push(asset_);
 

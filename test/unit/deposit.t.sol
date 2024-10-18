@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import {Vault,IVault} from "src/Vault.sol";
+import {Vault, IVault} from "src/Vault.sol";
 import {ETHRateProvider, IERC20, TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {Etches} from "test/helpers/Etches.sol";
@@ -23,10 +23,10 @@ contract Vault_Deposit_Unit_Test is Test, MainnetContracts, Etches {
         weth = WETH9(payable(WETH));
         vaultImplementation = new Vault();
         rateProvider = new ETHRateProvider();
-        
+
         // etch to mock the mainnet contracts address
         mockWETH9();
-        
+
         // Deploy the proxy
         bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, address(this), "Vault Token", "VTK");
 
@@ -67,9 +67,7 @@ contract Vault_Deposit_Unit_Test is Test, MainnetContracts, Etches {
         assertEq(weth.balanceOf(address(vault)), depositAmount, "Vault did not receive tokens");
 
         // Check that Alice's token balance decreased
-        assertEq(
-            weth.balanceOf(alice), INITIAL_BALANCE - depositAmount, "Alice's balance did not decrease correctly"
-        );
+        assertEq(weth.balanceOf(alice), INITIAL_BALANCE - depositAmount, "Alice's balance did not decrease correctly");
 
         // Check that Alice received the correct amount of shares
         assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");

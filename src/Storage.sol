@@ -20,7 +20,7 @@ library Storage {
         }
     }
 
-    function getStrategyStorage() internal pure returns (IVault.StrategyStorage storage $) {   
+    function getStrategyStorage() internal pure returns (IVault.StrategyStorage storage $) {
         assembly {
             $.slot := 0x36e313fea70c5f83d23dd12fc41865566e392cbac4c21baf7972d39f7af1774d
         }
@@ -91,20 +91,12 @@ library Storage {
         return (assets_ * 1e18) / getRate(asset_);
     }
 
-    function convertToAssets(address asset, uint256 shares, Math.Rounding rounding)
-        internal
-        view
-        returns (uint256)
-    {
+    function convertToAssets(address asset, uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
         uint256 convertedShares = convertBaseToAssets(asset, shares);
         return convertedShares.mulDiv(getTotalSupply() + 10 ** decimalsOffset(), getTotalAssets() + 1, rounding);
     }
 
-    function convertToShares(address asset_, uint256 assets_, Math.Rounding rounding)
-        internal
-        view
-        returns (uint256)
-    {
+    function convertToShares(address asset_, uint256 assets_, Math.Rounding rounding) internal view returns (uint256) {
         uint256 convertedAssets = convertAssetsToBase(asset_, assets_);
         return convertedAssets.mulDiv(getTotalSupply() + 10 ** decimalsOffset(), getTotalAssets() + 1, rounding);
     }
@@ -119,5 +111,4 @@ library Storage {
         ERC20Upgradeable.ERC20Storage storage erc20Storage = getERC20Storage();
         return erc20Storage._totalSupply;
     }
-
 }

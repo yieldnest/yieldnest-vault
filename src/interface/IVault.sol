@@ -67,7 +67,7 @@ interface IVault {
     function withdraw(uint256 assetAmount, address receiver, address owner) external returns (uint256);
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256);
     function assets() external view returns (address[] memory assets_);
-    
+
     // function maxMintAsset(address assetAddress, address) external view returns (uint256);
     function previewDepositAsset(address assetAddress, uint256 assetAmount) external view returns (uint256);
     function previewMintAsset(address assetAddress, uint256 shares) external view returns (uint256);
