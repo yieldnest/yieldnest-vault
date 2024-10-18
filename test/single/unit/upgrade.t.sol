@@ -8,7 +8,7 @@ import {Etches} from "test/helpers/Etches.sol";
 import {LocalActors} from "script/Actors.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
 import {IERC20} from "src/Common.sol";
-import {IVaultFactory} from "src/IVaultFactory.sol";
+import {IVaultFactory} from "src/interface/IVaultFactory.sol";
 import {MockSingleVault} from "test/mocks/MockSingleVault.sol";
 import {TimelockController} from "src/Common.sol";
 
@@ -24,10 +24,10 @@ contract SingleVaultUpgradeTests is Test, LocalActors, TestConstants {
         asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
 
         Etches etches = new Etches();
-        etches.mockListaStakeManager();
+        etches.mockWETH9();
 
         SetupHelper setup = new SetupHelper();
-        vault = setup.createVault(asset);
+        vault = setup.createVault();
 
         factory = IVaultFactory(setup.factory());
     }

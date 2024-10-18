@@ -19,10 +19,10 @@ contract AccessControlTest is Test, LocalActors, TestConstants {
         asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
 
         Etches etches = new Etches();
-        etches.mockListaStakeManager();
+        etches.mockWETH9();
 
         SetupHelper setup = new SetupHelper();
-        vault = setup.createVault(asset);
+        vault = setup.createVault();
     }
 
     function testAdminRoleSet() public view {
