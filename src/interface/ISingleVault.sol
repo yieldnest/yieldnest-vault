@@ -9,11 +9,6 @@ interface ISingleVault is IERC20, IERC4626, IAccessControl {
     error SymbolEmpty();
     error AdminZeroAddress();
     error DepositFailed();
-    
-    function initialize(
-        IERC20 asset_,
-        string calldata name_,
-        string calldata symbol_,
-        address admin_
-    ) external;
+
+    function initialize(IERC20 asset_, string calldata name_, string calldata symbol_, address admin_) external;
 }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {SingleVault} from "src/SingleVault.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
-import {Math,IERC20} from "src/Common.sol";
+import {Math, IERC20} from "src/Common.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
 import {Etches} from "test/helpers/Etches.sol";
 import {TestConstants} from "test/helpers/Constants.sol";

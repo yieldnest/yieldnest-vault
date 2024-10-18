@@ -28,7 +28,6 @@ contract CreateTest is Test, LocalActors, TestConstants {
         Etches etches = new Etches();
         etches.mockWETH9();
 
-
         proposers = [PROPOSER_1];
         executors = [EXECUTOR_1];
 

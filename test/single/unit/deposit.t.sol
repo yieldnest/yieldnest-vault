@@ -42,11 +42,7 @@ contract DepositTest is Test, LocalActors, TestConstants {
         assertEq(shares, previewAmount, "Shares should be equal to the amount deposited");
         assertEq(vault.balanceOf(USER), shares, "Balance of the user should be updated");
         assertEq(asset.balanceOf(address(vault)), amount + 1 ether, "Vault should have received the asset");
-        assertEq(
-            vault.totalAssets(),
-            amount + 1 ether,
-            "Vault totalAsset should be amount deposited"
-        );
+        assertEq(vault.totalAssets(), amount + 1 ether, "Vault totalAsset should be amount deposited");
         assertEq(vault.totalSupply(), totalShares, "Vault totalSupply should be amount deposited");
     }
 

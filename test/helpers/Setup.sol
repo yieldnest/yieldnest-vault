@@ -26,12 +26,7 @@ contract SetupHelper is Test, LocalActors, TestConstants {
         IWETH(payable(MainnetContracts.WETH)).deposit{value: 1 ether}();
         IERC20(MainnetContracts.WETH).transfer(address(factory), 1 ether);
 
-        address vaultAddress = factory.createSingleVault(
-            IERC20(MainnetContracts.WETH),
-            VAULT_NAME,
-            VAULT_SYMBOL,
-            ADMIN
-        );
+        address vaultAddress = factory.createSingleVault(IERC20(MainnetContracts.WETH), VAULT_NAME, VAULT_SYMBOL, ADMIN);
         vault = SingleVault(payable(vaultAddress));
         vm.stopPrank();
     }

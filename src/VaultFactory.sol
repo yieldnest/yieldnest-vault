@@ -32,7 +32,10 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
      * @param admin The address of the administrator.
      * @param timelock_ The Vault admin for proxy upgrades
      */
-    function initialize(address singleVaultImpl_, address admin, address timelock_, address weth_) external initializer {
+    function initialize(address singleVaultImpl_, address admin, address timelock_, address weth_)
+        external
+        initializer
+    {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         // NOTES: There are two timelocks. This timelock is for vault upgrades but
         // the vault is the second timelock controller, which has the same proposers and executors
@@ -50,20 +53,17 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
      * @param admin_ The address of the timelock.
      * @return address The address of the newly created vault.
      */
-    function createSingleVault(
-        IERC20 asset_,
-        string memory name_,
-        string memory symbol_,
-        address admin_
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) returns (address) {
+    function createSingleVault(IERC20 asset_, string memory name_, string memory symbol_, address admin_)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        returns (address)
+    {
         string memory funcSig = "initialize(address,string,string,address)";
 
         if (address(asset_) != address(weth)) revert InvalidWethAddress();
 
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            singleVaultImpl,
-            timelock,
-            abi.encodeWithSignature(funcSig, asset_, name_, symbol_, admin_)
+            singleVaultImpl, timelock, abi.encodeWithSignature(funcSig, asset_, name_, symbol_, admin_)
         );
 
         // bootstrap 1 ether of weth to prevent donation attacks

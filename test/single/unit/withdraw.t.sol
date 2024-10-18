@@ -32,7 +32,7 @@ contract WithdrawTest is Test, LocalActors, TestConstants {
         address USER = address(33);
         vm.startPrank(USER);
         uint256 amount = 100 * 10 ** 18;
-        deal(USER,amount);
+        deal(USER, amount);
         asset.deposit{value: amount}();
         asset.approve(address(vault), amount);
 

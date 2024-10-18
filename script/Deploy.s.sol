@@ -6,14 +6,12 @@ import "lib/forge-std/src/Script.sol";
 import {VaultFactory} from "src/VaultFactory.sol";
 import {IVaultFactory} from "src/interface/IVaultFactory.sol";
 import {IActors, MainnetActors, HoleskyActors} from "script/Actors.sol";
-import {MainnetContracts,HoleskyContracts} from "script/Contracts.sol";
+import {MainnetContracts, HoleskyContracts} from "script/Contracts.sol";
 import {SingleVault} from "src/SingleVault.sol";
 import {TransparentUpgradeableProxy, TimelockController} from "src/Common.sol";
 
 contract DeployVaultFactory is Script {
-
     function run() public {
-
         if (block.chainid == 17000) {
             vm.startBroadcast();
             HoleskyActors actors = new HoleskyActors();
