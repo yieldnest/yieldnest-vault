@@ -60,7 +60,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     // QUESTION: How to handle this in v1 with async withdraws.
     function maxRedeem(address owner) public view returns (uint256) {
-        return IERC20(asset()).balanceOf(owner);
+        return balanceOf(owner);
     }
 
     function previewDeposit(uint256 assets_) public view returns (uint256) {
