@@ -4,34 +4,36 @@ pragma solidity ^0.8.24;
 import "lib/forge-std/src/Test.sol";
 import {SingleVault} from "src/SingleVault.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
-import {MockERC20} from "test/mocks/MockERC20.sol";
+import {WETH9} from "test/mocks/MockWETH.sol";
 import {LocalActors} from "script/Actors.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {SingleVault, ISingleVault} from "src/SingleVault.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
 import {Etches} from "test/helpers/Etches.sol";
+import {MainnetContracts} from "script/Contracts.sol";
 
 contract WithdrawTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
-    MockERC20 public asset;
+    WETH9 public asset;
 
     function setUp() public {
         vm.startPrank(ADMIN);
-        asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
+        asset = WETH9(payable(MainnetContracts.WETH));
 
         Etches etches = new Etches();
-        etches.mockListaStakeManager();
+        etches.mockWETH9();
 
         SetupHelper setup = new SetupHelper();
-        vault = setup.createVault(asset);
+        vault = setup.createVault();
     }
 
     function testWithdraw() public {
         address USER = address(33);
         vm.startPrank(USER);
         uint256 amount = 100 * 10 ** 18;
-        asset.mint(amount);
+        deal(USER,amount);
+        asset.deposit{value: amount}();
         asset.approve(address(vault), amount);
 
         uint256 previousTotalAssets = vault.totalAssets();

@@ -20,27 +20,25 @@ contract InitializeTest is Test, LocalActors, TestConstants {
         asset = IERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
 
         Etches etches = new Etches();
-        etches.mockListaStakeManager();
+        etches.mockWETH9();
 
         SetupHelper setup = new SetupHelper();
-        vault = setup.createVault(asset);
+        vault = setup.createVault();
     }
 
     function testInitialize() public {
         SingleVault vaultImplementation = new SingleVault();
 
-        address[] memory proposers = new address[](2);
+        address[] memory proposers = new address[](1);
         proposers[0] = PROPOSER_1;
-        proposers[1] = PROPOSER_2;
-        address[] memory executors = new address[](2);
+        address[] memory executors = new address[](1);
         executors[0] = EXECUTOR_1;
-        executors[1] = EXECUTOR_2;
 
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(vaultImplementation),
             address(this),
             abi.encodeWithSignature(
-                "initialize(address,string,string,address,uint256,address[],address[])",
+                "initialize(address,string,string,address)",
                 asset,
                 VAULT_NAME,
                 VAULT_SYMBOL,

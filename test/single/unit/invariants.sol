@@ -2,12 +2,13 @@
 pragma solidity ^0.8.24;
 
 import {SingleVault} from "src/SingleVault.sol";
-import {MockERC20} from "test/mocks/MockERC20.sol";
-import {Math} from "src/Common.sol";
+import {WETH9} from "test/mocks/MockWETH.sol";
+import {Math,IERC20} from "src/Common.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
 import {Etches} from "test/helpers/Etches.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
 import {LocalActors} from "script/Actors.sol";
+import {MainnetContracts} from "script/Contracts.sol";
 
 import "forge-std/Test.sol";
 
@@ -15,18 +16,19 @@ contract SingleInvariantTests is Test, LocalActors, TestConstants {
     using Math for uint256;
 
     SingleVault public vault;
-    MockERC20 public asset;
     address public USER = address(33);
+
+    WETH9 public asset;
 
     function setUp() public {
         vm.startPrank(ADMIN);
-        asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
+        asset = WETH9(payable(MainnetContracts.WETH));
 
         Etches etches = new Etches();
-        etches.mockListaStakeManager();
+        etches.mockWETH9();
 
         SetupHelper setup = new SetupHelper();
-        vault = setup.createVault(asset);
+        vault = setup.createVault();
     }
 
     event Log(uint256 amount, string name);
@@ -74,8 +76,9 @@ contract SingleInvariantTests is Test, LocalActors, TestConstants {
 
     function depositHelper(address user, uint256 depositAmount) public {
         vm.startPrank(user);
-        asset.mint(depositAmount);
-        asset.approve(address(vault), depositAmount);
+        deal(user, depositAmount);
+        asset.deposit{value: depositAmount}();
+        IERC20(address(asset)).approve(address(vault), depositAmount);
         vault.deposit(depositAmount, address(this));
         vm.stopPrank();
     }

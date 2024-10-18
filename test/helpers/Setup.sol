@@ -2,11 +2,13 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {IActors, LocalActors} from "script/Actors.sol";
+import {MainnetContracts} from "script/Contracts.sol";
 import {DeployVaultFactory} from "script/Deploy.s.sol";
 import {SingleVault} from "src/SingleVault.sol";
-import {IVaultFactory} from "src/IVaultFactory.sol";
+import {IVaultFactory} from "src/interface/IVaultFactory.sol";
 import {IERC20} from "src/Common.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
+import {IWETH} from "src/interface/IWETH.sol";
 
 contract SetupHelper is Test, LocalActors, TestConstants {
     IVaultFactory public factory;
@@ -14,29 +16,23 @@ contract SetupHelper is Test, LocalActors, TestConstants {
     constructor() {
         IActors actors = new LocalActors();
         DeployVaultFactory factoryDeployer = new DeployVaultFactory();
-        factory = IVaultFactory(factoryDeployer.deployVaultFactory(actors, 0));
+        factory = IVaultFactory(factoryDeployer.deployVaultFactory(actors, 0, MainnetContracts.WETH));
     }
 
-    function createVault(IERC20 asset) public returns (SingleVault vault) {
+    function createVault() public returns (SingleVault vault) {
         vm.startPrank(ADMIN);
-        address[] memory proposers = new address[](2);
-        proposers[0] = PROPOSER_1;
-        proposers[1] = PROPOSER_2;
-        address[] memory executors = new address[](2);
-        executors[0] = EXECUTOR_1;
-        executors[1] = EXECUTOR_2;
 
-        asset.approve(address(factory), 1 ether);
-        asset.transfer(address(factory), 1 ether);
+        deal(ADMIN, 100_000 ether);
+        IWETH(payable(MainnetContracts.WETH)).deposit{value: 1 ether}();
+        IERC20(MainnetContracts.WETH).transfer(address(factory), 1 ether);
+
         address vaultAddress = factory.createSingleVault(
-            asset,
+            IERC20(MainnetContracts.WETH),
             VAULT_NAME,
             VAULT_SYMBOL,
-            ADMIN,
-            0, // time delay
-            proposers,
-            executors
+            ADMIN
         );
         vault = SingleVault(payable(vaultAddress));
+        vm.stopPrank();
     }
 }

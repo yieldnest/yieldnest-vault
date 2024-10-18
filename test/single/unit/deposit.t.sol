@@ -3,33 +3,34 @@ pragma solidity ^0.8.24;
 
 import "lib/forge-std/src/Test.sol";
 import {IERC20, IERC4626} from "src/Common.sol";
-import {MockERC20} from "test/mocks/MockERC20.sol";
+import {WETH9} from "test/mocks/MockWETH.sol";
 import {LocalActors} from "script/Actors.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
 import {SingleVault, ISingleVault} from "src/SingleVault.sol";
-import {IVaultFactory} from "src/IVaultFactory.sol";
+import {IVaultFactory} from "src/interface/IVaultFactory.sol";
 import {DeployVaultFactory} from "script/Deploy.s.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
 import {Etches} from "test/helpers/Etches.sol";
+import {MainnetContracts} from "script/Contracts.sol";
 
 contract DepositTest is Test, LocalActors, TestConstants {
     SingleVault public vault;
-    MockERC20 public asset;
+    WETH9 public asset;
 
     function setUp() public {
         vm.startPrank(ADMIN);
-        asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
+        asset = WETH9(payable(MainnetContracts.WETH));
 
         Etches etches = new Etches();
-        etches.mockListaStakeManager();
+        etches.mockWETH9();
 
         SetupHelper setup = new SetupHelper();
-        vault = setup.createVault(asset);
+        vault = setup.createVault();
     }
 
     function testDeposit() public {
         uint256 amount = 100 * 10 ** 18; // Assuming 18 decimals for the asset
-        asset.mint(amount);
+        asset.deposit{value: amount}();
         asset.approve(address(vault), amount);
         address USER = address(33);
 
@@ -43,7 +44,7 @@ contract DepositTest is Test, LocalActors, TestConstants {
         assertEq(asset.balanceOf(address(vault)), amount + 1 ether, "Vault should have received the asset");
         assertEq(
             vault.totalAssets(),
-            ((amount + 1 ether) * 1.02 ether) / 1 ether,
+            amount + 1 ether,
             "Vault totalAsset should be amount deposited"
         );
         assertEq(vault.totalSupply(), totalShares, "Vault totalSupply should be amount deposited");
