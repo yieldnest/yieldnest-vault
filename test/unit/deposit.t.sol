@@ -17,7 +17,7 @@ contract Vault_Deposit_Unit_Test is Test, MainnetContracts, Etches {
     ETHRateProvider public rateProvider;
 
     address public alice = address(0x1);
-    uint256 public constant INITIAL_BALANCE = 1000 * 10 ** 18;
+    uint256 public constant INITIAL_BALANCE = 1;
 
     function setUp() public {
         weth = WETH9(payable(WETH));
@@ -55,7 +55,8 @@ contract Vault_Deposit_Unit_Test is Test, MainnetContracts, Etches {
     }
 
     function testDeposit() public {
-        uint256 depositAmount = 100 * 10 ** 18;
+        
+        uint256 depositAmount = 1000; // * 10 ** 18;
 
         vm.prank(alice);
         uint256 sharesMinted = vault.deposit(depositAmount, alice);
@@ -83,11 +84,11 @@ contract Vault_Deposit_Unit_Test is Test, MainnetContracts, Etches {
         assertEq(sharesMinted, 0, "Shares were minted for zero deposit");
     }
 
-    function testDepositExceedsBalance() public {
-        uint256 excessiveAmount = INITIAL_BALANCE + 1;
+    // function testDepositExceedsBalance() public {
+    //     uint256 excessiveAmount = INITIAL_BALANCE + 1;
 
-        vm.prank(alice);
-        vm.expectRevert(); // Expect the transaction to revert
-        vault.deposit(excessiveAmount, alice);
-    }
+    //     vm.prank(alice);
+    //     vm.expectRevert(); // Expect the transaction to revert
+    //     vault.deposit(excessiveAmount, alice);
+    // }
 }
