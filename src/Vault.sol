@@ -13,7 +13,6 @@ import {
 } from "./Common.sol";
 
 import {Storage} from "src/Storage.sol";
-import {IRateProvider} from "src/interface/IRateProvider.sol";
 import {IVault} from "src/interface/IVault.sol";
 
 contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
@@ -154,7 +153,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     /// @dev Being Multi asset, we need to add the asset param here to deposit the user's asset accordingly.
     function _deposit(address asset_, address caller, address receiver, uint256 assets_, uint256 shares)
         internal
-        virtual
     {
         VaultStorage storage vaultStorage = Storage.getVaultStorage();
         vaultStorage.totalAssets += Storage.convertAssetsToBase(asset_, assets_);
