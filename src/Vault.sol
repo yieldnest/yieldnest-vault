@@ -6,7 +6,6 @@ import {
     Address,
     ERC20PermitUpgradeable,
     IERC20,
-    IERC20Metadata,
     Math,
     ReentrancyGuardUpgradeable,
     SafeERC20
