@@ -55,7 +55,6 @@ contract Vault_Deposit_Unit_Test is Test, MainnetContracts, Etches {
     }
 
     function testDeposit() public {
-        
         uint256 depositAmount = 1000; // * 10 ** 18;
 
         vm.prank(alice);
