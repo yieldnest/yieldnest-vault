@@ -59,7 +59,7 @@ library Storage {
 
     function getBaseDecimals() internal view returns (uint8) {
         IVault.AssetStorage storage assetStorage = getAssetStorage();
-        return assetStorage.assets[getBaseAsset()].decimals + decimalsOffset();
+        return assetStorage.assets[address(assetStorage.list[0])].decimals + decimalsOffset();
     }
 
     function getAllAssets() internal view returns (address[] memory assets_) {
@@ -110,5 +110,30 @@ library Storage {
     function getTotalSupply() internal view returns (uint256) {
         ERC20Upgradeable.ERC20Storage storage erc20Storage = getERC20Storage();
         return erc20Storage._totalSupply;
+    }
+
+    // Strategies
+
+    function setStrategy(address strategy_, uint256 ratio_) internal returns (uint256) {
+        if (strategy_ == address(0)) revert IVault.ZeroAddress();
+        // TODO: Add check to make sure sum of all ratios not gt 10k
+        if (ratio_ > 10000) revert IVault.InvalidRatio();
+
+        IVault.StrategyStorage storage strategyStorage = Storage.getStrategyStorage();
+
+        if (strategyStorage.list.length > 0 && strategyStorage.strategies[strategy_].index != 0) {
+            revert IVault.DuplicateStrategy();
+        }
+        uint256 newIndex = strategyStorage.list.length;
+
+        // Initialize the StrategyParams struct
+        strategyStorage.strategies[strategy_].active = true;
+        strategyStorage.strategies[strategy_].index = newIndex;
+        strategyStorage.strategies[strategy_].ratio = ratio_;
+
+        // Add the strategy to the list
+        strategyStorage.list.push(strategy_);
+
+        return newIndex;
     }
 }

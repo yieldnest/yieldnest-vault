@@ -5,7 +5,9 @@ import {
     AccessControlUpgradeable,
     Address,
     ERC20PermitUpgradeable,
+    ERC20Upgradeable,
     IERC20,
+    IERC20Metadata,
     Math,
     ReentrancyGuardUpgradeable,
     SafeERC20
@@ -26,7 +28,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return Storage.getAllAssets();
     }
 
-    function decimals() public view virtual override returns (uint8) {
+    function decimals() public view virtual override(ERC20Upgradeable, IERC20Metadata) returns (uint8) {
         return Storage.getBaseDecimals();
     }
 
@@ -64,16 +66,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return Storage.convertToShares(asset(), assets_, Math.Rounding.Floor);
     }
 
-    function previewDepositAsset(address asset_, uint256 assets_) public view returns (uint256) {
-        return Storage.convertToShares(asset_, assets_, Math.Rounding.Floor);
-    }
-
     function previewMint(uint256 shares_) public view returns (uint256) {
         return Storage.convertToAssets(asset(), shares_, Math.Rounding.Ceil);
-    }
-
-    function previewMintAsset(address asset_, uint256 shares_) public view returns (uint256) {
-        return Storage.convertToAssets(asset_, shares_, Math.Rounding.Ceil);
     }
 
     function convertToShares(uint256 assets_) public view returns (uint256) {
@@ -105,15 +99,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return shares;
     }
 
-    function depositAsset(address asset_, uint256 assets_, address receiver) public returns (uint256) {
-        if (paused()) revert Paused();
-
-        uint256 shares = previewDepositAsset(asset_, assets_);
-        _deposit(asset_, _msgSender(), receiver, assets_, shares);
-
-        return shares;
-    }
-
     function mint(uint256 shares, address receiver) public virtual returns (uint256) {
         if (paused()) revert Paused();
 
@@ -124,7 +109,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     // QUESTION: How to handle this in v1 if no sync withdraws
-    function withdraw(uint256 assets_, address receiver, address owner) public virtual returns (uint256) {
+    function withdraw(uint256 assets_, address receiver, address owner) public returns (uint256) {
         // uint256 maxAssets = maxWithdraw(owner);
         // if (assets > maxAssets) {
         //     revert ERC4626ExceededMaxWithdraw(owner, assets, maxAssets);
@@ -137,7 +122,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     // QUESTION: How to handle this in v1 with async withdraws
-    function redeem(uint256 shares_, address receiver, address owner) public virtual returns (uint256) {
+    function redeem(uint256 shares_, address receiver, address owner) public returns (uint256) {
         // uint256 maxShares = maxRedeem(owner);
         // if (shares > maxShares) {
         //     revert ERC4626ExceededMaxRedeem(owner, shares, maxShares);
@@ -149,6 +134,23 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         // return assets;
     }
 
+    //// 4626-MAX ////
+    
+    function previewDepositAsset(address asset_, uint256 assets_) public view returns (uint256) {
+        return Storage.convertToShares(asset_, assets_, Math.Rounding.Floor);
+    }
+
+    function depositAsset(address asset_, uint256 assets_, address receiver) public returns (uint256) {
+        if (paused()) revert Paused();
+
+        uint256 shares = previewDepositAsset(asset_, assets_);
+        _deposit(asset_, _msgSender(), receiver, assets_, shares);
+
+        return shares;
+    }
+
+    //// INTERNAL //// 
+
     /// @dev Being Multi asset, we need to add the asset param here to deposit the user's asset accordingly.
     function _deposit(address asset_, address caller, address receiver, uint256 assets_, uint256 shares) internal {
         VaultStorage storage vaultStorage = Storage.getVaultStorage();
@@ -159,10 +161,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     // QUESTION: How might we
-    function _withdraw(address caller, address receiver, address owner, uint256 assetAmount, uint256 shares)
-        internal
-        virtual
-    {
+    function _withdraw(address caller, address receiver, address owner, uint256 assetAmount, uint256 shares) internal {
         // ERC4626Storage storage $ = _getERC4626Storage();
         // if (caller != owner) {
         //     _spendAllowance(owner, caller, shares);
@@ -180,27 +179,14 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         // emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
-    // QUESTION: Start with Strategies or add them later
-    // vault starts paused because the rate provider and assets / strategies haven't been set
-    function initialize(address admin, string memory name, string memory symbol) public initializer {
-        // Initialize the vault
-        __ERC20_init(name, symbol);
-        __AccessControl_init();
-        __ReentrancyGuard_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-
-        VaultStorage storage vaultStorage = Storage.getVaultStorage();
-        vaultStorage.paused = true;
-    }
-
     // QUESTION: Measure the gas difference between IERC20 or address when casting / saving to storage
-    function setRateProvider(address rateProvider_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setRateProvider(address rateProvider_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         VaultStorage storage vaultStorage = Storage.getVaultStorage();
         vaultStorage.rateProvider = rateProvider_;
         emit SetRateProvider(rateProvider_);
     }
 
-    function addAsset(address asset_, uint8 decimals_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addAsset(address asset_, uint8 decimals_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (asset_ == address(0)) revert ZeroAddress();
         if (decimals_ > 18) revert InvalidDecimals();
 
@@ -215,24 +201,30 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
         assetStorage.list.push(asset_);
 
-        emit AddAsset(asset_, decimals_, newIndex);
+        emit SetAsset(asset_, decimals_, newIndex);
     }
 
-    function toggleAsset(address asset_, bool active) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function toggleAsset(address asset_, bool active) external onlyRole(DEFAULT_ADMIN_ROLE) {
         AssetStorage storage assetStorage = Storage.getAssetStorage();
         if (assetStorage.assets[asset_].decimals == 0) revert AssetNotFound();
         assetStorage.assets[asset_].active = active;
         emit ToggleAsset(asset_, active);
     }
 
-    function pause(bool paused_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setStrategy(address strategy_, uint256 ratio_) external onlyRole(DEFAULT_ADMIN_ROLE) returns(bool) {
+        uint256 newIndex = Storage.setStrategy(strategy_, ratio_);
+        emit SetStrategy(strategy_, ratio_, newIndex);
+        return true;
+    }
+
+    function pause(bool paused_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         VaultStorage storage vaultStorage = Storage.getVaultStorage();
         vaultStorage.paused = paused_;
         emit Pause(paused_);
     }
 
     // QUESTION: What params should be used here? strategy, asset, etc.
-    function processAccounting() public {
+    function processAccounting() external {
         // get the balances of the assets
         // AssetStorage storage assetStorage = _getAssetStorage();
 
@@ -253,6 +245,19 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         // the debt value is used to separate the deposited value, you know what the rewards
         // balance is based on the the debt less the the rewards.
         // allows you to not have to grind through everything??
+    }
+
+    // QUESTION: Start with Strategies or add them later
+    // vault starts paused because the rate provider and assets / strategies haven't been set
+    function initialize(address admin, string memory name, string memory symbol) external initializer {
+        // Initialize the vault
+        __ERC20_init(name, symbol);
+        __AccessControl_init();
+        __ReentrancyGuard_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+
+        VaultStorage storage vaultStorage = Storage.getVaultStorage();
+        vaultStorage.paused = true;
     }
 
     constructor() {

@@ -1,45 +1,27 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import {Vault, IVault} from "src/Vault.sol";
-import {ETHRateProvider, IERC20, TransparentUpgradeableProxy} from "src/Common.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
+import {Vault} from "src/Vault.sol";
+import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {Etches} from "test/helpers/Etches.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
+import {SetupVault} from "test/helpers/SetupVault.sol";
 
-contract Vault_Deposit_Unit_Test is Test, MainnetContracts, Etches {
+contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
     Vault public vault;
     WETH9 public weth;
-    ETHRateProvider public rateProvider;
 
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 1_000 * 10 ** 18;
 
     function setUp() public {
-        weth = WETH9(payable(WETH));
-        vaultImplementation = new Vault();
-        rateProvider = new ETHRateProvider();
-
-        // etch to mock the mainnet contracts address
-        mockWETH9();
-
-        // Deploy the proxy
-        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, address(this), "Vault Token", "VTK");
-
-        vaultProxy = new TransparentUpgradeableProxy(address(vaultImplementation), address(this), initData);
-
-        // Create a Vault interface pointing to the proxy
-        vault = Vault(address(vaultProxy));
-
-        // Set up the rate provider
-        vault.setRateProvider(address(rateProvider));
-
-        // Add WETH as an asset
-        vault.addAsset(address(weth), 18);
+        SetupVault setupVault = new SetupVault();
+        (vault, weth,) = setupVault.setup();
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
@@ -49,12 +31,9 @@ contract Vault_Deposit_Unit_Test is Test, MainnetContracts, Etches {
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
-
-        // Unpause the vault
-        vault.pause(false);
     }
 
-    function testDeposit() public {
+    function test_Vault_deposit() public {
         uint256 depositAmount = 100 * 10 ** 18;
 
         vm.prank(alice);

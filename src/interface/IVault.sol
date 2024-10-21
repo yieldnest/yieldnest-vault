@@ -1,26 +1,30 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-interface IVault {
+import {IERC4626} from "src/Common.sol";
+
+interface IVault is IERC4626 {
     error ZeroAddress();
     error InvalidString();
     error InvalidArray();
     error ExceededMaxDeposit();
     error InvalidAsset();
     error InvalidDecimals();
+    error InvalidRatio();
     error AssetNotFound();
     error Paused();
+    error DuplicateStrategy();
 
     event DepositAsset(address indexed asset, address indexed vault, uint256 amount, address indexed receiver);
     event SetRateProvider(address indexed rateProvider);
-    event AddAsset(address indexed asset, uint256 decimals, uint256 index);
+    event SetAsset(address indexed asset, uint256 decimals, uint256 index);
+    event SetStrategy(address indexed strategy, uint256 decimals, uint256 index);
     event ToggleAsset(address indexed asset, bool active);
     event Pause(bool paused);
-    event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
 
     struct VaultStorage {
         uint256 totalAssets;
-        // QUESTION: Why was the enzyme 
+        // QUESTION: Why was the enzyme saying the rate provider is invalid?
         address rateProvider;
         bool paused;
     }
@@ -42,19 +46,15 @@ interface IVault {
         bool active;
         uint256 index;
         uint256 ratio;
-        // QUESTION: Keeping this data allows for onchain tracking of positions and
-        // how potential swaps and transfers result in P&L
-        // QUESTION: What's the redemption asset for these?
-        mapping(address => uint256) assets;
-        // QUESTION: how to account for the assets in withdraws queues
     }
 
     struct StrategyStorage {
         mapping(address => StrategyParams) strategies;
+        mapping(address => mapping(address => uint256)) strategyAssets;
         address[] list;
     }
 
-    function initialize(address admin_, string memory name_, string memory symbol_) external;
+    /// 4626
     function asset() external view returns (address);
     function totalAssets() external view returns (uint256);
     function convertToShares(uint256 assets) external view returns (uint256);
@@ -71,16 +71,19 @@ interface IVault {
     function mint(uint256 shares, address receiver) external returns (uint256);
     function withdraw(uint256 assetAmount, address receiver, address owner) external returns (uint256);
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256);
-    function assets() external view returns (address[] memory assets_);
 
+    // 4626-MAX
     // function maxMintAsset(address assetAddress, address) external view returns (uint256);
+    function assets() external view returns (address[] memory assets_);
     function previewDepositAsset(address assetAddress, uint256 assetAmount) external view returns (uint256);
-    function previewMintAsset(address assetAddress, uint256 shares) external view returns (uint256);
     function depositAsset(address assetAddress, uint256 amount, address receiver) external returns (uint256);
     // function getStrategies() external view returns (address[] memory);
     // function isStrategyActive(address strategy) external view returns (bool);
     // function addStrategy(address strategy) external;
     // function processAccounting() external returns (uint256);
+    
+    // ADMIN
+    function initialize(address admin_, string memory name_, string memory symbol_) external;
     function setRateProvider(address rateProvider) external;
     function addAsset(address assetAddress, uint8 assetDecimals) external;
     function toggleAsset(address assetAddress, bool active) external;
