@@ -20,6 +20,7 @@ interface IVault {
 
     struct VaultStorage {
         uint256 totalAssets;
+        // QUESTION: Why was the enzyme 
         address rateProvider;
         bool paused;
     }
@@ -41,7 +42,11 @@ interface IVault {
         bool active;
         uint256 index;
         uint256 ratio;
+        // QUESTION: Keeping this data allows for onchain tracking of positions and
+        // how potential swaps and transfers result in P&L
+        // QUESTION: What's the redemption asset for these?
         mapping(address => uint256) assets;
+        // QUESTION: how to account for the assets in withdraws queues
     }
 
     struct StrategyStorage {
