@@ -46,6 +46,8 @@ contract DepositTest is Test, LocalActors, TestConstants {
         assertEq(vault.totalSupply(), totalShares, "Vault totalSupply should be amount deposited");
     }
 
+    
+
     function skip_testDepositRevertsIfNotApproved() public {
         uint256 amount = 100 * 10 ** 18; // Assuming 18 decimals for the asset
 
