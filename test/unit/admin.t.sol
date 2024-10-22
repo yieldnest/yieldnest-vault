@@ -33,14 +33,12 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
     }
-    
+
     function test_Vault_setStrategy_when_admin() public {
         address strat = address(42069);
 
         vm.startPrank(ADMIN);
-        bool success = vault.setStrategy(strat, 100);
+        bool success = vault.addStrategy(strat);
         assertEq(success, true);
     }
-
-
 }

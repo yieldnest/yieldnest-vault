@@ -17,7 +17,7 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
     WETH9 public weth;
 
     address public alice = address(0x1);
-    uint256 public constant INITIAL_BALANCE = 1_000 * 10 ** 18;
+    uint256 public constant INITIAL_BALANCE = 100_000 ether;
 
     function setUp() public {
         SetupVault setupVault = new SetupVault();
@@ -33,8 +33,10 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         weth.approve(address(vault), type(uint256).max);
     }
 
-    function test_Vault_deposit() public {
-        uint256 depositAmount = 100 * 10 ** 18;
+    function test_Vault_deposit(uint256 depositAmount) public {
+        // uint256 depositAmount = 100 * 10 ** 18;
+        if (depositAmount < 10) return;
+        if (depositAmount > 100_000 ether) return;
 
         vm.prank(alice);
         uint256 sharesMinted = vault.deposit(depositAmount, alice);
@@ -55,18 +57,10 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
     }
 
-    // function testDepositZeroAmount() public {
-    //     vm.prank(alice);
-    //     uint256 sharesMinted = vault.deposit(0, alice);
+    function testDepositZeroAmount() public {
+        vm.prank(alice);
+        uint256 sharesMinted = vault.deposit(0, alice);
 
-    //     assertEq(sharesMinted, 0, "Shares were minted for zero deposit");
-    // }
-
-    // function testDepositExceedsBalance() public {
-    //     uint256 excessiveAmount = INITIAL_BALANCE + 1;
-
-    //     vm.prank(alice);
-    //     vm.expectRevert(); // Expect the transaction to revert
-    //     vault.deposit(excessiveAmount, alice);
-    // }
+        assertEq(sharesMinted, 0, "Shares were minted for zero deposit");
+    }
 }

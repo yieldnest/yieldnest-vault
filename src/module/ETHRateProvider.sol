@@ -21,12 +21,11 @@ interface IRETH {
 }
 
 interface AggregatorV3Interface {
-  function latestRoundData()
-    external
-    view
-    returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+    function latestRoundData()
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
-
 
 contract ETHRateProvider is IRateProvider, Ownable {
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -37,7 +36,7 @@ contract ETHRateProvider is IRateProvider, Ownable {
 
     // https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum&page=1&search=stETH
     address public constant CL_STETH_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
-    
+
     mapping(address => uint256) private _manualRates;
 
     error UnsupportedAsset(address asset);
@@ -62,15 +61,15 @@ contract ETHRateProvider is IRateProvider, Ownable {
     }
 
     function _getStETHRate() internal view returns (uint256) {
-        (,int256 stETHChainlinkRate,,,) = AggregatorV3Interface(CL_STETH_FEED).latestRoundData();
+        (, int256 stETHChainlinkRate,,,) = AggregatorV3Interface(CL_STETH_FEED).latestRoundData();
         uint256 stETHContractRate = IStETH(STETH).getSharesByPooledEth(1e18);
-        
+
         // Implementing a weighted average based on the reliability or volume of each source
         // Assuming Chainlink feed is more reliable and has a higher volume, we give it a weight of 0.7
         // The stETH rate from the contract has a weight of 0.3
         uint256 weightedStETHRateChainlink = (uint256(stETHChainlinkRate) * 7) / 10;
         uint256 weightedStETHRateContract = (stETHContractRate * 3) / 10;
-        
+
         // Calculate the final rate as a weighted average of the two sources
         return weightedStETHRateChainlink + weightedStETHRateContract;
     }

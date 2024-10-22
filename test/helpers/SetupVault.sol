@@ -9,8 +9,7 @@ import {WETH9} from "test/mocks/MockWETH.sol";
 import {Etches} from "test/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 
-contract SetupVault is Test, Etches, MainnetActors  {
-
+contract SetupVault is Test, Etches, MainnetActors {
     function setup() public returns (Vault vault, WETH9 weth, ETHRateProvider rateProvider) {
         string memory name = "YieldNest ETH MAX";
         string memory symbol = "ynETHx";
@@ -25,11 +24,8 @@ contract SetupVault is Test, Etches, MainnetActors  {
         // Deploy the proxy
         bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol);
 
-        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(
-            address(vaultImplementation),
-            ADMIN,
-            initData
-        );
+        TransparentUpgradeableProxy vaultProxy =
+            new TransparentUpgradeableProxy(address(vaultImplementation), ADMIN, initData);
 
         // Create a Vault interface pointing to the proxy
         vault = Vault(address(vaultProxy));
@@ -44,5 +40,5 @@ contract SetupVault is Test, Etches, MainnetActors  {
         // Unpause the vault
         vault.pause(false);
         vm.stopPrank();
-  }
+    }
 }
