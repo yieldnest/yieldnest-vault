@@ -57,9 +57,7 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
     }
 
-    function test_Vault_depositAsset() public {
-
-    }   
+    function test_Vault_depositAsset() public {}
 
     // function testDepositZeroAmount() public {
     //     vm.prank(alice);
@@ -67,6 +65,4 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
 
     //     assertEq(sharesMinted, 0, "Shares were minted for zero deposit");
     // }
-
-    
 }

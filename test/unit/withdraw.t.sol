@@ -41,9 +41,6 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, Etches {
 
         assertEq(amount, assets);
 
-
-
         // fees have to be included with previewWithdraw
     }
-
 }

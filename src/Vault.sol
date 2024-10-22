@@ -141,7 +141,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     function depositAsset(address asset_, uint256 assets_, address receiver) public returns (uint256) {
         if (paused()) revert Paused();
         if (_getAssetStorage().assets[asset_].index == 0) revert InvalidAsset();
-        
+
         uint256 shares = previewDepositAsset(asset_, assets_);
         _deposit(asset_, _msgSender(), receiver, assets_, shares);
 
@@ -207,13 +207,12 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     /// @dev Being Multi asset, we need to add the asset param here to deposit the user's asset accordingly.
     function _deposit(address asset_, address caller, address receiver, uint256 assets, uint256 shares) internal {
-        
         _getVaultStorage().totalAssets += assets;
-        
+
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
-        
+
         _mint(receiver, shares);
-        
+
         emit Deposit(caller, receiver, assets, shares);
     }
 

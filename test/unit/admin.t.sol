@@ -37,14 +37,14 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
     function test_Vault_addStrategy() public {
         address strat = address(42069);
         vm.startPrank(ADMIN);
-        vault.addStrategy(strat);       
+        vault.addStrategy(strat);
         assertEq(vault.getStrategies().length, 1);
     }
 
     function test_Vault_addStrategy_unauthorized() public {
         address strat = address(42069);
         vm.expectRevert();
-        vault.addStrategy(strat);       
+        vault.addStrategy(strat);
     }
 
     function test_Vault_addAsset() public {
@@ -65,5 +65,5 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
         vm.startPrank(ADMIN);
         // vault.addAsset(asset, 18);
         // assertEq(vault.get[asset].active == true);
-    }    
+    }
 }

@@ -9,7 +9,6 @@ import {MockStETH} from "test/mocks/MockStETH.sol";
 import "forge-std/Test.sol";
 
 contract Etches is Test, MainnetContracts {
-
     function mockAllAssets() public {
         mockWETH9();
         mockStETH();
@@ -25,6 +24,5 @@ contract Etches is Test, MainnetContracts {
         MockStETH steth = new MockStETH();
         bytes memory code = address(steth).code;
         vm.etch(STETH, code);
-
     }
 }
