@@ -83,7 +83,7 @@ interface IVault is IERC4626 {
     // ADMIN
     function initialize(address admin_, string memory name_, string memory symbol_) external;
     function setRateProvider(address rateProvider) external;
-    function addAsset(address assetAddress, uint8 decimals_) external;
-    function toggleAsset(address assetAddress, bool active) external;
+    function addAsset(address asset_, uint8 decimals_) external;
+    function toggleAsset(address asset_, bool active) external;
     function pause(bool paused) external;
 }

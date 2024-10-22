@@ -140,7 +140,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     function depositAsset(address asset_, uint256 assets_, address receiver) public returns (uint256) {
         if (paused()) revert Paused();
-
+        if (_getAssetStorage().assets[asset_].index == 0) revert InvalidAsset();
+        
         uint256 shares = previewDepositAsset(asset_, assets_);
         _deposit(asset_, _msgSender(), receiver, assets_, shares);
 
@@ -181,8 +182,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     //// INTERNAL ////
 
     function _convertToAssets(address asset_, uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
-        uint256 convertedShares = _convertBaseToAssets(asset_, shares);
-        return convertedShares.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
+        uint256 baseDenominatedShares = _convertAssetToBase(asset_, shares);
+        return baseDenominatedShares.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
     }
 
     function _convertToShares(address asset_, uint256 assets_, Math.Rounding rounding)
@@ -190,25 +191,29 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         view
         returns (uint256)
     {
-        uint256 convertedAssets = _convertAssetsToBase(asset_, assets_);
+        uint256 convertedAssets = _convertAssetToBase(asset_, assets_);
         return convertedAssets.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
     }
 
-    function _convertAssetsToBase(address asset_, uint256 amount) internal view returns (uint256) {
+    function _convertAssetToBase(address asset_, uint256 amount) internal view returns (uint256) {
         uint256 rate = IRateProvider(_getVaultStorage().rateProvider).getRate(asset_);
-        return amount * rate / 1e18;
+        return amount.mulDiv(rate, 10 ** _getAssetStorage().assets[asset_].decimals, Math.Rounding.Floor);
     }
 
-    function _convertBaseToAssets(address asset_, uint256 baseAmount) internal view returns (uint256) {
+    function _convertBaseToAsset(address asset_, uint256 baseAmount) internal view returns (uint256) {
         uint256 rate = IRateProvider(_getVaultStorage().rateProvider).getRate(asset_);
-        return baseAmount * 1e18 / rate;
+        return baseAmount.mulDiv(10 ** _getAssetStorage().assets[asset_].decimals, rate, Math.Rounding.Floor);
     }
 
     /// @dev Being Multi asset, we need to add the asset param here to deposit the user's asset accordingly.
     function _deposit(address asset_, address caller, address receiver, uint256 assets, uint256 shares) internal {
+        
         _getVaultStorage().totalAssets += assets;
+        
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
+        
         _mint(receiver, shares);
+        
         emit Deposit(caller, receiver, assets, shares);
     }
 
@@ -255,38 +260,36 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     //// ADMIN ////
 
-    // QUESTION: Measure the gas difference between IERC20 or address when casting / saving to storage
     function setRateProvider(address rateProvider_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (rateProvider_ == address(0)) revert ZeroAddress();
         _getVaultStorage().rateProvider = rateProvider_;
         emit SetRateProvider(rateProvider_);
     }
 
-    function addAsset(address assetAddress, uint8 decimals_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (assetAddress == address(0)) revert ZeroAddress();
+    function addAsset(address asset_, uint8 decimals_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (asset_ == address(0)) revert ZeroAddress();
 
         AssetStorage storage assetStorage = _getAssetStorage();
-        if (assetStorage.list.length > 0 && assetStorage.assets[assetAddress].index != 0) revert InvalidAsset();
+        uint256 index = assetStorage.list.length;
+        if (index > 0 && assetStorage.assets[asset_].index != 0) revert InvalidAsset();
 
-        uint256 newIndex = assetStorage.list.length;
-        assetStorage.assets[assetAddress] =
-            AssetParams({active: true, index: newIndex, decimals: decimals_, idleAssets: 0, deployedAssets: 0});
+        assetStorage.assets[asset_] =
+            AssetParams({active: true, index: index, decimals: decimals_, idleAssets: 0, deployedAssets: 0});
 
-        assetStorage.list.push(assetAddress);
+        assetStorage.list.push(asset_);
 
-        emit NewAsset(assetAddress, decimals_, newIndex);
+        emit NewAsset(asset_, decimals_, index);
     }
 
-    function toggleAsset(address assetAddress, bool active) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function toggleAsset(address asset_, bool active) external onlyRole(DEFAULT_ADMIN_ROLE) {
         AssetStorage storage assetStorage = _getAssetStorage();
         if (assetStorage.list[0] == address(0)) revert AssetNotFound();
-        assetStorage.assets[assetAddress].active = active;
-        emit ToggleAsset(assetAddress, active);
+        assetStorage.assets[asset_].active = active;
+        emit ToggleAsset(asset_, active);
     }
 
-    function addStrategy(address strategy) external onlyRole(DEFAULT_ADMIN_ROLE) returns (bool) {
+    function addStrategy(address strategy) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (strategy == address(0)) revert ZeroAddress();
-        // TODO: Add check to make sure sum of all ratios not gt 10k
 
         StrategyStorage storage strategyStorage = _getStrategyStorage();
         uint256 index = strategyStorage.list.length;
@@ -300,7 +303,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         strategyStorage.list.push(strategy);
 
         emit NewStrategy(strategy, index);
-        return true;
     }
 
     function pause(bool paused_) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -318,8 +320,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.paused = true;
+        _getVaultStorage().paused = true;
     }
 
     constructor() {

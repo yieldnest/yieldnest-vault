@@ -34,11 +34,36 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
         weth.approve(address(vault), type(uint256).max);
     }
 
-    function test_Vault_setStrategy_when_admin() public {
+    function test_Vault_addStrategy() public {
         address strat = address(42069);
-
         vm.startPrank(ADMIN);
-        bool success = vault.addStrategy(strat);
-        assertEq(success, true);
+        vault.addStrategy(strat);       
+        assertEq(vault.getStrategies().length, 1);
     }
+
+    function test_Vault_addStrategy_unauthorized() public {
+        address strat = address(42069);
+        vm.expectRevert();
+        vault.addStrategy(strat);       
+    }
+
+    function test_Vault_addAsset() public {
+        address asset = address(200);
+        vm.startPrank(ADMIN);
+        vault.addAsset(asset, 18);
+        assertEq(vault.getAssets().length, 2);
+    }
+
+    function test_Vault_addAsset_unauthorized() public {
+        address asset = address(200);
+        vm.expectRevert();
+        vault.addAsset(asset, 18);
+    }
+
+    function test_Vault_toggleAsset() public {
+        address asset = address(33);
+        vm.startPrank(ADMIN);
+        // vault.addAsset(asset, 18);
+        // assertEq(vault.get[asset].active == true);
+    }    
 }
