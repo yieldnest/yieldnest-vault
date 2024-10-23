@@ -99,29 +99,37 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     // QUESTION: How to handle this in v1 if no sync withdraws
-    function withdraw(uint256 assets_, address receiver, address owner) public returns (uint256) {
-        // uint256 maxAssets = maxWithdraw(owner);
-        // if (assets > maxAssets) {
-        //     revert ERC4626ExceededMaxWithdraw(owner, assets, maxAssets);
-        // }
+    function withdraw(uint256 assets, address receiver, address owner) public returns (uint256) {
+        if (paused()) revert Paused();
 
-        // uint256 shares = previewWithdraw(assets);
-        // _withdraw(_msgSender(), receiver, owner, assets, shares);
+        uint256 maxAssets = maxWithdraw(owner);
+        if (assets > maxAssets) {
+            revert ExceededMaxWithdraw(owner, assets, maxAssets);
+        }
 
-        // return shares;
+        uint256 shares = previewWithdraw(assets);
+
+        _getVaultStorage().totalAssets -= assets;
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        return shares;
     }
 
     // QUESTION: How to handle this in v1 with async withdraws
-    function redeem(uint256 shares_, address receiver, address owner) public returns (uint256) {
-        // uint256 maxShares = maxRedeem(owner);
-        // if (shares > maxShares) {
-        //     revert ERC4626ExceededMaxRedeem(owner, shares, maxShares);
-        // }
+    function redeem(uint256 shares, address receiver, address owner) public returns (uint256) {
+        if (paused()) revert Paused();
 
-        // uint256 assets = previewRedeem(shares);
-        // _withdraw(_msgSender(), receiver, owner, assets, shares);
+        uint256 maxShares = maxRedeem(owner);
+        if (shares > maxShares) {
+            revert ExceededMaxRedeem(owner, shares, maxShares);
+        }
 
-        // return assets;
+        uint256 assets = previewRedeem(shares);
+
+        _getVaultStorage().totalAssets -= assets;
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        return assets;
     }
 
     //// 4626-MAX ////
@@ -130,8 +138,16 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return _getAssetStorage().list;
     }
 
+    function getAsset(address asset_) public view returns (AssetParams memory) {
+        return _getAssetStorage().assets[asset_];
+    }
+
     function getStrategies() public view returns (address[] memory) {
         return _getStrategyStorage().list;
+    }
+
+    function getStrategy(address asset_) public view returns (StrategyParams memory) {
+        return _getStrategyStorage().strategies[asset_];
     }
 
     function previewDepositAsset(address asset_, uint256 assets_) public view returns (uint256) {

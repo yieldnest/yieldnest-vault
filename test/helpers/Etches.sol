@@ -4,14 +4,18 @@ pragma solidity ^0.8.24;
 import {MockStakeManager} from "test/mocks/MockListaStakeManager.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
 import {MainnetContracts} from "script/Contracts.sol";
-import {MockStETH} from "test/mocks/MockStETH.sol";
+import {MockSTETH} from "test/mocks/MockSTETH.sol";
+import {MockYNETH} from "test/mocks/MockYNETH.sol";
+import {MockCL_STETH} from "test/mocks/MockCL_STETH.sol";
 
-import "forge-std/Test.sol";
+import "lib/forge-std/src/Test.sol";
 
 contract Etches is Test, MainnetContracts {
-    function mockAllAssets() public {
+    function mockAll() public {
         mockWETH9();
         mockStETH();
+        mockYNETH();
+        mockCL_STETH();
     }
 
     function mockWETH9() public {
@@ -21,8 +25,20 @@ contract Etches is Test, MainnetContracts {
     }
 
     function mockStETH() public {
-        MockStETH steth = new MockStETH();
+        MockSTETH steth = new MockSTETH();
         bytes memory code = address(steth).code;
+        vm.etch(STETH, code);
+    }
+
+    function mockYNETH() public {
+        MockYNETH yneth = new MockYNETH();
+        bytes memory code = address(yneth).code;
+        vm.etch(YNETH, code);
+    }
+
+    function mockCL_STETH() public {
+        MockCL_STETH cl_steth = new MockCL_STETH();
+        bytes memory code = address(cl_steth).code;
         vm.etch(STETH, code);
     }
 }

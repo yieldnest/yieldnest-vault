@@ -7,6 +7,8 @@ contract MainnetContracts {
     address public constant METH = 0xd5F7838F5C461fefF7FE49ea5ebaF7728bB0ADfa;
     address public constant OETH = 0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3;
     address public constant RETH = 0xae78736Cd615f374D3085123A210448E74Fc6393;
+    address public constant YNETH = 0x09db87A538BD693E9d08544577d5cCfAA6373A48;
+    address public constant CL_STETH_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
 }
 
 contract ChapelContracts {

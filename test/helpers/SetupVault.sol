@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
+import "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
 import {IRateProvider} from "src/interface/IRateProvider.sol";
 import {ETHRateProvider, IERC20, TransparentUpgradeableProxy} from "src/Common.sol";
@@ -18,8 +18,8 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         Vault vaultImplementation = new Vault();
 
-        // etch to mock the mainnet contracts address
-        mockWETH9();
+        // etch to mock the mainnet contracts
+        mockAll();
 
         // Deploy the proxy
         bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol);
@@ -36,6 +36,8 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         // Add WETH as an asset
         vault.addAsset(address(weth), 18);
+        vault.addAsset(STETH, 18);
+        vault.addStrategy(address(YNETH));
 
         // Unpause the vault
         vault.pause(false);

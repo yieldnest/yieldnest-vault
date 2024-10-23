@@ -62,16 +62,16 @@ contract ETHRateProvider is IRateProvider, Ownable {
 
     function _getStETHRate() internal view returns (uint256) {
         (, int256 stETHChainlinkRate,,,) = AggregatorV3Interface(CL_STETH_FEED).latestRoundData();
-        uint256 stETHContractRate = IStETH(STETH).getSharesByPooledEth(1e18);
+        // uint256 stETHContractRate = IStETH(STETH).getSharesByPooledEth(1e18);
 
-        // Implementing a weighted average based on the reliability or volume of each source
-        // Assuming Chainlink feed is more reliable and has a higher volume, we give it a weight of 0.7
-        // The stETH rate from the contract has a weight of 0.3
-        uint256 weightedStETHRateChainlink = (uint256(stETHChainlinkRate) * 7) / 10;
-        uint256 weightedStETHRateContract = (stETHContractRate * 3) / 10;
+        // // Implementing a weighted average based on the reliability or volume of each source
+        // // Assuming Chainlink feed is more reliable and has a higher volume, we give it a weight of 0.7
+        // // The stETH rate from the contract has a weight of 0.3
+        // uint256 weightedStETHRateChainlink = (uint256(stETHChainlinkRate) * 7) / 10;
+        // uint256 weightedStETHRateContract = (stETHContractRate * 3) / 10;
 
         // Calculate the final rate as a weighted average of the two sources
-        return weightedStETHRateChainlink + weightedStETHRateContract;
+        return uint256(stETHChainlinkRate); //weightedStETHRateChainlink + weightedStETHRateContract;
     }
 
     function _getMETHRate() internal view returns (uint256) {

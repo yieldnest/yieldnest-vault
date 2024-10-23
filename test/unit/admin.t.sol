@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {Vault} from "src/Vault.sol";
+import {Vault, IVault} from "src/Vault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {Etches} from "test/helpers/Etches.sol";
@@ -38,7 +38,7 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
         address strat = address(42069);
         vm.startPrank(ADMIN);
         vault.addStrategy(strat);
-        assertEq(vault.getStrategies().length, 1);
+        assertEq(vault.getStrategies().length, 2);
     }
 
     function test_Vault_addStrategy_unauthorized() public {
@@ -51,7 +51,7 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
         address asset = address(200);
         vm.startPrank(ADMIN);
         vault.addAsset(asset, 18);
-        assertEq(vault.getAssets().length, 2);
+        assertEq(vault.getAssets().length, 3);
     }
 
     function test_Vault_addAsset_unauthorized() public {
@@ -63,7 +63,11 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
     function test_Vault_toggleAsset() public {
         address asset = address(33);
         vm.startPrank(ADMIN);
-        // vault.addAsset(asset, 18);
-        // assertEq(vault.get[asset].active == true);
+        vault.addAsset(asset, 18);
+        IVault.AssetParams memory vaultAsset = vault.getAsset(asset);
+        assertEq(vaultAsset.active, true);
+        assertEq(vaultAsset.decimals, 18);
+        assertEq(vaultAsset.deployedAssets, 0);
+        assertEq(vaultAsset.idleAssets, 0);
     }
 }

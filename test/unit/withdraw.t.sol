@@ -33,14 +33,43 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, Etches {
         weth.approve(address(vault), type(uint256).max);
     }
 
-    function test_Vault_previewWithdraw(uint256 assets) public {
+    function test_Vault_previewWithdraw(uint256 assets) external view {
+        if (assets < 2) return;
+        if (assets > 100_000 ether) return;
+        uint256 amount = vault.previewWithdraw(assets);
+        assertEq(amount, assets);
+    }
+
+    function test_Vault_withdraw(uint256 assets) external {
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
 
-        uint256 amount = vault.previewWithdraw(assets);
+        vm.startPrank(alice);
+        uint256 depositShares = vault.deposit(assets, alice);
+        uint256 previewAmount = vault.previewWithdraw(assets);
+        uint256 shares = vault.withdraw(assets, alice, alice);
 
-        assertEq(amount, assets);
+        assertEq(previewAmount, shares, "Preview withdraw amount not preview amount");
+        assertEq(depositShares, shares, "Deposit shares not match with withdraw shares");
+    }
 
-        // fees have to be included with previewWithdraw
+    function test_Vault_previewRedeem(uint256 shares) external view {
+        if (shares < 2) return;
+        if (shares > 100_000 ether) return;
+        uint256 assets = vault.previewWithdraw(shares);
+        assertEq(assets, shares, "Preview Assets response not shares");
+    }
+
+    function test_Vault_redeem(uint256 shares) external {
+        if (shares < 2) return;
+        if (shares > 100_000 ether) return;
+
+        vm.startPrank(alice);
+        uint256 depositShares = vault.deposit(shares, alice);
+        uint256 previewAmount = vault.previewWithdraw(shares);
+        uint256 sharesAfter = vault.withdraw(shares, alice, alice);
+
+        assertEq(previewAmount, sharesAfter, "Preview redeem amount not preview amount");
+        assertEq(depositShares, sharesAfter, "Deposit shares not match with redeem shares");
     }
 }

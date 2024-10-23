@@ -14,6 +14,8 @@ interface IVault is IERC4626 {
     error AssetNotFound();
     error Paused();
     error DuplicateStrategy();
+    error ExceededMaxWithdraw(address, uint256, uint256);
+    error ExceededMaxRedeem(address, uint256, uint256);
 
     event DepositAsset(address indexed asset, address indexed vault, uint256 amount, address indexed receiver);
     event SetRateProvider(address indexed rateProvider);
@@ -73,6 +75,10 @@ interface IVault is IERC4626 {
     // 4626-MAX
     // function maxMintAsset(address assetAddress, address) external view returns (uint256);
     function getAssets() external view returns (address[] memory list);
+    function getAsset(address asset_) external view returns (AssetParams memory);
+    function getStrategies() external view returns (address[] memory list);
+    function getStrategy(address strategy_) external view returns (StrategyParams memory);
+
     function previewDepositAsset(address assetAddress, uint256 assets) external view returns (uint256);
     function depositAsset(address assetAddress, uint256 amount, address receiver) external returns (uint256);
     // function getStrategies() external view returns (address[] memory);

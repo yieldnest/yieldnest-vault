@@ -4,31 +4,34 @@ pragma solidity ^0.8.24;
 // https://github.com/lidofinance/lido-dao/blob/master/contracts/0.4.24/StETH.sol
 import {ERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
-contract MockStETH is ERC20 {
+contract MockSTETH is ERC20 {
     uint256 private _pooledEthPerShare = 1e18; // Start with 1:1 ratio
+    mapping(address => uint256) public shares;
 
-    constructor() ERC20("Mock Staked Ether", "mstETH") {
-        _mint(msg.sender, 1000000 * 10 ** 18); // Mint 1 million tokens
+    constructor() ERC20("Mock Staked Ether", "mstETH") {}
+
+    function getSharesByPooledEth(uint256 amount) internal pure returns (uint256) {
+        return (amount * 98e16) / 1e18;
     }
 
-    function deposit(uint256 amount) public {
-        _mint(msg.sender, amount);
+    function deposit() public payable {
+        uint256 depostShares = getSharesByPooledEth(msg.value);
+        _mint(msg.sender, depostShares);
     }
 
-    // function getPooledEthByShares(uint256 _sharesAmount) external view returns (uint256) {
-    //     return (_sharesAmount * _pooledEthPerShare) / 1e18;
-    // }
+    function balanceOf(address _account) public view override returns (uint256) {
+        return getPooledEthByShares(_sharesOf(_account));
+    }
 
-    // // Function to simulate stETH price changes
-    // function setPooledEthPerShare(uint256 newRatio) external {
-    //     _pooledEthPerShare = newRatio;
-    // }
+    function getPooledEthByShares(uint256 _sharesAmount) internal view returns (uint256) {
+        return (_sharesAmount * _pooledEthPerShare) / 1e18;
+    }
 
-    // function balanceOf(address _account) public view returns (uint256) {
-    //     return getPooledEthByShares(_sharesOf(_account));
-    // }
+    function _sharesOf(address _account) internal view returns (uint256) {
+        return shares[_account];
+    }
 
-    // function _sharesOf(address _account) internal view returns (uint256) {
-    //     return shares[_account];
-    // }
+    receive() external payable {
+        deposit();
+    }
 }
