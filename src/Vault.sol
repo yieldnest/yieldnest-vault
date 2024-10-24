@@ -172,29 +172,40 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return _getVaultStorage().rateProvider;
     }
 
-    // QUESTION: What params should be used here? strategy, asset, etc.
-    function processAccounting() external {
-        // get the balances of the assets
-        // AssetStorage storage assetStorage = _getAssetStorage();
+    function processAssets(address[] calldata strategies, uint256[] memory values, bytes[] calldata data)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        for (uint256 i = 0; i < strategies.length; i++) {
+            if (!_getStrategyStorage().strategies[strategies[i]].active) revert BadStrategy(strategies[i]);
 
-        // for (uint256 i = 0; i < assetsStorage.list.length; i++) {
-        //     address asset = assets[i];
-        //     idleBalance = asset.balanceOf(address(vault));
-        // }
-        // get the balances of the strategies
+            (bool success, bytes memory returnData) = strategies[i].call{value: values[i]}(data[i]);
 
-        // call convertToAssets on the strategie?
-
-        // QUESTION: Keep the balances for the assets, or keep that balances in base price
-
-        // NOTE: Get the loops out of the public calls
-
-        //yv3
-        // what if you want to udpate a single strategy, but what if you want to update one strat
-        // the debt value is used to separate the deposited value, you know what the rewards
-        // balance is based on the the debt less the the rewards.
-        // allows you to not have to grind through everything??
+            if (!success) {
+                revert ProcessFailed(returnData);
+            }
+        }
     }
+
+    function processAccounting() public {
+        AssetStorage storage assetStorage = _getAssetStorage();
+        StrategyStorage storage strategyStorage = _getStrategyStorage();
+
+        for (uint256 i = 0; i < assetStorage.list.length; i++) {
+            address asset_ = assetStorage.list[i];
+            uint256 assetBalance = IERC20(asset_).balanceOf(address(this));
+            uint256 baseAssetBalance = _convertAssetToBase(asset_, assetBalance);
+            assetStorage.assets[asset_].idleAssets = baseAssetBalance;
+        }
+
+        for (uint256 i = 0; i < strategyStorage.list.length; i++) {
+            address strategy = strategyStorage.list[i];
+            uint256 strategyBalance = IERC20(strategy).balanceOf(address(this));
+            uint256 baseStrategyBalance = _convertAssetToBase(strategy, strategyBalance);
+            strategyStorage.strategies[strategy].deployedAssets = baseStrategyBalance;
+        }
+    }
+
     //// INTERNAL ////
 
     function _convertToAssets(address asset_, uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
@@ -233,22 +244,15 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     // QUESTION: How might we
-    function _withdraw(address caller, address receiver, address owner, uint256 assetAmount, uint256 shares) internal {
-        // ERC4626Storage storage $ = _getERC4626Storage();
-        // if (caller != owner) {
-        //     _spendAllowance(owner, caller, shares);
-        // }
+    function _withdraw(address caller, address receiver, address owner, uint256 assets_, uint256 shares) internal {
+        if (caller != owner) {
+            _spendAllowance(owner, caller, shares);
+        }
 
-        // // If _asset is ERC777, `transfer` can trigger a reentrancy AFTER the transfer happens through the
-        // // `tokensReceived` hook. On the other hand, the `tokensToSend` hook, that is triggered before the transfer,
-        // // calls the vault, which is assumed not malicious.
-        // //
-        // // Conclusion: we need to do the transfer after the burn so that any reentrancy would happen after the
-        // // shares are burned and after the assets are transferred, which is a valid state.
-        // _burn(owner, shares);
-        // SafeERC20.safeTransfer($._asset, receiver, assets);
+        _burn(owner, shares);
+        SafeERC20.safeTransfer(IERC20(_getAssetStorage().list[0]), receiver, assets_);
 
-        // emit Withdraw(caller, receiver, owner, assets, shares);
+        emit Withdraw(caller, receiver, owner, assets_, shares);
     }
 
     function _decimalsOffset() internal pure returns (uint8) {

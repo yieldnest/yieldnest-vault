@@ -25,6 +25,9 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         SetupVault setupVault = new SetupVault();
         (vault, weth,) = setupVault.setup();
 
+        // Replace the steth mock with our custom MockSTETH
+        steth = MockSTETH(payable(STETH));
+
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
         weth.deposit{value: INITIAL_BALANCE}();
@@ -63,23 +66,29 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         if (depositAmount < 10) return;
         if (depositAmount > 100_000 ether) return;
 
-        vm.prank(alice);
-        // uint256 sharesMinted = vault.depositAsset(STETH, depositAmount, alice);
+        deal(address(steth), alice, depositAmount);
 
-        // // Check that shares were minted
-        // assertGt(sharesMinted, 0, "No shares were minted");
+        vm.startPrank(alice);
+        steth.approve(address(vault), type(uint256).max);
 
-        // // Check that the vault received the tokens
-        // assertEq(IERC20(address(vault)).balanceOf(address(vault)), depositAmount, "Vault did not receive tokens");
+        uint256 sharesMinted = vault.depositAsset(address(steth), depositAmount, alice);
 
-        // // Check that Alice's token balance decreased
-        // assertEq(IERC20(address(vault)).balanceOf(alice), INITIAL_BALANCE - depositAmount, "Alice's balance did not decrease correctly");
+        // Check that shares were minted
+        assertGt(sharesMinted, 0, "No shares were minted");
 
-        // // Check that Alice received the correct amount of shares
-        // assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
+        // Check that the vault received the tokens
+        assertEq(steth.balanceOf(address(vault)), depositAmount, "Vault did not receive tokens");
 
-        // // Check that total assets increased
-        // assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
+        // Check that Alice's token balance decreased
+        assertEq(steth.balanceOf(alice), 0, "Alice's balance did not decrease correctly");
+
+        // Check that Alice received the correct amount of shares
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
+
+        // Check that total assets increased
+        assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
+
+        vm.stopPrank();
     }
 
     // function testDepositZeroAmount() public {

@@ -8,6 +8,7 @@ contract MainnetContracts {
     address public constant OETH = 0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3;
     address public constant RETH = 0xae78736Cd615f374D3085123A210448E74Fc6393;
     address public constant YNETH = 0x09db87A538BD693E9d08544577d5cCfAA6373A48;
+    address public constant YNLSDE = 0x35Ec69A77B79c255e5d47D5A3BdbEFEfE342630c;
     address public constant CL_STETH_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
 }
 

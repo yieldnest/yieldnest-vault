@@ -19,6 +19,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         Vault vaultImplementation = new Vault();
 
         // etch to mock the mainnet contracts
+
         mockAll();
 
         // Deploy the proxy
@@ -34,9 +35,13 @@ contract SetupVault is Test, Etches, MainnetActors {
         // Set up the rate provider
         vault.setRateProvider(address(rateProvider));
 
-        // Add WETH as an asset
+        // Add assets
         vault.addAsset(address(weth), 18);
         vault.addAsset(STETH, 18);
+        vault.addAsset(YNETH, 18);
+        vault.addAsset(YNLSDE, 18);
+
+        // add strategies
         vault.addStrategy(address(YNETH));
 
         // Unpause the vault

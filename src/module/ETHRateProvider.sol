@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {IRateProvider} from "src/interface/IRateProvider.sol";
-import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 
 interface IStETH {
     function getSharesByPooledEth(uint256 _ethAmount) external view returns (uint256);
@@ -27,7 +26,7 @@ interface AggregatorV3Interface {
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
 
-contract ETHRateProvider is IRateProvider, Ownable {
+contract ETHRateProvider is IRateProvider {
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     address public constant METH = 0xd5F7838F5C461fefF7FE49ea5ebaF7728bB0ADfa;
@@ -41,7 +40,7 @@ contract ETHRateProvider is IRateProvider, Ownable {
 
     error UnsupportedAsset(address asset);
 
-    constructor() Ownable(msg.sender) {}
+    constructor() {}
 
     function getRate(address asset) external view override returns (uint256) {
         if (asset == WETH) {
@@ -54,24 +53,23 @@ contract ETHRateProvider is IRateProvider, Ownable {
             return _getOETHRate();
         } else if (asset == RETH) {
             return _getRETHRate();
-        } else if (_manualRates[asset] != 0) {
-            return _manualRates[asset];
         }
+
         revert UnsupportedAsset(asset);
     }
 
     function _getStETHRate() internal view returns (uint256) {
         (, int256 stETHChainlinkRate,,,) = AggregatorV3Interface(CL_STETH_FEED).latestRoundData();
-        // uint256 stETHContractRate = IStETH(STETH).getSharesByPooledEth(1e18);
+        uint256 stETHContractRate = IStETH(STETH).getSharesByPooledEth(1e18);
 
-        // // Implementing a weighted average based on the reliability or volume of each source
-        // // Assuming Chainlink feed is more reliable and has a higher volume, we give it a weight of 0.7
-        // // The stETH rate from the contract has a weight of 0.3
-        // uint256 weightedStETHRateChainlink = (uint256(stETHChainlinkRate) * 7) / 10;
-        // uint256 weightedStETHRateContract = (stETHContractRate * 3) / 10;
+        // Implementing a weighted average based on the reliability or volume of each source
+        // Assuming Chainlink feed is more reliable and has a higher volume, we give it a weight of 0.7
+        // The stETH rate from the contract has a weight of 0.3
+        uint256 weightedStETHRateChainlink = (uint256(stETHChainlinkRate) * 7) / 10;
+        uint256 weightedStETHRateContract = (stETHContractRate * 3) / 10;
 
         // Calculate the final rate as a weighted average of the two sources
-        return uint256(stETHChainlinkRate); //weightedStETHRateChainlink + weightedStETHRateContract;
+        return weightedStETHRateChainlink + weightedStETHRateContract;
     }
 
     function _getMETHRate() internal view returns (uint256) {
@@ -84,9 +82,5 @@ contract ETHRateProvider is IRateProvider, Ownable {
 
     function _getRETHRate() internal view returns (uint256) {
         return IRETH(RETH).getExchangeRate();
-    }
-
-    function setManualRate(address asset, uint256 rate) external onlyOwner {
-        _manualRates[asset] = rate;
     }
 }

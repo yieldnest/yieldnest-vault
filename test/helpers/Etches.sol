@@ -7,6 +7,7 @@ import {MainnetContracts} from "script/Contracts.sol";
 import {MockSTETH} from "test/mocks/MockSTETH.sol";
 import {MockYNETH} from "test/mocks/MockYNETH.sol";
 import {MockCL_STETH} from "test/mocks/MockCL_STETH.sol";
+import {MockYNLSDE} from "test/mocks/MockYNLSDE.sol";
 
 import "lib/forge-std/src/Test.sol";
 
@@ -15,6 +16,10 @@ contract Etches is Test, MainnetContracts {
         mockWETH9();
         mockStETH();
         mockYNETH();
+        mockYNLSDE();
+        mockRETH();
+        mockMETH();
+        mockOETH();
         mockCL_STETH();
     }
 
@@ -36,9 +41,33 @@ contract Etches is Test, MainnetContracts {
         vm.etch(YNETH, code);
     }
 
+    function mockYNLSDE() public {
+        MockYNLSDE ynlsde = new MockYNLSDE();
+        bytes memory code = address(ynlsde).code;
+        vm.etch(YNLSDE, code);
+    }
+
+    function mockRETH() public {
+        WETH9 reth = new WETH9();
+        bytes memory code = address(reth).code;
+        vm.etch(RETH, code);
+    }
+
+    function mockMETH() public {
+        WETH9 meth = new WETH9();
+        bytes memory code = address(meth).code;
+        vm.etch(METH, code);
+    }
+
+    function mockOETH() public {
+        WETH9 oeth = new WETH9();
+        bytes memory code = address(oeth).code;
+        vm.etch(OETH, code);
+    }
+
     function mockCL_STETH() public {
         MockCL_STETH cl_steth = new MockCL_STETH();
         bytes memory code = address(cl_steth).code;
-        vm.etch(STETH, code);
+        vm.etch(CL_STETH_FEED, code);
     }
 }

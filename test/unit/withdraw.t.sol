@@ -47,10 +47,22 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, Etches {
         vm.startPrank(alice);
         uint256 depositShares = vault.deposit(assets, alice);
         uint256 previewAmount = vault.previewWithdraw(assets);
-        uint256 shares = vault.withdraw(assets, alice, alice);
 
+        uint256 aliceBalanceBefore = vault.balanceOf(alice);
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 shares = vault.withdraw(assets, alice, alice);
+        uint256 totalAssetsAfter = vault.totalAssets();
+        uint256 aliceBalanceAfter = vault.balanceOf(alice);
+
+        assertEq(aliceBalanceBefore, aliceBalanceAfter + shares, "Alice's balance should be less the shares withdrawn");
         assertEq(previewAmount, shares, "Preview withdraw amount not preview amount");
         assertEq(depositShares, shares, "Deposit shares not match with withdraw shares");
+        assertLt(totalAssetsAfter, totalAssetsBefore, "Total assets should be less after withdraw");
+        assertEq(
+            totalAssetsBefore,
+            totalAssetsAfter + assets,
+            "Total assets should be total assets after plus assets withdrawn"
+        );
     }
 
     function test_Vault_previewRedeem(uint256 shares) external view {
@@ -66,10 +78,22 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, Etches {
 
         vm.startPrank(alice);
         uint256 depositShares = vault.deposit(shares, alice);
-        uint256 previewAmount = vault.previewWithdraw(shares);
-        uint256 sharesAfter = vault.withdraw(shares, alice, alice);
 
-        assertEq(previewAmount, sharesAfter, "Preview redeem amount not preview amount");
-        assertEq(depositShares, sharesAfter, "Deposit shares not match with redeem shares");
+        uint256 balanceBefore = weth.balanceOf(alice);
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 previewAmount = vault.previewRedeem(shares);
+        uint256 assetsAfter = vault.redeem(shares, alice, alice);
+        uint256 balanceAfter = weth.balanceOf(alice);
+        uint256 totalAssetsAfter = vault.totalAssets();
+
+        assertEq(assetsAfter, previewAmount, "Assets after equals the Privew amount");
+        assertEq(
+            balanceAfter, balanceBefore + previewAmount, "Assets after redeem are  assets before plus redeem amount"
+        );
+        assertEq(
+            totalAssetsBefore,
+            totalAssetsAfter + previewAmount,
+            "Total Assets before are total assets are plus redemption value"
+        );
     }
 }

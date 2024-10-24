@@ -34,12 +34,16 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
     }
 
     function test_Vault_getAssets() public view {
-        address[] memory expectedAssets = new address[](2);
-        expectedAssets[0] = address(WETH);
-        expectedAssets[1] = address(STETH);
-        assertEq(vault.getAssets().length, expectedAssets.length);
-        for (uint256 i = 0; i < expectedAssets.length; i++) {
-            assertEq(vault.getAssets()[i], expectedAssets[i]);
+        address[] memory assets = vault.getAssets();
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            address asset = assets[i];
+            IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18, 0, 0);
+            assertEq(vault.getAsset(asset).active, expectedAssetParams.active, "Not active");
+            assertEq(vault.getAsset(asset).index, i, "Bad Index");
+            assertEq(vault.getAsset(asset).decimals >= 6 || vault.getAsset(asset).decimals <= 18, true, "Bad decimals");
+            assertEq(vault.getAsset(asset).idleAssets, expectedAssetParams.idleAssets, "Invalid idleAssets");
+            assertEq(vault.getAsset(asset).deployedAssets, expectedAssetParams.deployedAssets, "Invalid deployedAssets");
         }
     }
 

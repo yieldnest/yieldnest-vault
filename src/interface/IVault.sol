@@ -16,6 +16,8 @@ interface IVault is IERC4626 {
     error DuplicateStrategy();
     error ExceededMaxWithdraw(address, uint256, uint256);
     error ExceededMaxRedeem(address, uint256, uint256);
+    error BadStrategy(address);
+    error ProcessFailed(bytes);
 
     event DepositAsset(address indexed asset, address indexed vault, uint256 amount, address indexed receiver);
     event SetRateProvider(address indexed rateProvider);

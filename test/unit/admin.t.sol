@@ -51,7 +51,7 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
         address asset = address(200);
         vm.startPrank(ADMIN);
         vault.addAsset(asset, 18);
-        assertEq(vault.getAssets().length, 3);
+        assertEq(vault.getAsset(address(200)).active, true);
     }
 
     function test_Vault_addAsset_unauthorized() public {

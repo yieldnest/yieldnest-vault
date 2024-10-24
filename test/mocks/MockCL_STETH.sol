@@ -11,10 +11,6 @@ contract MockCL_STETH {
         pure
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
-        roundId = 1;
-        answer = 100000000000;
-        startedAt = 1630000000;
-        updatedAt = 1630000000;
-        answeredInRound = 1;
+        return (1, 1000000000000000000, 1630000000, 1630000000, 1);
     }
 }
