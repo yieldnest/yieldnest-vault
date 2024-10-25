@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {WETH9} from "test/mocks/MockWETH.sol";
 import {MainnetContracts} from "script/Contracts.sol";
-import {MockSTETH} from "test/mocks/MockSTETH.sol";
+import {MockSTETH} from "test/mocks/MockST_ETH.sol";
 import {MockYNETH} from "test/mocks/MockYNETH.sol";
 import {MockCL_STETH} from "test/mocks/MockCL_STETH.sol";
 import {MockYNLSDE} from "test/mocks/MockYNLSDE.sol";

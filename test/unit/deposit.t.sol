@@ -9,6 +9,7 @@ import {Etches} from "test/helpers/Etches.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
 import {SetupVault} from "test/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
+import {MockSTETH} from "test/mocks/MockST_ETH.sol";
 
 contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
     Vault public vaultImplementation;
