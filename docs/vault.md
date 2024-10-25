@@ -40,10 +40,10 @@ The deposit process in this system is designed to efficiently manage user assets
    - It uses a standard method (ERC4626) to ensure compatibility accross Defi and tokenize user shares.
 
 2. **Functions of the Vault**:
-   - **deposit**: Allows users to deposit assets directly.
-   - **depositAsset**: Handles deposits involving multiple types of assets.
    - **totalAssets**: The vault holds multi assets and total assets is denominated in the base asset.
    - **asset**: Vaults have a base asset used to denominate asset holdings in a common price.
+   - **deposit**: Allows users to deposit assets directly.
+   - **depositAsset**: Handles deposits involving multiple types of assets.
    - **withdraw**: Enables users to withdraw assets from the vault.
    - **withdrawAsset**: Facilitates withdrawals involving multiple types of assets.
    - **processAccounting**: Updates the accounting for the vault by recalculating the total assets and asset balances.
@@ -51,12 +51,12 @@ The deposit process in this system is designed to efficiently manage user assets
 
 3. **Coprocessor**:
    - Keeps track of deposit events and runs process functions on the vaults and strategies.
-   - Calls process functions to distribute assets to different strategies for investment.
+   - Calls process functions to distribute assets to different strategies.
    - Updates the Vault balances and asset prices for gas optimization.
 
 4. **The Strategy**:
-   - Allocates assets from the Vault or other DeFi integrations and returns Strategy share tokens.
-   - Restakes allocated assets into yield bearing defi strategies.
+   - Receives assets from the Vault and retruns Strategy share tokens.
+   - Restakes allocated assets into yield bearing protocols.
    - Contains connector logic to complex protocol integreations, such as Eigen Layer, Symbiotic and Aave. 
 
 5. **Rate Provider**:

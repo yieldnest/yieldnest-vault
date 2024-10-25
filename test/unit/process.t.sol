@@ -7,7 +7,6 @@ import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {Etches} from "test/helpers/Etches.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
-import {MockSTETH} from "test/mocks/MockSTETH.sol";
 import {SetupVault} from "test/helpers/SetupVault.sol";
 
 contract VaultProcessUnitTest is Test, MainnetContracts, Etches {
