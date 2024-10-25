@@ -33,6 +33,16 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         weth.approve(address(vault), type(uint256).max);
     }
 
+    function test_Vault_asset() public view {
+        address expectedAsset = address(WETH);
+        assertEq(vault.asset(), expectedAsset, "Asset address does not match");
+    }
+
+    function test_Vault_decimals() public view {
+        uint8 decimals = vault.decimals();
+        assertEq(decimals, 18);
+    }
+
     function test_Vault_getAssets() public view {
         address[] memory assets = vault.getAssets();
 
@@ -45,6 +55,74 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
             assertEq(vault.getAsset(asset).idleAssets, expectedAssetParams.idleAssets, "Invalid idleAssets");
             assertEq(vault.getAsset(asset).deployedAssets, expectedAssetParams.deployedAssets, "Invalid deployedAssets");
         }
+    }
+
+    function test_Vault_convertToShares() public view {
+        uint256 amount = 1000;
+        uint256 shares = vault.convertToShares(amount);
+        assertEq(shares, amount, "Conversion to shares failed");
+    }
+
+    function test_Vault_convertToAssets() public view {
+        uint256 shares = 1000;
+        uint256 amount = vault.convertToAssets(shares);
+        assertEq(amount, shares, "Conversion to assets failed");
+    }
+
+    function test_Vault_maxDeposit() public view {
+        uint256 maxDeposit = vault.maxDeposit(alice);
+        assertEq(maxDeposit, type(uint256).max, "Max deposit does not match");
+    }
+
+    function test_Vault_maxMint() public view {
+        uint256 maxMint = vault.maxMint(alice);
+        assertEq(maxMint, type(uint256).max, "Max mint does not match");
+    }
+
+    function test_Vault_maxWithdraw() public view {
+        uint256 maxWithdraw = vault.maxWithdraw(alice);
+        assertEq(maxWithdraw, 0, "Max withdraw does not match");
+    }
+
+    function test_Vault_maxWithdraw_afterDeposit() public {
+        // Simulate a deposit
+        uint256 depositAmount = 1000;
+        vm.prank(alice);
+        vault.deposit(depositAmount, alice);
+
+        // Test maxWithdraw after deposit
+        uint256 maxWithdrawAfterDeposit = vault.maxWithdraw(alice);
+        assertEq(maxWithdrawAfterDeposit, depositAmount, "Max withdraw after deposit does not match");
+    }
+
+    function test_Vault_maxRedeem() public view {
+        uint256 maxRedeem = vault.maxRedeem(alice);
+        assertEq(maxRedeem, 0, "Max redeem does not match");
+    }
+
+    function test_Vault_maxRedeem_afterDeposit() public {
+        // Simulate a deposit
+        uint256 depositAmount = 1000;
+        vm.prank(alice);
+        vault.deposit(depositAmount, alice);
+
+        // Test maxRedeem after deposit
+        uint256 maxRedeemAfterDeposit = vault.maxRedeem(alice);
+        assertEq(maxRedeemAfterDeposit, depositAmount, "Max redeem after deposit does not match");
+    }
+
+    function test_Vault_previewDeposit() public view {
+        uint256 assets = 1000;
+        uint256 expectedShares = 1000; // Assuming a 1:1 conversion for simplicity
+        uint256 shares = vault.previewDeposit(assets);
+        assertEq(shares, expectedShares, "Preview deposit does not match expected shares");
+    }
+
+    function test_Vault_previewMint() public view {
+        uint256 shares = 1000;
+        uint256 expectedAssets = 1000; // Assuming a 1:1 conversion for simplicity
+        uint256 assets = vault.previewMint(shares);
+        assertEq(assets, expectedAssets, "Preview mint does not match expected assets");
     }
 
     function test_Vault_getAsset() public view {
@@ -72,5 +150,24 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         assertEq(vault.getStrategy(strategyAddress).active, expectedStrategyParams.active);
         assertEq(vault.getStrategy(strategyAddress).index, expectedStrategyParams.index);
         assertEq(vault.getStrategy(strategyAddress).deployedAssets, expectedStrategyParams.deployedAssets);
+    }
+
+    function test_Vault_previewDepositAsset() public view {
+        uint256 assets = 1000;
+        uint256 expectedShares = 1000; // Assuming a 1:1 conversion for simplicity
+        uint256 shares = vault.previewDepositAsset(address(WETH), assets);
+        assertEq(shares, expectedShares, "Preview deposit asset does not match expected shares");
+    }
+
+    function test_Vault_previewDepositAsset_WrongAsset() public {
+        address invalidAssetAddress = address(0);
+        uint256 assets = 1000;
+        vm.expectRevert();
+        vault.previewDepositAsset(invalidAssetAddress, assets);
+    }
+
+    function test_Vault_getRateProvider() public view {
+        address expectedRateProvider = address(0x123);
+        assertEq(vault.rateProvider(), ETH_RATE_PROVIDER, "Rate provider does not match expected");
     }
 }

@@ -54,6 +54,20 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
         assertEq(vault.getAsset(address(200)).active, true);
     }
 
+    function test_Vault_addAsset_nullAddress() public {
+        vm.prank(ADMIN);
+        vm.expectRevert();
+        vault.addAsset(address(0), 18);
+    }
+
+    function test_Vault_addAsset_duplicateAddress() public {
+        address asset = address(200);
+        vm.startPrank(ADMIN);
+        vault.addAsset(asset, 18);
+        vm.expectRevert();
+        vault.addAsset(asset, 18);
+    }
+
     function test_Vault_addAsset_unauthorized() public {
         address asset = address(200);
         vm.expectRevert();
@@ -69,5 +83,42 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
         assertEq(vaultAsset.decimals, 18);
         assertEq(vaultAsset.deployedAssets, 0);
         assertEq(vaultAsset.idleAssets, 0);
+        vault.toggleAsset(asset, false);
+        IVault.AssetParams memory inActiveAsset = vault.getAsset(asset);
+        assertEq(inActiveAsset.active, false);
+    }
+
+    function test_Vault_toggleAsset_failsIfAssetNotAdded() public {
+        address asset = address(3333);
+        vm.startPrank(ADMIN);
+        vm.expectRevert();
+        vault.toggleAsset(asset, false);
+    }
+
+    function test_Vault_addStrategy_duplicateAddress() public {
+        address strat = address(42069);
+        vm.startPrank(ADMIN);
+        vault.addStrategy(strat);
+        vm.expectRevert();
+        vault.addStrategy(strat);
+    }
+
+    function test_Vault_addStrategy_nullAddress() public {
+        vm.prank(ADMIN);
+        vm.expectRevert();
+        vault.addStrategy(address(0));
+    }
+
+    function test_Vault_setRateProvider() public {
+        address rateProvider = address(0x123);
+        vm.startPrank(ADMIN);
+        vault.setRateProvider(rateProvider);
+        assertEq(vault.rateProvider(), rateProvider);
+    }
+
+    function test_Vault_setRateProvider_nullAddress() public {
+        vm.prank(ADMIN);
+        vm.expectRevert();
+        vault.setRateProvider(address(0));
     }
 }

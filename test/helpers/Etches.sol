@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {MockStakeManager} from "test/mocks/MockListaStakeManager.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {MockSTETH} from "test/mocks/MockSTETH.sol";
 import {MockYNETH} from "test/mocks/MockYNETH.sol";
 import {MockCL_STETH} from "test/mocks/MockCL_STETH.sol";
 import {MockYNLSDE} from "test/mocks/MockYNLSDE.sol";
+import {ETHRateProvider} from "src/module/ETHRateProvider.sol";
 
 import "lib/forge-std/src/Test.sol";
 
@@ -21,6 +21,7 @@ contract Etches is Test, MainnetContracts {
         mockMETH();
         mockOETH();
         mockCL_STETH();
+        mockETHRateProvider();
     }
 
     function mockWETH9() public {
@@ -69,5 +70,11 @@ contract Etches is Test, MainnetContracts {
         MockCL_STETH cl_steth = new MockCL_STETH();
         bytes memory code = address(cl_steth).code;
         vm.etch(CL_STETH_FEED, code);
+    }
+
+    function mockETHRateProvider() public {
+        ETHRateProvider rateProvider = new ETHRateProvider();
+        bytes memory code = address(rateProvider).code;
+        vm.etch(ETH_RATE_PROVIDER, code);
     }
 }

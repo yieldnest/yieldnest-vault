@@ -50,7 +50,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return type(uint256).max;
     }
 
-    // QUESTION: How to handle this in v1 with async withdraws.
     function maxWithdraw(address owner) public view returns (uint256) {
         return _convertToAssets(asset(), balanceOf(owner), Math.Rounding.Floor);
     }
@@ -151,12 +150,13 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     function previewDepositAsset(address asset_, uint256 assets_) public view returns (uint256) {
+        if (!_getAssetStorage().assets[asset_].active) revert InvalidAsset();
         return _convertToShares(asset_, assets_, Math.Rounding.Floor);
     }
 
     function depositAsset(address asset_, uint256 assets_, address receiver) public returns (uint256) {
         if (paused()) revert Paused();
-        if (_getAssetStorage().assets[asset_].index == 0) revert InvalidAsset();
+        if (!_getAssetStorage().assets[asset_].active) revert InvalidAsset();
 
         uint256 shares = previewDepositAsset(asset_, assets_);
         _deposit(asset_, _msgSender(), receiver, assets_, shares);
@@ -172,7 +172,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return _getVaultStorage().rateProvider;
     }
 
-    function processAssets(address[] calldata strategies, uint256[] memory values, bytes[] calldata data)
+    function processAllocation(address[] calldata strategies, uint256[] memory values, bytes[] calldata data)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
@@ -183,6 +183,14 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
             if (!success) {
                 revert ProcessFailed(returnData);
+            }
+            // Update deployedAssets for the strategy if eth value provided, else convert erc20 to base
+            if (values[i] > 0) {
+                _getStrategyStorage().strategies[strategies[i]].deployedAssets += values[i];
+            } else {
+                uint256 baseAssetBalance =
+                    _convertAssetToBase(strategies[i], IERC20(strategies[i]).balanceOf(address(this)));
+                _getStrategyStorage().strategies[strategies[i]].deployedAssets += baseAssetBalance;
             }
         }
     }
@@ -302,7 +310,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     function toggleAsset(address asset_, bool active) external onlyRole(DEFAULT_ADMIN_ROLE) {
         AssetStorage storage assetStorage = _getAssetStorage();
-        if (assetStorage.list[0] == address(0)) revert AssetNotFound();
+        if (assetStorage.assets[asset_].index == 0) revert InvalidAsset();
         assetStorage.assets[asset_].active = active;
         emit ToggleAsset(asset_, active);
     }

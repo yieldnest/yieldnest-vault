@@ -6,7 +6,8 @@ out/
 !/broadcast
 /broadcast/*/31337/
 /broadcast/**/dry-run/
-
+/coverage/
+lcov.info
 
 # Dotenv file
 .env

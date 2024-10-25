@@ -8,8 +8,9 @@ import {MainnetContracts} from "script/Contracts.sol";
 import {Etches} from "test/helpers/Etches.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
 import {SetupVault} from "test/helpers/SetupVault.sol";
+import {MainnetActors} from "script/Actors.sol";
 
-contract VaultWithdrawUnitTest is Test, MainnetContracts, Etches {
+contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -17,6 +18,8 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, Etches {
     WETH9 public weth;
 
     address public alice = address(0x1);
+    address public bob = address(0x2);
+
     uint256 public constant INITIAL_BALANCE = 100_000 ether;
 
     function setUp() public {
@@ -72,28 +75,78 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, Etches {
         assertEq(assets, shares, "Preview Assets response not shares");
     }
 
-    function test_Vault_redeem(uint256 shares) external {
-        if (shares < 2) return;
-        if (shares > 100_000 ether) return;
+    function test_Vault_redeem(uint256 amount) external {
+        if (amount < 2) return;
+        if (amount > 100_000 ether) return;
 
         vm.startPrank(alice);
-        uint256 depositShares = vault.deposit(shares, alice);
+        uint256 depositShares = vault.deposit(amount, alice);
 
         uint256 balanceBefore = weth.balanceOf(alice);
         uint256 totalAssetsBefore = vault.totalAssets();
-        uint256 previewAmount = vault.previewRedeem(shares);
-        uint256 assetsAfter = vault.redeem(shares, alice, alice);
+        uint256 previewAmount = vault.previewRedeem(depositShares);
+        uint256 assetsAfter = vault.redeem(depositShares, alice, alice);
         uint256 balanceAfter = weth.balanceOf(alice);
         uint256 totalAssetsAfter = vault.totalAssets();
 
-        assertEq(assetsAfter, previewAmount, "Assets after equals the Privew amount");
+        assertEq(assetsAfter, previewAmount, "assetsAfter = previewAmount");
+        assertEq(balanceAfter, balanceBefore + previewAmount, "balanceAfter = balanceBefore + previewAmount");
+
         assertEq(
-            balanceAfter, balanceBefore + previewAmount, "Assets after redeem are  assets before plus redeem amount"
+            totalAssetsBefore, totalAssetsAfter + previewAmount, "totalAssetsBefore = totalAssetsAfter + previewAmount"
         );
-        assertEq(
-            totalAssetsBefore,
-            totalAssetsAfter + previewAmount,
-            "Total Assets before are total assets are plus redemption value"
-        );
+    }
+
+    function test_Vault_withdrawMoreThanBalance() public {
+        vm.startPrank(alice);
+        uint256 depositAmount = 100 ether;
+        uint256 sharesMinted = vault.deposit(depositAmount, alice);
+
+        // Attempt to withdraw more than the balance
+        uint256 excessiveWithdrawAmount = depositAmount + 1 ether;
+        vm.expectRevert();
+        vault.withdraw(excessiveWithdrawAmount, alice, alice);
+    }
+
+    function test_Vault_redeemMoreThanShareBalance() public {
+        vm.startPrank(alice);
+        uint256 depositAmount = 100 ether;
+        uint256 sharesMinted = vault.deposit(depositAmount, alice);
+
+        // Attempt to redeem more shares than the balance
+        uint256 excessiveRedeemAmount = sharesMinted + 1;
+        vm.expectRevert();
+        vault.redeem(excessiveRedeemAmount, alice, alice);
+    }
+
+    function test_Vault_withdraw_as_non_owner() public {
+        vm.startPrank(alice);
+        uint256 depositAmount = 100 ether;
+        uint256 sharesMinted = vault.deposit(depositAmount, alice);
+
+        // Attempt to withdraw as a non-owner
+        vm.startPrank(bob);
+        vm.expectRevert();
+        vault.withdraw(sharesMinted, bob, alice);
+    }
+
+    function test_Vault_redeemWhilePaused() public {
+        vm.prank(ADMIN);
+        vault.pause(true);
+        assertEq(vault.paused(), true);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.redeem(1000, alice, alice);
+    }
+
+    function test_Vault_withdrawWhilePaused() public {
+        vm.prank(ADMIN);
+        vault.pause(true);
+        assertEq(vault.paused(), true);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.withdraw(1000, alice, alice);
     }
 }

@@ -14,12 +14,10 @@ contract SetupVault is Test, Etches, MainnetActors {
         string memory name = "YieldNest ETH MAX";
         string memory symbol = "ynETHx";
         weth = WETH9(payable(WETH));
-        rateProvider = new ETHRateProvider();
 
         Vault vaultImplementation = new Vault();
 
         // etch to mock the mainnet contracts
-
         mockAll();
 
         // Deploy the proxy
@@ -33,7 +31,7 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         vm.startPrank(ADMIN);
         // Set up the rate provider
-        vault.setRateProvider(address(rateProvider));
+        vault.setRateProvider(address(ETH_RATE_PROVIDER));
 
         // Add assets
         vault.addAsset(address(weth), 18);

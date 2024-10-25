@@ -9,8 +9,9 @@ import {Etches} from "test/helpers/Etches.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
 import {MockSTETH} from "test/mocks/MockSTETH.sol";
 import {SetupVault} from "test/helpers/SetupVault.sol";
+import {MainnetActors} from "script/Actors.sol";
 
-contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
+contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -91,10 +92,58 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         vm.stopPrank();
     }
 
-    // function testDepositZeroAmount() public {
-    //     vm.prank(alice);
-    //     uint256 sharesMinted = vault.deposit(0, alice);
+    function test_Vault_mint(uint256 mintAmount) public {
+        if (mintAmount < 10) return;
+        if (mintAmount > 100_000 ether) return;
 
-    //     assertEq(sharesMinted, 0, "Shares were minted for zero deposit");
-    // }
+        vm.startPrank(alice);
+        uint256 sharesMinted = vault.mint(mintAmount, alice);
+
+        // Check that shares were minted
+        assertGt(sharesMinted, 0, "No shares were minted");
+
+        // Check that Alice received the correct amount of shares
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
+
+        // Check that total assets did not change
+        assertEq(vault.totalAssets(), mintAmount, "Total assets changed incorrectly");
+
+        vm.stopPrank();
+    }
+
+    function test_Vault_depositAsset_WrongAsset() public {
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.depositAsset(address(0), 100, alice);
+    }
+
+    function test_Vault_depositAssetWhilePaused() public {
+        vm.prank(ADMIN);
+        vault.pause(true);
+        assertEq(vault.paused(), true);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.depositAsset(address(0), 1000, alice);
+    }
+
+    function test_Vault_mintWhilePaused() public {
+        vm.prank(ADMIN);
+        vault.pause(true);
+        assertEq(vault.paused(), true);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.mint(1000, alice);
+    }
+
+    function test_Vault_pauseAndDeposit() public {
+        vm.prank(ADMIN);
+        vault.pause(true);
+        assertEq(vault.paused(), true);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        vault.deposit(1000, alice);
+    }
 }

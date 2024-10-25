@@ -10,7 +10,7 @@ contract MockSTETH is ERC20 {
 
     constructor() ERC20("Mock Staked Ether", "mstETH") {}
 
-    function getSharesByPooledEth(uint256 _ethAmount) public returns (uint256) {
+    function getSharesByPooledEth(uint256 _ethAmount) public pure returns (uint256) {
         if (_ethAmount == 0) {
             return 0;
         }
@@ -24,7 +24,7 @@ contract MockSTETH is ERC20 {
         shares[msg.sender] += depostShares;
     }
 
-    function getPooledEthByShares(uint256 _sharesAmount) public view returns (uint256) {
+    function getPooledEthByShares(uint256 _sharesAmount) public pure returns (uint256) {
         return (_sharesAmount * 100) / 95;
     }
 
