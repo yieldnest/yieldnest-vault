@@ -24,7 +24,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
 
     function setUp() public {
         SetupVault setupVault = new SetupVault();
-        (vault, weth,) = setupVault.setup();
+        (vault, weth) = setupVault.setup();
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
@@ -100,7 +100,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
     function test_Vault_withdrawMoreThanBalance() public {
         vm.startPrank(alice);
         uint256 depositAmount = 100 ether;
-        uint256 sharesMinted = vault.deposit(depositAmount, alice);
+        vault.deposit(depositAmount, alice);
 
         // Attempt to withdraw more than the balance
         uint256 excessiveWithdrawAmount = depositAmount + 1 ether;

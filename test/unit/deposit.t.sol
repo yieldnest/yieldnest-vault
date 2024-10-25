@@ -24,7 +24,7 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 
     function setUp() public {
         SetupVault setupVault = new SetupVault();
-        (vault, weth,) = setupVault.setup();
+        (vault, weth) = setupVault.setup();
 
         // Replace the steth mock with our custom MockSTETH
         steth = MockSTETH(payable(STETH));

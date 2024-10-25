@@ -21,7 +21,7 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
 
     function setUp() public {
         SetupVault setupVault = new SetupVault();
-        (vault, weth,) = setupVault.setup();
+        (vault, weth) = setupVault.setup();
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
@@ -167,7 +167,6 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
     }
 
     function test_Vault_getRateProvider() public view {
-        address expectedRateProvider = address(0x123);
         assertEq(vault.rateProvider(), ETH_RATE_PROVIDER, "Rate provider does not match expected");
     }
 }

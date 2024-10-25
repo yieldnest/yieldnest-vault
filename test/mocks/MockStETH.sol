@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 // https://github.com/lidofinance/lido-dao/blob/master/contracts/0.4.24/StETH.sol
-import {ERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import {ERC20} from "src/Common.sol";
 
 contract MockSTETH is ERC20 {
     uint256 private _pooledEthPerShare = 1e18; // Start with 1:1 ratio
