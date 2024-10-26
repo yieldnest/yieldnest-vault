@@ -27,15 +27,21 @@ interface AggregatorV3Interface {
 }
 
 contract ETHRateProvider is IRateProvider {
+    // assets
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
     address public constant METH = 0xd5F7838F5C461fefF7FE49ea5ebaF7728bB0ADfa;
     address public constant OETH = 0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3;
     address public constant RETH = 0xae78736Cd615f374D3085123A210448E74Fc6393;
 
-    // https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum&page=1&search=stETH
+    // oracles
     address public constant CL_STETH_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
 
+    // strategies
+    address public constant YNETH = 0x09db87A538BD693E9d08544577d5cCfAA6373A48;
+    address public constant YNLSDE = 0x35Ec69A77B79c255e5d47D5A3BdbEFEfE342630c;
+    address public constant BUFFER = 0x000000000000000000000000000000003ADe68b1; // TODO: update this
+    
     mapping(address => uint256) private _manualRates;
 
     error UnsupportedAsset(address asset);
@@ -53,6 +59,12 @@ contract ETHRateProvider is IRateProvider {
             return _getOETHRate();
         } else if (asset == RETH) {
             return _getRETHRate();
+        } else if (asset == YNETH) {
+            return _getYNETHRate();
+        } else if (asset == YNLSDE) {
+            return _getYNLSDERate();
+        } else if (asset == BUFFER) {
+            return _getBUFFERRate();
         }
 
         revert UnsupportedAsset(asset);
@@ -82,5 +94,17 @@ contract ETHRateProvider is IRateProvider {
 
     function _getRETHRate() internal view returns (uint256) {
         return IRETH(RETH).getExchangeRate();
+    }
+
+    function _getYNETHRate() internal pure returns (uint256) {
+        return 1e18;
+    }
+
+    function _getYNLSDERate() internal pure returns (uint256) {
+        return 1e18;
+    }
+
+    function _getBUFFERRate() internal pure returns (uint256) {
+        return 1e18;
     }
 }
