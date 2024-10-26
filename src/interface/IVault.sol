@@ -9,6 +9,7 @@ interface IVault is IERC4626 {
     error InvalidArray();
     error ExceededMaxDeposit();
     error InvalidAsset();
+    error InvalidStrategy();
     error InvalidDecimals();
     error InvalidRatio();
     error AssetNotFound();
@@ -18,26 +19,29 @@ interface IVault is IERC4626 {
     error ExceededMaxRedeem(address, uint256, uint256);
     error BadStrategy(address);
     error ProcessFailed(bytes);
+    error RateProviderNotSet();
+    error BufferNotSet();
 
     event DepositAsset(address indexed asset, address indexed vault, uint256 amount, address indexed receiver);
     event SetRateProvider(address indexed rateProvider);
+    event SetBufferStrategy(address indexed bufferStrategy);
     event NewAsset(address indexed asset, uint256 decimals, uint256 index);
     event NewStrategy(address indexed strategy, uint256 index);
     event ToggleAsset(address indexed asset, bool active);
     event Pause(bool paused);
 
     struct VaultStorage {
+        bool paused;
         uint256 totalAssets;
         address rateProvider;
-        bool paused;
+        address bufferStrategy;
     }
 
     struct AssetParams {
         bool active;
         uint256 index;
         uint8 decimals;
-        uint256 idleAssets;
-        uint256 deployedAssets;
+        uint256 idleBalance;
     }
 
     struct AssetStorage {
@@ -48,7 +52,8 @@ interface IVault is IERC4626 {
     struct StrategyParams {
         bool active;
         uint256 index;
-        uint256 deployedAssets;
+        uint8 decimals;
+        uint256 idleBalance;
     }
 
     struct StrategyStorage {
@@ -78,20 +83,21 @@ interface IVault is IERC4626 {
     // function maxMintAsset(address assetAddress, address) external view returns (uint256);
     function getAssets() external view returns (address[] memory list);
     function getAsset(address asset_) external view returns (AssetParams memory);
-    function getStrategies() external view returns (address[] memory list);
     function getStrategy(address strategy_) external view returns (StrategyParams memory);
-
     function previewDepositAsset(address assetAddress, uint256 assets) external view returns (uint256);
     function depositAsset(address assetAddress, uint256 amount, address receiver) external returns (uint256);
-    // function getStrategies() external view returns (address[] memory);
-    // function isStrategyActive(address strategy) external view returns (bool);
-    // function addStrategy(address strategy) external;
-    // function processAccounting() external returns (uint256);
+    function rateProvider() external view returns (address);
+    function bufferStrategy() external view returns (address);
 
     // ADMIN
     function initialize(address admin_, string memory name_, string memory symbol_) external;
     function setRateProvider(address rateProvider) external;
+    function setBufferStrategy(address bufferStrategy) external;
+
+    function addStrategy(address strategy, uint8 decimals_) external;
     function addAsset(address asset_, uint8 decimals_) external;
     function toggleAsset(address asset_, bool active) external;
     function pause(bool paused) external;
+
+    function processAccounting() external;
 }

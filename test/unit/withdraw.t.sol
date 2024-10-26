@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
-import {TransparentUpgradeableProxy} from "src/Common.sol";
+import {TransparentUpgradeableProxy, IERC20} from "src/Common.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {Etches} from "test/helpers/Etches.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
@@ -19,6 +19,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
 
     address public alice = address(0x1);
     address public bob = address(0x2);
+    address public chad = address(0x3);
 
     uint256 public constant INITIAL_BALANCE = 100_000 ether;
 
@@ -43,7 +44,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         assertEq(amount, assets);
     }
 
-    function test_Vault_withdraw(uint256 assets) external {
+    function test_Vault_withdraw_success(uint256 assets) external {
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
 
@@ -75,7 +76,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         assertEq(assets, shares, "Preview Assets response not shares");
     }
 
-    function test_Vault_redeem(uint256 amount) external {
+    function test_Vault_redeem_success(uint256 amount) external {
         if (amount < 2) return;
         if (amount > 100_000 ether) return;
 
@@ -148,5 +149,68 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         vm.prank(alice);
         vm.expectRevert();
         vault.withdraw(1000, alice, alice);
+    }
+
+    function test_Vault_withdrawUsingBufferBalance() public {
+        /*
+
+            This is just a simple unit test for the buffer.
+            Proper testing for the varios situations
+            are in scenario tests.
+
+        */
+        uint256 depositAmount = 100 ether;
+
+        vm.prank(alice);
+        uint256 aliceSharesMinted = vault.deposit(depositAmount, alice);
+
+        // Give bob base asset tokens
+        deal(bob, INITIAL_BALANCE);
+        weth.deposit{value: INITIAL_BALANCE}();
+        weth.transfer(bob, INITIAL_BALANCE);
+
+        vm.startPrank(bob);
+        weth.approve(address(vault), type(uint256).max);
+
+        uint256 bobSharesMinted = vault.deposit(depositAmount, bob);
+        vm.stopPrank();
+
+        // this is a processAllocation call to transfer the assets
+        // bob and alice deposited to the buffer strategy
+        vm.prank(ADMIN);
+        address[] memory targets = new address[](2);
+        targets[0] = WETH;
+        targets[1] = vault.bufferStrategy();
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", address(BUFFER_STRATEGY), 150 ether);
+        data[1] = abi.encodeWithSignature("deposit(uint256,address)", 150 ether, address(vault));
+
+        vm.prank(ADMIN);
+        vault.processAllocation(targets, values, data);
+
+        // weth balance of buffer should be 150 ether
+        assertEq(
+            IERC20(BUFFER_STRATEGY).balanceOf(address(vault)), 150 * 10 ** 18, "Buffer balance before is not 150 ether"
+        );
+
+        // weth balance of vault should be 50 ether
+        assertEq(weth.balanceOf(address(vault)), 50 ether, "Wrong weth balance in vault");
+
+        // Now processing with test:
+        // the valut should pull 50 ether, and use the 50 ether in the vault to send alice
+        uint256 aliceWethBalanceBefore = weth.balanceOf(alice);
+
+        vm.prank(alice);
+        vault.withdraw(100 ether, alice, alice);
+
+        assertEq(weth.balanceOf(alice), aliceWethBalanceBefore + 100 ether, "Alice's weth balance is not 100 ether");
+        assertEq(weth.balanceOf(address(vault)), 0 ether, "Vault weth balance is not 50 ether");
+        assertEq(IERC20(BUFFER_STRATEGY).balanceOf(address(vault)), 100 ether, "Buffer balance is not 100 ether");
+        // Check that the buffer balance is now zero
     }
 }

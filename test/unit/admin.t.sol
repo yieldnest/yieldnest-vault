@@ -36,15 +36,16 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
 
     function test_Vault_addStrategy() public {
         address strat = address(42069);
+        address[] memory strats = vault.getStrategies();
         vm.startPrank(ADMIN);
-        vault.addStrategy(strat);
-        assertEq(vault.getStrategies().length, 2);
+        vault.addStrategy(strat, 18);
+        assertEq(vault.getStrategies().length, strats.length + 1);
     }
 
     function test_Vault_addStrategy_unauthorized() public {
         address strat = address(42069);
         vm.expectRevert();
-        vault.addStrategy(strat);
+        vault.addStrategy(strat, 18);
     }
 
     function test_Vault_addAsset() public {
@@ -81,8 +82,7 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
         IVault.AssetParams memory vaultAsset = vault.getAsset(asset);
         assertEq(vaultAsset.active, true);
         assertEq(vaultAsset.decimals, 18);
-        assertEq(vaultAsset.deployedAssets, 0);
-        assertEq(vaultAsset.idleAssets, 0);
+        assertEq(vaultAsset.idleBalance, 0);
         vault.toggleAsset(asset, false);
         IVault.AssetParams memory inActiveAsset = vault.getAsset(asset);
         assertEq(inActiveAsset.active, false);
@@ -98,15 +98,15 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
     function test_Vault_addStrategy_duplicateAddress() public {
         address strat = address(42069);
         vm.startPrank(ADMIN);
-        vault.addStrategy(strat);
+        vault.addStrategy(strat, 18);
         vm.expectRevert();
-        vault.addStrategy(strat);
+        vault.addStrategy(strat, 18);
     }
 
     function test_Vault_addStrategy_nullAddress() public {
         vm.prank(ADMIN);
         vm.expectRevert();
-        vault.addStrategy(address(0));
+        vault.addStrategy(address(0), 18);
     }
 
     function test_Vault_setRateProvider() public {

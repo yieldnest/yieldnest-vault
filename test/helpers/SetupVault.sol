@@ -32,14 +32,18 @@ contract SetupVault is Test, Etches, MainnetActors {
         // Set up the rate provider
         vault.setRateProvider(address(ETH_RATE_PROVIDER));
 
-        // Add assets
-        vault.addAsset(address(weth), 18);
+        // Add assets: Base asset always first
+        vault.addAsset(WETH, 18);
         vault.addAsset(STETH, 18);
         vault.addAsset(YNETH, 18);
         vault.addAsset(YNLSDE, 18);
 
         // add strategies
-        vault.addStrategy(address(YNETH));
+        vault.addStrategy(BUFFER_STRATEGY, 18);
+        vault.addStrategy(YNETH, 18);
+        vault.addStrategy(YNLSDE, 18);
+
+        vault.setBufferStrategy(BUFFER_STRATEGY);
 
         // Unpause the vault
         vault.pause(false);

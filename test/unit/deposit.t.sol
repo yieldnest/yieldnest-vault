@@ -39,7 +39,7 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         weth.approve(address(vault), type(uint256).max);
     }
 
-    function test_Vault_deposit(uint256 depositAmount) public {
+    function test_Vault_deposit_success(uint256 depositAmount) public {
         // uint256 depositAmount = 100 * 10 ** 18;
         if (depositAmount < 10) return;
         if (depositAmount > 100_000 ether) return;

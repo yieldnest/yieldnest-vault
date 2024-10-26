@@ -11,4 +11,5 @@ contract MainnetContracts {
     address public constant YNLSDE = 0x35Ec69A77B79c255e5d47D5A3BdbEFEfE342630c;
     address public constant CL_STETH_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
     address public constant ETH_RATE_PROVIDER = address(123456789); // TODO: Update with deployed RateProvider
+    address public constant BUFFER_STRATEGY = address(987654321); // TODO: Update with buffer strategy
 }

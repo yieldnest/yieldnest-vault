@@ -8,6 +8,7 @@ import {MockYNETH} from "test/mocks/MockYNETH.sol";
 import {MockCL_STETH} from "test/mocks/MockCL_STETH.sol";
 import {MockYNLSDE} from "test/mocks/MockYNLSDE.sol";
 import {ETHRateProvider} from "src/module/ETHRateProvider.sol";
+import {MockBuffer} from "test/mocks/MockBuffer.sol";
 
 import "lib/forge-std/src/Test.sol";
 
@@ -22,6 +23,7 @@ contract Etches is Test, MainnetContracts {
         mockOETH();
         mockCL_STETH();
         mockETHRateProvider();
+        mockBuffer();
     }
 
     function mockWETH9() public {
@@ -76,5 +78,11 @@ contract Etches is Test, MainnetContracts {
         ETHRateProvider rateProvider = new ETHRateProvider();
         bytes memory code = address(rateProvider).code;
         vm.etch(ETH_RATE_PROVIDER, code);
+    }
+
+    function mockBuffer() public {
+        MockBuffer buffer = new MockBuffer();
+        bytes memory code = address(buffer).code;
+        vm.etch(BUFFER_STRATEGY, code);
     }
 }

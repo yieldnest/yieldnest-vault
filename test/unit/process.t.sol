@@ -38,7 +38,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, Etches {
         weth.approve(address(vault), type(uint256).max);
     }
 
-    function skip_test_Vault_processAccounting_idleAssets() public {
+    function test_Vault_processAccounting_idleAssets() public {
         // Simulate some asset and strategy balances
         deal(alice, 200 ether); // Simulate some ether balance for the vault
         weth.deposit{value: 100 ether}(); // Deposit ether into WETH
@@ -53,7 +53,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, Etches {
         vault.processAccounting();
 
         // Check that the deployed assets are updated correctly
-        assertEq(vault.getAsset(address(weth)).idleAssets, 50 ether, "WETH deployed assets not updated correctly");
-        assertEq(vault.getAsset(address(steth)).idleAssets, 50 ether, "STETH deployed assets not updated correctly");
+        assertEq(vault.getAsset(address(weth)).idleBalance, 50 ether, "WETH balance not updated correctly");
+        assertEq(vault.getAsset(address(steth)).idleBalance, 50 ether, "STETH balance not updated correctly");
     }
 }

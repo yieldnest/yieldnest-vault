@@ -14,6 +14,7 @@ import {
 } from "./Common.sol";
 
 import {IVault} from "src/interface/IVault.sol";
+import {IStrategy} from "src/interface/IStrategy.sol";
 import {IRateProvider} from "src/interface/IRateProvider.sol";
 
 contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
@@ -46,16 +47,28 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return type(uint256).max;
     }
 
-    function maxMint(address) public pure returns (uint256) {
+    function maxMint(address) public view returns (uint256) {
+        if (paused()) return 0;
         return type(uint256).max;
     }
 
     function maxWithdraw(address owner) public view returns (uint256) {
-        return _convertToAssets(asset(), balanceOf(owner), Math.Rounding.Floor);
+        if (paused()) return 0;
+
+        // Here we return whichever is less, the available base assets in the buffer, or the user's
+        // vault token balance converted to base asset value
+        uint256 ownerAssets = _convertToAssets(asset(), balanceOf(owner), Math.Rounding.Floor);
+        // The buffer strategy must have the same base underlying asset as the vault
+        uint256 idleBalance = IERC20(asset()).balanceOf(address(this));
+        // Fetch available base assets available to withdraw from buffer
+        uint256 buffferBalance = IStrategy(_getVaultStorage().bufferStrategy).previewWithdraw(ownerAssets);
+        return Math.min(idleBalance + buffferBalance, ownerAssets);
     }
 
     // QUESTION: How to handle this in v1 with async withdraws.
     function maxRedeem(address owner) public view returns (uint256) {
+        if (paused()) return 0;
+        // TODO: Implement a check for available assets from Research Strategy
         return balanceOf(owner);
     }
 
@@ -67,19 +80,15 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return _convertToAssets(asset(), shares, Math.Rounding.Ceil);
     }
 
-    // QUESTION: How to handle this? Start disabled, come back later
-    // This would have to be it's own Liquidity and Risk Module
-    // that calculates the asset ratios and figure out the debt ratio
     function previewWithdraw(uint256 assets) public view returns (uint256) {
         return _convertToShares(asset(), assets, Math.Rounding.Ceil);
     }
 
-    // QUESTION: How do we handle this?
     function previewRedeem(uint256 shares) public view returns (uint256) {
         return _convertToAssets(asset(), shares, Math.Rounding.Floor);
     }
 
-    function deposit(uint256 assets, address receiver) public returns (uint256) {
+    function deposit(uint256 assets, address receiver) public nonReentrant returns (uint256) {
         if (paused()) revert Paused();
 
         uint256 shares = previewDeposit(assets);
@@ -88,7 +97,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return shares;
     }
 
-    function mint(uint256 shares, address receiver) public virtual returns (uint256) {
+    function mint(uint256 shares, address receiver) public virtual nonReentrant returns (uint256) {
         if (paused()) revert Paused();
 
         uint256 assets_ = previewMint(shares);
@@ -97,8 +106,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return assets_;
     }
 
-    // QUESTION: How to handle this in v1 if no sync withdraws
-    function withdraw(uint256 assets, address receiver, address owner) public returns (uint256) {
+    function withdraw(uint256 assets, address receiver, address owner) public nonReentrant returns (uint256) {
         if (paused()) revert Paused();
 
         uint256 maxAssets = maxWithdraw(owner);
@@ -108,14 +116,13 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
         uint256 shares = previewWithdraw(assets);
 
-        _getVaultStorage().totalAssets -= assets;
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
         return shares;
     }
 
     // QUESTION: How to handle this in v1 with async withdraws
-    function redeem(uint256 shares, address receiver, address owner) public returns (uint256) {
+    function redeem(uint256 shares, address receiver, address owner) public nonReentrant returns (uint256) {
         if (paused()) revert Paused();
 
         uint256 maxShares = maxRedeem(owner);
@@ -125,7 +132,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
         uint256 assets = previewRedeem(shares);
 
-        _getVaultStorage().totalAssets -= assets;
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
         return assets;
@@ -154,7 +160,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return _convertToShares(asset_, assets_, Math.Rounding.Floor);
     }
 
-    function depositAsset(address asset_, uint256 assets_, address receiver) public returns (uint256) {
+    function depositAsset(address asset_, uint256 assets_, address receiver) public nonReentrant returns (uint256) {
         if (paused()) revert Paused();
         if (!_getAssetStorage().assets[asset_].active) revert InvalidAsset();
 
@@ -172,45 +178,59 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return _getVaultStorage().rateProvider;
     }
 
-    function processAllocation(address[] calldata strategies, uint256[] memory values, bytes[] calldata data)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        for (uint256 i = 0; i < strategies.length; i++) {
-            if (!_getStrategyStorage().strategies[strategies[i]].active) revert BadStrategy(strategies[i]);
-
-            (bool success, bytes memory returnData) = strategies[i].call{value: values[i]}(data[i]);
-
-            if (!success) {
-                revert ProcessFailed(returnData);
-            }
-            // Update deployedAssets for the strategy if eth value provided, else convert erc20 to base
-            if (values[i] > 0) {
-                _getStrategyStorage().strategies[strategies[i]].deployedAssets += values[i];
-            } else {
-                uint256 baseAssetBalance =
-                    _convertAssetToBase(strategies[i], IERC20(strategies[i]).balanceOf(address(this)));
-                _getStrategyStorage().strategies[strategies[i]].deployedAssets += baseAssetBalance;
-            }
-        }
+    function bufferStrategy() public view returns (address) {
+        return _getVaultStorage().bufferStrategy;
     }
 
     function processAccounting() public {
         AssetStorage storage assetStorage = _getAssetStorage();
         StrategyStorage storage strategyStorage = _getStrategyStorage();
+        uint256 totalBaseBalance = 0;
 
         for (uint256 i = 0; i < assetStorage.list.length; i++) {
             address asset_ = assetStorage.list[i];
-            uint256 assetBalance = IERC20(asset_).balanceOf(address(this));
-            uint256 baseAssetBalance = _convertAssetToBase(asset_, assetBalance);
-            assetStorage.assets[asset_].idleAssets = baseAssetBalance;
+            uint256 idleBalance = IERC20(asset_).balanceOf(address(this));
+            assetStorage.assets[asset_].idleBalance = idleBalance;
+            totalBaseBalance += _convertAssetToBase(asset_, idleBalance);
         }
 
         for (uint256 i = 0; i < strategyStorage.list.length; i++) {
             address strategy = strategyStorage.list[i];
-            uint256 strategyBalance = IERC20(strategy).balanceOf(address(this));
-            uint256 baseStrategyBalance = _convertAssetToBase(strategy, strategyBalance);
-            strategyStorage.strategies[strategy].deployedAssets = baseStrategyBalance;
+            uint256 idleBalance = IERC20(strategy).balanceOf(address(this));
+            strategyStorage.strategies[strategy].idleBalance = idleBalance;
+            totalBaseBalance += _convertAssetToBase(strategy, idleBalance);
+        }
+
+        _getVaultStorage().totalAssets = totalBaseBalance;
+    }
+
+    function processAllocation(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        for (uint256 i = 0; i < targets.length; i++) {
+            bool success;
+            bytes memory returnData;
+
+            // Determine the type of target and process accordingly
+            if (_getAssetStorage().assets[targets[i]].active) {
+                // Process asset approvals // QUESTION: Assumiung we only need approvals for assets
+                if (data[i].length > 0 && data[i][0] == abi.encodeWithSignature("approve(address,uint256)")[0]) {
+                    (success, returnData) = targets[i].call{value: values[i]}(data[i]);
+                    if (!success) revert ProcessFailed(returnData);
+                }
+            } else if (_getStrategyStorage().strategies[targets[i]].active) {
+                // Process strategy transactions
+                (success, returnData) = targets[i].call{value: values[i]}(data[i]);
+                if (!success) revert ProcessFailed(returnData);
+
+                // Update idle balance for the strategy
+                uint256 idleBalance = IERC20(targets[i]).balanceOf(address(this));
+                _getStrategyStorage().strategies[targets[i]].idleBalance = idleBalance;
+            } else {
+                // Revert if the target is neither an active asset nor an active strategy
+                revert BadStrategy(targets[i]);
+            }
         }
     }
 
@@ -253,12 +273,24 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     // QUESTION: How might we
     function _withdraw(address caller, address receiver, address owner, uint256 assets_, uint256 shares) internal {
+        // reduce the totalAssets QUESTION: Should this go in the deposit function:
+        _getVaultStorage().totalAssets -= assets_;
+
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }
 
+        // Check if the contract has enough balance
+        uint256 contractBalance = IERC20(asset()).balanceOf(address(this));
+        if (contractBalance < assets_) {
+            uint256 shortfall = assets_ - contractBalance;
+
+            // pull base asset shortfall from the buffer strategy
+            IStrategy(_getVaultStorage().bufferStrategy).withdraw(shortfall, address(this), address(this));
+        }
+
         _burn(owner, shares);
-        SafeERC20.safeTransfer(IERC20(_getAssetStorage().list[0]), receiver, assets_);
+        SafeERC20.safeTransfer(IERC20(asset()), receiver, assets_);
 
         emit Withdraw(caller, receiver, owner, assets_, shares);
     }
@@ -293,6 +325,14 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit SetRateProvider(rateProvider_);
     }
 
+    function setBufferStrategy(address bufferStrategy_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (bufferStrategy_ == address(0)) revert ZeroAddress();
+        StrategyStorage storage strategyStorage = _getStrategyStorage();
+        if (!strategyStorage.strategies[bufferStrategy_].active) revert InvalidStrategy();
+        _getVaultStorage().bufferStrategy = bufferStrategy_;
+        emit SetBufferStrategy(bufferStrategy_);
+    }
+
     function addAsset(address asset_, uint8 decimals_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (asset_ == address(0)) revert ZeroAddress();
 
@@ -300,8 +340,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         uint256 index = assetStorage.list.length;
         if (index > 0 && assetStorage.assets[asset_].index != 0) revert InvalidAsset();
 
-        assetStorage.assets[asset_] =
-            AssetParams({active: true, index: index, decimals: decimals_, idleAssets: 0, deployedAssets: 0});
+        assetStorage.assets[asset_] = AssetParams({active: true, index: index, decimals: decimals_, idleBalance: 0});
 
         assetStorage.list.push(asset_);
 
@@ -315,7 +354,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit ToggleAsset(asset_, active);
     }
 
-    function addStrategy(address strategy) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addStrategy(address strategy, uint8 decimals_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (strategy == address(0)) revert ZeroAddress();
 
         StrategyStorage storage strategyStorage = _getStrategyStorage();
@@ -325,7 +364,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             revert DuplicateStrategy();
         }
 
-        strategyStorage.strategies[strategy] = StrategyParams({active: true, index: index, deployedAssets: 0});
+        strategyStorage.strategies[strategy] =
+            StrategyParams({active: true, index: index, decimals: decimals_, idleBalance: 0});
 
         strategyStorage.list.push(strategy);
 
@@ -334,6 +374,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     function pause(bool paused_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         VaultStorage storage vaultStorage = _getVaultStorage();
+        if (_getVaultStorage().rateProvider == address(0)) revert RateProviderNotSet();
+        if (_getVaultStorage().bufferStrategy == address(0)) revert BufferNotSet();
         vaultStorage.paused = paused_;
         emit Pause(paused_);
     }

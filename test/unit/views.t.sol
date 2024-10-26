@@ -48,12 +48,11 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
 
         for (uint256 i = 0; i < assets.length; i++) {
             address asset = assets[i];
-            IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18, 0, 0);
+            IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18, 0);
             assertEq(vault.getAsset(asset).active, expectedAssetParams.active, "Not active");
             assertEq(vault.getAsset(asset).index, i, "Bad Index");
             assertEq(vault.getAsset(asset).decimals >= 6 || vault.getAsset(asset).decimals <= 18, true, "Bad decimals");
-            assertEq(vault.getAsset(asset).idleAssets, expectedAssetParams.idleAssets, "Invalid idleAssets");
-            assertEq(vault.getAsset(asset).deployedAssets, expectedAssetParams.deployedAssets, "Invalid deployedAssets");
+            assertEq(vault.getAsset(asset).idleBalance, expectedAssetParams.idleBalance, "Invalid idleAssets");
         }
     }
 
@@ -127,17 +126,18 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
 
     function test_Vault_getAsset() public view {
         address assetAddress = address(WETH);
-        IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18, 0, 0);
+        IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18, 0);
         assertEq(vault.getAsset(assetAddress).active, expectedAssetParams.active);
         assertEq(vault.getAsset(assetAddress).index, expectedAssetParams.index);
         assertEq(vault.getAsset(assetAddress).decimals, expectedAssetParams.decimals);
-        assertEq(vault.getAsset(assetAddress).idleAssets, expectedAssetParams.idleAssets);
-        assertEq(vault.getAsset(assetAddress).deployedAssets, expectedAssetParams.deployedAssets);
+        assertEq(vault.getAsset(assetAddress).idleBalance, expectedAssetParams.idleBalance);
     }
 
     function test_Vault_getStrategies() public view {
-        address[] memory expectedStrategies = new address[](1);
-        expectedStrategies[0] = address(YNETH);
+        address[] memory expectedStrategies = new address[](3);
+        expectedStrategies[0] = address(BUFFER_STRATEGY);
+        expectedStrategies[1] = address(YNETH);
+        expectedStrategies[2] = address(YNLSDE);
         assertEq(vault.getStrategies().length, expectedStrategies.length);
         for (uint256 i = 0; i < expectedStrategies.length; i++) {
             assertEq(vault.getStrategies()[i], expectedStrategies[i]);
@@ -146,10 +146,10 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
 
     function test_Vault_getStrategy() public view {
         address strategyAddress = address(YNETH);
-        IVault.StrategyParams memory expectedStrategyParams = IVault.StrategyParams(true, 0, 0);
+        IVault.StrategyParams memory expectedStrategyParams = IVault.StrategyParams(true, 1, 18, 0);
         assertEq(vault.getStrategy(strategyAddress).active, expectedStrategyParams.active);
         assertEq(vault.getStrategy(strategyAddress).index, expectedStrategyParams.index);
-        assertEq(vault.getStrategy(strategyAddress).deployedAssets, expectedStrategyParams.deployedAssets);
+        assertEq(vault.getStrategy(strategyAddress).idleBalance, expectedStrategyParams.idleBalance);
     }
 
     function test_Vault_previewDepositAsset() public view {
@@ -166,7 +166,11 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         vault.previewDepositAsset(invalidAssetAddress, assets);
     }
 
-    function test_Vault_getRateProvider() public view {
+    function test_Vault_rateProvider() public view {
         assertEq(vault.rateProvider(), ETH_RATE_PROVIDER, "Rate provider does not match expected");
+    }
+
+    function test_Vault_bufferStrategy() public view {
+        assertEq(vault.bufferStrategy(), BUFFER_STRATEGY, "Buffer strategy does not match expected");
     }
 }
