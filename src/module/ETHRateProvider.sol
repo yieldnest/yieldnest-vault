@@ -41,7 +41,7 @@ contract ETHRateProvider is IRateProvider {
     address public constant YNETH = 0x09db87A538BD693E9d08544577d5cCfAA6373A48;
     address public constant YNLSDE = 0x35Ec69A77B79c255e5d47D5A3BdbEFEfE342630c;
     address public constant BUFFER = 0x000000000000000000000000000000003ADe68b1; // TODO: update this
-    
+
     mapping(address => uint256) private _manualRates;
 
     error UnsupportedAsset(address asset);
