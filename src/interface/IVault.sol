@@ -88,7 +88,6 @@ interface IVault is IERC4626 {
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256);
 
     // 4626-MAX
-    // function maxMintAsset(address assetAddress, address) external view returns (uint256);
     function getAssets() external view returns (address[] memory list);
     function getAsset(address asset_) external view returns (AssetParams memory);
     function getStrategy(address strategy_) external view returns (StrategyParams memory);
@@ -106,7 +105,8 @@ interface IVault is IERC4626 {
     function addStrategy(address strategy, uint8 decimals_) external;
     function addAsset(address asset_, uint8 decimals_) external;
     function toggleAsset(address asset_, bool active) external;
+    function toggleStrategy(address strategy, bool active) external;
     function pause(bool paused) external;
 
-    function processAccounting() external;
+    function processor(address[] calldata targets, uint256[] calldata values, bytes[] calldata data) external;
 }
