@@ -68,11 +68,6 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         assertEq(amount, shares, "Conversion to assets failed");
     }
 
-    function test_Vault_maxDeposit() public view {
-        uint256 maxDeposit = vault.maxDeposit(alice);
-        assertEq(maxDeposit, type(uint256).max, "Max deposit does not match");
-    }
-
     function test_Vault_getStrategies() public view {
         address[] memory expectedStrategies = new address[](3);
         expectedStrategies[0] = address(BUFFER_STRATEGY);
@@ -90,20 +85,6 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         assertEq(vault.getStrategy(strategyAddress).active, expectedStrategyParams.active);
         assertEq(vault.getStrategy(strategyAddress).index, expectedStrategyParams.index);
         assertEq(vault.getStrategy(strategyAddress).idleBalance, expectedStrategyParams.idleBalance);
-    }
-
-    function test_Vault_previewDepositAsset() public view {
-        uint256 assets = 1000;
-        uint256 expectedShares = 1000; // Assuming a 1:1 conversion for simplicity
-        uint256 shares = vault.previewDepositAsset(address(WETH), assets);
-        assertEq(shares, expectedShares, "Preview deposit asset does not match expected shares");
-    }
-
-    function test_Vault_previewDepositAsset_WrongAsset() public {
-        address invalidAssetAddress = address(0);
-        uint256 assets = 1000;
-        vm.expectRevert();
-        vault.previewDepositAsset(invalidAssetAddress, assets);
     }
 
     function test_Vault_rateProvider() public view {

@@ -38,10 +38,23 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(YNETH, 18);
         vault.addAsset(YNLSDE, 18);
 
+        // Whitelist the approve function signature for the assets
+        bytes4 approveSig = bytes4(keccak256("approve(address,uint256)"));
+        vault.setWhitelist(WETH, approveSig);
+        vault.setWhitelist(STETH, approveSig);
+        vault.setWhitelist(YNETH, approveSig);
+        vault.setWhitelist(YNLSDE, approveSig);
+
         // add strategies
         vault.addStrategy(BUFFER_STRATEGY, 18);
         vault.addStrategy(YNETH, 18);
         vault.addStrategy(YNLSDE, 18);
+
+        // Whitelist Buffer Strategy functions
+        bytes4 depositSig = bytes4(keccak256("deposit(uint256,address)"));
+        bytes4 withdrawSig = bytes4(keccak256("withdraw(uint256,address,address)"));
+        vault.setWhitelist(BUFFER_STRATEGY, depositSig);
+        vault.setWhitelist(BUFFER_STRATEGY, withdrawSig);
 
         vault.setBufferStrategy(BUFFER_STRATEGY);
 

@@ -13,13 +13,13 @@ interface IVault is IERC4626 {
     error InvalidStrategy(address);
     error InvalidTarget(address);
     error InvalidDecimals();
-    error InvalidRatio();
+    error InvalidFunction(address target, bytes4 funcSig);
     error AssetNotFound();
     error Paused();
     error DuplicateStrategy();
     error ExceededMaxWithdraw(address, uint256, uint256);
     error ExceededMaxRedeem(address, uint256, uint256);
-    error ProcessFailed(bytes);
+    error ProcessFailed(bytes, bytes);
     error ProcessInvalid(bytes);
     error RateProviderNotSet();
     error BufferNotSet();
@@ -30,6 +30,8 @@ interface IVault is IERC4626 {
     event NewAsset(address indexed asset, uint256 decimals, uint256 index);
     event NewStrategy(address indexed strategy, uint256 index);
     event ToggleAsset(address indexed asset, bool active);
+    event ToggleStrategy(address indexed strategy, bool active);
+    event SetWhitelist(address target, bytes4 funcsig);
     event Pause(bool paused);
 
     struct VaultStorage {
@@ -61,6 +63,10 @@ interface IVault is IERC4626 {
     struct StrategyStorage {
         mapping(address => StrategyParams) strategies;
         address[] list;
+    }
+
+    struct ProcessorStorage {
+        mapping(address => mapping(bytes4 => bool)) whitelist;
     }
 
     /// 4626
@@ -95,6 +101,7 @@ interface IVault is IERC4626 {
     function initialize(address admin_, string memory name_, string memory symbol_) external;
     function setRateProvider(address rateProvider) external;
     function setBufferStrategy(address bufferStrategy) external;
+    function setWhitelist(address contractAddress, bytes4 funcSig) external;
 
     function addStrategy(address strategy, uint8 decimals_) external;
     function addAsset(address asset_, uint8 decimals_) external;

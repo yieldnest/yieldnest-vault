@@ -62,7 +62,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         // vault token balance converted to base asset value
         uint256 baseConvertedAssets = _convertToAssets(asset(), balanceOf(owner), Math.Rounding.Floor);
         // The buffer strategy must have the same base underlying asset as the vault
-        // returns the ETH vaule, which is the shares
         uint256 availableAssets = IStrategy(bufferStrategy()).maxWithdraw(address(this));
         if (availableAssets < baseConvertedAssets) {
             return 0;
@@ -217,37 +216,28 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         // QUESTION: Should we have a bounty to call this function? Perhaps a withdraw fee that goes to msg.sender here
     }
 
-    function processAllocation(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
+    function processor(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         for (uint256 i = 0; i < targets.length; i++) {
-            bool success;
-            bytes memory returnData;
-
-            // Determine the type of target and process accordingly
-            if (getAsset(targets[i]).active) {
-                // Process asset approvals // QUESTION: Assumiung we only need approvals for assets
-                if (data[i].length > 0 && data[i][0] == abi.encodeWithSignature("approve(address,uint256)")[0]) {
-                    (success, returnData) = targets[i].call{value: values[i]}(data[i]);
-                    if (!success) {
-                        revert ProcessFailed(returnData);
-                    }
-                    continue;
-                }
-                revert ProcessInvalid(data[i]);
-            } else if (getStrategy(targets[i]).active) {
-                // Process strategy transactions
-                (success, returnData) = targets[i].call{value: values[i]}(data[i]);
-                if (!success) {
-                    revert ProcessFailed(returnData);
-                }
-                // Update idle balance for the strategy
-                uint256 idleBalance = IERC20(targets[i]).balanceOf(address(this));
-                _getStrategyStorage().strategies[targets[i]].idleBalance = idleBalance;
-            } else {
-                // Revert if the target is neither an active asset nor an active strategy
+            // Check if the target is whitelisted
+            if (!_getAssetStorage().assets[targets[i]].active && !_getStrategyStorage().strategies[targets[i]].active) {
                 revert InvalidTarget(targets[i]);
+            }
+
+            // Extract the function signature from the data
+            bytes4 funcSig = bytes4(data[i]);
+
+            // Check if the function signature is allowed
+            if (!_isWhitelisted(targets[i], funcSig)) {
+                revert InvalidFunction(targets[i], funcSig);
+            }
+
+            // Process the call
+            (bool success, bytes memory returnData) = targets[i].call{value: values[i]}(data[i]);
+            if (!success) {
+                revert ProcessFailed(data[i], returnData);
             }
         }
     }
@@ -299,6 +289,10 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit Withdraw(caller, receiver, owner, assets_, shares);
     }
 
+    function _isWhitelisted(address contractAddress, bytes4 funcSig) internal view returns (bool) {
+        return _getProcessorStorage().whitelist[contractAddress][funcSig];
+    }
+
     function _decimalsOffset() internal pure returns (uint8) {
         return 0;
     }
@@ -318,6 +312,12 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     function _getStrategyStorage() internal pure returns (StrategyStorage storage $) {
         assembly {
             $.slot := 0x36e313fea70c5f83d23dd12fc41865566e392cbac4c21baf7972d39f7af1774d
+        }
+    }
+
+    function _getProcessorStorage() internal pure returns (ProcessorStorage storage $) {
+        assembly {
+            $.slot := 0x52bb806a772c899365572e319d3d6f49ed2259348d19ab0da8abccd4bd46abb5
         }
     }
 
@@ -359,7 +359,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     function toggleAsset(address asset_, bool active) external onlyRole(DEFAULT_ADMIN_ROLE) {
         AssetStorage storage assetStorage = _getAssetStorage();
-        if (assetStorage.assets[asset_].index == 0) {
+        if (assetStorage.assets[asset_].decimals == 0) {
             revert InvalidAsset(asset_);
         }
         assetStorage.assets[asset_].active = active;
@@ -383,7 +383,28 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit NewStrategy(strategy, index);
     }
 
-    // TODO: Add toggleStrategy?
+    function toggleStrategy(address strategy, bool active) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        StrategyStorage storage strategyStorage = _getStrategyStorage();
+        if (strategyStorage.strategies[strategy].decimals == 0) {
+            revert InvalidStrategy(strategy);
+        }
+        strategyStorage.strategies[strategy].active = active;
+        emit ToggleStrategy(strategy, active);
+    }
+
+    function setWhitelist(address contractAddress, bytes4 funcSig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (contractAddress == address(0)) {
+            revert ZeroAddress();
+        }
+        ProcessorStorage storage processorStorage = _getProcessorStorage();
+
+        if (_isWhitelisted(contractAddress, funcSig)) {
+            processorStorage.whitelist[contractAddress][funcSig] = false;
+            return;
+        }
+        processorStorage.whitelist[contractAddress][funcSig] = true;
+        emit SetWhitelist(contractAddress, funcSig);
+    }
 
     function pause(bool paused_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         VaultStorage storage vaultStorage = _getVaultStorage();

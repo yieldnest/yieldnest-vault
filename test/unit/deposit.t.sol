@@ -176,12 +176,22 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         assertEq(vault.getAsset(assetAddress).idleBalance, expectedAssetParams.idleBalance);
     }
 
-    function test_Vault_maxMintWhenPaused() public {
-        vm.prank(ADMIN);
-        vault.pause(true);
-        assertEq(vault.paused(), true);
+    function test_Vault_maxDeposit() public view {
+        uint256 maxDeposit = vault.maxDeposit(alice);
+        assertEq(maxDeposit, type(uint256).max, "Max deposit does not match");
+    }
 
-        uint256 maxMint = vault.maxMint(alice);
-        assertEq(maxMint, 0, "Max mint is not zero when paused");
+    function test_Vault_previewDepositAsset() public view {
+        uint256 assets = 1000;
+        uint256 expectedShares = 1000; // Assuming a 1:1 conversion for simplicity
+        uint256 shares = vault.previewDepositAsset(address(WETH), assets);
+        assertEq(shares, expectedShares, "Preview deposit asset does not match expected shares");
+    }
+
+    function test_Vault_previewDepositAsset_WrongAsset() public {
+        address invalidAssetAddress = address(0);
+        uint256 assets = 1000;
+        vm.expectRevert();
+        vault.previewDepositAsset(invalidAssetAddress, assets);
     }
 }

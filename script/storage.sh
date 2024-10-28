@@ -11,3 +11,5 @@ cast keccak "yieldnest.storage.asset"
 echo "strat:"
 cast keccak "yieldnest.storage.strat"
 
+echo "proc:"
+cast keccak "yieldnest.storage.proc"

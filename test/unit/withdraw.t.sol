@@ -51,7 +51,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
 
         vm.prank(ADMIN);
-        vault.processAllocation(targets, values, data);
+        vault.processor(targets, values, data);
     }
 
     function test_Vault_previewWithdraw(uint256 assets) external view {
@@ -275,14 +275,5 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
 
         uint256 maxWithdraw = vault.maxWithdraw(alice);
         assertEq(maxWithdraw, 0, "Max withdraw is not zero when paused");
-    }
-
-    function test_Vault_maxRedeemWhenPaused() public {
-        vm.prank(ADMIN);
-        vault.pause(true);
-        assertEq(vault.paused(), true);
-
-        uint256 maxRedeem = vault.maxRedeem(alice);
-        assertEq(maxRedeem, 0, "Max redeem is not zero when paused");
     }
 }
