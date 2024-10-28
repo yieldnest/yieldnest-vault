@@ -37,6 +37,23 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         weth.approve(address(vault), type(uint256).max);
     }
 
+    function allocateToBuffer(uint256 amount) public {
+        address[] memory targets = new address[](2);
+        targets[0] = WETH;
+        targets[1] = vault.bufferStrategy();
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.bufferStrategy(), amount);
+        data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
+
+        vm.prank(ADMIN);
+        vault.processAllocation(targets, values, data);
+    }
+
     function test_Vault_previewWithdraw(uint256 assets) external view {
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
@@ -48,12 +65,17 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
 
-        vm.startPrank(alice);
+        vm.prank(alice);
         uint256 depositShares = vault.deposit(assets, alice);
+
+        vm.prank(ADMIN);
+        allocateToBuffer(assets);
         uint256 previewAmount = vault.previewWithdraw(assets);
 
         uint256 aliceBalanceBefore = vault.balanceOf(alice);
         uint256 totalAssetsBefore = vault.totalAssets();
+
+        vm.prank(alice);
         uint256 shares = vault.withdraw(assets, alice, alice);
         uint256 totalAssetsAfter = vault.totalAssets();
         uint256 aliceBalanceAfter = vault.balanceOf(alice);
@@ -80,21 +102,25 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         if (amount < 2) return;
         if (amount > 100_000 ether) return;
 
-        vm.startPrank(alice);
+        vm.prank(alice);
         uint256 depositShares = vault.deposit(amount, alice);
+
+        allocateToBuffer(amount);
 
         uint256 balanceBefore = weth.balanceOf(alice);
         uint256 totalAssetsBefore = vault.totalAssets();
-        uint256 previewAmount = vault.previewRedeem(depositShares);
+        uint256 previewAssets = vault.previewRedeem(depositShares);
+
+        vm.prank(alice);
         uint256 assetsAfter = vault.redeem(depositShares, alice, alice);
         uint256 balanceAfter = weth.balanceOf(alice);
         uint256 totalAssetsAfter = vault.totalAssets();
 
-        assertEq(assetsAfter, previewAmount, "assetsAfter = previewAmount");
-        assertEq(balanceAfter, balanceBefore + previewAmount, "balanceAfter = balanceBefore + previewAmount");
+        assertEq(assetsAfter, previewAssets, "assetsAfter = previewAmount");
+        assertEq(balanceAfter, balanceBefore + previewAssets, "balanceAfter = balanceBefore + previewAmount");
 
         assertEq(
-            totalAssetsBefore, totalAssetsAfter + previewAmount, "totalAssetsBefore = totalAssetsAfter + previewAmount"
+            totalAssetsBefore, totalAssetsAfter + previewAssets, "totalAssetsBefore = totalAssetsAfter + previewAmount"
         );
     }
 
@@ -160,6 +186,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
 
         */
         uint256 depositAmount = 100 ether;
+        IERC20 buffer = IERC20(BUFFER_STRATEGY);
 
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
@@ -175,42 +202,87 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         vault.deposit(depositAmount, bob);
         vm.stopPrank();
 
+        // Vault balance should be 200 ether;
+
+        assertEq(weth.balanceOf(address(vault)), 200 ether);
+
         // this is a processAllocation call to transfer the assets
         // bob and alice deposited to the buffer strategy
-        vm.prank(ADMIN);
-        address[] memory targets = new address[](2);
-        targets[0] = WETH;
-        targets[1] = vault.bufferStrategy();
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", address(BUFFER_STRATEGY), 150 ether);
-        data[1] = abi.encodeWithSignature("deposit(uint256,address)", 150 ether, address(vault));
-
-        vm.prank(ADMIN);
-        vault.processAllocation(targets, values, data);
+        allocateToBuffer(150 ether);
 
         // weth balance of buffer should be 150 ether
-        assertEq(
-            IERC20(BUFFER_STRATEGY).balanceOf(address(vault)), 150 * 10 ** 18, "Buffer balance before is not 150 ether"
-        );
+        assertEq(buffer.balanceOf(address(vault)), 150 * 10 ** 18, "Buffer balance before != 150 ether");
 
         // weth balance of vault should be 50 ether
         assertEq(weth.balanceOf(address(vault)), 50 ether, "Wrong weth balance in vault");
 
         // Now processing with test:
-        // the valut should pull 50 ether, and use the 50 ether in the vault to send alice
         uint256 aliceWethBalanceBefore = weth.balanceOf(alice);
 
         vm.prank(alice);
         vault.withdraw(100 ether, alice, alice);
 
         assertEq(weth.balanceOf(alice), aliceWethBalanceBefore + 100 ether, "Alice's weth balance is not 100 ether");
-        assertEq(weth.balanceOf(address(vault)), 0 ether, "Vault weth balance is not 50 ether");
-        assertEq(IERC20(BUFFER_STRATEGY).balanceOf(address(vault)), 100 ether, "Buffer balance is not 100 ether");
+        assertEq(buffer.balanceOf(address(vault)), 50 ether, "Buffer balance is not 100 ether");
+        assertEq(weth.balanceOf(address(vault)), 50 ether, "Buffer balance is not 100 ether");
         // Check that the buffer balance is now zero
+    }
+
+    function test_Vault_maxWithdraw() public view {
+        uint256 maxWithdraw = vault.maxWithdraw(alice);
+        assertEq(maxWithdraw, 0, "Max withdraw does not match");
+    }
+
+    event Log(uint256, string);
+
+    function test_Vault_maxWithdraw_afterDeposit(uint256 depositAmount) public {
+        if (depositAmount < 10) return;
+        if (depositAmount > 99_000) return;
+
+        // Simulate a deposit
+        vm.prank(alice);
+        vault.deposit(depositAmount, alice);
+
+        // Process allocation to send assets to the buffer
+        allocateToBuffer(depositAmount);
+
+        // Test maxWithdraw after deposit
+        uint256 maxWithdrawAfterDeposit = vault.maxWithdraw(alice);
+        assertEq(maxWithdrawAfterDeposit, depositAmount, "Max withdraw after deposit does not match");
+    }
+
+    function test_Vault_maxRedeem() public view {
+        uint256 maxRedeem = vault.maxRedeem(alice);
+        assertEq(maxRedeem, 0, "Max redeem does not match");
+    }
+
+    function test_Vault_maxRedeem_afterDeposit() public {
+        // Simulate a deposit
+        uint256 depositAmount = 1000;
+        vm.prank(alice);
+        vault.deposit(depositAmount, alice);
+
+        allocateToBuffer(depositAmount);
+        // Test maxRedeem after deposit
+        uint256 maxRedeemAfterDeposit = vault.maxRedeem(alice);
+        assertEq(maxRedeemAfterDeposit, depositAmount, "Max redeem after deposit does not match");
+    }
+
+    function test_Vault_maxWithdrawWhenPaused() public {
+        vm.prank(ADMIN);
+        vault.pause(true);
+        assertEq(vault.paused(), true);
+
+        uint256 maxWithdraw = vault.maxWithdraw(alice);
+        assertEq(maxWithdraw, 0, "Max withdraw is not zero when paused");
+    }
+
+    function test_Vault_maxRedeemWhenPaused() public {
+        vm.prank(ADMIN);
+        vault.pause(true);
+        assertEq(vault.paused(), true);
+
+        uint256 maxRedeem = vault.maxRedeem(alice);
+        assertEq(maxRedeem, 0, "Max redeem is not zero when paused");
     }
 }

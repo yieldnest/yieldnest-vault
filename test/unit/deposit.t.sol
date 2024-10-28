@@ -10,6 +10,7 @@ import {WETH9} from "test/mocks/MockWETH.sol";
 import {SetupVault} from "test/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MockSTETH} from "test/mocks/MockST_ETH.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -145,5 +146,42 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         vm.prank(alice);
         vm.expectRevert();
         vault.deposit(1000, alice);
+    }
+
+    function test_Vault_maxMint() public view {
+        uint256 maxMint = vault.maxMint(alice);
+        assertEq(maxMint, type(uint256).max, "Max mint does not match");
+    }
+
+    function test_Vault_previewDeposit() public view {
+        uint256 assets = 1000;
+        uint256 expectedShares = 1000; // Assuming a 1:1 conversion for simplicity
+        uint256 shares = vault.previewDeposit(assets);
+        assertEq(shares, expectedShares, "Preview deposit does not match expected shares");
+    }
+
+    function test_Vault_previewMint() public view {
+        uint256 shares = 1000;
+        uint256 expectedAssets = 1000; // Assuming a 1:1 conversion for simplicity
+        uint256 assets = vault.previewMint(shares);
+        assertEq(assets, expectedAssets, "Preview mint does not match expected assets");
+    }
+
+    function test_Vault_getAsset() public view {
+        address assetAddress = address(WETH);
+        IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18, 0);
+        assertEq(vault.getAsset(assetAddress).active, expectedAssetParams.active);
+        assertEq(vault.getAsset(assetAddress).index, expectedAssetParams.index);
+        assertEq(vault.getAsset(assetAddress).decimals, expectedAssetParams.decimals);
+        assertEq(vault.getAsset(assetAddress).idleBalance, expectedAssetParams.idleBalance);
+    }
+
+    function test_Vault_maxMintWhenPaused() public {
+        vm.prank(ADMIN);
+        vault.pause(true);
+        assertEq(vault.paused(), true);
+
+        uint256 maxMint = vault.maxMint(alice);
+        assertEq(maxMint, 0, "Max mint is not zero when paused");
     }
 }

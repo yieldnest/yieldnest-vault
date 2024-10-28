@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IERC4626} from "src/Common.sol";
+import {IERC20, IERC4626} from "src/Common.sol";
+import {IStrategy} from "src/interface/IStrategy.sol";
 
 interface IVault is IERC4626 {
     error ZeroAddress();
     error InvalidString();
     error InvalidArray();
     error ExceededMaxDeposit();
-    error InvalidAsset();
-    error InvalidStrategy();
+    error InvalidAsset(address);
+    error InvalidStrategy(address);
+    error InvalidTarget(address);
     error InvalidDecimals();
     error InvalidRatio();
     error AssetNotFound();
@@ -17,8 +19,8 @@ interface IVault is IERC4626 {
     error DuplicateStrategy();
     error ExceededMaxWithdraw(address, uint256, uint256);
     error ExceededMaxRedeem(address, uint256, uint256);
-    error BadStrategy(address);
     error ProcessFailed(bytes);
+    error ProcessInvalid(bytes);
     error RateProviderNotSet();
     error BufferNotSet();
 

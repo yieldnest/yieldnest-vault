@@ -5,7 +5,6 @@ The vault architecture seamlessly integrates with DeFi opportunities that return
 
 ![deposit-vaults](https://hackmd.io/_uploads/SygWtD8k1g.png)
 
-
 The Strategies live downstream of the Vaults and do the hard work of integrating with Defi protocols, such as Eigen Layer, Symbiotic, Aave, among many others. Deposits into Vaults are allocated to the Strategies which allocate to restaking protocols via  connectors.
 
 This is a diagram of the relationship between Vaults and Strategies:
@@ -39,25 +38,21 @@ The deposit process in this system is designed to efficiently manage user assets
    - It's a multi-asset deposit vault that converts deposited underlying assets holdings into a common share token.
    - It uses a standard method (ERC4626) to ensure compatibility accross Defi and tokenize user shares.
 
-2. **Functions of the Vault**:
-   - **totalAssets**: The vault holds multi assets and total assets is denominated in the base asset.
-   - **asset**: Vaults have a base asset used to denominate asset holdings in a common price.
-   - **deposit**: Allows users to deposit assets directly.
-   - **depositAsset**: Handles deposits involving multiple types of assets.
-   - **withdraw**: Enables users to withdraw assets from the vault.
-   - **withdrawAsset**: Facilitates withdrawals involving multiple types of assets.
-   - **processAccounting**: Updates the accounting for the vault by recalculating the total assets and asset balances.
-   - **processAssets**: Moves assets from the vault to the strategies.
+2. **Deposit Functions**:
+   - **maxDeposit**: Returns the maximum amount of assets that can be deposited into the vault.
+   - **maxMint**: Returns the maximum amount of shares that can be minted.
+   - **previewDeposit**: Calculates the amount of shares that would be minted for a given amount of assets to be deposited.
+   - **previewMint**: Calculates the amount of assets required to mint a given amount of shares.
+   - **deposit**: Deposits assets into the vault and mints shares to the receiver.
+   - **mint**: Mints shares to the receiver based on the amount of assets provided.
+   - **previewDepositAsset**: Calculates the amount of shares that would be minted for a given amount of a specific asset to be deposited.
+   - **depositAsset**: Deposits a specific asset into the vault and mints shares to the receiver.
 
 3. **Coprocessor**:
    - Keeps track of deposit events and runs process functions on the vaults and strategies.
    - Calls process functions to distribute assets to different strategies.
    - Updates the Vault balances and asset prices for gas optimization.
-
-4. **The Strategy**:
-   - Receives assets from the Vault and retruns Strategy share tokens.
-   - Restakes allocated assets into yield bearing protocols.
-   - Contains connector logic to complex protocol integreations, such as Eigen Layer, Symbiotic and Aave. 
+   - Transfers a balance of assets to the Buffer Strategy for withdraws.
 
 5. **Rate Provider**:
    - Provides the necessary prices and conversion rates for assets.
@@ -112,11 +107,85 @@ sequenceDiagram
 Withdraws
 ---
 
+The withdrawal process for Max Vaults is designed to efficiently manage the redemption of user assets while ensuring liquidity and security. The Max Vault keeps a protion in a 4626 Vault called the Buffer Strategy. This strategy is used to efficiently deploy assets and be ready to redeem should a user request a value that is less than the totalAssets of the Buffer Strategy. This sections covers the overview of how withdraws and redemptions work.
+
+### Withdraw Components
+1. **The Vault**:
+   - The Vault has all strandard 4626 withdraw functions.
+   - Withdraws and Redemptions are made in the base underlying asset of the vault.
+
+2. **Buffer Strategy**:
+   - The Vault requires a 4626 compliant buffer strategy to enable withdraws.
+   - The buffer strategy must have the same base underlying asset as the Vault.
+   - The coprocessor must allocate funds to the buffer for withdraws to function.
+
+2. **Withdraw Functions of the Vault**:
+   - **maxWithdraw**: Calculates the maximum amount of assets that can be withdrawn by a user.
+   - **maxRedeem**: Calculates the maximum amount of shares that can be redeemed by a user.
+   - **previewWithdraw**: Estimates the amount of shares that will be burned when a user withdraws a given amount of assets.
+   - **previewRedeem**: Estimates the amount of assets that will be transferred when a user redeems a given amount of shares.
+   - **withdraw**: Initiates the withdrawal process, burning shares and transferring assets to the user.
+   - **redeem**: Initiates the redemption process, transferring assets to the user and burning shares.
+   - **processAccounting**: Updates the Vault's accounting records, including asset balances and total assets.
+   - **processAllocation**: Allocates assets to different strategies based on predefined ratios and processes transactions accordingly.
+
+3. **Coprocessor**:
+   - The coprocess should call processAllocation after deposits to make sure enough asssets get sent to buffer strategy.
+   - Calls process functions to distribute assets to different strategies.
+   - Updates the Vault balances and asset prices for gas optimization.
+
+5. **Rate Provider**:
+   - The Buffer strategy must be on the Rate Provider for the Vault.
+
+
+### Withdraw Sequence
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Vault as Vault Contract
+    participant Strategy as Buffer
+    participant Asset as Asset Contract
+
+    User->>Vault: Request Withdrawal
+    activate Vault
+    Vault->>Strategy: Check Strategy Balance
+    Strategy-->>Vault: Return Balance
+    alt Sufficient Balance
+        Vault->>Strategy: Withdraw Funds
+        Strategy-->>Vault: Transfer Funds
+        Vault->>Asset: Transfer to User
+        Asset-->>User: Funds Received
+    else Insufficient Balance
+        Vault-->>User: Revert Transaction
+    end
+    deactivate Vault
+```
+
+1. **User calls withdraw function**:
+   - The user calls the withdraw function with a given amount of assets to withdraw.
+
+2. **Check Buffer Strategy Balance**:
+   - The Vault checks the Buffer Strategy for maxWithdraw and determine if withdraw amount is feasible.
+
+3. **Burning Sequence**:
+   - If the buffer has enough, it withdraws the given amount of assets to the receiver ( asset owner ).
+   - The Vault burns the share amount and decrements totalAsset by amount transfer out of Buffer Strategy.
+
+4. **Wtithdraw Event**:
+   - A Withdraw Event is emitted when assets are withrdawn.
+   
+5. **Coprocessing**:
+   - The Coprocessor must allocate assets to the buffer strategy after deposits.
+   - It should call the processAccounting after withdraw to update all balances.
+
+
 Rewards
 ---
 
 Incentives
 ---
 
+- TODO: coprocess incentives
 Governance 
 ---

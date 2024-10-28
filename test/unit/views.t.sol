@@ -73,66 +73,6 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
         assertEq(maxDeposit, type(uint256).max, "Max deposit does not match");
     }
 
-    function test_Vault_maxMint() public view {
-        uint256 maxMint = vault.maxMint(alice);
-        assertEq(maxMint, type(uint256).max, "Max mint does not match");
-    }
-
-    function test_Vault_maxWithdraw() public view {
-        uint256 maxWithdraw = vault.maxWithdraw(alice);
-        assertEq(maxWithdraw, 0, "Max withdraw does not match");
-    }
-
-    function test_Vault_maxWithdraw_afterDeposit() public {
-        // Simulate a deposit
-        uint256 depositAmount = 1000;
-        vm.prank(alice);
-        vault.deposit(depositAmount, alice);
-
-        // Test maxWithdraw after deposit
-        uint256 maxWithdrawAfterDeposit = vault.maxWithdraw(alice);
-        assertEq(maxWithdrawAfterDeposit, depositAmount, "Max withdraw after deposit does not match");
-    }
-
-    function test_Vault_maxRedeem() public view {
-        uint256 maxRedeem = vault.maxRedeem(alice);
-        assertEq(maxRedeem, 0, "Max redeem does not match");
-    }
-
-    function test_Vault_maxRedeem_afterDeposit() public {
-        // Simulate a deposit
-        uint256 depositAmount = 1000;
-        vm.prank(alice);
-        vault.deposit(depositAmount, alice);
-
-        // Test maxRedeem after deposit
-        uint256 maxRedeemAfterDeposit = vault.maxRedeem(alice);
-        assertEq(maxRedeemAfterDeposit, depositAmount, "Max redeem after deposit does not match");
-    }
-
-    function test_Vault_previewDeposit() public view {
-        uint256 assets = 1000;
-        uint256 expectedShares = 1000; // Assuming a 1:1 conversion for simplicity
-        uint256 shares = vault.previewDeposit(assets);
-        assertEq(shares, expectedShares, "Preview deposit does not match expected shares");
-    }
-
-    function test_Vault_previewMint() public view {
-        uint256 shares = 1000;
-        uint256 expectedAssets = 1000; // Assuming a 1:1 conversion for simplicity
-        uint256 assets = vault.previewMint(shares);
-        assertEq(assets, expectedAssets, "Preview mint does not match expected assets");
-    }
-
-    function test_Vault_getAsset() public view {
-        address assetAddress = address(WETH);
-        IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18, 0);
-        assertEq(vault.getAsset(assetAddress).active, expectedAssetParams.active);
-        assertEq(vault.getAsset(assetAddress).index, expectedAssetParams.index);
-        assertEq(vault.getAsset(assetAddress).decimals, expectedAssetParams.decimals);
-        assertEq(vault.getAsset(assetAddress).idleBalance, expectedAssetParams.idleBalance);
-    }
-
     function test_Vault_getStrategies() public view {
         address[] memory expectedStrategies = new address[](3);
         expectedStrategies[0] = address(BUFFER_STRATEGY);

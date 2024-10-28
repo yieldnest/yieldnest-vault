@@ -35,7 +35,7 @@ contract MockBuffer is ERC20, MainnetContracts {
         balances[owner] -= assets;
         _totalAssets -= assets;
 
-        IERC20(WETH).transferFrom(address(this), owner, assets);
+        IERC20(WETH).transferFrom(address(this), receiver, assets);
         _burn(owner, assets);
         emit Withdraw(msg.sender, receiver, owner, assets, assets);
         return assets;
@@ -51,8 +51,10 @@ contract MockBuffer is ERC20, MainnetContracts {
     function redeem(uint256 shares, address receiver, address owner) public returns (uint256) {
         require(balances[owner] >= shares, "Insufficient balance");
         balances[owner] -= shares;
-        _totalAssets -= convertToAssets(shares);
-        emit Withdraw(msg.sender, receiver, owner, shares, shares);
+        uint256 bufferAssets = convertToAssets(shares);
+        _totalAssets -= bufferAssets;
+        IERC20(WETH).transferFrom(address(this), owner, bufferAssets);
+        emit Withdraw(msg.sender, receiver, owner, bufferAssets, shares);
         return shares;
     }
 

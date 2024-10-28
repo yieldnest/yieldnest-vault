@@ -5,12 +5,13 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault, IERC20} from "src/Vault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetContracts} from "script/Contracts.sol";
+import {MainnetActors} from "script/Actors.sol";
 import {Etches} from "test/helpers/Etches.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
 import {SetupVault} from "test/helpers/SetupVault.sol";
 import {MockSTETH} from "test/mocks/MockST_ETH.sol";
 
-contract VaultProcessUnitTest is Test, MainnetContracts, Etches {
+contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -55,5 +56,43 @@ contract VaultProcessUnitTest is Test, MainnetContracts, Etches {
         // Check that the deployed assets are updated correctly
         assertEq(vault.getAsset(address(weth)).idleBalance, 50 ether, "WETH balance not updated correctly");
         assertEq(vault.getAsset(address(steth)).idleBalance, 50 ether, "STETH balance not updated correctly");
+    }
+
+    function test_Vault_processAllocation_fails_with_invalid_asset() public {
+        // Set up some initial balances for assets and strategies
+
+        // Prepare allocation targets and values
+        address[] memory targets = new address[](1);
+        targets[0] = address(420);
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", address(vault), 50 ether);
+
+        // Expect the processAllocation to fail with an invalid asset
+        vm.prank(ADMIN);
+        vm.expectRevert();
+        vault.processAllocation(targets, values, data);
+    }
+
+    function test_Vault_processAllocation_fails_with_invalid_asset_funcsig() public {
+        // Set up some initial balances for assets and strategies
+
+        // Prepare allocation targets and values
+        address[] memory targets = new address[](1);
+        targets[0] = address(weth);
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("transfer(address,uint256)", address(vault), 50 ether);
+
+        // Expect the processAllocation to fail with an invalid asset
+        vm.prank(ADMIN);
+        vm.expectRevert();
+        vault.processAllocation(targets, values, data);
     }
 }
