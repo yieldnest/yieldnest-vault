@@ -43,6 +43,22 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return _convertToAssets(asset(), shares, Math.Rounding.Floor);
     }
 
+    function previewDeposit(uint256 assets) public view returns (uint256) {
+        return _convertToShares(asset(), assets, Math.Rounding.Floor);
+    }
+
+    function previewMint(uint256 shares) public view returns (uint256) {
+        return _convertToAssets(asset(), shares, Math.Rounding.Ceil);
+    }
+
+    function previewWithdraw(uint256 assets) public view returns (uint256) {
+        return _convertToShares(asset(), assets, Math.Rounding.Ceil);
+    }
+
+    function previewRedeem(uint256 shares) public view returns (uint256) {
+        return _convertToAssets(asset(), shares, Math.Rounding.Floor);
+    }
+
     function maxDeposit(address) public pure returns (uint256) {
         return type(uint256).max;
     }
@@ -54,6 +70,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return type(uint256).max;
     }
 
+    // TODO: Check the 4626 EIP for compliance here
     function maxWithdraw(address owner) public view returns (uint256) {
         if (paused()) {
             return 0;
@@ -69,7 +86,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return baseConvertedAssets;
     }
 
-    // QUESTION: How to handle this in v1 with async withdraws.
+    // TODO: Check the 4626 EIP for compliance here
     function maxRedeem(address owner) public view returns (uint256) {
         if (paused()) {
             return 0;
@@ -81,22 +98,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         }
         // should return how many shares are required
         return baseConvertedAssets;
-    }
-
-    function previewDeposit(uint256 assets) public view returns (uint256) {
-        return _convertToShares(asset(), assets, Math.Rounding.Floor);
-    }
-
-    function previewMint(uint256 shares) public view returns (uint256) {
-        return _convertToAssets(asset(), shares, Math.Rounding.Ceil);
-    }
-
-    function previewWithdraw(uint256 assets) public view returns (uint256) {
-        return _convertToShares(asset(), assets, Math.Rounding.Ceil);
-    }
-
-    function previewRedeem(uint256 shares) public view returns (uint256) {
-        return _convertToAssets(asset(), shares, Math.Rounding.Floor);
     }
 
     function deposit(uint256 assets, address receiver) public nonReentrant returns (uint256) {
@@ -161,6 +162,18 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return _getStrategyStorage().strategies[asset_];
     }
 
+    function paused() public view returns (bool) {
+        return _getVaultStorage().paused;
+    }
+
+    function rateProvider() public view returns (address) {
+        return _getVaultStorage().rateProvider;
+    }
+
+    function bufferStrategy() public view returns (address) {
+        return _getVaultStorage().bufferStrategy;
+    }
+
     function previewDepositAsset(address asset_, uint256 assets_) public view returns (uint256) {
         if (!getAsset(asset_).active) {
             revert InvalidAsset(asset_);
@@ -178,18 +191,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         uint256 shares = previewDepositAsset(asset_, assets_);
         _deposit(asset_, _msgSender(), receiver, assets_, shares);
         return shares;
-    }
-
-    function paused() public view returns (bool) {
-        return _getVaultStorage().paused;
-    }
-
-    function rateProvider() public view returns (address) {
-        return _getVaultStorage().rateProvider;
-    }
-
-    function bufferStrategy() public view returns (address) {
-        return _getVaultStorage().bufferStrategy;
     }
 
     function processAccounting() public {
@@ -221,20 +222,12 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         for (uint256 i = 0; i < targets.length; i++) {
-            // Check if the target is whitelisted
-            if (!_getAssetStorage().assets[targets[i]].active && !_getStrategyStorage().strategies[targets[i]].active) {
-                revert InvalidTarget(targets[i]);
-            }
-
-            // Extract the function signature from the data
             bytes4 funcSig = bytes4(data[i]);
 
-            // Check if the function signature is allowed
-            if (!_isWhitelisted(targets[i], funcSig)) {
+            if (!_whitelisted(targets[i], funcSig)) {
                 revert InvalidFunction(targets[i], funcSig);
             }
 
-            // Process the call
             (bool success, bytes memory returnData) = targets[i].call{value: values[i]}(data[i]);
             if (!success) {
                 revert ProcessFailed(data[i], returnData);
@@ -289,7 +282,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit Withdraw(caller, receiver, owner, assets_, shares);
     }
 
-    function _isWhitelisted(address contractAddress, bytes4 funcSig) internal view returns (bool) {
+    function _whitelisted(address contractAddress, bytes4 funcSig) internal view returns (bool) {
         return _getProcessorStorage().whitelist[contractAddress][funcSig];
     }
 
@@ -398,7 +391,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         }
         ProcessorStorage storage processorStorage = _getProcessorStorage();
 
-        if (_isWhitelisted(contractAddress, funcSig)) {
+        if (_whitelisted(contractAddress, funcSig)) {
             processorStorage.whitelist[contractAddress][funcSig] = false;
             return;
         }
