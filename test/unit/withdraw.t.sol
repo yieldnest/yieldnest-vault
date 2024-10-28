@@ -162,7 +162,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         uint256 depositAmount = 100 ether;
 
         vm.prank(alice);
-        uint256 aliceSharesMinted = vault.deposit(depositAmount, alice);
+        vault.deposit(depositAmount, alice);
 
         // Give bob base asset tokens
         deal(bob, INITIAL_BALANCE);
@@ -172,7 +172,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         vm.startPrank(bob);
         weth.approve(address(vault), type(uint256).max);
 
-        uint256 bobSharesMinted = vault.deposit(depositAmount, bob);
+        vault.deposit(depositAmount, bob);
         vm.stopPrank();
 
         // this is a processAllocation call to transfer the assets

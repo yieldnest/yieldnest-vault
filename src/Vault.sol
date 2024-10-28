@@ -121,7 +121,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return shares;
     }
 
-    // QUESTION: How to handle this in v1 with async withdraws
     function redeem(uint256 shares, address receiver, address owner) public nonReentrant returns (uint256) {
         if (paused()) revert Paused();
 
@@ -271,7 +270,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit Deposit(caller, receiver, assets, shares);
     }
 
-    // QUESTION: How might we
     function _withdraw(address caller, address receiver, address owner, uint256 assets_, uint256 shares) internal {
         // reduce the totalAssets QUESTION: Should this go in the deposit function:
         _getVaultStorage().totalAssets -= assets_;
