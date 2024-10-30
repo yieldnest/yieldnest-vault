@@ -72,12 +72,11 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         paramRules[0] = IVault.ParamRule({
             paramType: IVault.ParamType.UINT256,
-            minValue: bytes32(0),
-            maxValue: bytes32(type(uint256).max),
+            minValue: bytes32(uint256(2)),
+            maxValue: bytes32(uint256(100000 ether)),
             isArray: false,
             isRequired: true,
-            allowList: new address[](0),
-            blockList: new address[](0)
+            allowList: new address[](0)
         });
 
         address[] memory allowList = new address[](1);
@@ -89,8 +88,7 @@ contract SetupVault is Test, Etches, MainnetActors {
             maxValue: bytes32(0),
             isArray: false,
             isRequired: true,
-            allowList: allowList,
-            blockList: new address[](0)
+            allowList: allowList
         });
 
         IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
@@ -112,8 +110,7 @@ contract SetupVault is Test, Etches, MainnetActors {
             maxValue: bytes32(0),
             isArray: false,
             isRequired: true,
-            allowList: allowList,
-            blockList: new address[](0)
+            allowList: allowList
         });
 
         paramRules[1] = IVault.ParamRule({
@@ -122,8 +119,7 @@ contract SetupVault is Test, Etches, MainnetActors {
             maxValue: bytes32(type(uint256).max),
             isArray: false,
             isRequired: true,
-            allowList: new address[](0),
-            blockList: new address[](0)
+            allowList: new address[](0)
         });
 
         IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});

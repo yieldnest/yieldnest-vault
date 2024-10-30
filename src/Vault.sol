@@ -243,6 +243,10 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit ProcessSuccess(targets, values, returnData);
     }
 
+    function getProcessorRule(address contractAddress, bytes4 funcSig) public view returns (FunctionRule memory) {
+        return _getProcessorStorage().rules[contractAddress][funcSig];
+    }
+
     //// INTERNAL ////
 
     function _convertToAssets(address asset_, uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
@@ -269,7 +273,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return baseAmount.mulDiv(10 ** getAsset(asset_).decimals, rate, Math.Rounding.Floor);
     }
 
-    /// @dev Being Multi asset, we need to add the asset param here to deposit the user's asset accordingly.
     function _deposit(address asset_, address caller, address receiver, uint256 assets, uint256 shares) internal {
         _getVaultStorage().totalAssets += assets;
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
@@ -408,8 +411,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit Pause(paused_);
     }
 
-    // QUESTION: Start with Strategies or add them later
-    // vault starts paused because the rate provider and assets / strategies haven't been set
     function initialize(address admin, string memory name, string memory symbol) external initializer {
         // Initialize the vault
         __ERC20_init(name, symbol);

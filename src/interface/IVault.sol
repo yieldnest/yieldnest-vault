@@ -37,7 +37,7 @@ interface IVault is IERC4626 {
 
     enum ParamType {
         UINT256,
-        INT256,
+        INT128,
         ADDRESS,
         BOOL,
         BYTES,
@@ -52,7 +52,6 @@ interface IVault is IERC4626 {
         bool isArray; // Whether parameter is an array
         bool isRequired; // Whether parameter is required
         address[] allowList; // Allowed addresses (if applicable)
-        address[] blockList; // Blocked addresses (if applicable)
     }
 
     struct FunctionRule {
@@ -117,10 +116,12 @@ interface IVault is IERC4626 {
     function getAssets() external view returns (address[] memory list);
     function getAsset(address asset_) external view returns (AssetParams memory);
     function getStrategy(address strategy_) external view returns (StrategyParams memory);
+    function getProcessorRule(address contractAddress, bytes4 funcSig) external returns (FunctionRule memory);
     function previewDepositAsset(address assetAddress, uint256 assets) external view returns (uint256);
     function depositAsset(address assetAddress, uint256 amount, address receiver) external returns (uint256);
     function rateProvider() external view returns (address);
     function bufferStrategy() external view returns (address);
+
     // ADMIN
     function initialize(address admin_, string memory name_, string memory symbol_) external;
     function setRateProvider(address rateProvider) external;

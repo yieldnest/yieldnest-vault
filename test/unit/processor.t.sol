@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {Vault, IERC20} from "src/Vault.sol";
+import {Vault, IVault} from "src/Vault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
@@ -94,5 +94,121 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         vm.prank(ADMIN);
         vm.expectRevert();
         vault.processor(targets, values, data);
+    }
+
+    function test_Vault_processor_fails_ValueAboveMaximum() public {
+        // Set up some initial balances for assets and strategies
+
+        // Prepare allocation targets and values
+        address[] memory targets = new address[](1);
+        targets[0] = address(YNETH);
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 100_001 ether, address(vault));
+
+        // Expect the processAllocation to fail with an invalid asset
+        vm.prank(ADMIN);
+        vm.expectRevert();
+        vault.processor(targets, values, data);
+    }
+
+    function test_Vault_processor_fails_ValueBelowMinimum() public {
+        // Set up some initial balances for assets and strategies
+
+        // Prepare allocation targets and values
+        address[] memory targets = new address[](1);
+        targets[0] = address(YNETH);
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 1, address(vault));
+
+        // Expect the processAllocation to fail with an invalid asset
+        vm.prank(ADMIN);
+        vm.expectRevert();
+        vault.processor(targets, values, data);
+    }
+
+    function test_Vault_processor_fails_AddressNotInAllowlist() public {
+        // Set up some initial balances for assets and strategies
+
+        // Prepare allocation targets and values
+        address[] memory targets = new address[](1);
+        targets[0] = address(YNETH);
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 100, address(420));
+
+        // Expect the processAllocation to fail with an invalid asset
+        vm.prank(ADMIN);
+        vm.expectRevert();
+        vault.processor(targets, values, data);
+    }
+
+    function test_Vault_getProcessorRule() public view {
+        bytes4 sig = bytes4(keccak256("deposit(uint256,address)"));
+        IVault.FunctionRule memory rule = vault.getProcessorRule(BUFFER_STRATEGY, sig);
+        IVault.FunctionRule memory expectedResult;
+        expectedResult.isActive = true;
+        expectedResult.paramRules = new IVault.ParamRule[](2);
+        expectedResult.paramRules[0] = IVault.ParamRule({
+            paramType: IVault.ParamType.UINT256,
+            minValue: 0x0000000000000000000000000000000000000000000000000000000000000002,
+            maxValue: 0x00000000000000000000000000000000000000000000152d02c7e14af6800000,
+            isArray: false,
+            isRequired: true,
+            allowList: new address[](0)
+        });
+        expectedResult.paramRules[1] = IVault.ParamRule({
+            paramType: IVault.ParamType.ADDRESS,
+            minValue: 0x0000000000000000000000000000000000000000000000000000000000000000,
+            maxValue: 0x0000000000000000000000000000000000000000000000000000000000000000,
+            isArray: false,
+            isRequired: true,
+            allowList: new address[](1)
+        });
+        expectedResult.paramRules[1].allowList[0] = 0x794aC86b74c89e4c4f5722e8cdB15e982ecD1C92;
+        expectedResult.maxGas = 0;
+
+        // Add assertions
+        assertEq(rule.isActive, expectedResult.isActive, "isActive does not match");
+        assertEq(rule.paramRules.length, expectedResult.paramRules.length, "paramRules length does not match");
+
+        for (uint256 i = 0; i < rule.paramRules.length; i++) {
+            assertEq(
+                uint256(rule.paramRules[i].paramType),
+                uint256(expectedResult.paramRules[i].paramType),
+                "paramType does not match"
+            );
+            assertEq(rule.paramRules[i].minValue, expectedResult.paramRules[i].minValue, "minValue does not match");
+            assertEq(rule.paramRules[i].maxValue, expectedResult.paramRules[i].maxValue, "maxValue does not match");
+            assertEq(rule.paramRules[i].isArray, expectedResult.paramRules[i].isArray, "isArray does not match");
+            assertEq(
+                rule.paramRules[i].isRequired, expectedResult.paramRules[i].isRequired, "isRequired does not match"
+            );
+            assertEq(
+                rule.paramRules[i].allowList.length,
+                expectedResult.paramRules[i].allowList.length,
+                "allowList length does not match"
+            );
+
+            for (uint256 j = 0; j < rule.paramRules[i].allowList.length; j++) {
+                assertEq(
+                    rule.paramRules[i].allowList[j],
+                    expectedResult.paramRules[i].allowList[j],
+                    "allowList element does not match"
+                );
+            }
+        }
+
+        assertEq(rule.maxGas, expectedResult.maxGas, "maxGas does not match");
     }
 }
