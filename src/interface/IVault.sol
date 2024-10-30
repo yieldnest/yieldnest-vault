@@ -42,8 +42,7 @@ interface IVault is IERC4626 {
         BOOL,
         BYTES,
         STRING,
-        BYTES32,
-        CALLDATA
+        BYTES32
     }
 
     struct ParamRule {
@@ -60,7 +59,6 @@ interface IVault is IERC4626 {
         bool isActive; // Whether rule is active
         ParamRule[] paramRules; // Rules for each parameter
         uint256 maxGas; // Maximum gas allowed
-        bool requireSuccess; // Whether call must succeed
     }
 
     struct ProcessorStorage {

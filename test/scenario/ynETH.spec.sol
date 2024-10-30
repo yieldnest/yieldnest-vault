@@ -76,3 +76,9 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 // Some may not use NFTs and simply positions so the behaviour is custom.
 
 // How. can we code that behaviour to still measure totalAssets?
+
+// For ynETH and ynLSDe, you'd call
+
+// withdrawalRequestsForOwner
+// https://github.com/yieldnest/yieldnest-protocol/blob/main/src/WithdrawalQueueManager.sol#L561
+// and sum the WithdrawalRequest.amount

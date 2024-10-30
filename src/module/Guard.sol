@@ -26,8 +26,6 @@ library Guard {
         }
     }
 
-    event LogAddress(address);
-
     function _validateAddress(address value, IVault.ParamRule storage rule) private view {
         if (rule.allowList.length > 0 && !isInArray(value, rule.allowList)) revert AddressNotInAllowlist(value);
         if (isInArray(value, rule.blockList)) revert AddressInBlocklist();
@@ -42,23 +40,23 @@ library Guard {
         }
     }
 
-    function _validateInt(int256 value, IVault.ParamRule storage rule) private view {
-        if (rule.minValue != bytes32(0) && value < int256(uint256(rule.minValue))) {
-            revert ValueBelowMinimum();
-        }
-        if (rule.maxValue != bytes32(0) && value > int256(uint256(rule.maxValue))) {
-            revert ValueAboveMaximum();
-        }
-    }
+    // function _validateInt(int256 value, IVault.ParamRule storage rule) private view {
+    //     if (rule.minValue != bytes32(0) && value < int256(uint256(rule.minValue))) {
+    //         revert ValueBelowMinimum();
+    //     }
+    //     if (rule.maxValue != bytes32(0) && value > int256(uint256(rule.maxValue))) {
+    //         revert ValueAboveMaximum();
+    //     }
+    // }
 
-    function _decodeArrayLength(bytes calldata data, uint256 offset)
-        private
-        pure
-        returns (uint256 length, uint256 newOffset)
-    {
-        length = abi.decode(data[offset:offset + 32], (uint256));
-        newOffset = offset + 32;
-    }
+    // function _decodeArrayLength(bytes calldata data, uint256 offset)
+    //     private
+    //     pure
+    //     returns (uint256 length, uint256 newOffset)
+    // {
+    //     length = abi.decode(data[offset:offset + 32], (uint256));
+    //     newOffset = offset + 32;
+    // }
 
     function isInArray(address value, address[] storage array) private view returns (bool) {
         for (uint256 i = 0; i < array.length; i++) {

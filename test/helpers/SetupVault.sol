@@ -93,8 +93,7 @@ contract SetupVault is Test, Etches, MainnetActors {
             blockList: new address[](0)
         });
 
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0, requireSuccess: true});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -127,8 +126,7 @@ contract SetupVault is Test, Etches, MainnetActors {
             blockList: new address[](0)
         });
 
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0, requireSuccess: true});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -138,8 +136,7 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
 
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0, requireSuccess: true});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
 
         vault_.setProcessorRule(weth_, funcSig, rule);
     }
