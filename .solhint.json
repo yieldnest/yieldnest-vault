@@ -11,6 +11,7 @@
     "state-visibility": "error",
     "max-line-length": ["warn", 120],
     "no-console": "off",
-    "func-name-mixedcase": "off"
+    "func-name-mixedcase": "off",
+    "no-inline-assembly": "off"
   }
 }

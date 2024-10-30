@@ -58,7 +58,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         assertEq(vault.getAsset(address(steth)).idleBalance, 50 ether, "STETH balance not updated correctly");
     }
 
-    function test_Vault_processor_fails_with_invalid_asset() public {
+    function test_Vault_processor_fails_with_invalid_asset_approve() public {
         // Set up some initial balances for assets and strategies
 
         // Prepare allocation targets and values
@@ -77,7 +77,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         vault.processor(targets, values, data);
     }
 
-    function test_Vault_processor_fails_with_invalid_asset_funcsig() public {
+    function test_Vault_processor_fails_with_invalid_asset_transfer() public {
         // Set up some initial balances for assets and strategies
 
         // Prepare allocation targets and values

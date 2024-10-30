@@ -40,7 +40,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
         targets[0] = WETH;
-        targets[1] = vault.bufferStrategy();
+        targets[1] = BUFFER_STRATEGY;
 
         uint256[] memory values = new uint256[](2);
         values[0] = 0;
@@ -235,9 +235,10 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
 
     event Log(uint256, string);
 
-    function test_Vault_maxWithdraw_afterDeposit(uint256 depositAmount) public {
-        if (depositAmount < 10) return;
-        if (depositAmount > 99_000) return;
+    function test_Vault_maxWithdraw_afterDeposit() public {
+        uint256 depositAmount = 1212121212;
+        // if (depositAmount < 10) return;
+        // if (depositAmount > 99_000) return;
 
         // Simulate a deposit
         vm.prank(alice);

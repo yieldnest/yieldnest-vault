@@ -16,6 +16,7 @@ import {
 import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 import {IRateProvider} from "src/interface/IRateProvider.sol";
+import {Guard} from "src/module/Guard.sol";
 
 contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
@@ -201,20 +202,31 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         for (uint256 i = 0; i < assetStorage.list.length; i++) {
             address asset_ = assetStorage.list[i];
             uint256 idleBalance = IERC20(asset_).balanceOf(address(this));
-            assetStorage.assets[asset_].idleBalance = idleBalance;
+            // Update idle balance only if it has changed
+            if (assetStorage.assets[asset_].idleBalance != idleBalance) {
+                assetStorage.assets[asset_].idleBalance = idleBalance;
+            }
+
             totalBaseBalance += _convertAssetToBase(asset_, idleBalance);
         }
 
         for (uint256 i = 0; i < strategyStorage.list.length; i++) {
             address strategy = strategyStorage.list[i];
             uint256 idleBalance = IERC20(strategy).balanceOf(address(this));
-            strategyStorage.strategies[strategy].idleBalance = idleBalance;
+            // Update idle balance only if it has changed
+            if (strategyStorage.strategies[strategy].idleBalance != idleBalance) {
+                strategyStorage.strategies[strategy].idleBalance = idleBalance;
+            }
+
             totalBaseBalance += _convertAssetToBase(strategy, idleBalance);
         }
 
         _getVaultStorage().totalAssets = totalBaseBalance;
 
-        // QUESTION: Should we have a bounty to call this function? Perhaps a withdraw fee that goes to msg.sender here
+        // uint256 reward = _getProcessorStorage().rewardBalance
+        // if (reward > 0) {
+        //     SafeERC20.safeTransfer(IERC20(_getProcessorStorage().rewardToken), msg.sender, reward);
+        // }
     }
 
     function processor(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
@@ -222,17 +234,14 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         for (uint256 i = 0; i < targets.length; i++) {
-            bytes4 funcSig = bytes4(data[i]);
-
-            if (!_whitelisted(targets[i], funcSig)) {
-                revert InvalidFunction(targets[i], funcSig);
-            }
+            Guard.validateCall(targets[i], data[i]);
 
             (bool success, bytes memory returnData) = targets[i].call{value: values[i]}(data[i]);
             if (!success) {
                 revert ProcessFailed(data[i], returnData);
             }
         }
+        emit ProcessSuccess(targets, values, data);
     }
 
     //// INTERNAL ////
@@ -280,10 +289,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
         _burn(owner, shares);
         emit Withdraw(caller, receiver, owner, assets_, shares);
-    }
-
-    function _whitelisted(address contractAddress, bytes4 funcSig) internal view returns (bool) {
-        return _getProcessorStorage().whitelist[contractAddress][funcSig];
     }
 
     function _decimalsOffset() internal pure returns (uint8) {
@@ -385,18 +390,11 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit ToggleStrategy(strategy, active);
     }
 
-    function setWhitelist(address contractAddress, bytes4 funcSig) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (contractAddress == address(0)) {
-            revert ZeroAddress();
-        }
-        ProcessorStorage storage processorStorage = _getProcessorStorage();
-
-        if (_whitelisted(contractAddress, funcSig)) {
-            processorStorage.whitelist[contractAddress][funcSig] = false;
-            return;
-        }
-        processorStorage.whitelist[contractAddress][funcSig] = true;
-        emit SetWhitelist(contractAddress, funcSig);
+    function setProcessorRule(address target, bytes4 functionSig, FunctionRule calldata rule)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _getProcessorStorage().rules[target][functionSig] = rule;
     }
 
     function pause(bool paused_) external onlyRole(DEFAULT_ADMIN_ROLE) {

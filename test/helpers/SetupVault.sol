@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import "lib/forge-std/src/Test.sol";
-import {Vault} from "src/Vault.sol";
-import {IERC20, TransparentUpgradeableProxy} from "src/Common.sol";
+import {Vault, IVault} from "src/Vault.sol";
+import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
 import {Etches} from "test/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
@@ -38,28 +38,109 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(YNETH, 18);
         vault.addAsset(YNLSDE, 18);
 
-        // Whitelist the approve function signature for the assets
-        bytes4 approveSig = bytes4(keccak256("approve(address,uint256)"));
-        vault.setWhitelist(WETH, approveSig);
-        vault.setWhitelist(STETH, approveSig);
-        vault.setWhitelist(YNETH, approveSig);
-        vault.setWhitelist(YNLSDE, approveSig);
+        setWethDeposit(vault, WETH);
+
+        setupProcessorRules(vault);
 
         // add strategies
         vault.addStrategy(BUFFER_STRATEGY, 18);
         vault.addStrategy(YNETH, 18);
         vault.addStrategy(YNLSDE, 18);
 
-        // Whitelist Buffer Strategy functions
-        bytes4 depositSig = bytes4(keccak256("deposit(uint256,address)"));
-        bytes4 withdrawSig = bytes4(keccak256("withdraw(uint256,address,address)"));
-        vault.setWhitelist(BUFFER_STRATEGY, depositSig);
-        vault.setWhitelist(BUFFER_STRATEGY, withdrawSig);
-
         vault.setBufferStrategy(BUFFER_STRATEGY);
 
         // Unpause the vault
         vault.pause(false);
         vm.stopPrank();
+    }
+
+    function setupProcessorRules(Vault vault_) internal {
+        setDepositRule(vault_, BUFFER_STRATEGY, address(vault_));
+        setDepositRule(vault_, YNETH, address(vault_));
+        setDepositRule(vault_, YNLSDE, address(vault_));
+
+        setApprovalRule(vault_, address(vault_), BUFFER_STRATEGY);
+        setApprovalRule(vault_, WETH, BUFFER_STRATEGY);
+        setApprovalRule(vault_, address(vault_), YNETH);
+        setApprovalRule(vault_, address(vault_), YNLSDE);
+    }
+
+    function setDepositRule(Vault vault_, address contractAddress, address receiver) internal {
+        bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        paramRules[0] = IVault.ParamRule({
+            paramType: IVault.ParamType.UINT256,
+            minValue: bytes32(0),
+            maxValue: bytes32(type(uint256).max),
+            isArray: false,
+            isRequired: true,
+            allowList: new address[](0),
+            blockList: new address[](0)
+        });
+
+        address[] memory allowList = new address[](1);
+        allowList[0] = receiver;
+
+        paramRules[1] = IVault.ParamRule({
+            paramType: IVault.ParamType.ADDRESS,
+            minValue: bytes32(0),
+            maxValue: bytes32(0),
+            isArray: false,
+            isRequired: true,
+            allowList: allowList,
+            blockList: new address[](0)
+        });
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0, requireSuccess: true});
+
+        vault_.setProcessorRule(contractAddress, funcSig, rule);
+    }
+
+    function setApprovalRule(Vault vault_, address contractAddress, address spender) internal {
+        bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        address[] memory allowList = new address[](1);
+        allowList[0] = spender;
+
+        paramRules[0] = IVault.ParamRule({
+            paramType: IVault.ParamType.ADDRESS,
+            minValue: bytes32(0),
+            maxValue: bytes32(0),
+            isArray: false,
+            isRequired: true,
+            allowList: allowList,
+            blockList: new address[](0)
+        });
+
+        paramRules[1] = IVault.ParamRule({
+            paramType: IVault.ParamType.UINT256,
+            minValue: bytes32(0),
+            maxValue: bytes32(type(uint256).max),
+            isArray: false,
+            isRequired: true,
+            allowList: new address[](0),
+            blockList: new address[](0)
+        });
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0, requireSuccess: true});
+
+        vault_.setProcessorRule(contractAddress, funcSig, rule);
+    }
+
+    function setWethDeposit(Vault vault_, address weth_) public {
+        bytes4 funcSig = bytes4(keccak256("deposit()"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0, requireSuccess: true});
+
+        vault_.setProcessorRule(weth_, funcSig, rule);
     }
 }
