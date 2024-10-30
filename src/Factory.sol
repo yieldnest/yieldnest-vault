@@ -1,5 +1,5 @@
-// // SPDX-License-Identifier: BSD-3-Clause
-// pragma solidity ^0.8.24;
+// SPDX-License-Identifier: BSD-3-Clause
+pragma solidity ^0.8.24;
 
 // import {AccessControlUpgradeable, TransparentUpgradeableProxy, IERC20, IERC4626} from "src/Common.sol";
 
