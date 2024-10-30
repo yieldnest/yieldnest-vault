@@ -222,11 +222,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         }
 
         _getVaultStorage().totalAssets = totalBaseBalance;
-
-        // uint256 reward = _getProcessorStorage().rewardBalance
-        // if (reward > 0) {
-        //     SafeERC20.safeTransfer(IERC20(_getProcessorStorage().rewardToken), msg.sender, reward);
-        // }
     }
 
     function processor(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
