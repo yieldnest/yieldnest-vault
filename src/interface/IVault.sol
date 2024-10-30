@@ -135,5 +135,7 @@ interface IVault is IERC4626 {
     function toggleStrategy(address strategy, bool active) external;
     function pause(bool paused) external;
 
-    function processor(address[] calldata targets, uint256[] calldata values, bytes[] calldata data) external;
+    function processor(address[] calldata targets, uint256[] calldata values, bytes[] calldata data)
+        external
+        returns (bytes[] memory);
 }

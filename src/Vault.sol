@@ -232,16 +232,20 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     function processor(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
+        returns (bytes[] memory)
     {
-        for (uint256 i = 0; i < targets.length; i++) {
-            Guard.validateCall(targets[i], data[i]);
+        uint256 targetsLength = targets.length;
+        bytes[] memory returnData = new bytes[](targetsLength);
 
-            (bool success, bytes memory returnData) = targets[i].call{value: values[i]}(data[i]);
+        for (uint256 i = 0; i < targetsLength; i++) {
+            Guard.validateCall(targets[i], data[i]);
+            (bool success, bytes memory returnData_) = targets[i].call{value: values[i]}(data[i]);
             if (!success) {
-                revert ProcessFailed(data[i], returnData);
+                revert ProcessFailed(data[i], returnData_);
             }
+            returnData[i] = returnData_;
         }
-        emit ProcessSuccess(targets, values, data);
+        emit ProcessSuccess(targets, values, returnData);
     }
 
     //// INTERNAL ////
