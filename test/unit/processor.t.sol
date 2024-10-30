@@ -159,22 +159,10 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         IVault.FunctionRule memory expectedResult;
         expectedResult.isActive = true;
         expectedResult.paramRules = new IVault.ParamRule[](2);
-        expectedResult.paramRules[0] = IVault.ParamRule({
-            paramType: IVault.ParamType.UINT256,
-            minValue: 0x0000000000000000000000000000000000000000000000000000000000000002,
-            maxValue: 0x00000000000000000000000000000000000000000000152d02c7e14af6800000,
-            isArray: false,
-            isRequired: true,
-            allowList: new address[](0)
-        });
-        expectedResult.paramRules[1] = IVault.ParamRule({
-            paramType: IVault.ParamType.ADDRESS,
-            minValue: 0x0000000000000000000000000000000000000000000000000000000000000000,
-            maxValue: 0x0000000000000000000000000000000000000000000000000000000000000000,
-            isArray: false,
-            isRequired: true,
-            allowList: new address[](1)
-        });
+        expectedResult.paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+        expectedResult.paramRules[1] =
+            IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: new address[](1)});
         expectedResult.paramRules[1].allowList[0] = 0x794aC86b74c89e4c4f5722e8cdB15e982ecD1C92;
         expectedResult.maxGas = 0;
 
@@ -188,12 +176,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
                 uint256(expectedResult.paramRules[i].paramType),
                 "paramType does not match"
             );
-            assertEq(rule.paramRules[i].minValue, expectedResult.paramRules[i].minValue, "minValue does not match");
-            assertEq(rule.paramRules[i].maxValue, expectedResult.paramRules[i].maxValue, "maxValue does not match");
             assertEq(rule.paramRules[i].isArray, expectedResult.paramRules[i].isArray, "isArray does not match");
-            assertEq(
-                rule.paramRules[i].isRequired, expectedResult.paramRules[i].isRequired, "isRequired does not match"
-            );
             assertEq(
                 rule.paramRules[i].allowList.length,
                 expectedResult.paramRules[i].allowList.length,

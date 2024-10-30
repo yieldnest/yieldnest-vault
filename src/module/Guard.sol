@@ -9,15 +9,9 @@ library Guard {
 
         IVault.FunctionRule storage rule = _getProcessorStorage().rules[target][funcSig];
 
-        if (!rule.isActive) revert RuleNotActive();
+        if (!rule.isActive) revert RuleNotActive(target, funcSig);
 
         for (uint256 i = 0; i < rule.paramRules.length; i++) {
-            if (rule.paramRules[i].paramType == IVault.ParamType.UINT256) {
-                uint256 value = abi.decode(data[4 + i * 32:], (uint256));
-                _validateUint256(value, rule.paramRules[i]);
-                continue;
-            }
-
             if (rule.paramRules[i].paramType == IVault.ParamType.ADDRESS) {
                 address value = abi.decode(data[4 + i * 32:], (address));
                 _validateAddress(value, rule.paramRules[i]);
@@ -28,15 +22,6 @@ library Guard {
 
     function _validateAddress(address value, IVault.ParamRule storage rule) private view {
         if (rule.allowList.length > 0 && !isInArray(value, rule.allowList)) revert AddressNotInAllowlist(value);
-    }
-
-    function _validateUint256(uint256 value, IVault.ParamRule storage rule) private view {
-        if (rule.minValue != bytes32(0) && value < uint256(rule.minValue)) {
-            revert ValueBelowMinimum();
-        }
-        if (rule.maxValue != bytes32(0) && value > uint256(rule.maxValue)) {
-            revert ValueAboveMaximum();
-        }
     }
 
     function isInArray(address value, address[] storage array) private view returns (bool) {
@@ -54,11 +39,6 @@ library Guard {
         }
     }
 
-    error RuleNotActive();
-    error ArrayParameterValidationFailed();
-    error ParameterValidationFailed();
-    error AddressNotInAllowlist(address value);
-    error AddressInBlocklist();
-    error ValueBelowMinimum();
-    error ValueAboveMaximum();
+    error RuleNotActive(address, bytes4);
+    error AddressNotInAllowlist(address);
 }

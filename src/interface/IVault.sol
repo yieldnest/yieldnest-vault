@@ -37,20 +37,14 @@ interface IVault is IERC4626 {
 
     enum ParamType {
         UINT256,
-        INT128,
         ADDRESS,
-        BOOL,
         BYTES,
-        STRING,
         BYTES32
     }
 
     struct ParamRule {
         ParamType paramType; // Type of parameter
-        bytes32 minValue; // Minimum value (if applicable)
-        bytes32 maxValue; // Maximum value (if applicable)
         bool isArray; // Whether parameter is an array
-        bool isRequired; // Whether parameter is required
         address[] allowList; // Allowed addresses (if applicable)
     }
 

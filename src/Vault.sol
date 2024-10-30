@@ -163,6 +163,10 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return _getStrategyStorage().strategies[asset_];
     }
 
+    function getProcessorRule(address contractAddress, bytes4 funcSig) public view returns (FunctionRule memory) {
+        return _getProcessorStorage().rules[contractAddress][funcSig];
+    }
+
     function paused() public view returns (bool) {
         return _getVaultStorage().paused;
     }
@@ -224,30 +228,27 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         _getVaultStorage().totalAssets = totalBaseBalance;
     }
 
-    function processor(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-        returns (bytes[] memory returnData)
-    {
-        uint256 targetsLength = targets.length;
-        returnData = new bytes[](targetsLength);
-
-        for (uint256 i = 0; i < targetsLength; i++) {
-            Guard.validateCall(targets[i], data[i]);
-            (bool success, bytes memory returnData_) = targets[i].call{value: values[i]}(data[i]);
-            if (!success) {
-                revert ProcessFailed(data[i], returnData_);
-            }
-            returnData[i] = returnData_;
-        }
-        emit ProcessSuccess(targets, values, returnData);
-    }
-
-    function getProcessorRule(address contractAddress, bytes4 funcSig) public view returns (FunctionRule memory) {
-        return _getProcessorStorage().rules[contractAddress][funcSig];
-    }
-
     //// INTERNAL ////
+    function _deposit(address asset_, address caller, address receiver, uint256 assets, uint256 shares) internal {
+        VaultStorage storage vaultStorage = _getVaultStorage();
+        vaultStorage.totalAssets += assets;
+        SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
+        _mint(receiver, shares);
+        emit Deposit(caller, receiver, assets, shares);
+    }
+
+    function _withdraw(address caller, address receiver, address owner, uint256 assets_, uint256 shares) internal {
+        VaultStorage storage vaultStorage = _getVaultStorage();
+        vaultStorage.totalAssets -= assets_;
+        if (caller != owner) {
+            _spendAllowance(owner, caller, shares);
+        }
+        // withdraw
+        IStrategy(vaultStorage.bufferStrategy).withdraw(assets_, receiver, address(this));
+
+        _burn(owner, shares);
+        emit Withdraw(caller, receiver, owner, assets_, shares);
+    }
 
     function _convertToAssets(address asset_, uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
         uint256 baseDenominatedShares = _convertAssetToBase(asset_, shares);
@@ -271,26 +272,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     function _convertBaseToAsset(address asset_, uint256 baseAmount) internal view returns (uint256) {
         uint256 rate = IRateProvider(rateProvider()).getRate(asset_);
         return baseAmount.mulDiv(10 ** getAsset(asset_).decimals, rate, Math.Rounding.Floor);
-    }
-
-    function _deposit(address asset_, address caller, address receiver, uint256 assets, uint256 shares) internal {
-        _getVaultStorage().totalAssets += assets;
-        SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
-        _mint(receiver, shares);
-        emit Deposit(caller, receiver, assets, shares);
-    }
-
-    function _withdraw(address caller, address receiver, address owner, uint256 assets_, uint256 shares) internal {
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.totalAssets -= assets_;
-        if (caller != owner) {
-            _spendAllowance(owner, caller, shares);
-        }
-        // withdraw
-        IStrategy(vaultStorage.bufferStrategy).withdraw(assets_, receiver, address(this));
-
-        _burn(owner, shares);
-        emit Withdraw(caller, receiver, owner, assets_, shares);
     }
 
     function _decimalsOffset() internal pure returns (uint8) {
@@ -343,6 +324,13 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit SetBufferStrategy(bufferStrategy_);
     }
 
+    function setProcessorRule(address target, bytes4 functionSig, FunctionRule calldata rule)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _getProcessorStorage().rules[target][functionSig] = rule;
+    }
+
     function addAsset(address asset_, uint8 decimals_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (asset_ == address(0)) {
             revert ZeroAddress();
@@ -392,13 +380,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit ToggleStrategy(strategy, active);
     }
 
-    function setProcessorRule(address target, bytes4 functionSig, FunctionRule calldata rule)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        _getProcessorStorage().rules[target][functionSig] = rule;
-    }
-
     function pause(bool paused_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         VaultStorage storage vaultStorage = _getVaultStorage();
         if (rateProvider() == address(0)) {
@@ -409,6 +390,26 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         }
         vaultStorage.paused = paused_;
         emit Pause(paused_);
+    }
+
+    function processor(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        returns (bytes[] memory returnData)
+    {
+        uint256 targetsLength = targets.length;
+        returnData = new bytes[](targetsLength);
+
+        for (uint256 i = 0; i < targetsLength; i++) {
+            Guard.validateCall(targets[i], data[i]);
+
+            (bool success, bytes memory returnData_) = targets[i].call{value: values[i]}(data[i]);
+            if (!success) {
+                revert ProcessFailed(data[i], returnData_);
+            }
+            returnData[i] = returnData_;
+        }
+        emit ProcessSuccess(targets, values, returnData);
     }
 
     function initialize(address admin, string memory name, string memory symbol) external initializer {

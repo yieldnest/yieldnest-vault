@@ -70,26 +70,13 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
 
-        paramRules[0] = IVault.ParamRule({
-            paramType: IVault.ParamType.UINT256,
-            minValue: bytes32(uint256(2)),
-            maxValue: bytes32(uint256(100000 ether)),
-            isArray: false,
-            isRequired: true,
-            allowList: new address[](0)
-        });
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         address[] memory allowList = new address[](1);
         allowList[0] = receiver;
 
-        paramRules[1] = IVault.ParamRule({
-            paramType: IVault.ParamType.ADDRESS,
-            minValue: bytes32(0),
-            maxValue: bytes32(0),
-            isArray: false,
-            isRequired: true,
-            allowList: allowList
-        });
+        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
         IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
 
@@ -104,23 +91,10 @@ contract SetupVault is Test, Etches, MainnetActors {
         address[] memory allowList = new address[](1);
         allowList[0] = spender;
 
-        paramRules[0] = IVault.ParamRule({
-            paramType: IVault.ParamType.ADDRESS,
-            minValue: bytes32(0),
-            maxValue: bytes32(0),
-            isArray: false,
-            isRequired: true,
-            allowList: allowList
-        });
+        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        paramRules[1] = IVault.ParamRule({
-            paramType: IVault.ParamType.UINT256,
-            minValue: bytes32(0),
-            maxValue: bytes32(type(uint256).max),
-            isArray: false,
-            isRequired: true,
-            allowList: new address[](0)
-        });
+        paramRules[1] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
 
