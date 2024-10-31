@@ -82,3 +82,24 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 // withdrawalRequestsForOwner
 // https://github.com/yieldnest/yieldnest-protocol/blob/main/src/WithdrawalQueueManager.sol#L561
 // and sum the WithdrawalRequest.amount
+
+import {Test} from "lib/forge-std/src/Test.sol";
+import {Vault, IERC20} from "src/Vault.sol";
+import {TransparentUpgradeableProxy} from "src/Common.sol";
+import {MainnetContracts} from "script/Contracts.sol";
+import {MainnetActors} from "script/Actors.sol";
+
+import {IVault} from "src/interface/IVault.sol";
+
+contract VaultDepositMainnetTest is Test, MainnetContracts, MainnetActors  {
+
+
+    function setUp() public {
+
+    }
+
+    function test_Vault_Mainnet() external {
+        uint256 test = 1;
+        assertEq(test, 1);
+    }
+}
