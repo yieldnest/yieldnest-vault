@@ -10,3 +10,6 @@
 [submodule "lib/synclub-contracts"]
 	path = lib/synclub-contracts
 	url = https://github.com/lista-dao/synclub-contracts
+[submodule "lib/yieldnest-protocol"]
+	path = lib/yieldnest-protocol
+	url = https://github.com/yieldnest/yieldnest-protocol
