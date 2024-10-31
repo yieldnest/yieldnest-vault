@@ -102,6 +102,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         if (amount < 2) return;
         if (amount > 100_000 ether) return;
 
+        uint256 aliceWethBalanceBefore = weth.balanceOf(alice);
         vm.prank(alice);
         uint256 depositShares = vault.deposit(amount, alice);
 
@@ -115,12 +116,18 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
         uint256 assetsAfter = vault.redeem(depositShares, alice, alice);
         uint256 balanceAfter = weth.balanceOf(alice);
         uint256 totalAssetsAfter = vault.totalAssets();
+        uint256 aliceWethBalanceAfter = weth.balanceOf(alice);
 
         assertEq(assetsAfter, previewAssets, "assetsAfter = previewAmount");
         assertEq(balanceAfter, balanceBefore + previewAssets, "balanceAfter = balanceBefore + previewAmount");
 
         assertEq(
             totalAssetsBefore, totalAssetsAfter + previewAssets, "totalAssetsBefore = totalAssetsAfter + previewAmount"
+        );
+        assertEq(
+            aliceWethBalanceBefore,
+            aliceWethBalanceAfter,
+            "Alice's WETH balance should be increased by the assets withdrawn"
         );
     }
 
@@ -276,5 +283,23 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
 
         uint256 maxWithdraw = vault.maxWithdraw(alice);
         assertEq(maxWithdraw, 0, "Max withdraw is not zero when paused");
+    }
+
+    function test_Vault_withdraw_to_different_owner() public {
+        uint256 depositAmount = 1000;
+        vm.startPrank(alice);
+        weth.approve(address(vault), depositAmount);
+        vault.deposit(depositAmount, bob);
+        vm.stopPrank();
+
+        // Process allocation to send assets to the buffer
+        allocateToBuffer(depositAmount);
+
+        // Test withdrawal by non-owner (Bob) to Alice
+        // vault.approve(alice, depositAmount);
+        vm.prank(alice);
+        vault.approve(alice, depositAmount);
+        vm.expectRevert();
+        vault.withdraw(depositAmount, bob, bob);
     }
 }

@@ -128,7 +128,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             revert ExceededMaxWithdraw(owner, assets, maxAssets);
         }
         uint256 shares = previewWithdraw(assets);
-        _withdraw(_msgSender(), receiver, owner, assets, shares);
+        _withdraw(asset(), _msgSender(), receiver, owner, assets, shares);
         return shares;
     }
 
@@ -141,7 +141,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             revert ExceededMaxRedeem(owner, shares, maxShares);
         }
         uint256 assets = previewRedeem(shares);
-        _withdraw(_msgSender(), receiver, owner, assets, shares);
+        _withdraw(asset(), _msgSender(), receiver, owner, assets, shares);
         return assets;
     }
 
@@ -232,22 +232,27 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     function _deposit(address asset_, address caller, address receiver, uint256 assets, uint256 shares) internal {
         VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.totalAssets += assets;
+
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
         _mint(receiver, shares);
         emit Deposit(caller, receiver, assets, shares);
     }
 
-    function _withdraw(address caller, address receiver, address owner, uint256 assets_, uint256 shares) internal {
+    function _withdraw(address asset_, address caller, address receiver, address owner, uint256 assets, uint256 shares)
+        internal
+    {
         VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.totalAssets -= assets_;
+        vaultStorage.totalAssets -= assets;
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }
-        // withdraw
-        IStrategy(vaultStorage.bufferStrategy).withdraw(assets_, receiver, address(this));
+
+        IStrategy(vaultStorage.bufferStrategy).withdraw(assets, address(this), address(this));
+
+        SafeERC20.safeTransfer(IERC20(asset_), receiver, assets);
 
         _burn(owner, shares);
-        emit Withdraw(caller, receiver, owner, assets_, shares);
+        emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
     function _convertToAssets(address asset_, uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
@@ -413,7 +418,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     function initialize(address admin, string memory name, string memory symbol) external initializer {
-        // Initialize the vault
         __ERC20_init(name, symbol);
         __AccessControl_init();
         __ReentrancyGuard_init();

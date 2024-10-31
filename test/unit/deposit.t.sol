@@ -194,4 +194,22 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         vm.expectRevert();
         vault.previewDepositAsset(invalidAssetAddress, assets);
     }
+
+    function test_Vault_maxMint_whenPaused_shouldRevert() public {
+        // Pause the vault
+        vm.prank(ADMIN);
+        vault.pause(true);
+
+        // Expect revert when calling maxMint while paused
+        assertEq(vault.maxMint(alice), 0, "Should be zero when paused");
+    }
+
+    function test_Vault_maxRedeem_whenPaused_shouldRevert() public {
+        // Pause the vault
+        vm.prank(ADMIN);
+        vault.pause(true);
+
+        // Expect revert when calling maxRedeem while paused
+        assertEq(vault.maxRedeem(alice), 0, "Should be zero when paused");
+    }
 }

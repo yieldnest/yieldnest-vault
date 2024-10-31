@@ -37,9 +37,7 @@ interface IVault is IERC4626 {
 
     enum ParamType {
         UINT256,
-        ADDRESS,
-        BYTES,
-        BYTES32
+        ADDRESS
     }
 
     struct ParamRule {
