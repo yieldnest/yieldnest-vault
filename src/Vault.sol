@@ -274,10 +274,10 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         return amount.mulDiv(rate, 10 ** getAsset(asset_).decimals, Math.Rounding.Floor);
     }
 
-    function _convertBaseToAsset(address asset_, uint256 baseAmount) internal view returns (uint256) {
-        uint256 rate = IRateProvider(rateProvider()).getRate(asset_);
-        return baseAmount.mulDiv(10 ** getAsset(asset_).decimals, rate, Math.Rounding.Floor);
-    }
+    // function _convertBaseToAsset(address asset_, uint256 baseAmount) internal view returns (uint256) {
+    //     uint256 rate = IRateProvider(rateProvider()).getRate(asset_);
+    //     return baseAmount.mulDiv(10 ** getAsset(asset_).decimals, rate, Math.Rounding.Floor);
+    // }
 
     function _decimalsOffset() internal pure returns (uint8) {
         return 0;

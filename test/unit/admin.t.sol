@@ -129,8 +129,6 @@ contract VaultAdminUintTest is Test, MainnetContracts, MainnetActors, Etches {
     }
 
     function test_Vault_setBufferStrategy_failsIfStrategyAlreadyActive() public {
-        address activeStrategy = address(0x456);
-
         // Add the strategy and set it as the buffer strategy
         vm.startPrank(ADMIN);
         address buffer = vault.bufferStrategy();

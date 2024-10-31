@@ -30,6 +30,9 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         vm.startPrank(ADMIN);
         // Set up the rate provider
+
+        vm.expectRevert();
+        vault.pause(false);
         vault.setRateProvider(address(ETH_RATE_PROVIDER));
 
         // Add assets: Base asset always first
@@ -47,6 +50,8 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addStrategy(YNETH, 18);
         vault.addStrategy(YNLSDE, 18);
 
+        vm.expectRevert();
+        vault.pause(false);
         vault.setBufferStrategy(BUFFER_STRATEGY);
 
         // Unpause the vault
