@@ -17,7 +17,6 @@ import {ERC4626Upgradeable} from
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 import {ERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import {IStakeManager} from "lib/synclub-contracts/contracts/interfaces/IStakeManager.sol";
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 contract Common {}

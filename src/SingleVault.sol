@@ -32,12 +32,16 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, AccessControlUpgradeab
     function _mintSharesForETH(uint256 amount) private {
         IERC20 weth = _retrieveERC4626Storage()._asset;
 
-        (bool success,) = address(weth).call{value: amount}("");
+        uint256 shares = previewDeposit(amount);
+
+        (bool success,) = address(weth).deposit{value: amount}();
         if (!success) revert DepositFailed();
 
         if (msg.sender != address(this)) {
-            _mint(msg.sender, amount);
+            _mint(msg.sender, shares);
         }
+
+        emit Deposit(msg.sender, msg.sender, amount, shares);
     }
 
     function _verifyParamsAreValid(IERC20 asset_, string memory name_, string memory symbol_, address admin_)
