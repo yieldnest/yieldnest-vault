@@ -91,12 +91,8 @@ import {MainnetActors} from "script/Actors.sol";
 
 import {IVault} from "src/interface/IVault.sol";
 
-contract VaultDepositMainnetTest is Test, MainnetContracts, MainnetActors  {
-
-
-    function setUp() public {
-
-    }
+contract VaultDepositMainnetTest is Test, MainnetContracts, MainnetActors {
+    function setUp() public {}
 
     function test_Vault_Mainnet() external {
         uint256 test = 1;
