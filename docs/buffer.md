@@ -1,19 +1,10 @@
-# Yearn V3 Vault with WETH
+# Buffer Strategy
 
 ## Overview
-This document provides an outline for a Yearn V3 Vault that uses WETH (Wrapped Ether) as the underlying asset. The vault employs two high-yield strategies from Yearn to maximize returns. Additionally, a buffer strategy is used to hold funds for withdrawals in the max vaults.
+This document provides an outline for a Buffer Strategy that is used to facilitate instant withdraws for the MAX Vaults. A 4626 Vault is required with a common underlying asset as the MAX Vault. The vault employs yield strategies to maximize returns. The buffer strategy must provide instantaneous withdraws to the MAX vaults.
 
-## Table of Contents
-1. Introduction
-2. Vault Setup
-3. Strategies
-    - Strategy 1: High-Yield Strategy A
-    - Strategy 2: High-Yield Strategy B
-4. Buffer Strategy
-5. Diagram
-
-## Introduction
-The Buffer Strategy is used as the primary source of withdraws for the Max vaults. Assets held in the buffer are deployed to a Yearn V3 valut to optimize captial accross several yield strategies. 
+## Buffer Strategy Vault
+The Buffer Strategy Vault must be 4626 compliant and with instantaneous withdraws for use as the primary source of withdraws for the Max vaults. Assets held in the buffer are deployed to yield earning strategies to optimize capital efficiency. 
 
 ## Strategies
 ### Strategy 1: Yield Strategy A
@@ -34,18 +25,30 @@ sequenceDiagram
     participant Vault
     participant BufferStrategy
     participant WETH
+    participant YieldStrategy
 
+    rect rgba(0, 255, 0, 0.1)
     User ->> Vault: deposit(assets, receiver)
     Vault ->> Vault: _mint(User, shares)
-    Vault ->> User: return shares
     Vault ->> BufferStrategy: deposit(assets, Vault)
-    BufferStrategy ->> WETH: transferFrom(Vault, BufferStrategy, assets)
+    Vault ->> WETH: transferFrom(User, BufferStrategy, assets)
     BufferStrategy ->> BufferStrategy: _mint(Vault, shares)
     BufferStrategy ->> Vault: return shares
+    BufferStrategy ->> YieldStrategy: deposit(assets, BufferStrategy)
+    YieldStrategy ->> YieldStrategy: _mint(BufferStrategy, shares)
+    YieldStrategy ->> BufferStrategy: returns shares
+    Vault ->> User: return shares
+    end
 
+    rect rgba(255, 0, 0, 0.1)
     User ->> Vault: withdraw(assets, receiver, owner)
     Vault ->> BufferStrategy: withdraw(assets, receiver, owner)
-    BufferStrategy ->> WETH: transferFrom(BufferStrategy, Vault, assets)
-    BufferStrategy ->> BufferStrategy: _burn(Vault, assets)
+    BufferStrategy ->> YieldStrategy: withdraw(assets, BufferStrategy)
     Vault ->> Vault: _burn(User, assets)
-    Vault ->> User: return assets
+
+    BufferStrategy ->> BufferStrategy: _burn(Vault, assets)
+    YieldStrategy ->> YieldStrategy: _burn(BufferStrategy, assets)
+    WETH ->> User: transferFrom(YieldStrategy, User, assets)
+    end
+
+
