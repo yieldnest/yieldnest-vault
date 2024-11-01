@@ -29,12 +29,6 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, AccessControlUpgradeab
         }
     }
 
-    fallback() external payable nonReentrant {
-        if (msg.value > 0) {
-            _mintSharesForETH(msg.value);
-        }
-    }
-
     function _mintSharesForETH(uint256 amount) private {
         IERC20 weth = _retrieveERC4626Storage()._asset;
 
