@@ -217,7 +217,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
         expectedResult.paramRules[1] =
             IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: new address[](1)});
-        expectedResult.paramRules[1].allowList[0] = 0x794aC86b74c89e4c4f5722e8cdB15e982ecD1C92;
+        expectedResult.paramRules[1].allowList[0] = address(vault);
         expectedResult.maxGas = 0;
 
         // Add assertions
