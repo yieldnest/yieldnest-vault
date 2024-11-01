@@ -28,8 +28,10 @@ contract DepositTest is Test, LocalActors, TestConstants {
         vault = setup.createVault();
     }
 
-    function testDeposit() public {
-        uint256 amount = 100 * 10 ** 18; // Assuming 18 decimals for the asset
+    function testDeposit(uint256 amount) public {
+        if (amount < 1) return;
+        if (amount > 1_000_000 ether) return;
+
         asset.deposit{value: amount}();
         asset.approve(address(vault), amount);
         address USER = address(33);
@@ -44,9 +46,14 @@ contract DepositTest is Test, LocalActors, TestConstants {
         assertEq(asset.balanceOf(address(vault)), amount + 1 ether, "Vault should have received the asset");
         assertEq(vault.totalAssets(), amount + 1 ether, "Vault totalAsset should be amount deposited");
         assertEq(vault.totalSupply(), totalShares, "Vault totalSupply should be amount deposited");
-    }
 
-    
+        // Additional invariant tests
+        assertEq(vault.convertToAssets(shares), amount, "Converted assets should match the deposited amount");
+        assertEq(vault.maxDeposit(USER), type(uint256).max, "Max deposit for user should be unlimited");
+        assertEq(vault.maxMint(USER), type(uint256).max, "Max mint for user should be unlimited");
+        assertEq(vault.maxWithdraw(USER), shares, "Max withdraw for user should be equal to shares");
+        assertEq(vault.maxRedeem(USER), shares, "Max redeem for user should be equal to shares");
+    }
 
     function skip_testDepositRevertsIfNotApproved() public {
         uint256 amount = 100 * 10 ** 18; // Assuming 18 decimals for the asset
@@ -59,5 +66,34 @@ contract DepositTest is Test, LocalActors, TestConstants {
         vm.startPrank(ADMIN);
         vm.expectRevert(abi.encodeWithSelector(IERC4626.deposit.selector, 0));
         vault.deposit(0, ADMIN);
+    }
+
+    function testDepositETH(uint256 amount) public {
+        if (amount < 1) return;
+        if (amount > 1_000_000 ether) return;
+
+        uint256 bootstrap = 1 ether;
+        address USER = address(33);
+
+        deal(USER, amount);
+
+        // Deposit ETH directly to the vault
+        vm.prank(USER);
+        (bool success,) = address(vault).call{value: amount}("");
+        if (!success) revert("WETH Deposit failed");
+
+        uint256 totalShares = vault.convertToShares(amount);
+
+        assertEq(vault.balanceOf(USER), totalShares, "Balance of the user should be updated");
+        assertEq(asset.balanceOf(address(vault)) - bootstrap, amount, "Vault should have received the ETH");
+        assertEq(vault.totalAssets(), amount + bootstrap, "Vault totalAssets should be amount deposited");
+        assertEq(vault.totalSupply(), totalShares + bootstrap, "Vault totalSupply should be amount deposited");
+
+        // Additional invariant tests
+        assertEq(vault.convertToAssets(totalShares), amount, "Converted assets should match the deposited amount");
+        assertEq(vault.maxDeposit(USER), type(uint256).max, "Max deposit for user should be unlimited");
+        assertEq(vault.maxMint(USER), type(uint256).max, "Max mint for user should be unlimited");
+        assertEq(vault.maxWithdraw(USER), totalShares, "Max withdraw for user should be equal to total shares");
+        assertEq(vault.maxRedeem(USER), totalShares, "Max redeem for user should be equal to total shares");
     }
 }

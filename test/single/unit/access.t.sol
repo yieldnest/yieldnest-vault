@@ -36,10 +36,10 @@ contract AccessControlTest is Test, LocalActors, TestConstants {
     }
 
     function skip_testNonAdminCannotGrantRole() public {
-        vm.startPrank(UNAUTHORIZED);
+        vm.startPrank(address(420));
         vm.expectRevert(
             abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, UNAUTHORIZED, vault.DEFAULT_ADMIN_ROLE()
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(420), vault.DEFAULT_ADMIN_ROLE()
             )
         );
         vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(4));
@@ -52,10 +52,10 @@ contract AccessControlTest is Test, LocalActors, TestConstants {
     }
 
     function skip_testNonAdminCannotRevokeRole() public {
-        vm.startPrank(UNAUTHORIZED);
+        vm.startPrank(address(420));
         vm.expectRevert(
             abi.encodeWithSelector(
-                IAccessControl.AccessControlUnauthorizedAccount.selector, UNAUTHORIZED, vault.DEFAULT_ADMIN_ROLE()
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(420), vault.DEFAULT_ADMIN_ROLE()
             )
         );
         vault.revokeRole(vault.DEFAULT_ADMIN_ROLE(), address(1));
