@@ -68,4 +68,50 @@ contract WithdrawTest is Test, SetupHelper, MainnetActors {
         vm.expectRevert(abi.encodeWithSelector(IERC4626.withdraw.selector, 0));
         vault.withdraw(0, ADMIN, ADMIN);
     }
+
+    function testWithdrawPostRewards(
+        uint256 amount,
+        uint256 rewards
+    ) public {
+
+        vm.assume(amount > 0 && amount < 10000 ether);
+        vm.assume(rewards >= 0 && rewards < 10000 ether);
+
+        // Pre-deposit
+        uint256 preDeposit = 1 ether;
+        deal(address(asset), ADMIN, preDeposit);
+        vm.startPrank(ADMIN);
+        asset.approve(address(vault), preDeposit);
+        vault.deposit(preDeposit, ADMIN);
+        vm.stopPrank();
+
+        // Simulate rewards being added to vault
+        deal(ADMIN, rewards);
+        vm.startPrank(ADMIN);
+        (bool success2,) = address(asset).call{value: rewards}("");
+        require(success2, "ETH transfer failed");
+        asset.transfer(address(vault), rewards);
+        vm.stopPrank();
+
+        address USER = address(33);
+
+        deal(USER, amount);
+        vm.prank(USER);
+        (bool success,) = address(vault).call{value: amount}("");
+        require(success, "ETH transfer failed");
+
+        uint256 shares = vault.balanceOf(USER);
+
+        vm.prank(USER);
+        vault.redeem(shares, USER, USER);
+
+        uint256 postWithdrawBalance = asset.balanceOf(USER);
+
+        assertGe(amount, postWithdrawBalance, "Pre-deposit balance should be greater than or equal to post-withdraw balance");
+
+        uint256 maxLoss = (amount > rewards ? amount : rewards) / 1e18;
+        uint256 assetLoss = amount - postWithdrawBalance;
+        assertLe(assetLoss, maxLoss + 1, "Asset loss should be less than or equal to maxLoss");
+        assertEq(vault.balanceOf(USER), 0, "User's balance in the vault should be zero after withdrawal");
+    }
 }
