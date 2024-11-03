@@ -80,14 +80,14 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
      * @param receiver The address to receive the boostrapped weth.
      */
     function getDepositedWETH(address receiver) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        if(receiver == address(0)) {
+        if (receiver == address(0)) {
             revert ZeroAddress();
         }
-        
+
         uint256 balance = IERC20(weth).balanceOf(address(this));
-        
-        if(balance == 0) {
-            revert ZeroBalance();       
+
+        if (balance == 0) {
+            revert ZeroBalance();
         }
 
         IERC20(weth).transfer(receiver, balance);

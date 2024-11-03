@@ -81,5 +81,4 @@ contract HoleskyAccountingTest is Test, SetupHelper, HoleskyActors {
         uint256 totalAssets = vault.totalAssets();
         assertEq(totalAssets, 6 ether, "Total assets should be 6 ether after withdrawal");
     }
-    
 }
