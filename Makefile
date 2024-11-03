@@ -23,3 +23,4 @@ vault :;
 
 unit-test :; FOUNDRY_PROFILE=default forge test
 holesky-test :; FOUNDRY_PROFILE=holesky forge test
+mainnet-test :; FOUNDRY_PROFILE=mainnet forge test
