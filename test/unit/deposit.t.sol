@@ -1,34 +1,24 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import "lib/forge-std/src/Test.sol";
-import {IERC20, IERC4626} from "src/Common.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
+import {IERC20} from "src/Common.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
-import {LocalActors} from "script/Actors.sol";
-import {TestConstants} from "test/helpers/Constants.sol";
-import {SingleVault, ISingleVault} from "src/SingleVault.sol";
-import {IVaultFactory} from "src/interface/IVaultFactory.sol";
-import {DeployVaultFactory} from "script/Deploy.s.sol";
+import {MainnetActors} from "script/Actors.sol";
+import {SingleVault} from "src/SingleVault.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
-import {Etches} from "test/helpers/Etches.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 
-contract DepositTest is Test, LocalActors, TestConstants {
+contract DepositTest is Test, SetupHelper, MainnetActors {
     SingleVault public vault;
     WETH9 public asset;
 
     function setUp() public {
-        vm.startPrank(ADMIN);
         asset = WETH9(payable(MainnetContracts.WETH));
-
-        Etches etches = new Etches();
-        etches.mockWETH9();
-
-        SetupHelper setup = new SetupHelper();
-        vault = setup.createVault();
+        vault = createVault();
     }
 
-    function testDeposit(uint256 amount) public {
+    function test_Vault_Deposit(uint256 amount) public {
         if (amount < 1) return;
         if (amount > 1_000_000 ether) return;
 
@@ -55,20 +45,7 @@ contract DepositTest is Test, LocalActors, TestConstants {
         assertEq(vault.maxRedeem(USER), shares, "Max redeem for user should be equal to shares");
     }
 
-    function skip_testDepositRevertsIfNotApproved() public {
-        uint256 amount = 100 * 10 ** 18; // Assuming 18 decimals for the asset
-
-        vm.expectRevert(abi.encodeWithSelector(IERC20.approve.selector, address(vault), amount));
-        vault.deposit(amount, ADMIN);
-    }
-
-    function skip_testDepositRevertsIfAmountIsZero() public {
-        vm.startPrank(ADMIN);
-        vm.expectRevert(abi.encodeWithSelector(IERC4626.deposit.selector, 0));
-        vault.deposit(0, ADMIN);
-    }
-
-    function testDepositETH(uint256 amount) public {
+    function test_Vault_DepositETH(uint256 amount) public {
         if (amount < 1) return;
         if (amount > 1_000_000 ether) return;
 
@@ -96,4 +73,53 @@ contract DepositTest is Test, LocalActors, TestConstants {
         assertEq(vault.maxWithdraw(USER), totalShares, "Max withdraw for user should be equal to total shares");
         assertEq(vault.maxRedeem(USER), totalShares, "Max redeem for user should be equal to total shares");
     }
+
+    function test_Vault_RandomDepositsAndWithdrawals() public {
+        uint256 numOperations = 10000;
+        address USER = address(33);
+        uint256 totalDeposited = 0;
+        uint256 totalWithdrawn = 0;
+        uint256 bootstrap = 1 ether;
+
+        for (uint256 i = 0; i < numOperations; i++) {
+            uint256 operation = uint256(keccak256(abi.encodePacked(block.timestamp, i))) % 2;
+            uint256 amount = uint256(keccak256(abi.encodePacked(block.timestamp, i, USER))) % 100 ether;
+
+            if (operation == 0) {
+                // Random ETH deposit
+                deal(USER, amount);
+                vm.prank(USER);
+                (bool success,) = address(vault).call{value: amount}("");
+                if (!success) revert("ETH Deposit failed");
+                totalDeposited += amount;
+            } else {
+                // Random WETH deposit
+                deal(USER, amount);
+                vm.startPrank(USER);
+                asset.deposit{value: amount}();
+                IERC20(address(asset)).approve(address(vault), amount);
+                vault.deposit(amount, USER);
+                vm.stopPrank();
+                totalDeposited += amount;
+            }
+
+            // Random withdrawal
+            uint256 shares = vault.balanceOf(USER);
+            if (shares > 0) {
+                uint256 withdrawAmount = uint256(keccak256(abi.encodePacked(block.timestamp, i, USER, shares))) % shares;
+                vm.prank(USER);
+                vault.withdraw(withdrawAmount, USER, USER);
+                totalWithdrawn += withdrawAmount;
+            }
+        }
+
+        uint256 finalBalance = vault.balanceOf(USER);
+        uint256 finalTotalAssets = vault.totalAssets();
+        uint256 finalTotalSupply = vault.totalSupply();
+
+        // Assertions
+        assertEq(finalTotalAssets, totalDeposited - totalWithdrawn + bootstrap, "Final total assets should match the net deposited amount");
+        assertEq(finalTotalSupply, finalBalance + bootstrap, "Final total supply should match the user's balance");
+    }
+
 }

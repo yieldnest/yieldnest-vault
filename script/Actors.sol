@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 interface IActors {
     function ADMIN() external view returns (address);
     function PROPOSER_1() external view returns (address);
-    function EXECUTOR_1() external view returns (address);
+    function EXECUTOR_1() external returns (address);
 }
 
 contract LocalActors is IActors {

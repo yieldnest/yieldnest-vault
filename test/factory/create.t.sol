@@ -8,7 +8,7 @@ import {LocalActors, IActors} from "script/Actors.sol";
 import {TestConstants} from "test/helpers/Constants.sol";
 import {SingleVault} from "src/SingleVault.sol";
 import {VaultFactory} from "src/VaultFactory.sol";
-import {DeployVaultFactory} from "script/Deploy.s.sol";
+import {DeployFactory} from "script/DeployFactory.s.sol";
 import {Etches} from "test/helpers/Etches.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {AssetHelper} from "test/helpers/Assets.sol";
@@ -31,7 +31,7 @@ contract CreateTest is Test, LocalActors, TestConstants {
         proposers = [PROPOSER_1];
         executors = [EXECUTOR_1];
 
-        DeployVaultFactory factoryDeployer = new DeployVaultFactory();
+        DeployFactory factoryDeployer = new DeployFactory();
         factory = VaultFactory(factoryDeployer.deployVaultFactory(actors, 0, MainnetContracts.WETH));
     }
 

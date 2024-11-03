@@ -5,7 +5,7 @@ import {ERC4626Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable
 
 import {ISingleVault} from "src/interface/ISingleVault.sol";
 
-/* ynETH Pre-Launch Vault */
+/* ynETHx Pre-Launch Vault */
 
 contract SingleVault is ISingleVault, ERC4626Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using Math for uint256;
@@ -35,12 +35,12 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, AccessControlUpgradeab
         uint256 shares = previewDeposit(amount);
 
         (bool success,) = address(weth).call{value: amount}("");
-        if (!success) revert DepositFailed();
-
+        if (!success) {
+            revert DepositFailed();
+        }
         if (msg.sender != address(this)) {
             _mint(msg.sender, shares);
         }
-
         emit Deposit(msg.sender, msg.sender, amount, shares);
     }
 

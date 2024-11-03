@@ -10,7 +10,7 @@ import {MainnetContracts, HoleskyContracts} from "script/Contracts.sol";
 import {SingleVault} from "src/SingleVault.sol";
 import {TransparentUpgradeableProxy, TimelockController} from "src/Common.sol";
 
-contract DeployVaultFactory is Script {
+contract DeployFactory is Script {
     function run() public {
         if (block.chainid == 17000) {
             vm.startBroadcast();

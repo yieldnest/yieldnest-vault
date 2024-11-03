@@ -21,6 +21,7 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
 
     error ZeroAddress();
     error InvalidWethAddress();
+    error ZeroBalance();
 
     constructor() {
         _disableInitializers();
@@ -60,8 +61,9 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
     {
         string memory funcSig = "initialize(address,string,string,address)";
 
-        if (address(asset_) != address(weth)) revert InvalidWethAddress();
-
+        if (address(asset_) != address(weth)) {
+            revert InvalidWethAddress();
+        }
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             singleVaultImpl, timelock, abi.encodeWithSignature(funcSig, asset_, name_, symbol_, admin_)
         );
@@ -75,11 +77,19 @@ contract VaultFactory is IVaultFactory, AccessControlUpgradeable {
 
     /**
      * @dev Returns the WETH that was deposited to the factory.
-     * @param receiver The address to receiver the boostrapped weth.
+     * @param receiver The address to receive the boostrapped weth.
      */
     function getDepositedWETH(address receiver) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        if(receiver == address(0)) {
+            revert ZeroAddress();
+        }
+        
         uint256 balance = IERC20(weth).balanceOf(address(this));
-        IERC20(weth).approve(receiver, balance);
+        
+        if(balance == 0) {
+            revert ZeroBalance();       
+        }
+
         IERC20(weth).transfer(receiver, balance);
         emit WethReturned(receiver, balance);
     }

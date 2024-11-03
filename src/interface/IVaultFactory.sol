@@ -10,11 +10,8 @@ interface IVaultFactory is IAccessControl {
     }
 
     function timelock() external view returns (address);
-
     function singleVaultImpl() external view returns (address);
-
     function initialize(address singleVaultImpl_, address admin, address timelock_, address weth_) external;
-
     function createSingleVault(IERC20 asset_, string memory name_, string memory symbol_, address admin_)
         external
         returns (address);
