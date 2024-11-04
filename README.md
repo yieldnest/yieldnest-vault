@@ -1,4 +1,4 @@
-## YieldNest Starter Vault
+## ynETH MAX Starter Vault
 
 This is a general purpose 4626 starter vault for rapid deployment against new opportunies.
 
@@ -7,7 +7,7 @@ This is a general purpose 4626 starter vault for rapid deployment against new op
 The initial version is a SingleAsset 4626 Vault with TimelockController to send Admin transactions.
 This vault is the Base version used for pre-depositing assets ahead of settled DeFi functionality.
 
-Please see the standard 4626 documentation at: https://docs.openzeppelin.com/contracts/5.x/erc4626
+Please see the 4626 documentation at: https://docs.openzeppelin.com/contracts/5.x/erc4626
 
 ## Testing
 
