@@ -28,6 +28,16 @@ contract SingleVaultUpgradeTests is Test, SetupHelper, HoleskyActors {
     }
     
     function test_Holesky_Vault_Upgrade() public onlyHolesky {
+        ISingleVault newVault = new SingleVault();
+        upgrader(address(newVault));
+    }
+
+    function test_Holesky_Vault_UpgradeMaxVault() public onlyHolesky {
+        ISingleVault newVault = new SingleVault();
+        upgrader(address(newVault));
+    }
+
+    function upgrader(address newVault) internal {
         deal(ADMIN, 100 ether);
         deal(PROPOSER_1, 100 ether);
         deal(EXECUTOR_1, 100 ether);
@@ -35,8 +45,6 @@ contract SingleVaultUpgradeTests is Test, SetupHelper, HoleskyActors {
         vm.label(HoleskyContracts.TIMELOCK, "TIMELOCK");
         vm.label(HoleskyContracts.PROXY_ADMIN, "PROXY_ADMIN");
         vm.label(HoleskyContracts.YNETHX, "ynETHx");
-
-        ISingleVault newVault = new SingleVault();
 
         // the timelock on the factory is the admin for proxy upgrades
         TLC timelock = TLC(payable(HoleskyContracts.TIMELOCK));
