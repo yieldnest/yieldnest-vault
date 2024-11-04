@@ -5805,7 +5805,6 @@ library Guard {
 }
 
 // src/Vault.sol
-
 contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using Address for address;
@@ -6217,26 +6216,5 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         _disableInitializers();
     }
 
-    receive() external payable nonReentrant {
-        if (msg.value > 0) {
-            _mintSharesForETH(msg.value);
-        }
-    }
-
-    function _mintSharesForETH(uint256 amount) private {
-        uint256 maxAssets = maxDeposit(msg.sender);
-
-        uint256 shares = previewDeposit(amount);
-        (bool success,) = asset().call{value: amount}("");
-
-        if (!success) {
-            revert();
-        }
-
-        if (msg.sender != address(this)) {
-            _mint(msg.sender, shares);
-        }
-        emit Deposit(msg.sender, msg.sender, amount, shares);
-    }
+    // TODO: add receive function to handle ETH
 }
-

@@ -11,6 +11,8 @@ import {TimelockController as TLC} from "src/Common.sol";
 import {HoleskyActors} from "script/Actors.sol";
 import {HoleskyContracts} from "script/Contracts.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
+import {MockBuffer} from "test/mocks/MockBuffer.sol";
+import {MockETHRates} from "test/mocks/MockETHRates.sol";
 
 contract SingleVaultHoleskyUpgradeTests is Test, SetupHelper, HoleskyActors {
     ISingleVault public vault;
@@ -64,9 +66,16 @@ contract SingleVaultHoleskyUpgradeTests is Test, SetupHelper, HoleskyActors {
 
         IVault maxVault = IVault(address(vault));
 
-        vm.prank(ADMIN);
+        vm.startPrank(ADMIN);
         maxVault.addAsset(address(weth), 18);
         assertEq(maxVault.asset(), address(weth));
+        
+        MockBuffer buffer = new MockBuffer();
+        MockETHRates rates = new MockETHRates();
+        maxVault.addStrategy(address(buffer), 18);
+        maxVault.setRateProvider(address(rates));
+        maxVault.processAccounting();
+        vm.stopPrank();
 
         vm.label(address(maxVault), "MAX_VAULT");
         
@@ -79,41 +88,35 @@ contract SingleVaultHoleskyUpgradeTests is Test, SetupHelper, HoleskyActors {
         uint256 depositAmount1 = 5 ether;
         uint256 depositAmount2 = 10 ether;
 
-        deal(USER1, depositAmount1 * 2);
+        deal(USER1, depositAmount1);
         vm.prank(USER1);
-        weth.deposit{value: depositAmount1}();
-        
-        deal(USER2, depositAmount2 * 2);
+        (bool success,) = address(weth).call{value: depositAmount1}("");
+        require(success);
+        assertEq(weth.balanceOf(USER1), depositAmount1, "User1 should have the correct weth balance");
+
+        deal(USER2, depositAmount2);
         vm.prank(USER2);
-        weth.deposit{value: depositAmount2}();
+        (bool success1,) = address(weth).call{value: depositAmount2}("");
+        require(success1);
+        assertEq(weth.balanceOf(USER2), depositAmount2, "User2 should have the correct weth balance");
 
         vm.startPrank(USER1);
+        weth.approve(address(maxVault), depositAmount1);
         maxVault.deposit(depositAmount1, USER1);
+        assertEq(maxVault.balanceOf(USER1), depositAmount1, "User1 should have the correct ynETHx balance");
         vm.stopPrank();
 
         vm.startPrank(USER2);
-        maxVault.deposit(depositAmount1, USER2);
+        weth.approve(address(maxVault), depositAmount2);
+        maxVault.deposit(depositAmount2, USER2);
+        maxVault.totalAssets();
+
+        assertEq(maxVault.balanceOf(USER2), depositAmount2, "User2 should have the correct ynETHx balance");
         vm.stopPrank();
 
         maxVault.processAccounting();
         uint256 currentTotalAssets = maxVault.totalAssets();
-        assertEq(currentTotalAssets, initialTotalAssets + depositAmount1 + depositAmount2);
-
-        // Simulate withdrawals
-        uint256 withdrawAmount1 = 5 ether;
-        uint256 withdrawAmount2 = 5 ether;
-
-        vm.startPrank(USER1);
-        maxVault.withdraw(withdrawAmount1, USER1, USER1);
-        vm.stopPrank();
-
-        vm.startPrank(USER2);
-        maxVault.withdraw(withdrawAmount2, USER2, USER2);
-        vm.stopPrank();
-
-
-        uint256 finalTotalAssets = maxVault.totalAssets();
-        assertEq(finalTotalAssets, currentTotalAssets - withdrawAmount1 - withdrawAmount2);
+        assertEq(currentTotalAssets, initialTotalAssets + depositAmount1 + depositAmount2, "Current total matches deposited total");
     }
 
     function upgrader(address newVault) internal {

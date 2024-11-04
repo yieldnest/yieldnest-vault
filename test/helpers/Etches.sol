@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {MockStakeManager} from "test/mocks/MockListaStakeManager.sol";
 import {WETH9} from "test/mocks/MockWETH.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
