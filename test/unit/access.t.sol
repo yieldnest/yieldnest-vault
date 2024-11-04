@@ -27,9 +27,7 @@ contract AccessControlTest is Test, MainnetActors, SetupHelper {
         vm.startPrank(address(420));
         vm.expectRevert(
             abi.encodeWithSignature(
-                "AccessControlUnauthorizedAccount(address,address)",
-                address(420),
-                vault.DEFAULT_ADMIN_ROLE()
+                "AccessControlUnauthorizedAccount(address,address)", address(420), vault.DEFAULT_ADMIN_ROLE()
             )
         );
         vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(4));

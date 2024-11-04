@@ -51,11 +51,7 @@ contract WithdrawTest is Test, SetupHelper, MainnetActors {
         vm.stopPrank();
     }
 
-    function test_Vault_WithdrawPostRewards(
-        uint256 amount,
-        uint256 rewards
-    ) public {
-
+    function test_Vault_WithdrawPostRewards(uint256 amount, uint256 rewards) public {
         vm.assume(amount > 0 && amount < 10000 ether);
         vm.assume(rewards >= 0 && rewards < 10000 ether);
 
@@ -89,7 +85,9 @@ contract WithdrawTest is Test, SetupHelper, MainnetActors {
 
         uint256 postWithdrawBalance = asset.balanceOf(USER);
 
-        assertGe(amount, postWithdrawBalance, "Pre-deposit balance should be greater than or equal to post-withdraw balance");
+        assertGe(
+            amount, postWithdrawBalance, "Pre-deposit balance should be greater than or equal to post-withdraw balance"
+        );
 
         uint256 maxLoss = (amount > rewards ? amount : rewards) / 1e18;
         uint256 assetLoss = amount - postWithdrawBalance;

@@ -118,8 +118,11 @@ contract DepositTest is Test, SetupHelper, MainnetActors {
         uint256 finalTotalSupply = vault.totalSupply();
 
         // Assertions
-        assertEq(finalTotalAssets, totalDeposited - totalWithdrawn + bootstrap, "Final total assets should match the net deposited amount");
+        assertEq(
+            finalTotalAssets,
+            totalDeposited - totalWithdrawn + bootstrap,
+            "Final total assets should match the net deposited amount"
+        );
         assertEq(finalTotalSupply, finalBalance + bootstrap, "Final total supply should match the user's balance");
     }
-
 }
