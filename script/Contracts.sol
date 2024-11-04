@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 library MainnetContracts {
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address public constant TIMELOCK = address(0);
+    address public constant FACTORY = address(0);
 }
 
 library HoleskyContracts {

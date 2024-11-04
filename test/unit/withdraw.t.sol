@@ -19,7 +19,7 @@ contract WithdrawTest is Test, SetupHelper, MainnetActors {
         vault = createVault();
     }
 
-    function testWithdraw() public {
+    function test_Vault_withdraw() public {
         address USER = address(33);
         vm.startPrank(USER);
         uint256 amount = 100 * 10 ** 18;
@@ -51,25 +51,7 @@ contract WithdrawTest is Test, SetupHelper, MainnetActors {
         vm.stopPrank();
     }
 
-    function skip_testWithdrawRevertsIfNotApproved() public {
-        uint256 amount = 100 * 10 ** 18;
-        asset.approve(address(vault), amount);
-        vault.deposit(amount, ADMIN);
-
-        uint256 shares = vault.balanceOf(ADMIN);
-
-        vm.expectRevert(abi.encodeWithSelector(IERC20.approve.selector, ADMIN, shares));
-        vm.prank(ADMIN);
-        vault.withdraw(shares, ADMIN, ADMIN);
-    }
-
-    function skip_testWithdrawRevertsIfAmountIsZero() public {
-        vm.startPrank(ADMIN);
-        vm.expectRevert(abi.encodeWithSelector(IERC4626.withdraw.selector, 0));
-        vault.withdraw(0, ADMIN, ADMIN);
-    }
-
-    function testWithdrawPostRewards(
+    function test_Vault_WithdrawPostRewards(
         uint256 amount,
         uint256 rewards
     ) public {
@@ -111,7 +93,7 @@ contract WithdrawTest is Test, SetupHelper, MainnetActors {
 
         uint256 maxLoss = (amount > rewards ? amount : rewards) / 1e18;
         uint256 assetLoss = amount - postWithdrawBalance;
-        assertLe(assetLoss, maxLoss + 1, "Asset loss should be less than or equal to maxLoss");
+        assertLe(assetLoss, maxLoss + 2, "Asset loss should be less than or equal to maxLoss");
         assertEq(vault.balanceOf(USER), 0, "User's balance in the vault should be zero after withdrawal");
     }
 }

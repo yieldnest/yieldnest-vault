@@ -26,7 +26,7 @@ contract SingleVaultUpgradeTests is Test, SetupHelper, MainnetActors {
         _;
     }
 
-    function testUpgrade() public onlyLocal {
+    function test_Vault_Upgrade() public onlyLocal {
         vm.startPrank(ADMIN);
         SingleVault newVault = new MockSingleVault();
 

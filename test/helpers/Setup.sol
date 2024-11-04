@@ -24,8 +24,7 @@ contract SetupHelper is Test, Etches, Constants {
         } else if (block.chainid == 1) {
             WETH = MainnetContracts.WETH;
             actors = new MainnetActors();
-            DeployFactory factoryDeployer = new DeployFactory();
-            factory = IVaultFactory(factoryDeployer.deployVaultFactory(actors, 0, WETH));        
+            factory = IVaultFactory(MainnetContracts.FACTORY);        
         } else {
             WETH = MainnetContracts.WETH;
             actors = new MainnetActors();

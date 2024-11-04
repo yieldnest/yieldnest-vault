@@ -1,16 +1,21 @@
 ## YieldNest Starter Vault
 
-This is a general purpose starter vault for rapid deployment against new opportunies.
+This is a general purpose 4626 starter vault for rapid deployment against new opportunies.
 
 ## Overview
 
 The initial version is a SingleAsset 4626 Vault with TimelockController to send Admin transactions.
 This vault is the Base version used for pre-depositing assets ahead of settled DeFi functionality.
 
-## Test Deployment
+Please see the standard 4626 documentation at: https://docs.openzeppelin.com/contracts/5.x/erc4626
 
-See the makefile for scripts. Deploy a factory first, then use it to deploy a new vault.
+## Testing
 
+```
+make unit-test
+make holeksy-test
+make mainnet-test
+```
 
 ## Contract Deployments
 
@@ -19,24 +24,15 @@ See the makefile for scripts. Deploy a factory first, then use it to deploy a ne
 |-----------------------|------------------------------------------------|
 | ynETHx                | [](https://etherscan.io/address/)   				 	 |
 | WETH             			| [](https://etherscan.com/address/)   					 |
-| Vault Factory         | [](https://etherscan.com/address/)   				   |
-| VaultFactory Impl			| [](https://etherscan.com/address/)						 |
-| SingleVault Imp       | [](https://etherscan.com/address/)						 |
 | Timelock							| [](https://etherscan.com/address/)						 |
-| ProxyAdmin 						| [](https://etherscan.com/address/)						 |
-| Security Council			| [](https://etherscan.com/address/)						 |
 
 ### Holesky Testnet
 | Name | Address |
 |-----------------------|--------------------------------------------------------|
-| ynETHx                | [](https://holesky.etherscan.io/address/)   				 	 |
-| WETH             			| [](https://holesky.etherscan.com/address/)   					 |
-| Vault Factory         | [](https://holesky.etherscan.com/address/)   				   |
-| VaultFactory Impl			| [](https://holesky.etherscan.com/address/)						 |
-| SingleVault Imp       | [](https://holesky.etherscan.com/address/)						 |
-| Timelock							| [](https://holesky.etherscan.com/address/)						 |
-| ProxyAdmin 						| [](https://holesky.etherscan.com/address/)						 |
-| Security Council			| [](https://holesky.etherscan.com/address/)						 |
+| ynETHx                | [0xfd930060e51C10CCBc36F512676B4FD3E7026a1E](https://holesky.etherscan.io/address/0xfd930060e51C10CCBc36F512676B4FD3E7026a1E)   				 	 |
+| WETH             			| [0x94373a4919B3240D86eA41593D5eBa789FEF3848](https://holesky.etherscan.com/address/0x94373a4919B3240D86eA41593D5eBa789FEF3848)   					 |
+| Timelock							| [0x8f4e6d1bfcd1e02ad775938c747e06beef0c7cb8](https://holesky.etherscan.com/address/0x8f4e6d1bfcd1e02ad775938c747e06beef0c7cb8)						 |
+
 
 
 # Project Deployment Commands
@@ -81,8 +77,8 @@ Sends a transaction to create a single vault using the `createSingleVault` funct
 	+ `string _symbol`: `"${VAULT_SYMBOL}"`
 	+ `address _admin`: `${ADMIN_ADDRESS}`
 	+ `uint256 _minDelay`: `${MIN_DELAY}`
-	+ `address[] _proposers`: `"[${PROPOSER_1},${PROPOSER_2}]"`
-	+ `address[] _executors`: `"[${EXECUTOR_1},${EXECUTOR_2}]"`
+	+ `address[] _proposers`: `"[${PROPOSER_1}]"`
+	+ `address[] _executors`: `"[${EXECUTOR_1}]"`
 * Options:
 	+ `--account ${ACCOUNT_NAME}`: Uses the specified account name.
 	+ `--rpc-url ${RPC_URL}`: Connects to the specified RPC URL.
@@ -115,5 +111,5 @@ I believe this is  because of that decimal offset in OZ 46426Upgradeable to prev
 1. Deposit Withdraw Scenario
 There's a loss incurred by the user that's roughly less than `Max(amount, rewards) / 1e18` when he withdraws the exact same shares he received  when compared to what he deposited.
 
-2. Initial Version of the Vault is trusted by the YnBscSecurityCouncil:
-https://app.safe.global/home?safe=bnb:0x721688652DEa9Cabec70BD99411EAEAB9485d436
+2. Infaltion Attack
+OZ expalains mitigiation of this attach in v5 here: https://docs.openzeppelin.com/contracts/5.x/erc4626
