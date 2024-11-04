@@ -31,7 +31,7 @@ make mainnet-test
 |-----------------------|--------------------------------------------------------|
 | ynETHx                | [0xfd930060e51C10CCBc36F512676B4FD3E7026a1E](https://holesky.etherscan.io/address/0xfd930060e51C10CCBc36F512676B4FD3E7026a1E)   				 	 |
 | WETH             			| [0x94373a4919B3240D86eA41593D5eBa789FEF3848](https://holesky.etherscan.com/address/0x94373a4919B3240D86eA41593D5eBa789FEF3848)   					 |
-| Timelock							| [0x8f4e6d1bfcd1e02ad775938c747e06beef0c7cb8](https://holesky.etherscan.com/address/0x8f4e6d1bfcd1e02ad775938c747e06beef0c7cb8)						 |
+| Timelock							| [0x8f4E6d1BfCd1e02aD775938C747e06beeF0c7Cb8](https://holesky.etherscan.com/address/0x8f4E6d1BfCd1e02aD775938C747e06beeF0c7Cb8)						 |
 
 
 
