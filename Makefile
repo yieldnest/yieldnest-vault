@@ -26,3 +26,5 @@ holesky-test :; FOUNDRY_PROFILE=holesky forge test
 mainnet-test :; FOUNDRY_PROFILE=mainnet forge test
 
 cover :; forge coverage --report lcov
+
+upgrade-params :; forge script script/Upgrade.sol --chain 17000 --verbosity -vvv
