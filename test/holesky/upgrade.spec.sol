@@ -50,14 +50,26 @@ contract SingleVaultHoleskyUpgradeTests is Test, SetupHelper, HoleskyActors {
         vm.stopPrank();
 
         uint256 currentTotalAssets = vault.totalAssets();
-        IVault maxVault = new Vault();
-        upgrader(address(maxVault));
+        
+        // Upgrade to the max vault
+        IVault newVault = new Vault();
+        upgrader(address(newVault));
+        IVault maxVault = IVault(address(vault));
 
+        // configure basics
+        vm.startPrank(ADMIN);
+        maxVault.addAsset(address(weth), 18);
+        assertEq(maxVault.asset(), address(weth));
+        MockBuffer buffer = new MockBuffer();
+        MockETHRates rates = new MockETHRates();
+        maxVault.addStrategy(address(buffer), 18);
+        maxVault.setRateProvider(address(rates));
+        maxVault.processAccounting();
         uint256 maxVaultTotalAssets = vault.totalAssets();
         assertEq(maxVaultTotalAssets, currentTotalAssets);
     }
 
-    function test_Holesky_Vault_SimulatedDepositsAndWithdrawals() public onlyHolesky {
+    function test_Holesky_Vault_maxVaultUpgradeTestDesposit() public onlyHolesky {
 
         IVault newVault = new Vault();
 
