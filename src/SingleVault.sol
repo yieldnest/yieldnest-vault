@@ -39,7 +39,7 @@ contract SingleVault is ISingleVault, ERC4626Upgradeable, AccessControlUpgradeab
 
         uint256 shares = previewDeposit(amount);
         (bool success,) = address(weth).call{value: amount}("");
-        
+
         if (!success) {
             revert DepositFailed();
         }
