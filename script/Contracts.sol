@@ -5,7 +5,7 @@ library MainnetContracts {
     address public constant YNETHX = address(0);
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant TIMELOCK = 0xb5b52c63067E490982874B0d0F559668Bbe0c36B;
-    address public constant FACTORY = ;
+    address public constant FACTORY = 0x1756987c66eC529be59D3Ec1edFB005a2F9728E1;
     address public constant PROXY_ADMIN = address(0);
 }
 
