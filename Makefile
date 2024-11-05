@@ -5,13 +5,13 @@ account :; cast wallet import $(ACCOUNT_NAME) --interactive
 local-factory :; forge script script/DeployFactory.s.sol:DeployFactory \
 	--private-key $(PRIVATE_KEY) \
 	--rpc-url http://localhost:8545 \
-	--broadcast
+
 
 factory :; forge script script/DeployFactory.s.sol:DeployFactory \
 	--account ${ACCOUNT_NAME} \
 	--rpc-url ${RPC_URL} \
-	--verify \
-	--broadcast
+	--broadcast \
+	-- verify
 	
 vault :;
 	cast send ${FACTORY_ADDRESS} \
