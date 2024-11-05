@@ -9,7 +9,7 @@ contract DeployFactory is Script {
     function run() public {
         vm.startBroadcast();
 
-        SingleVault vault = new SingleVault();
+        new SingleVault();
 
         vm.stopBroadcast();
     }

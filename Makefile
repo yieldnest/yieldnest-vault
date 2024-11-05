@@ -11,7 +11,7 @@ factory :; forge script script/DeployFactory.s.sol:DeployFactory \
 	--account ${ACCOUNT_NAME} \
 	--rpc-url ${RPC_URL} \
 	--broadcast \
-	-- verify
+	--verify
 	
 vault :;
 	cast send ${FACTORY_ADDRESS} \
