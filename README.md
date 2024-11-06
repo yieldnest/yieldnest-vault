@@ -22,9 +22,10 @@ make mainnet-test
 ### Mainnet
 | Name | Address |
 |-----------------------|------------------------------------------------|
-| ynETHx                | [](https://etherscan.io/address/)   				 	 |
-| WETH             			| [](https://etherscan.com/address/)   					 |
-| Timelock							| [](https://etherscan.com/address/)						 |
+| ynETHx                | [0x657d9ABA1DBb59e53f9F3eCAA878447dCfC96dCb](https://etherscan.io/address/0x657d9ABA1DBb59e53f9F3eCAA878447dCfC96dCb)   				 	 |
+| WETH             			| [0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2](https://etherscan.com/address/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2)   					 |
+| Timelock							| [0xb5b52c63067E490982874B0d0F559668Bbe0c36B](https://etherscan.com/address/0xb5b52c63067E490982874B0d0F559668Bbe0c36B)						 |
+| ProxyAdmin						| [0xA02A8DC24171aC161cCb74Ef02C28e3cA2204783](https://etherscan.io/address/0xA02A8DC24171aC161cCb74Ef02C28e3cA2204783)
 
 ### Holesky Testnet
 | Name | Address |

@@ -2,11 +2,11 @@
 pragma solidity ^0.8.24;
 
 library MainnetContracts {
-    address public constant YNETHX = address(0);
+    address public constant YNETHX = 0x657d9ABA1DBb59e53f9F3eCAA878447dCfC96dCb;
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant TIMELOCK = 0xb5b52c63067E490982874B0d0F559668Bbe0c36B;
     address public constant FACTORY = 0x1756987c66eC529be59D3Ec1edFB005a2F9728E1;
-    address public constant PROXY_ADMIN = address(0);
+    address public constant PROXY_ADMIN = 0xA02A8DC24171aC161cCb74Ef02C28e3cA2204783;
 }
 
 library HoleskyContracts {
