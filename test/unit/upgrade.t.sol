@@ -2,34 +2,23 @@
 pragma solidity ^0.8.24;
 
 import {SingleVault} from "src/SingleVault.sol";
-import {MockERC20} from "test/mocks/MockERC20.sol";
+import {WETH9} from "test/mocks/MockWETH.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
-import {Etches} from "test/helpers/Etches.sol";
-import {LocalActors} from "script/Actors.sol";
-import {TestConstants} from "test/helpers/Constants.sol";
-import {IERC20} from "src/Common.sol";
-import {IVaultFactory} from "src/IVaultFactory.sol";
+import {IVaultFactory} from "src/interface/IVaultFactory.sol";
 import {MockSingleVault} from "test/mocks/MockSingleVault.sol";
 import {TimelockController} from "src/Common.sol";
+import {MainnetActors} from "script/Actors.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
 
-import "forge-std/Test.sol";
-
-contract SingleVaultUpgradeTests is Test, LocalActors, TestConstants {
+contract SingleVaultUpgradeTests is Test, SetupHelper, MainnetActors {
     SingleVault public vault;
-    MockERC20 public asset;
-    IVaultFactory public factory;
+    WETH9 public asset;
 
     function setUp() public {
-        vm.startPrank(ADMIN);
-        asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
+        asset = WETH9(payable(WETH));
+        vault = createVault();
 
-        Etches etches = new Etches();
-        etches.mockListaStakeManager();
-
-        SetupHelper setup = new SetupHelper();
-        vault = setup.createVault(asset);
-
-        factory = IVaultFactory(setup.factory());
+        factory = IVaultFactory(factory);
     }
 
     modifier onlyLocal() {
@@ -37,7 +26,7 @@ contract SingleVaultUpgradeTests is Test, LocalActors, TestConstants {
         _;
     }
 
-    function testUpgrade() public onlyLocal {
+    function test_Vault_Upgrade() public onlyLocal {
         vm.startPrank(ADMIN);
         SingleVault newVault = new MockSingleVault();
 

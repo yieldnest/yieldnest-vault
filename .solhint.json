@@ -10,6 +10,8 @@
     "not-rely-on-time": "warn",
     "state-visibility": "error",
     "max-line-length": ["warn", 120],
-    "no-console": "off"
+    "no-console": "off",
+    "func-name-mixedcase": "off",
+    "var-name-mixedcase": "off"
   }
 }

@@ -1,42 +1,50 @@
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import {IActors, LocalActors} from "script/Actors.sol";
-import {DeployVaultFactory} from "script/Deploy.s.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
+import {IActors,HoleskyActors,MainnetActors} from "script/Actors.sol";
+import {MainnetContracts,HoleskyContracts} from "script/Contracts.sol";
+import {DeployFactory} from "script/DeployFactory.s.sol";
 import {SingleVault} from "src/SingleVault.sol";
-import {IVaultFactory} from "src/IVaultFactory.sol";
+import {IVaultFactory} from "src/interface/IVaultFactory.sol";
 import {IERC20} from "src/Common.sol";
-import {TestConstants} from "test/helpers/Constants.sol";
+import {Constants} from "script/Constants.sol";
+import {IWETH} from "src/interface/IWETH.sol";
+import {Etches} from "test/helpers/Etches.sol";
 
-contract SetupHelper is Test, LocalActors, TestConstants {
+contract SetupHelper is Test, Etches, Constants {
     IVaultFactory public factory;
+    IActors public actors;
+    address public WETH;
 
     constructor() {
-        IActors actors = new LocalActors();
-        DeployVaultFactory factoryDeployer = new DeployVaultFactory();
-        factory = IVaultFactory(factoryDeployer.deployVaultFactory(actors, 0));
+        if (block.chainid == 17000) {
+            factory = IVaultFactory(HoleskyContracts.FACTORY);
+            actors = new HoleskyActors();
+            WETH = HoleskyContracts.WETH;
+        } else if (block.chainid == 1) {
+            WETH = MainnetContracts.WETH;
+            actors = new MainnetActors();
+            factory = IVaultFactory(MainnetContracts.FACTORY);        
+        } else {
+            WETH = MainnetContracts.WETH;
+            actors = new MainnetActors();
+            DeployFactory factoryDeployer = new DeployFactory();
+            factory = IVaultFactory(factoryDeployer.deployVaultFactory(actors, 0, WETH));      
+        }
     }
 
-    function createVault(IERC20 asset) public returns (SingleVault vault) {
-        vm.startPrank(ADMIN);
-        address[] memory proposers = new address[](2);
-        proposers[0] = PROPOSER_1;
-        proposers[1] = PROPOSER_2;
-        address[] memory executors = new address[](2);
-        executors[0] = EXECUTOR_1;
-        executors[1] = EXECUTOR_2;
+    function createVault() public returns (SingleVault vault) {
 
-        asset.approve(address(factory), 1 ether);
-        asset.transfer(address(factory), 1 ether);
-        address vaultAddress = factory.createSingleVault(
-            asset,
-            VAULT_NAME,
-            VAULT_SYMBOL,
-            ADMIN,
-            0, // time delay
-            proposers,
-            executors
-        );
+        address ADMIN = actors.ADMIN();
+        
+        mockWETH9();
+
+        deal(ADMIN, 100_000 ether);
+        IWETH(payable(WETH)).deposit{value: 1 ether}();
+        IERC20(WETH).transfer(address(factory), 1 ether);
+
+        vm.prank(ADMIN);
+        address vaultAddress = factory.createSingleVault(IERC20(WETH), VAULT_NAME, VAULT_SYMBOL, ADMIN);
         vault = SingleVault(payable(vaultAddress));
     }
 }

@@ -2,36 +2,29 @@
 pragma solidity ^0.8.24;
 
 import {SingleVault} from "src/SingleVault.sol";
-import {MockERC20} from "test/mocks/MockERC20.sol";
-import {Math} from "src/Common.sol";
+import {WETH9} from "test/mocks/MockWETH.sol";
+import {Math, IERC20} from "src/Common.sol";
 import {SetupHelper} from "test/helpers/Setup.sol";
-import {Etches} from "test/helpers/Etches.sol";
-import {TestConstants} from "test/helpers/Constants.sol";
-import {LocalActors} from "script/Actors.sol";
+import {MainnetActors} from "script/Actors.sol";
+import {MainnetContracts} from "script/Contracts.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
 
-import "forge-std/Test.sol";
-
-contract SingleInvariantTests is Test, LocalActors, TestConstants {
+contract SingleInvariantTests is Test, SetupHelper, MainnetActors {
     using Math for uint256;
 
     SingleVault public vault;
-    MockERC20 public asset;
     address public USER = address(33);
 
+    WETH9 public asset;
+
     function setUp() public {
-        vm.startPrank(ADMIN);
-        asset = MockERC20(address(new MockERC20(ASSET_NAME, ASSET_SYMBOL)));
-
-        Etches etches = new Etches();
-        etches.mockListaStakeManager();
-
-        SetupHelper setup = new SetupHelper();
-        vault = setup.createVault(asset);
+        asset = WETH9(payable(MainnetContracts.WETH));
+        vault = createVault();
     }
 
     event Log(uint256 amount, string name);
 
-    function test_totalAssetsAlwaysCorrect(uint256 depositAmount) public {
+    function test_Vault_totalAssetsAlwaysCorrect(uint256 depositAmount) public {
         if (depositAmount < 1) return;
         if (depositAmount > 1e50) return;
 
@@ -43,7 +36,7 @@ contract SingleInvariantTests is Test, LocalActors, TestConstants {
         assertClose(currentTotalAssets, expectedAssets, 10, "Total assets mismatch after deposit");
     }
 
-    function test_totalSupplyAlwaysCorrect(uint256 depositAmount) public {
+    function test_Vault_totalSupplyAlwaysCorrect(uint256 depositAmount) public {
         if (depositAmount < 1) return;
         if (depositAmount > 1e50) return;
 
@@ -55,7 +48,7 @@ contract SingleInvariantTests is Test, LocalActors, TestConstants {
         assertClose(currentTotalSupply, expectedSupply, 1, "Total supply mismatch after deposit");
     }
 
-    function test_totalSupplyMatchesBalances(uint256 depositAmount) public {
+    function test_Vault_totalSupplyMatchesBalances(uint256 depositAmount) public {
         if (depositAmount < 2) return;
         if (depositAmount > 1e50) return;
 
@@ -64,7 +57,7 @@ contract SingleInvariantTests is Test, LocalActors, TestConstants {
         assertEq(vault.convertToShares(depositAmount + 1 ether), total, "Total supply does not balances");
     }
 
-    function test_conversionConsistency(uint256 depositAmount) public view {
+    function test_Vault_conversionConsistency(uint256 depositAmount) public view {
         if (depositAmount < 2) return;
         if (depositAmount > 1e50) return;
         uint256 shares = vault.convertToShares(depositAmount);
@@ -74,8 +67,9 @@ contract SingleInvariantTests is Test, LocalActors, TestConstants {
 
     function depositHelper(address user, uint256 depositAmount) public {
         vm.startPrank(user);
-        asset.mint(depositAmount);
-        asset.approve(address(vault), depositAmount);
+        deal(user, depositAmount);
+        asset.deposit{value: depositAmount}();
+        IERC20(address(asset)).approve(address(vault), depositAmount);
         vault.deposit(depositAmount, address(this));
         vm.stopPrank();
     }
