@@ -39,7 +39,9 @@ contract SetupVault is Test, Etches, MainnetActors {
         mockAll();
         
         vm.startPrank(ADMIN);
-        
+
+        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
+
         // test cannot unpause vault withtout buffer
         vm.expectRevert();
         vault.pause(false);
@@ -100,7 +102,8 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault = Vault(payable(address(vaultProxy)));
 
         vm.startPrank(ADMIN);
-
+        
+        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
         vault.setRateProvider(ETH_RATE_PROVIDER);
 
         // Add assets: Base asset always first

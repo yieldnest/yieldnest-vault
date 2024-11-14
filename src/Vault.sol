@@ -500,6 +500,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     //// ADMIN ////
+    
+    bytes32 constant public PROCESSOR_ROLE = 0xe61decff6e4a5c6b5a3d3cbd28f882e595173563b49353ce5f31dba2de7f05ee;
 
     /**
      * @notice Sets the rate provider.
@@ -636,7 +638,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      */
     function processor(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
         external
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(PROCESSOR_ROLE)
         returns (bytes[] memory returnData)
     {
         uint256 targetsLength = targets.length;

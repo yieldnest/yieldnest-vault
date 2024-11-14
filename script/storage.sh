@@ -13,3 +13,6 @@ cast keccak "yieldnest.storage.strat"
 
 echo "proc:"
 cast keccak "yieldnest.storage.proc"
+
+echo "PROCESSOR_ROLE:"
+cast keccak "PROCESSOR_ROLE"
