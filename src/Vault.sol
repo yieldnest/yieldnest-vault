@@ -500,8 +500,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     //// ADMIN ////
-    
-    bytes32 constant public PROCESSOR_ROLE = 0xe61decff6e4a5c6b5a3d3cbd28f882e595173563b49353ce5f31dba2de7f05ee;
+
+    bytes32 public constant PROCESSOR_ROLE = 0xe61decff6e4a5c6b5a3d3cbd28f882e595173563b49353ce5f31dba2de7f05ee;
 
     /**
      * @notice Sets the rate provider.

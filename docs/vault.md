@@ -180,18 +180,4 @@ sequenceDiagram
    - It should call the processAccounting after withdraw to update all balances.
 
 
-Rewards
----
-
-- TODO: where does the yield come from
-
-Incentives
----
-
-- TODO: coprocessor incentives
-
-Governance 
----
-
-- TODO: add roles and governance 
 
