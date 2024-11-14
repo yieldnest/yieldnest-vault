@@ -178,7 +178,7 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 
     function test_Vault_maxDeposit() public view {
         uint256 maxDeposit = vault.maxDeposit(alice);
-        assertEq(maxDeposit, type(uint256).max, "Max deposit does not match");
+        assertEq(maxDeposit, weth.balanceOf(alice), "Max deposit does not match");
     }
 
     function test_Vault_previewDepositAsset() public view {
@@ -211,5 +211,54 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 
         // Expect revert when calling maxRedeem while paused
         assertEq(vault.maxRedeem(alice), 0, "Should be zero when paused");
+    }
+
+    function test_Vault_mintSharesForETH_success() public {
+        uint256 initialBalance = address(vault).balance;
+        uint256 depositAmount = 1 ether;
+
+        // Send ETH to the vault
+        vm.prank(alice);
+        (bool success,) = address(vault).call{value: depositAmount}("");
+        require(success, "ETH transfer failed");
+
+        // Check the vault's balance
+        uint256 newBalance = weth.balanceOf(address(vault));
+        assertEq(newBalance, initialBalance + depositAmount, "Vault balance mismatch");
+
+        // Check the shares minted
+        uint256 sharesMinted = vault.balanceOf(alice);
+        assertGt(sharesMinted, 0, "No shares minted");
+    }
+
+    function test_Vault_receiveETH() public {
+        uint256 initialBalance = address(vault).balance;
+        uint256 depositAmount = 1 ether;
+
+        uint256 previewAmount = vault.previewDeposit(depositAmount);
+
+        // Send ETH to the vault
+        vm.prank(alice);
+        (bool success,) = address(vault).call{value: depositAmount}("");
+        require(success, "ETH transfer failed");
+
+        // Check the vault's balance
+        uint256 newBalance = weth.balanceOf(address(vault));
+        assertEq(newBalance, initialBalance + depositAmount, "Vault balance mismatch");
+
+        // Check the shares minted
+        uint256 sharesMinted = vault.balanceOf(alice);
+        assertEq(sharesMinted, previewAmount, "No shares minted");
+    }
+
+    function test_Vault_receiveETH_zeroValue() public {
+        // Send zero ETH to the vault
+        vm.prank(alice);
+        (bool success,) = address(vault).call{value: 0}("");
+        require(success, "ETH transfer failed");
+
+        // Check the shares minted
+        uint256 sharesMinted = vault.balanceOf(alice);
+        assertEq(sharesMinted, 0, "Shares should not be minted for zero value");
     }
 }

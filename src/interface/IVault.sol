@@ -58,9 +58,11 @@ interface IVault is IERC4626 {
 
     error Paused();
     error ZeroAddress();
+    error ZeroAmount();
+    error ZeroRate();
     error InvalidString();
     error InvalidArray();
-    error ExceededMaxDeposit();
+    error ExceededMaxDeposit(address sender, uint256 amount, uint256 maxAssets);
     error InvalidAsset(address);
     error InvalidStrategy(address);
     error InvalidTarget(address);
@@ -74,6 +76,7 @@ interface IVault is IERC4626 {
     error ProcessInvalid(bytes);
     error RateProviderNotSet();
     error BufferNotSet();
+    error DepositFailed();
 
     event DepositAsset(address indexed asset, address indexed vault, uint256 amount, address indexed receiver);
     event SetRateProvider(address indexed rateProvider);

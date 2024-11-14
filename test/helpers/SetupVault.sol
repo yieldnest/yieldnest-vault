@@ -22,7 +22,7 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
-        vault = Vault(address(vaultProxy));
+        vault = Vault(payable(address(vaultProxy)));
         weth = WETH9(payable(WETH));
 
         if (block.chainid == 31337) {
@@ -97,7 +97,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
         // Create a Vault interface pointing to the proxy
-        vault = Vault(address(vaultProxy));
+        vault = Vault(payable(address(vaultProxy)));
 
         vm.startPrank(ADMIN);
 
