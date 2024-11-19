@@ -4,12 +4,12 @@ pragma solidity ^0.8.24;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault, IVault} from "src/Vault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
-import {MainnetContracts} from "script/Contracts.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 
-contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
+contract VaultDepositUnitTest is Test, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -34,7 +34,7 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
     }
 
     function test_Vault_asset() public view {
-        address expectedAsset = address(WETH);
+        address expectedAsset = MC.WETH;
         assertEq(vault.asset(), expectedAsset, "Asset address does not match");
     }
 
@@ -70,9 +70,9 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
 
     function test_Vault_getStrategies() public view {
         address[] memory expectedStrategies = new address[](3);
-        expectedStrategies[0] = address(BUFFER_STRATEGY);
-        expectedStrategies[1] = address(YNETH);
-        expectedStrategies[2] = address(YNLSDE);
+        expectedStrategies[0] = MC.BUFFER_STRATEGY;
+        expectedStrategies[1] = MC.YNETH;
+        expectedStrategies[2] = MC.YNLSDE;
         assertEq(vault.getStrategies().length, expectedStrategies.length);
         for (uint256 i = 0; i < expectedStrategies.length; i++) {
             assertEq(vault.getStrategies()[i], expectedStrategies[i]);
@@ -80,7 +80,7 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
     }
 
     function test_Vault_getStrategy() public view {
-        address strategyAddress = address(YNETH);
+        address strategyAddress = MC.YNETH;
         IVault.StrategyParams memory expectedStrategyParams = IVault.StrategyParams(true, 1, 18, 0);
         assertEq(vault.getStrategy(strategyAddress).active, expectedStrategyParams.active);
         assertEq(vault.getStrategy(strategyAddress).index, expectedStrategyParams.index);
@@ -88,10 +88,10 @@ contract VaultDepositUnitTest is Test, MainnetContracts, Etches {
     }
 
     function test_Vault_rateProvider() public view {
-        assertEq(vault.rateProvider(), ETH_RATE_PROVIDER, "Rate provider does not match expected");
+        assertEq(vault.rateProvider(), MC.ETH_RATE_PROVIDER, "Rate provider does not match expected");
     }
 
     function test_Vault_bufferStrategy() public view {
-        assertEq(vault.bufferStrategy(), BUFFER_STRATEGY, "Buffer strategy does not match expected");
+        assertEq(vault.bufferStrategy(), MC.BUFFER_STRATEGY, "Buffer strategy does not match expected");
     }
 }

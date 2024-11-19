@@ -1,28 +1,29 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import "lib/forge-std/src/Test.sol";
-import {Vault} from "src/Vault.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
+import {Vault, IVault} from "src/Vault.sol";
 import {TimelockController as TLC} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
-import {MainnetContracts} from "script/Contracts.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
+import {Etches} from "test/mainnet/helpers/Etches.sol";
 
-contract SetupVault is Test, MainnetActors {
+contract SetupVault is Test, MainnetActors, Etches {
 
     function upgrade() public {
-        
+
         Vault newVault = new Vault();
 
-        TLC timelock = TLC(payable(MainnetContracts.TIMELOCK));
+        TLC timelock = TLC(payable(MC.TIMELOCK));
 
         // schedule a proxy upgrade transaction on the timelock
         // the traget is the proxy admin for the max Vault Proxy Contract
-        address target = MainnetContracts.PROXY_ADMIN;
+        address target = MC.PROXY_ADMIN;
         uint256 value = 0;
 
         bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
 
-        bytes memory data = abi.encodeWithSelector(selector, MainnetContracts.YNETHX, address(newVault), "");
+        bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(newVault), "");
 
         bytes32 predecessor = bytes32(0);
         bytes32 salt = keccak256("chad");
@@ -49,6 +50,99 @@ contract SetupVault is Test, MainnetActors {
         assertEq(timelock.isOperationReady(id), false);
         assertEq(timelock.isOperationDone(id), true);
         assert(timelock.getOperationState(id) == TLC.OperationState.Done);
+
         vm.stopPrank();
+
+        Vault vault = Vault(payable(MC.YNETHX));
+
+        assertEq(vault.symbol(), "ynETHx");
+
+        configureMainnet(vault);
     }
+
+    function configureMainnet(Vault vault) internal {
+
+        // etch to mock ETHRate provider and Buffer
+        mockAll();
+
+        vm.startPrank(ADMIN);
+        
+        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
+        vault.setRateProvider(MC.ETH_RATE_PROVIDER);
+
+        // Add assets: Base asset always first
+        vault.addAsset(MC.WETH, 18);
+        vault.addAsset(MC.STETH, 18);
+        vault.addAsset(MC.YNETH, 18);
+        vault.addAsset(MC.YNLSDE, 18);
+
+        setDepositRule(vault, MC.BUFFER_STRATEGY, address(vault));
+        setDepositRule(vault, MC.YNETH, address(vault));
+        setDepositRule(vault, MC.YNLSDE, address(vault));
+        setWethDepositRule(vault, MC.WETH);
+
+        setApprovalRule(vault, address(vault), MC.BUFFER_STRATEGY);
+        setApprovalRule(vault, MC.WETH, MC.BUFFER_STRATEGY);
+        setApprovalRule(vault, address(vault), MC.YNETH);
+        setApprovalRule(vault, address(vault), MC.YNLSDE);
+
+        // add strategies
+        vault.addStrategy(MC.BUFFER_STRATEGY, 18);
+        vault.addStrategy(MC.YNETH, 18);
+        vault.addStrategy(MC.YNLSDE, 18);
+
+        vault.setBufferStrategy(MC.BUFFER_STRATEGY);                                                                  
+
+        // Unpause the vault
+        // vault.pause(false);
+        vm.stopPrank();
+
+        vault.processAccounting();
+    }
+
+    function setDepositRule(Vault vault_, address contractAddress, address receiver) internal {
+        bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        address[] memory allowList = new address[](1);
+        allowList[0] = receiver;
+
+        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
+
+        vault_.setProcessorRule(contractAddress, funcSig, rule);
+    }
+
+    function setApprovalRule(Vault vault_, address contractAddress, address spender) internal {
+        bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        address[] memory allowList = new address[](1);
+        allowList[0] = spender;
+
+        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        paramRules[1] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
+
+        vault_.setProcessorRule(contractAddress, funcSig, rule);
+    }
+
+    function setWethDepositRule(Vault vault_, address weth_) public {
+        bytes4 funcSig = bytes4(keccak256("deposit()"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
+
+        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
+
+        vault_.setProcessorRule(weth_, funcSig, rule);
+    }    
 }

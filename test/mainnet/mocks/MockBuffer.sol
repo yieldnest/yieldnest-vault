@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IStrategy} from "src/interface/IStrategy.sol";
 import {IERC20, ERC20} from "src/Common.sol";
-import {MainnetContracts} from "script/Contracts.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 
 contract MockBuffer is ERC20 {
     // Implement the interface functions here
@@ -18,14 +18,14 @@ contract MockBuffer is ERC20 {
     );
 
     constructor() ERC20("Mock Buffer", "BUFF") {
-        _asset = MainnetContracts.WETH;
+        _asset = MC.WETH;
         _totalAssets = 0;
     }
 
     function deposit(uint256 assets, address receiver) public returns (uint256) {
         balances[receiver] += assets;
         _totalAssets += assets;
-        IERC20(MainnetContracts.WETH).transferFrom(msg.sender, address(this), assets);
+        IERC20(MC.WETH).transferFrom(msg.sender, address(this), assets);
         _mint(receiver, assets);
         emit Deposit(msg.sender, receiver, assets, assets);
         return assets;
@@ -36,7 +36,7 @@ contract MockBuffer is ERC20 {
         balances[owner] -= assets;
         _totalAssets -= assets;
 
-        IERC20(MainnetContracts.WETH).transferFrom(address(this), receiver, assets);
+        IERC20(MC.WETH).transferFrom(address(this), receiver, assets);
         _burn(owner, assets);
         emit Withdraw(msg.sender, receiver, owner, assets, assets);
         return assets;
@@ -54,7 +54,7 @@ contract MockBuffer is ERC20 {
         balances[owner] -= shares;
         uint256 bufferAssets = convertToAssets(shares);
         _totalAssets -= bufferAssets;
-        IERC20(MainnetContracts.WETH).transferFrom(address(this), owner, bufferAssets);
+        IERC20(MC.WETH).transferFrom(address(this), owner, bufferAssets);
         emit Withdraw(msg.sender, receiver, owner, bufferAssets, shares);
         return shares;
     }

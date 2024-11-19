@@ -19,7 +19,7 @@ contract HoleskyActors is IActors {
     address public constant ADMIN = 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913;
     address public constant PROCESSOR = 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913;
     address public constant EXECUTOR_1 = 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913;
-    address public constant PROPOSER_1 = 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913;    
+    address public constant PROPOSER_1 = 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913;
 }
 
 contract MainnetActors is IActors {

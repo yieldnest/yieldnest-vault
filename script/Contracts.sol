@@ -17,5 +17,5 @@ library MainnetContracts {
     address public constant PROXY_ADMIN = 0xA02A8DC24171aC161cCb74Ef02C28e3cA2204783;
 
     address public constant ETH_RATE_PROVIDER = address(123456789); // TODO: Update with deployed RateProvider
-    address public constant BUFFER_STRATEGY = address(987654321); // TODO: Update with buffer strategy    
+    address public constant BUFFER_STRATEGY = address(987654321); // TODO: Update with buffer strategy
 }

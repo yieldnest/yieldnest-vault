@@ -4,13 +4,13 @@ pragma solidity ^0.8.24;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
 import {TransparentUpgradeableProxy, IERC20} from "src/Common.sol";
-import {MainnetContracts} from "script/Contracts.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 
-contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches {
+contract VaultWithdrawUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -39,8 +39,8 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
 
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
-        targets[0] = WETH;
-        targets[1] = BUFFER_STRATEGY;
+        targets[0] = MC.WETH;
+        targets[1] = MC.BUFFER_STRATEGY;
 
         uint256[] memory values = new uint256[](2);
         values[0] = 0;
@@ -193,7 +193,7 @@ contract VaultWithdrawUnitTest is Test, MainnetContracts, MainnetActors, Etches 
 
         */
         uint256 depositAmount = 100 ether;
-        IERC20 buffer = IERC20(BUFFER_STRATEGY);
+        IERC20 buffer = IERC20(MC.BUFFER_STRATEGY);
 
         vm.prank(alice);
         vault.deposit(depositAmount, alice);

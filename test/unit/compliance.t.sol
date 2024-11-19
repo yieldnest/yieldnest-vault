@@ -4,13 +4,12 @@ pragma solidity ^0.8.24;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
-import {MainnetContracts} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 
-contract Vault4626ComplianceUnitTest is Test, MainnetContracts, MainnetActors, Etches {
+contract Vault4626ComplianceUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 

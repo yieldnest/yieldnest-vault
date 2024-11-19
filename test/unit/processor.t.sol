@@ -4,14 +4,14 @@ pragma solidity ^0.8.24;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault, IVault} from "src/Vault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
-import {MainnetContracts} from "script/Contracts.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MockSTETH} from "test/unit/mocks/MockST_ETH.sol";
 
-contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
+contract VaultProcessUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -27,7 +27,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         (vault, weth) = setupVault.setup();
 
         // Replace the steth mock with our custom MockSTETH
-        steth = MockSTETH(payable(STETH));
+        steth = MockSTETH(payable(MC.STETH));
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
@@ -88,7 +88,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         values[1] = 0;
 
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", BUFFER_STRATEGY, START_BALANCE);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", MC.BUFFER_STRATEGY, START_BALANCE);
         data[1] = abi.encodeWithSignature("deposit(uint256,address)", ALLOCATION_BALANCE, address(vault));
 
         // Call the processor function to allocate funds to the buffer strategy
@@ -155,7 +155,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 
         // Prepare allocation targets and values
         address[] memory targets = new address[](1);
-        targets[0] = address(YNETH);
+        targets[0] = address(MC.YNETH);
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
@@ -174,7 +174,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 
         // Prepare allocation targets and values
         address[] memory targets = new address[](1);
-        targets[0] = address(YNETH);
+        targets[0] = MC.YNETH;
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
@@ -193,7 +193,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 
         // Prepare allocation targets and values
         address[] memory targets = new address[](1);
-        targets[0] = address(YNETH);
+        targets[0] = MC.YNETH;
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
@@ -209,7 +209,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 
     function test_Vault_getProcessorRule() public view {
         bytes4 sig = bytes4(keccak256("deposit(uint256,address)"));
-        IVault.FunctionRule memory rule = vault.getProcessorRule(BUFFER_STRATEGY, sig);
+        IVault.FunctionRule memory rule = vault.getProcessorRule(MC.BUFFER_STRATEGY, sig);
         IVault.FunctionRule memory expectedResult;
         expectedResult.isActive = true;
         expectedResult.paramRules = new IVault.ParamRule[](2);

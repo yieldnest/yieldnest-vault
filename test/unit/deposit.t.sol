@@ -2,9 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {Vault, IERC20} from "src/Vault.sol";
+import {Vault} from "src/Vault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
-import {MainnetContracts} from "script/Contracts.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
@@ -12,7 +12,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {MockSTETH} from "test/unit/mocks/MockST_ETH.sol";
 import {IVault} from "src/interface/IVault.sol";
 
-contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
+contract VaultDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -28,7 +28,7 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         (vault, weth) = setupVault.setup();
 
         // Replace the steth mock with our custom MockSTETH
-        steth = MockSTETH(payable(STETH));
+        steth = MockSTETH(payable(MC.STETH));
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
@@ -168,7 +168,7 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
     }
 
     function test_Vault_getAsset() public view {
-        address assetAddress = address(WETH);
+        address assetAddress = MC.WETH;
         IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18, 0);
         assertEq(vault.getAsset(assetAddress).active, expectedAssetParams.active);
         assertEq(vault.getAsset(assetAddress).index, expectedAssetParams.index);
@@ -184,7 +184,7 @@ contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {
     function test_Vault_previewDepositAsset() public view {
         uint256 assets = 1000;
         uint256 expectedShares = 1000; // Assuming a 1:1 conversion for simplicity
-        uint256 shares = vault.previewDepositAsset(address(WETH), assets);
+        uint256 shares = vault.previewDepositAsset(MC.WETH, assets);
         assertEq(shares, expectedShares, "Preview deposit asset does not match expected shares");
     }
 

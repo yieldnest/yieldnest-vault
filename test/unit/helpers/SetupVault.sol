@@ -7,14 +7,13 @@ import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
-
     function setup() public returns (Vault vault, WETH9 weth) {
-
         string memory name = "YieldNest MAX";
         string memory symbol = "ynMAx";
-        
+
         Vault vaultImplementation = new Vault();
 
         // Deploy the proxy
@@ -23,7 +22,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
         vault = Vault(payable(address(vaultProxy)));
-        weth = WETH9(payable(WETH));
+        weth = WETH9(payable(MC.WETH));
 
         if (block.chainid == 31337) {
             configureLocal(vault);
@@ -37,7 +36,7 @@ contract SetupVault is Test, Etches, MainnetActors {
     function configureLocal(Vault vault) internal {
         // etch to mock the mainnet contracts
         mockAll();
-        
+
         vm.startPrank(ADMIN);
 
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
@@ -45,52 +44,51 @@ contract SetupVault is Test, Etches, MainnetActors {
         // test cannot unpause vault withtout buffer
         vm.expectRevert();
         vault.pause(false);
-        vault.setRateProvider(BUFFER_STRATEGY);
+        vault.setRateProvider(MC.BUFFER_STRATEGY);
 
         // set the rate provider contract
-        vault.setRateProvider(ETH_RATE_PROVIDER);
+        vault.setRateProvider(MC.ETH_RATE_PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(WETH, 18);
-        vault.addAsset(STETH, 18);
-        vault.addAsset(YNETH, 18);
-        vault.addAsset(YNLSDE, 18);
+        vault.addAsset(MC.WETH, 18);
+        vault.addAsset(MC.STETH, 18);
+        vault.addAsset(MC.YNETH, 18);
+        vault.addAsset(MC.YNLSDE, 18);
 
         // configure processor rules
-        setDepositRule(vault, BUFFER_STRATEGY, address(vault));
-        setDepositRule(vault, YNETH, address(vault));
-        setDepositRule(vault, YNLSDE, address(vault));
-        setWethDepositRule(vault, WETH);
+        setDepositRule(vault, MC.BUFFER_STRATEGY, address(vault));
+        setDepositRule(vault, MC.YNETH, address(vault));
+        setDepositRule(vault, MC.YNLSDE, address(vault));
+        setWethDepositRule(vault, MC.WETH);
 
-        setApprovalRule(vault, address(vault), BUFFER_STRATEGY);
-        setApprovalRule(vault, WETH, BUFFER_STRATEGY);
-        setApprovalRule(vault, address(vault), YNETH);
-        setApprovalRule(vault, address(vault), YNLSDE);
+        setApprovalRule(vault, address(vault), MC.BUFFER_STRATEGY);
+        setApprovalRule(vault, MC.WETH, MC.BUFFER_STRATEGY);
+        setApprovalRule(vault, address(vault), MC.YNETH);
+        setApprovalRule(vault, address(vault), MC.YNLSDE);
 
         // add strategies
-        vault.addStrategy(BUFFER_STRATEGY, 18);
-        vault.addStrategy(YNETH, 18);
-        vault.addStrategy(YNLSDE, 18);
+        vault.addStrategy(MC.BUFFER_STRATEGY, 18);
+        vault.addStrategy(MC.YNETH, 18);
+        vault.addStrategy(MC.YNLSDE, 18);
 
         // test cannot unpause vault withtout buffer
         vm.expectRevert();
         vault.pause(false);
-        vault.setBufferStrategy(BUFFER_STRATEGY);
+        vault.setBufferStrategy(MC.BUFFER_STRATEGY);
 
         // Unpause the vault
         vault.pause(false);
         vm.stopPrank();
     }
 
-   function configureMainnet(Vault vault) internal {
-
+    function configureMainnet(Vault vault) internal {
         // etch to mock the mainnet contracts
 
         mockAll();
-        
+
         string memory name = "YieldNest ETH MAX";
         string memory symbol = "ynETHx";
-        
+
         Vault vaultImplementation = new Vault();
 
         // Deploy the proxy
@@ -102,32 +100,32 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault = Vault(payable(address(vaultProxy)));
 
         vm.startPrank(ADMIN);
-        
+
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.setRateProvider(ETH_RATE_PROVIDER);
+        vault.setRateProvider(MC.ETH_RATE_PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(WETH, 18);
-        vault.addAsset(STETH, 18);
-        vault.addAsset(YNETH, 18);
-        vault.addAsset(YNLSDE, 18);
+        vault.addAsset(MC.WETH, 18);
+        vault.addAsset(MC.STETH, 18);
+        vault.addAsset(MC.YNETH, 18);
+        vault.addAsset(MC.YNLSDE, 18);
 
-        setDepositRule(vault, BUFFER_STRATEGY, address(vault));
-        setDepositRule(vault, YNETH, address(vault));
-        setDepositRule(vault, YNLSDE, address(vault));
-        setWethDepositRule(vault, WETH);
+        setDepositRule(vault, MC.BUFFER_STRATEGY, address(vault));
+        setDepositRule(vault, MC.YNETH, address(vault));
+        setDepositRule(vault, MC.YNLSDE, address(vault));
+        setWethDepositRule(vault, MC.WETH);
 
-        setApprovalRule(vault, address(vault), BUFFER_STRATEGY);
-        setApprovalRule(vault, WETH, BUFFER_STRATEGY);
-        setApprovalRule(vault, address(vault), YNETH);
-        setApprovalRule(vault, address(vault), YNLSDE);
+        setApprovalRule(vault, address(vault), MC.BUFFER_STRATEGY);
+        setApprovalRule(vault, MC.WETH, MC.BUFFER_STRATEGY);
+        setApprovalRule(vault, address(vault), MC.YNETH);
+        setApprovalRule(vault, address(vault), MC.YNLSDE);
 
         // add strategies
-        vault.addStrategy(BUFFER_STRATEGY, 18);
-        vault.addStrategy(YNETH, 18);
-        vault.addStrategy(YNLSDE, 18);
+        vault.addStrategy(MC.BUFFER_STRATEGY, 18);
+        vault.addStrategy(MC.YNETH, 18);
+        vault.addStrategy(MC.YNLSDE, 18);
 
-        vault.setBufferStrategy(BUFFER_STRATEGY);
+        vault.setBufferStrategy(MC.BUFFER_STRATEGY);
 
         // Unpause the vault
         vault.pause(false);

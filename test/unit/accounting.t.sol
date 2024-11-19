@@ -4,13 +4,13 @@ pragma solidity ^0.8.24;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
-import {MainnetContracts} from "script/Contracts.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 
-contract VaultAccountingUnitTest is Test, MainnetContracts, MainnetActors, Etches {
+contract VaultAccountingUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -36,8 +36,8 @@ contract VaultAccountingUnitTest is Test, MainnetContracts, MainnetActors, Etche
 
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
-        targets[0] = WETH;
-        targets[1] = BUFFER_STRATEGY;
+        targets[0] = MC.WETH;
+        targets[1] = MC.BUFFER_STRATEGY;
 
         uint256[] memory values = new uint256[](2);
         values[0] = 0;
