@@ -25,7 +25,7 @@ contract VaultMainnetUpgradeTest is Test, MainnetActors {
         assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
     }
 
-    function test_Vault_ERC20_view_functions() public {
+    function test_Vault_Upgrade_ERC20_view_functions() public {
         // Test the name function
         assertEq(vault.name(), "ynETH MAX", "Vault name should be 'YieldNest ETH MAX'");
 
@@ -37,8 +37,49 @@ contract VaultMainnetUpgradeTest is Test, MainnetActors {
 
         // Test the totalSupply function
         uint256 totalSupply = vault.totalSupply();
-        assertGt(totalSupply, 0, "Total supply should be greater than 0");
+        assertGt(totalSupply, 61 ether, "Total supply should be greater than 61 ether");
     }
-      
+
+    function test_Vault_Upgrade_ERC4626_view_functions() public {
+        // Test the asset function
+        assertEq(address(vault.asset()), MC.WETH, "Vault asset should be WETH");
+
+        // Test the totalAssets function
+        uint256 totalAssets = vault.totalAssets();
+        assertGt(totalAssets, 61 ether, "Total assets should be greater than 61 ether");
+
+        // Test the convertToShares function
+        uint256 amount = 1 ether;
+        uint256 shares = vault.convertToShares(amount);
+        assertEq(shares, amount, "Shares should be equal to assets for 1:1 ratio");
+
+        // Test the convertToAssets function
+        uint256 convertedAssets = vault.convertToAssets(shares);
+        assertEq(convertedAssets, amount, "Assets should be equal to shares for 1:1 ratio");
+
+        // Test the maxDeposit function
+        uint256 maxDeposit = vault.maxDeposit(address(this));
+        assertGt(maxDeposit, 0, "Max deposit should be greater than 0");
+
+        // Test the maxMint function
+        uint256 maxMint = vault.maxMint(address(this));
+        assertGt(maxMint, 0, "Max mint should be greater than 0");
+
+        // Test the maxWithdraw function
+        uint256 maxWithdraw = vault.maxWithdraw(address(this));
+        assertEq(maxWithdraw, 0, "Max withdraw should be zero");
+
+        // Test the maxRedeem function
+        uint256 maxRedeem = vault.maxRedeem(address(this));
+        assertEq(maxRedeem, 0, "Max redeem should be zero");
+
+        // Test the getAssets function
+        address[] memory assets = vault.getAssets();
+        assertEq(assets.length, 4, "There should be 4 assets in the vault");
+        assertEq(assets[0], MC.WETH, "First asset should be WETH");
+        assertEq(assets[1], MC.STETH, "Second asset should be STETH");
+        assertEq(assets[2], MC.YNETH, "Third asset should be YNETH");
+        assertEq(assets[3], MC.YNLSDE, "Fourth asset should be YNLSDE");
+    }
 }
 

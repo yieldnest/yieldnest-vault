@@ -94,7 +94,7 @@ contract SetupVault is Test, MainnetActors, Etches {
         vault.setBufferStrategy(MC.BUFFER_STRATEGY);                                                                  
 
         // Unpause the vault
-        // vault.pause(false);
+        vault.pause(false);
         vm.stopPrank();
 
         vault.processAccounting();
