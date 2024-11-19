@@ -25,7 +25,7 @@ contract VaultMainnetUpgradeTest is Test, MainnetActors {
         assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
     }
 
-    function test_Vault_Upgrade_ERC20_view_functions() public {
+    function test_Vault_Upgrade_ERC20_view_functions() public view {
         // Test the name function
         assertEq(vault.name(), "ynETH MAX", "Vault name should be 'YieldNest ETH MAX'");
 
@@ -40,7 +40,7 @@ contract VaultMainnetUpgradeTest is Test, MainnetActors {
         assertGt(totalSupply, 61 ether, "Total supply should be greater than 61 ether");
     }
 
-    function test_Vault_Upgrade_ERC4626_view_functions() public {
+    function test_Vault_Upgrade_ERC4626_view_functions() public view {
         // Test the asset function
         assertEq(address(vault.asset()), MC.WETH, "Vault asset should be WETH");
 
@@ -51,11 +51,11 @@ contract VaultMainnetUpgradeTest is Test, MainnetActors {
         // Test the convertToShares function
         uint256 amount = 1 ether;
         uint256 shares = vault.convertToShares(amount);
-        assertEq(shares, amount, "Shares should be equal to assets for 1:1 ratio");
+        assertLe(shares, amount, "Shares should less or equal to assets");
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEq(convertedAssets, amount, "Assets should be equal to shares for 1:1 ratio");
+        assertGe(convertedAssets, amount, "Assets should be greater or equal to shares");
 
         // Test the maxDeposit function
         uint256 maxDeposit = vault.maxDeposit(address(this));

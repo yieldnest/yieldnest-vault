@@ -24,7 +24,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     using Math for uint256;
 
     /**
-     * @notice Returns the number of decimals used to get its user representation.
+     * @notice Returns the number of decimals of the underlying asset.
      * @return uint256 The number of decimals.
      */
     function decimals() public view virtual override(ERC20Upgradeable, IERC20Metadata) returns (uint8) {
@@ -33,7 +33,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     /**
-     * @notice Returns the address of the asset.
+     * @notice Returns the address of the underlying asset.
      * @return uint256 The address of the asset.
      */
     function asset() public view returns (address) {
@@ -41,7 +41,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     /**
-     * @notice Returns the total assets held by the vault.
+     * @notice Returns the total assets held by the vault denominated in the underlying asset.
      * @return uint256 The total assets.
      */
     function totalAssets() public view returns (uint256) {
