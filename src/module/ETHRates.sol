@@ -35,11 +35,9 @@ contract ETHRates is IRateProvider {
 
     error UnsupportedAsset(address asset);
 
-    constructor() {}
-
     function getRate(address asset) external view override returns (uint256) {
         if (asset == WETH) {
-            return 1e18; // WETH is 1:1 with ETH
+            return 1e18;
         } else if (asset == STETH) {
             return _getStETHRate();
         } else if (asset == METH) {
@@ -76,15 +74,11 @@ contract ETHRates is IRateProvider {
     }
 
     function _getYNETHRate() internal view returns (uint256) {
-        return IERC4626(YNETH).convertToShares(1e18);
+        return IERC4626(YNETH).previewRedeem(1e18);
     }
 
     function _getYNLSDERate() internal view returns (uint256) {
-        IERC4626 ynlsde = IERC4626(YNLSDE);
-        uint256 _totalSupply = ynlsde.totalSupply();
-        uint256 _totalAssets = ynlsde.totalAssets();
-        if (_totalSupply == 0 || _totalAssets == 0) return 1 ether;
-        return 1 ether * _totalAssets / _totalSupply;
+        return IERC4626(YNLSDE).previewRedeem(1e18);
     }
 
     function _getBUFFERRate() internal view returns (uint256) {
