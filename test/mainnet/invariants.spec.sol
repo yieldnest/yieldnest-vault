@@ -80,7 +80,6 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         vault.processAccounting();
         uint256 newTotalAssets = vault.totalAssets();
         assertEq(newTotalAssets, totalAssets + assets, "New total assets should equal deposit amount plus original total assets");
-    
     }
 
     function test_Vault_4626Invariants_redeem(uint256 assets) public {
@@ -121,16 +120,6 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         uint256 finalBalance = IERC20(assetAddress).balanceOf(address(this));
         assertEq(redeemedAssets, assets, "Redeemed assets should equal the original assets");
         assertEq(finalBalance - initialBalance, assets, "Final balance should reflect the redeemed assets");
-
-        // // Test the withdraw function
-        // uint256 withdrawableShares = vault.previewWithdraw(assets);
-        // assertEq(withdrawableShares, shares, "Withdrawable shares should equal the original shares");
-
-        // initialBalance = IERC20(assetAddress).balanceOf(address(this));
-        // uint256 withdrawnAssets = vault.withdraw(assets, address(this), address(this));
-        // finalBalance = IERC20(assetAddress).balanceOf(address(this));
-        // assertEq(withdrawnAssets, assets, "Withdrawn assets should equal the original assets");
-        // assertEq(finalBalance - initialBalance, assets, "Final balance should reflect the withdrawn assets");
     }
 
     function test_Vault_4626Invariants_withdraw(uint256 assets) public {
