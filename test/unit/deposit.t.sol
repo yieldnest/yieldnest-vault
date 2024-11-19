@@ -5,11 +5,11 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault, IERC20} from "src/Vault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetContracts} from "script/Contracts.sol";
-import {Etches} from "test/helpers/Etches.sol";
-import {WETH9} from "test/mocks/MockWETH.sol";
-import {SetupVault} from "test/helpers/SetupVault.sol";
+import {Etches} from "test/unit/helpers/Etches.sol";
+import {WETH9} from "test/unit/mocks/MockWETH.sol";
+import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
-import {MockSTETH} from "test/mocks/MockST_ETH.sol";
+import {MockSTETH} from "test/unit/mocks/MockST_ETH.sol";
 import {IVault} from "src/interface/IVault.sol";
 
 contract VaultDepositUnitTest is Test, MainnetContracts, MainnetActors, Etches {

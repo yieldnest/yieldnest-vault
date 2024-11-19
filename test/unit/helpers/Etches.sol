@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {WETH9} from "test/mocks/MockWETH.sol";
+import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {MainnetContracts} from "script/Contracts.sol";
-import {MockSTETH} from "test/mocks/MockST_ETH.sol";
-import {MockYNETH} from "test/mocks/MockYNETH.sol";
-import {MockCL_STETH} from "test/mocks/MockCL_STETH.sol";
-import {MockYNLSDE} from "test/mocks/MockYNLSDE.sol";
+import {MockSTETH} from "test/unit/mocks/MockST_ETH.sol";
+import {MockYNETH} from "test/unit/mocks/MockYNETH.sol";
+import {MockCL_STETH} from "test/unit/mocks/MockCL_STETH.sol";
+import {MockYNLSDE} from "test/unit/mocks/MockYNLSDE.sol";
 import {ETHRates} from "src/module/ETHRates.sol";
-import {MockBuffer} from "test/mocks/MockBuffer.sol";
+import {MockBuffer} from "test/unit/mocks/MockBuffer.sol";
 
 import "lib/forge-std/src/Test.sol";
 

@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 import "lib/forge-std/src/Test.sol";
 import {Vault, IVault} from "src/Vault.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
-import {WETH9} from "test/mocks/MockWETH.sol";
-import {Etches} from "test/helpers/Etches.sol";
+import {WETH9} from "test/unit/mocks/MockWETH.sol";
+import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
