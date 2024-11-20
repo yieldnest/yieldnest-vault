@@ -96,11 +96,10 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
         assertThreshold(newTotalAssets, totalAssets + assets, 2, "New total assets should equal deposit amount plus original total assets");
     }
 
-    function assertThreshold(uint256 actual, uint256 expected, uint256 threshold, string memory errorMessage) internal {
+    function assertThreshold(uint256 actual, uint256 expected, uint256 threshold, string memory errorMessage) internal pure {
         assertGt(actual, expected - threshold, string(abi.encodePacked(errorMessage, ": actual should be within the lower threshold of the expected value")));
         assertLt(actual, expected + threshold, string(abi.encodePacked(errorMessage, ": actual should be within the upper threshold of the expected value")));
     }
-
 
     function setWethWithdrawRule() internal {
         bytes4 funcSig = bytes4(keccak256("withdraw(uint256)"));

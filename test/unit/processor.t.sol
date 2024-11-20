@@ -92,7 +92,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         data[1] = abi.encodeWithSignature("deposit(uint256,address)", ALLOCATION_BALANCE, address(vault));
 
         // Call the processor function to allocate funds to the buffer strategy
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vault.processor(targets, values, data);
 
         // Process accounting to update deployed assets
@@ -126,7 +126,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("approve(address,uint256)", address(vault), 50 ether);
 
         // Expect the processAllocation to fail with an invalid asset
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vm.expectRevert();
         vault.processor(targets, values, data);
     }
@@ -145,7 +145,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("transfer(address,uint256)", address(vault), 50 ether);
 
         // Expect the processAllocation to fail with an invalid asset
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vm.expectRevert();
         vault.processor(targets, values, data);
     }
@@ -164,7 +164,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("deposit(uint256,address)", 100_001 ether, address(vault));
 
         // Expect the processAllocation to fail with an invalid asset
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vm.expectRevert();
         vault.processor(targets, values, data);
     }
@@ -183,7 +183,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("deposit(uint256,address)", 1, address(vault));
 
         // Expect the processAllocation to fail with an invalid asset
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vm.expectRevert();
         vault.processor(targets, values, data);
     }
@@ -202,7 +202,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("deposit(uint256,address)", 100, address(420));
 
         // Expect the processAllocation to fail with an invalid asset
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vm.expectRevert();
         vault.processor(targets, values, data);
     }
@@ -218,7 +218,6 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         expectedResult.paramRules[1] =
             IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: new address[](1)});
         expectedResult.paramRules[1].allowList[0] = address(vault);
-        expectedResult.maxGas = 0;
 
         // Add assertions
         assertEq(rule.isActive, expectedResult.isActive, "isActive does not match");
@@ -245,7 +244,5 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
                 );
             }
         }
-
-        assertEq(rule.maxGas, expectedResult.maxGas, "maxGas does not match");
     }
 }

@@ -69,10 +69,8 @@ contract VaultDepositUnitTest is Test, Etches {
     }
 
     function test_Vault_getStrategies() public view {
-        address[] memory expectedStrategies = new address[](3);
+        address[] memory expectedStrategies = new address[](1);
         expectedStrategies[0] = MC.BUFFER_STRATEGY;
-        expectedStrategies[1] = MC.YNETH;
-        expectedStrategies[2] = MC.YNLSDE;
         assertEq(vault.getStrategies().length, expectedStrategies.length);
         for (uint256 i = 0; i < expectedStrategies.length; i++) {
             assertEq(vault.getStrategies()[i], expectedStrategies[i]);
@@ -80,8 +78,8 @@ contract VaultDepositUnitTest is Test, Etches {
     }
 
     function test_Vault_getStrategy() public view {
-        address strategyAddress = MC.YNETH;
-        IVault.StrategyParams memory expectedStrategyParams = IVault.StrategyParams(true, 1, 18, 0);
+        address strategyAddress = MC.BUFFER_STRATEGY;
+        IVault.StrategyParams memory expectedStrategyParams = IVault.StrategyParams(true, 0, 18, 0);
         assertEq(vault.getStrategy(strategyAddress).active, expectedStrategyParams.active);
         assertEq(vault.getStrategy(strategyAddress).index, expectedStrategyParams.index);
         assertEq(vault.getStrategy(strategyAddress).idleBalance, expectedStrategyParams.idleBalance);

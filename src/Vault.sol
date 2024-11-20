@@ -336,7 +336,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      */
     function processAccounting() public {
         AssetStorage storage assetStorage = _getAssetStorage();
-        StrategyStorage storage strategyStorage = _getStrategyStorage();
         uint256 totalBaseBalance = 0;
 
         for (uint256 i = 0; i < assetStorage.list.length; i++) {
@@ -350,7 +349,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             totalBaseBalance += _convertAssetToBase(asset_, idleBalance);
         }
 
-        _getVaultStorage().totalAssets = totalBaseBalance;
+        _getVaultStorage().totalAssets = totalBaseBalance + address(this).balance;
     }
 
     //// INTERNAL ////

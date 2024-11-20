@@ -223,7 +223,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         require(success, "ETH transfer failed");
 
         // Check the vault's balance
-        uint256 newBalance = weth.balanceOf(address(vault));
+        uint256 newBalance = address(vault).balance;
         assertEq(newBalance, initialBalance + depositAmount, "Vault balance mismatch");
 
         // Check the shares minted
@@ -243,7 +243,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         require(success, "ETH transfer failed");
 
         // Check the vault's balance
-        uint256 newBalance = weth.balanceOf(address(vault));
+        uint256 newBalance = address(vault).balance;
         assertEq(newBalance, initialBalance + depositAmount, "Vault balance mismatch");
 
         // Check the shares minted
