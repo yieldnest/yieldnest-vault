@@ -78,7 +78,11 @@ contract ETHRates is IRateProvider {
     }
 
     function _getYNLSDERate() internal view returns (uint256) {
-        return IERC4626(YNLSDE).previewRedeem(1e18);
+        IERC4626 ynlsde = IERC4626(YNLSDE);
+        uint256 totalAssets = ynlsde.totalAssets();
+        uint256 totalSupply = ynlsde.totalSupply();
+        if (totalSupply == 0 || totalAssets == 0) return 1e18;
+        return (totalAssets * 1e18) / totalSupply;
     }
 
     function _getBUFFERRate() internal view returns (uint256) {

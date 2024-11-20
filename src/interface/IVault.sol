@@ -49,7 +49,6 @@ interface IVault is IERC4626 {
     struct FunctionRule {
         bool isActive; // Whether rule is active
         ParamRule[] paramRules; // Rules for each parameter
-        uint256 maxGas; // Maximum gas allowed
     }
 
     struct ProcessorStorage {
@@ -69,7 +68,8 @@ interface IVault is IERC4626 {
     error InvalidDecimals();
     error InvalidFunction(address target, bytes4 funcSig);
     error AssetNotFound();
-    error DuplicateStrategy();
+    error DuplicateAsset(address asset);
+    error DuplicateStrategy(address strategy);
     error ExceededMaxWithdraw(address, uint256, uint256);
     error ExceededMaxRedeem(address, uint256, uint256);
     error ProcessFailed(bytes, bytes);
