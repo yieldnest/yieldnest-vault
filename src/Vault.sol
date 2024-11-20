@@ -34,7 +34,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     /**
      * @notice Returns the address of the underlying asset.
-     * @return uint256 The address of the asset.
+     * @return address The address of the asset.
      */
     function asset() public view returns (address) {
         return _getAssetStorage().list[0];
