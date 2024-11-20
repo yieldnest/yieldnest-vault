@@ -20,6 +20,23 @@ interface IRETH {
     function getExchangeRate() external view returns (uint256);
 }
 
+// ynETH async withdraw assets
+struct WithdrawalRequest {
+    uint256 amount;
+    uint256 feeAtRequestTime;
+    uint256 redemptionRateAtRequestTime;
+    uint256 creationTimestamp;
+    bool processed;
+    bytes data;
+}
+
+interface IYNETH_WM {
+    function withdrawalRequestsForOwner(address owner)
+        external
+        view
+        returns (uint256[] memory withdrawalIndexes, WithdrawalRequest[] memory requests);
+}
+
 contract ETHRates is IRateProvider {
     // assets
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -32,6 +49,10 @@ contract ETHRates is IRateProvider {
     address public constant YNETH = 0x09db87A538BD693E9d08544577d5cCfAA6373A48;
     address public constant YNLSDE = 0x35Ec69A77B79c255e5d47D5A3BdbEFEfE342630c;
     address public constant BUFFER = 0x000000000000000000000000000000003ADe68b1; // TODO: update this
+
+    // async withdraws
+    address public constant YNLSDE_WM = 0x8Face3283E20b19d98a7a132274B69C1304D60b4;
+    address public constant YNETH_WM = 0x0BC9BC81aD379810B36AD5cC95387112990AA67b;
 
     error UnsupportedAsset(address asset);
 
@@ -78,14 +99,31 @@ contract ETHRates is IRateProvider {
     }
 
     function _getYNLSDERate() internal view returns (uint256) {
-        IERC4626 ynlsde = IERC4626(YNLSDE);
-        uint256 totalAssets = ynlsde.totalAssets();
-        uint256 totalSupply = ynlsde.totalSupply();
-        if (totalSupply == 0 || totalAssets == 0) return 1e18;
-        return (totalAssets * 1e18) / totalSupply;
+        return IERC4626(YNETH).previewRedeem(1e18);
     }
 
     function _getBUFFERRate() internal view returns (uint256) {
         return IERC4626(BUFFER).convertToShares(1e18);
+    }
+
+    function otherAssets(address vault, address strategy) public view returns (uint256 assets) {
+        assets = 0;
+
+        if (strategy == YNETH) {
+            (uint256[] memory withdrawalIndexes, WithdrawalRequest[] memory requests) =
+                IYNETH_WM(YNETH_WM).withdrawalRequestsForOwner(vault);
+
+            uint256 length = withdrawalIndexes.length;
+            if (length == 0) return assets;
+
+            uint256 ynethRate = _getYNETHRate();
+            for (uint256 i = 0; i < length; i++) {
+                if (!requests[i].processed) {
+                    assets += requests[i].amount * ynethRate / 1e18;
+                }
+            }
+
+            return assets;
+        }
     }
 }

@@ -18,4 +18,7 @@ library MainnetContracts {
 
     address public constant ETH_RATE_PROVIDER = address(123456789); // TODO: Update with deployed RateProvider
     address public constant BUFFER_STRATEGY = address(987654321); // TODO: Update with buffer strategy
+
+    address public constant YNLSDE_WM = 0x8Face3283E20b19d98a7a132274B69C1304D60b4;
+    address public constant YNETH_WM = 0x0BC9BC81aD379810B36AD5cC95387112990AA67b;
 }

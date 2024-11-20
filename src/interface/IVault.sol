@@ -52,6 +52,8 @@ interface IVault is IERC4626 {
     }
 
     struct ProcessorStorage {
+        uint256 lastProcessed;
+        uint256 lastAccounting;
         mapping(address => mapping(bytes4 => FunctionRule)) rules;
     }
 

@@ -333,23 +333,33 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     /**
      * @notice Processes the accounting for the vault.
+     * @dev We coprocess this accounting update to improve deposit UX.
      */
     function processAccounting() public {
+        uint256 totalBaseBalance = address(this).balance;
         AssetStorage storage assetStorage = _getAssetStorage();
-        uint256 totalBaseBalance = 0;
+        uint256 assetListLength = assetStorage.list.length;
 
-        for (uint256 i = 0; i < assetStorage.list.length; i++) {
+        for (uint256 i = 0; i < assetListLength; i++) {
             address asset_ = assetStorage.list[i];
             uint256 idleBalance = IERC20(asset_).balanceOf(address(this));
-            // Update idle balance only if it has changed
-            if (idleBalance > 0 && assetStorage.assets[asset_].idleBalance != idleBalance) {
+
+            if (idleBalance > 0) {
                 assetStorage.assets[asset_].idleBalance = idleBalance;
             }
-
             totalBaseBalance += _convertAssetToBase(asset_, idleBalance);
         }
 
-        _getVaultStorage().totalAssets = totalBaseBalance + address(this).balance;
+        StrategyStorage storage strategyStorage = _getStrategyStorage();
+        address rateProvider_ = _getVaultStorage().rateProvider;
+        uint256 strategyListLength = strategyStorage.list.length;
+
+        for (uint256 i = 0; i < strategyListLength; i++) {
+            uint256 otherAssets = IRateProvider(rateProvider_).otherAssets(address(this), strategyStorage.list[i]);
+            totalBaseBalance += otherAssets;
+        }
+
+        _getVaultStorage().totalAssets = totalBaseBalance;
     }
 
     //// INTERNAL ////
@@ -406,7 +416,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      */
     function _convertToAssets(address asset_, uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
         uint256 baseDenominatedShares = _convertAssetToBase(asset_, shares);
-        return baseDenominatedShares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** _decimalsOffset(), rounding);
+        return baseDenominatedShares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** 0, rounding);
     }
 
     /**
@@ -422,7 +432,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         returns (uint256)
     {
         uint256 convertedAssets = _convertAssetToBase(asset_, assets_);
-        return convertedAssets.mulDiv(totalSupply() + 10 ** _decimalsOffset(), totalAssets() + 1, rounding);
+        return convertedAssets.mulDiv(totalSupply() + 10 ** 0, totalAssets() + 1, rounding);
     }
 
     /**
@@ -432,19 +442,9 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @return uint256 The equivalent amount in base denomination.
      */
     function _convertAssetToBase(address asset_, uint256 amount) internal view returns (uint256) {
-        if (asset_ == address(0)) {
-            revert ZeroAddress();
-        }
+        if (asset_ == address(0)) revert ZeroAddress();
         uint256 rate = IRateProvider(rateProvider()).getRate(asset_);
-        return amount.mulDiv(rate, 10 ** getAsset(asset_).decimals, Math.Rounding.Floor);
-    }
-
-    /**
-     * @notice Internal function to get the decimals offset.
-     * @return uint8 The decimals offset.
-     */
-    function _decimalsOffset() internal pure returns (uint8) {
-        return 0;
+        return amount * rate / 1e18;
     }
 
     /**
@@ -660,10 +660,10 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         __AccessControl_init();
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _getVaultStorage().paused = true;
     }
 
     constructor() {
+        _getVaultStorage().paused = true;
         _disableInitializers();
     }
 
