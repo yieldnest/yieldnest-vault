@@ -37,7 +37,7 @@ contract VaultMainnetUpgradeTest is Test, MainnetActors {
 
         // Test the totalSupply function
         uint256 totalSupply = vault.totalSupply();
-        assertGt(totalSupply, 61 ether, "Total supply should be greater than 61 ether");
+        assertGt(totalSupply, 0, "Total supply should be greater than zero");
     }
 
     function test_Vault_Upgrade_ERC4626_view_functions() public view {

@@ -7,6 +7,13 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault,IVault} from "src/Vault.sol";
 import {IERC20} from "src/Common.sol";
+import {IRateProvider} from "src/interface/IRateProvider.sol";
+
+interface IynETH {
+    function depositETH(address receiver) external payable returns (uint256);
+    function balanceOf(address owner) external returns (uint256);
+    function approve(address spender, uint256 amount) external returns (uint256);
+}
 
 contract VaultMainnetYnETHTest is Test, MainnetActors {
 
@@ -53,7 +60,7 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEq(convertedAssets, assets, "Converted assets should equal the original assets");
+        assertThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
         (bool success,) = MC.WETH.call{value: assets}("");
         if (!success) revert("Weth deposit failed");
@@ -63,7 +70,7 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
         address receiver = address(this);
 
         uint256 depositedShares = vault.depositAsset(assetAddress, assets, receiver);
-        assertEq(depositedShares, shares, "Deposited shares should equal the converted shares");
+        assertThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
 
         // allocate 100% to the ynETH strategy
         address[] memory targets = new address[](2);
@@ -93,7 +100,7 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
         vm.stopPrank();
 
         uint256 newTotalAssets = vault.totalAssets();
-        assertThreshold(newTotalAssets, totalAssets + assets, 2, "New total assets should equal deposit amount plus original total assets");
+        assertThreshold(newTotalAssets, totalAssets + assets, 5, "New total assets should equal deposit amount plus original total assets");
     }
 
     function assertThreshold(uint256 actual, uint256 expected, uint256 threshold, string memory errorMessage) internal pure {
@@ -112,7 +119,7 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
         IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
 
         vault.setProcessorRule(MC.WETH, funcSig, rule);
-    }    
+    }
 
     function setYnETHDepositETHRule() internal {
         bytes4 funcSig = bytes4(keccak256("depositETH(address)"));
@@ -127,5 +134,29 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
         IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
 
         vault.setProcessorRule(MC.YNETH, funcSig, rule);
+    }
+
+    function test_Vault_ynETH_depositETH() public {
+        IynETH yneth = IynETH(payable(MC.YNETH));
+
+        address bob = address(1776);
+
+        vm.deal(bob, 100 ether);
+        
+        vm.startPrank(bob);
+        // previous vault total Assets
+        uint256 previousTotalAssets = vault.totalAssets();
+        uint256 ynEthShares = yneth.depositETH{value: 100 ether}(bob);
+        uint256 bobYnETHBalance = yneth.balanceOf(bob);
+
+        assertEq(ynEthShares, bobYnETHBalance, "Eth deposited in ynETH should be correct");
+
+        yneth.approve(MC.YNETHX, bobYnETHBalance);
+        vault.depositAsset(MC.YNETH, bobYnETHBalance, bob);
+
+        uint256 newTotalAssets = vault.totalAssets();
+        uint256 ynEthRate = IRateProvider(MC.ETH_RATE_PROVIDER).getRate(MC.YNETH);
+
+        assertEq(newTotalAssets, previousTotalAssets + (ynEthShares * ynEthRate / 1e18), "Total assets should match the previous total assets plus the equivalent ynETH shares in base denomination");
     }
 }

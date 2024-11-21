@@ -144,18 +144,21 @@ contract VaultAccountingUnitTest is Test, MainnetActors, Etches {
         uint256 depositAmount = 1000 ether;
         uint256 bufferRatio = 5;
 
-        vm.prank(alice);
+        vm.startPrank(alice);
+        weth.approve(address(vault), depositAmount);
         vault.deposit(depositAmount, alice);
+        vm.stopPrank();
 
         allocateToBuffer(depositAmount / bufferRatio);
 
-        vm.prank(alice);
+        vm.startPrank(alice);
         uint256 maxWithdraw = vault.maxWithdraw(alice);
         vault.withdraw(maxWithdraw, alice, alice);
         uint256 totalSupply = vault.totalSupply();
         assertEq(
             totalSupply, depositAmount - maxWithdraw, "Total supply should match the remaining amount after withdrawal"
         );
+        vm.stopPrank();
     }
 
     function test_Vault_Accounting_totalSupply_afterMultipleWithdrawals() public {

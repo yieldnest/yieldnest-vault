@@ -20,7 +20,6 @@ interface IRETH {
     function getExchangeRate() external view returns (uint256);
 }
 
-// ynETH async withdraw assets
 struct WithdrawalRequest {
     uint256 amount;
     uint256 feeAtRequestTime;

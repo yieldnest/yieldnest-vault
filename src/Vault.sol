@@ -51,55 +51,55 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     /**
      * @notice Converts a given amount of assets to shares.
      * @param assets The amount of assets to convert.
-     * @return uint256 The equivalent amount of shares.
+     * @return shares The equivalent amount of shares.
      */
-    function convertToShares(uint256 assets) public view returns (uint256) {
-        return _convertToShares(asset(), assets, Math.Rounding.Floor);
+    function convertToShares(uint256 assets) public view returns (uint256 shares) {
+        (shares,) = _convertToShares(asset(), assets, Math.Rounding.Floor);
     }
 
     /**
      * @notice Converts a given amount of shares to assets.
      * @param shares The amount of shares to convert.
-     * @return uint256 The equivalent amount of assets.
+     * @return assets The equivalent amount of assets.
      */
-    function convertToAssets(uint256 shares) public view returns (uint256) {
-        return _convertToAssets(asset(), shares, Math.Rounding.Floor);
+    function convertToAssets(uint256 shares) public view returns (uint256 assets) {
+        (assets,) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
     }
 
     /**
      * @notice Previews the amount of shares that would be received for a given amount of assets.
      * @param assets The amount of assets to deposit.
-     * @return uint256 The equivalent amount of shares.
+     * @return shares The equivalent amount of shares.
      */
-    function previewDeposit(uint256 assets) public view returns (uint256) {
-        return _convertToShares(asset(), assets, Math.Rounding.Floor);
+    function previewDeposit(uint256 assets) public view returns (uint256 shares) {
+        (shares,) = _convertToShares(asset(), assets, Math.Rounding.Floor);
     }
 
     /**
      * @notice Previews the amount of assets that would be required to mint a given amount of shares.
      * @param shares The amount of shares to mint.
-     * @return uint256 The equivalent amount of assets.
+     * @return assets The equivalent amount of assets.
      */
-    function previewMint(uint256 shares) public view returns (uint256) {
-        return _convertToAssets(asset(), shares, Math.Rounding.Ceil);
+    function previewMint(uint256 shares) public view returns (uint256 assets) {
+        (assets,) = _convertToAssets(asset(), shares, Math.Rounding.Ceil);
     }
 
     /**
      * @notice Previews the amount of shares that would be required to withdraw a given amount of assets.
      * @param assets The amount of assets to withdraw.
-     * @return uint256 The equivalent amount of shares.
+     * @return shares The equivalent amount of shares.
      */
-    function previewWithdraw(uint256 assets) public view returns (uint256) {
-        return _convertToShares(asset(), assets, Math.Rounding.Ceil);
+    function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
+        (shares,) = _convertToShares(asset(), assets, Math.Rounding.Ceil);
     }
 
     /**
      * @notice Previews the amount of assets that would be received for a given amount of shares.
      * @param shares The amount of shares to redeem.
-     * @return uint256 The equivalent amount of assets.
+     * @return assets The equivalent amount of assets.
      */
-    function previewRedeem(uint256 shares) public view returns (uint256) {
-        return _convertToAssets(asset(), shares, Math.Rounding.Floor);
+    function previewRedeem(uint256 shares) public view returns (uint256 assets) {
+        (assets,) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
     }
 
     /**
@@ -128,35 +128,50 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     /**
      * @notice Returns the maximum amount of assets that can be withdrawn by a given owner.
      * @param owner The address of the owner.
-     * @return uint256 The maximum amount of assets.
+     * @return maxAssets The maximum amount of assets.
      */
-    function maxWithdraw(address owner) public view returns (uint256) {
+    function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
         if (paused()) {
             return 0;
         }
-        uint256 baseConvertedAssets = _convertToAssets(asset(), balanceOf(owner), Math.Rounding.Floor);
+
         uint256 availableAssets = IStrategy(bufferStrategy()).maxWithdraw(address(this));
-        if (availableAssets < baseConvertedAssets) {
+        if (availableAssets == 0) {
             return 0;
         }
-        return baseConvertedAssets;
+
+        uint256 userShares = balanceOf(owner);
+        (maxAssets,) = _convertToAssets(asset(), userShares, Math.Rounding.Floor);
+
+        if (availableAssets < maxAssets) {
+            return availableAssets;
+        }
     }
 
     /**
      * @notice Returns the maximum amount of shares that can be redeemed by a given owner.
      * @param owner The address of the owner.
-     * @return uint256 The maximum amount of shares.
+     * @return maxShares The maximum amount of shares.
      */
-    function maxRedeem(address owner) public view returns (uint256) {
+    function maxRedeem(address owner) public view returns (uint256 maxShares) {
         if (paused()) {
             return 0;
         }
-        uint256 baseConvertedAssets = _convertToAssets(asset(), balanceOf(owner), Math.Rounding.Floor);
+
         uint256 availableAssets = IStrategy(bufferStrategy()).maxWithdraw(address(this));
-        if (availableAssets < baseConvertedAssets) {
+        if (availableAssets == 0) {
             return 0;
         }
-        return baseConvertedAssets;
+
+        address asset_ = asset();
+        uint256 userShares = balanceOf(owner);
+        (uint256 assets,) = _convertToAssets(asset_, userShares, Math.Rounding.Floor);
+
+        if (availableAssets < assets) {
+            (maxShares,) = _convertToShares(asset_, availableAssets, Math.Rounding.Floor);
+        } else {
+            return userShares;
+        }
     }
 
     /**
@@ -169,8 +184,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (paused()) {
             revert Paused();
         }
-        uint256 shares = previewDeposit(assets);
-        _deposit(asset(), _msgSender(), receiver, assets, shares);
+        (uint256 shares, uint256 baseAssets) = _convertToShares(asset(), assets, Math.Rounding.Floor);
+        _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
         return shares;
     }
 
@@ -184,9 +199,9 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (paused()) {
             revert Paused();
         }
-        uint256 assets_ = previewMint(shares);
-        _deposit(asset(), _msgSender(), receiver, assets_, shares);
-        return assets_;
+        (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Ceil);
+        _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
+        return assets;
     }
 
     /**
@@ -194,9 +209,9 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @param assets The amount of assets to withdraw.
      * @param receiver The address of the receiver.
      * @param owner The address of the owner.
-     * @return uint256 The equivalent amount of shares.
+     * @return shares The equivalent amount of shares.
      */
-    function withdraw(uint256 assets, address receiver, address owner) public nonReentrant returns (uint256) {
+    function withdraw(uint256 assets, address receiver, address owner) public nonReentrant returns (uint256 shares) {
         if (paused()) {
             revert Paused();
         }
@@ -204,9 +219,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (assets > maxAssets) {
             revert ExceededMaxWithdraw(owner, assets, maxAssets);
         }
-        uint256 shares = previewWithdraw(assets);
+        shares = previewWithdraw(assets);
         _withdraw(asset(), _msgSender(), receiver, owner, assets, shares);
-        return shares;
     }
 
     /**
@@ -214,9 +228,9 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @param shares The amount of shares to redeem.
      * @param receiver The address of the receiver.
      * @param owner The address of the owner.
-     * @return uint256 The equivalent amount of assets.
+     * @return assets The equivalent amount of assets.
      */
-    function redeem(uint256 shares, address receiver, address owner) public nonReentrant returns (uint256) {
+    function redeem(uint256 shares, address receiver, address owner) public nonReentrant returns (uint256 assets) {
         if (paused()) {
             revert Paused();
         }
@@ -224,9 +238,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (shares > maxShares) {
             revert ExceededMaxRedeem(owner, shares, maxShares);
         }
-        uint256 assets = previewRedeem(shares);
+        assets = previewRedeem(shares);
         _withdraw(asset(), _msgSender(), receiver, owner, assets, shares);
-        return assets;
     }
 
     //// 4626-MAX ////
@@ -303,36 +316,36 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @notice Previews the amount of shares that would be received for a given amount of assets for a specific asset.
      * @param asset_ The address of the asset.
      * @param assets_ The amount of assets to deposit.
-     * @return uint256 The equivalent amount of shares.
+     * @return shares The equivalent amount of shares.
      */
-    function previewDepositAsset(address asset_, uint256 assets_) public view returns (uint256) {
+    function previewDepositAsset(address asset_, uint256 assets_) public view returns (uint256 shares) {
         if (!getAsset(asset_).active) {
             revert InvalidAsset(asset_);
         }
-        return _convertToShares(asset_, assets_, Math.Rounding.Floor);
+        (shares,) = _convertToShares(asset_, assets_, Math.Rounding.Floor);
     }
 
     /**
-     * @notice Deposits a given amount of assets for a specific asset and assigns the equivalent amount of shares to the receiver.
+     * @notice Deposits a given amount of assets for a specific asset and assigns shares to the receiver.
      * @param asset_ The address of the asset.
-     * @param assets_ The amount of assets to deposit.
+     * @param assets The amount of assets to deposit.
      * @param receiver The address of the receiver.
      * @return uint256 The equivalent amount of shares.
      */
-    function depositAsset(address asset_, uint256 assets_, address receiver) public nonReentrant returns (uint256) {
+    function depositAsset(address asset_, uint256 assets, address receiver) public nonReentrant returns (uint256) {
         if (paused()) {
             revert Paused();
         }
         if (!getAsset(asset_).active) {
             revert InvalidAsset(asset_);
         }
-        uint256 shares = previewDepositAsset(asset_, assets_);
-        _deposit(asset_, _msgSender(), receiver, assets_, shares);
+        (uint256 shares, uint256 baseAssets) = _convertToShares(asset_, assets, Math.Rounding.Floor);
+        _deposit(asset_, _msgSender(), receiver, assets, shares, baseAssets);
         return shares;
     }
 
     /**
-     * @notice Processes the accounting for the vault.
+     * @notice Updates Vault.totalAssets
      * @dev We coprocess this accounting update to improve deposit UX.
      */
     function processAccounting() public {
@@ -370,11 +383,19 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @param caller The address of the caller.
      * @param receiver The address of the receiver.
      * @param assets The amount of assets to deposit.
-     * @param shares The equivalent amount of shares.
+     * @param shares The amount of shares to mint.
+     * @param baseAssets The base asset convertion of shares.
      */
-    function _deposit(address asset_, address caller, address receiver, uint256 assets, uint256 shares) internal {
+    function _deposit(
+        address asset_,
+        address caller,
+        address receiver,
+        uint256 assets,
+        uint256 shares,
+        uint256 baseAssets
+    ) internal {
         VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.totalAssets += assets;
+        vaultStorage.totalAssets += baseAssets;
 
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
         _mint(receiver, shares);
@@ -412,39 +433,45 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @param asset_ The address of the asset.
      * @param shares The amount of shares to convert.
      * @param rounding The rounding direction.
-     * @return uint256 The equivalent amount of assets.
+     * @return (uint256 assets, uint256 baseAssets) The equivalent amount of assets.
      */
-    function _convertToAssets(address asset_, uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
-        uint256 baseDenominatedShares = _convertAssetToBase(asset_, shares);
-        return baseDenominatedShares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** 0, rounding);
+    function _convertToAssets(address asset_, uint256 shares, Math.Rounding rounding)
+        internal
+        view
+        returns (uint256, uint256)
+    {
+        uint256 baseAssets = _convertAssetToBase(asset_, shares);
+        uint256 assets = baseAssets.mulDiv(totalAssets() + 1, totalSupply() + 10 ** 0, rounding);
+        return (assets, baseAssets);
     }
 
     /**
      * @notice Internal function to convert assets to shares.
      * @param asset_ The address of the asset.
-     * @param assets_ The amount of assets to convert.
+     * @param assets The amount of assets to convert.
      * @param rounding The rounding direction.
-     * @return uint256 The equivalent amount of shares.
+     * @return (uint256 shares, uint256 baseAssets) The equivalent amount of shares.
      */
-    function _convertToShares(address asset_, uint256 assets_, Math.Rounding rounding)
+    function _convertToShares(address asset_, uint256 assets, Math.Rounding rounding)
         internal
         view
-        returns (uint256)
+        returns (uint256, uint256)
     {
-        uint256 convertedAssets = _convertAssetToBase(asset_, assets_);
-        return convertedAssets.mulDiv(totalSupply() + 10 ** 0, totalAssets() + 1, rounding);
+        uint256 baseAssets = _convertAssetToBase(asset_, assets);
+        uint256 shares = baseAssets.mulDiv(totalAssets() + 1, totalSupply() + 10 ** 0, rounding);
+        return (shares, baseAssets);
     }
 
     /**
-     * @notice Internal function to convert an asset amount to its base denomination.
+     * @notice Internal function to convert an asset amount to base denomination.
      * @param asset_ The address of the asset.
-     * @param amount The amount of the asset.
+     * @param assets The amount of the asset.
      * @return uint256 The equivalent amount in base denomination.
      */
-    function _convertAssetToBase(address asset_, uint256 amount) internal view returns (uint256) {
+    function _convertAssetToBase(address asset_, uint256 assets) internal view returns (uint256) {
         if (asset_ == address(0)) revert ZeroAddress();
         uint256 rate = IRateProvider(rateProvider()).getRate(asset_);
-        return amount * rate / 1e18;
+        return assets * rate / 1e18;
     }
 
     /**
@@ -660,10 +687,10 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         __AccessControl_init();
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _getVaultStorage().paused = true;
     }
 
     constructor() {
-        _getVaultStorage().paused = true;
         _disableInitializers();
     }
 
@@ -677,16 +704,18 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (paused()) {
             revert Paused();
         }
+        address sender = _msgSender();
         uint256 shares = previewDeposit(amount);
-        _mint(msg.sender, shares);
-        emit Deposit(msg.sender, msg.sender, amount, shares);
+        _mint(sender, shares);
+        emit Deposit(sender, sender, amount, shares);
     }
 
     /**
      * @notice Fallback function to handle ETH deposits.
      */
     receive() external payable {
-        if (msg.value > 0 && msg.sender != address(this) && msg.sender != asset()) {
+        address sender = _msgSender();
+        if (msg.value > 0 && sender != address(this) && sender != asset()) {
             _mintSharesForETH(msg.value);
         }
     }

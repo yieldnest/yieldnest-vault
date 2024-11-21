@@ -64,6 +64,8 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
     }
 
+    event Log(string, uint256);
+
     function test_Vault_depositAsset_STETH(uint256 depositAmount) public {
         if (depositAmount < 10) return;
         if (depositAmount > 100_000 ether) return;
@@ -71,12 +73,16 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         deal(address(steth), alice, depositAmount);
 
         vm.startPrank(alice);
-        steth.approve(address(vault), type(uint256).max);
+
+        uint256 previewDepositAsset = vault.previewDepositAsset(address(steth), depositAmount);
+
+        steth.approve(address(vault), depositAmount);
 
         uint256 sharesMinted = vault.depositAsset(address(steth), depositAmount, alice);
 
         // Check that shares were minted
         assertGt(sharesMinted, 0, "No shares were minted");
+        assertEq(sharesMinted, previewDepositAsset, "Incorrect shares minted");
 
         // Check that the vault received the tokens
         assertEq(steth.balanceOf(address(vault)), depositAmount, "Vault did not receive tokens");
@@ -88,7 +94,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
 
         // Check that total assets increased
-        assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
+        assertEq(vault.totalAssets(), previewDepositAsset, "Total assets did not increase correctly");
 
         vm.stopPrank();
     }
@@ -231,9 +237,9 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertGt(sharesMinted, 0, "No shares minted");
     }
 
-    function test_Vault_receiveETH() public {
+    function test_Vault_receiveETH(uint256 depositAmount) public {
+        if (depositAmount < 1 || depositAmount > 100_000_00 ether) return;
         uint256 initialBalance = address(vault).balance;
-        uint256 depositAmount = 1 ether;
 
         uint256 previewAmount = vault.previewDeposit(depositAmount);
 

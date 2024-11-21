@@ -41,14 +41,14 @@ interface IVault is IERC4626 {
     }
 
     struct ParamRule {
-        ParamType paramType; // Type of parameter
-        bool isArray; // Whether parameter is an array
-        address[] allowList; // Allowed addresses (if applicable)
+        ParamType paramType;
+        bool isArray;
+        address[] allowList;
     }
 
     struct FunctionRule {
-        bool isActive; // Whether rule is active
-        ParamRule[] paramRules; // Rules for each parameter
+        bool isActive;
+        ParamRule[] paramRules;
     }
 
     struct ProcessorStorage {
@@ -91,24 +91,6 @@ interface IVault is IERC4626 {
     event ProcessSuccess(address[] targets, uint256[] values, bytes[] data);
     event Pause(bool paused);
 
-    /// 4626
-    function asset() external view returns (address);
-    function totalAssets() external view returns (uint256);
-    function convertToShares(uint256 assets) external view returns (uint256);
-    function convertToAssets(uint256 shares) external view returns (uint256);
-    function maxDeposit(address) external view returns (uint256);
-    function maxMint(address) external view returns (uint256);
-    function maxWithdraw(address owner) external view returns (uint256);
-    function maxRedeem(address owner) external view returns (uint256);
-    function previewDeposit(uint256 assets) external view returns (uint256);
-    function previewMint(uint256 shares) external view returns (uint256);
-    function previewWithdraw(uint256 assets) external view returns (uint256);
-    function previewRedeem(uint256 shares) external view returns (uint256);
-    function deposit(uint256 assets, address receiver) external returns (uint256);
-    function mint(uint256 shares, address receiver) external returns (uint256);
-    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256);
-    function redeem(uint256 shares, address receiver, address owner) external returns (uint256);
-
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);
     function getAsset(address asset_) external view returns (AssetParams memory);
@@ -118,6 +100,7 @@ interface IVault is IERC4626 {
     function depositAsset(address assetAddress, uint256 amount, address receiver) external returns (uint256);
     function rateProvider() external view returns (address);
     function bufferStrategy() external view returns (address);
+    function processAccounting() external;
 
     // ADMIN
     function initialize(address admin_, string memory name_, string memory symbol_) external;
