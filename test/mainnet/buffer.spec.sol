@@ -25,7 +25,7 @@ contract StETHBufferTest is Test, MainnetActors {
 
     function testBufferDepositAndRedeem() public {
 
-        uint256 amount = 2000 ether;
+        uint256 amount = 10000 ether;
 
         address user = makeAddr("user");
         vm.deal(user, amount);
@@ -75,7 +75,7 @@ contract StETHBufferTest is Test, MainnetActors {
     }
 
     function test_Buffer_withdraw() public {
-        uint256 amount = 2000 ether;
+        uint256 amount = 10000 ether;
 
         address user = makeAddr("user");
         vm.deal(user, amount);
