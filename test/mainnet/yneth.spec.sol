@@ -8,7 +8,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {Vault,IVault} from "src/Vault.sol";
 import {IERC20} from "src/Common.sol";
 import {IRateProvider} from "src/interface/IRateProvider.sol";
-import {TestUtils} from "test/mainnet/helpers/TestUtils.sol";
+import {AssertUtils} from "test/utils/AssertUtils.sol";
 
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
@@ -16,7 +16,7 @@ interface IynETH {
     function approve(address spender, uint256 amount) external returns (uint256);
 }
 
-contract VaultMainnetYnETHTest is Test, TestUtils, MainnetActors {
+contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
     Vault public vault;
 
@@ -63,7 +63,7 @@ contract VaultMainnetYnETHTest is Test, TestUtils, MainnetActors {
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
         (bool success,) = MC.WETH.call{value: assets}("");
         if (!success) revert("Weth deposit failed");
@@ -73,7 +73,7 @@ contract VaultMainnetYnETHTest is Test, TestUtils, MainnetActors {
         address receiver = address(this);
 
         uint256 depositedShares = vault.depositAsset(assetAddress, assets, receiver);
-        assertThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
+        assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
 
         // allocate 100% to the ynETH strategy
         address[] memory targets = new address[](2);
@@ -100,7 +100,7 @@ contract VaultMainnetYnETHTest is Test, TestUtils, MainnetActors {
         vm.stopPrank();
 
         uint256 newTotalAssets = vault.totalAssets();
-        assertThreshold(newTotalAssets, totalAssets + assets, 5, "New total assets should equal deposit amount plus original total assets");
+        assertEqThreshold(newTotalAssets, totalAssets + assets, 5, "New total assets should equal deposit amount plus original total assets");
     }
 
     function setWethWithdrawRule() internal {

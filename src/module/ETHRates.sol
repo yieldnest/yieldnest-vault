@@ -5,7 +5,7 @@ import {IRateProvider} from "src/interface/IRateProvider.sol";
 import {IERC4626} from "src/Common.sol";
 
 interface IStETH {
-    function getSharesByPooledEth(uint256 _ethAmount) external view returns (uint256);
+    function getPooledEthByShares(uint256 _ethAmount) external view returns (uint256);
 }
 
 interface IMETH {
@@ -78,7 +78,7 @@ contract ETHRates is IRateProvider {
     }
 
     function _getStETHRate() internal view returns (uint256) {
-        return IStETH(STETH).getSharesByPooledEth(1e18);
+        return IStETH(STETH).getPooledEthByShares(1e18);
     }
 
     function _getMETHRate() internal view returns (uint256) {
@@ -102,7 +102,7 @@ contract ETHRates is IRateProvider {
     }
 
     function _getBUFFERRate() internal view returns (uint256) {
-        return IERC4626(BUFFER).convertToShares(1e18);
+        return IERC4626(BUFFER).previewRedeem(1e18);
     }
 
     function otherAssets(address vault, address strategy) public view returns (uint256 assets) {

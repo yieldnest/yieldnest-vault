@@ -431,8 +431,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         view
         returns (uint256, uint256)
     {
-        uint256 baseAssets = _convertAssetToBase(asset_, shares);
-        uint256 assets = baseAssets.mulDiv(totalAssets() + 1, totalSupply() + 10 ** 0, rounding);
+        uint256 assets = shares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** 0, rounding);
+        uint256 baseAssets = _convertAssetToBase(asset_, assets);
         return (assets, baseAssets);
     }
 

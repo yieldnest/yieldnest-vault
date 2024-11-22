@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
-contract TestUtils {
-    function assertThreshold(
+contract AssertUtils {
+    function assertEqThreshold(
         uint256 actual,
         uint256 expected,
         uint256 threshold,
