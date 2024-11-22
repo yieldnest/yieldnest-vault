@@ -8,6 +8,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {Vault,IVault} from "src/Vault.sol";
 import {IERC20} from "src/Common.sol";
 import {IRateProvider} from "src/interface/IRateProvider.sol";
+import {TestUtils} from "test/mainnet/helpers/TestUtils.sol";
 
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
@@ -15,7 +16,7 @@ interface IynETH {
     function approve(address spender, uint256 amount) external returns (uint256);
 }
 
-contract VaultMainnetYnETHTest is Test, MainnetActors {
+contract VaultMainnetYnETHTest is Test, TestUtils, MainnetActors {
 
     Vault public vault;
 
@@ -40,6 +41,8 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
 
         vm.prank(ADMIN);
         vault.processor(targets, values, data);
+
+        vault.processAccounting();
     }
 
         event Log(string,uint256);
@@ -94,18 +97,10 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
 
         uint256 ynEthBalance = IERC20(MC.YNETH).balanceOf(MC.YNETHX);
         emit Log("ynEthBal", ynEthBalance);
-
-        // Test the processAccounting function
-        vault.processAccounting();
         vm.stopPrank();
 
         uint256 newTotalAssets = vault.totalAssets();
         assertThreshold(newTotalAssets, totalAssets + assets, 5, "New total assets should equal deposit amount plus original total assets");
-    }
-
-    function assertThreshold(uint256 actual, uint256 expected, uint256 threshold, string memory errorMessage) internal pure {
-        assertGt(actual, expected - threshold, string(abi.encodePacked(errorMessage, ": actual should be within the lower threshold of the expected value")));
-        assertLt(actual, expected + threshold, string(abi.encodePacked(errorMessage, ": actual should be within the upper threshold of the expected value")));
     }
 
     function setWethWithdrawRule() internal {

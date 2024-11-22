@@ -128,50 +128,44 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     /**
      * @notice Returns the maximum amount of assets that can be withdrawn by a given owner.
      * @param owner The address of the owner.
-     * @return maxAssets The maximum amount of assets.
+     * @return uint256 The maximum amount of assets.
      */
-    function maxWithdraw(address owner) public view returns (uint256 maxAssets) {
+    function maxWithdraw(address owner) public view returns (uint256) {
         if (paused()) {
             return 0;
         }
 
-        uint256 availableAssets = IStrategy(bufferStrategy()).maxWithdraw(address(this));
-        if (availableAssets == 0) {
+        uint256 bufferAssets = IStrategy(bufferStrategy()).maxWithdraw(address(this));
+        if (bufferAssets == 0) {
             return 0;
         }
 
-        uint256 userShares = balanceOf(owner);
-        (maxAssets,) = _convertToAssets(asset(), userShares, Math.Rounding.Floor);
+        uint256 ownerShares = balanceOf(owner);
+        (uint256 maxAssets,) = _convertToAssets(asset(), ownerShares, Math.Rounding.Floor);
 
-        if (availableAssets < maxAssets) {
-            return availableAssets;
-        }
+        return bufferAssets < maxAssets ? bufferAssets : maxAssets;
     }
 
     /**
      * @notice Returns the maximum amount of shares that can be redeemed by a given owner.
      * @param owner The address of the owner.
-     * @return maxShares The maximum amount of shares.
+     * @return uint256 The maximum amount of shares.
      */
-    function maxRedeem(address owner) public view returns (uint256 maxShares) {
+    function maxRedeem(address owner) public view returns (uint256) {
         if (paused()) {
             return 0;
         }
 
-        uint256 availableAssets = IStrategy(bufferStrategy()).maxWithdraw(address(this));
-        if (availableAssets == 0) {
+        uint256 bufferAssets = IStrategy(bufferStrategy()).maxWithdraw(address(this));
+        if (bufferAssets == 0) {
             return 0;
         }
 
-        address asset_ = asset();
-        uint256 userShares = balanceOf(owner);
-        (uint256 assets,) = _convertToAssets(asset_, userShares, Math.Rounding.Floor);
+        uint256 ownerShares = balanceOf(owner);
+        (uint256 ownerAssets,) = _convertToAssets(asset(), ownerShares, Math.Rounding.Floor);
+        (uint256 maxShares,) = _convertToShares(asset(), bufferAssets, Math.Rounding.Floor);
 
-        if (availableAssets < assets) {
-            (maxShares,) = _convertToShares(asset_, availableAssets, Math.Rounding.Floor);
-        } else {
-            return userShares;
-        }
+        return bufferAssets < ownerAssets ? maxShares : ownerShares;
     }
 
     /**
@@ -458,7 +452,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         returns (uint256, uint256)
     {
         uint256 baseAssets = _convertAssetToBase(asset_, assets);
-        uint256 shares = baseAssets.mulDiv(totalAssets() + 1, totalSupply() + 10 ** 0, rounding);
+        uint256 shares = baseAssets.mulDiv(totalSupply() + 10 ** 0, totalAssets() + 1, rounding);
         return (shares, baseAssets);
     }
 
@@ -471,7 +465,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     function _convertAssetToBase(address asset_, uint256 assets) internal view returns (uint256) {
         if (asset_ == address(0)) revert ZeroAddress();
         uint256 rate = IRateProvider(rateProvider()).getRate(asset_);
-        return assets * rate / 1e18;
+        return assets.mulDiv(rate, 1e18, Math.Rounding.Floor);
     }
 
     /**
