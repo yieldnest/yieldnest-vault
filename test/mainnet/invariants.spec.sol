@@ -133,6 +133,54 @@ contract VaultMainnetInvariantsTest is Test, TestUtils, MainnetActors {
         totalAssetsInvariant(initialAssets + assets);
     }
 
+    function test_Vault_4626Invariants_mint(uint256 shares) public {
+        if (shares < 2) return;
+        if (shares > 100_000_000 ether) return;
+
+        address alice = address(10);
+        vm.label(alice, "Alice");
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        // Test the decimals function
+        uint8 decimals = vault.decimals();
+        assertEq(decimals, 18, "Decimals should be 18");
+
+        // Test the asset function
+        address assetAddress = vault.asset();
+        assertEq(assetAddress, MC.WETH, "Asset address should be WETH");
+
+        // Test the totalAssets function
+        uint256 totalAssets = vault.totalAssets();
+        assertGt(totalAssets, 0, "Total assets should be greater than 0");
+
+        // Test the convertToAssets function
+        uint256 assets = vault.convertToAssets(shares);
+        assertGt(assets, 0, "Assets should be greater than 0");
+        
+        deal(alice, assets);
+
+        // Test the previewMint function
+        uint256 previewedAssets = vault.previewMint(shares);
+        assertThreshold(previewedAssets, assets, 3, "Previewed assets should equal the converted assets");
+
+        // Test the mint function
+        vm.startPrank(alice);
+        (bool success,) = MC.WETH.call{value: assets}("");
+        if (!success) revert("Weth deposit failed");
+        IERC20(MC.WETH).approve(address(vault), assets);
+
+        uint256 mintedAssets = vault.mint(shares, alice);
+        assertEq(mintedAssets, assets, "Minted assets should equal the converted assets");
+        vm.stopPrank();
+        
+        allocateToBuffer(assets);
+
+        totalSupplyInvariant(initialSupply + shares);
+        totalAssetsInvariant(initialAssets + assets);
+    }
+
     function test_Vault_4626Invariants_redeem(uint256 assets) public {
         if (assets < 3) return;
         if (assets > 100_000_000 ether) return;
@@ -184,7 +232,7 @@ contract VaultMainnetInvariantsTest is Test, TestUtils, MainnetActors {
         if (assets < 3) return;
         if (assets > 100_000_000 ether) return;
 
-        address alice = address(420);
+        address alice = address(10);
         deal(alice, assets);
 
         uint256 initialAssets = vault.totalAssets();
@@ -209,7 +257,6 @@ contract VaultMainnetInvariantsTest is Test, TestUtils, MainnetActors {
 
         // hypothetically allocated 100% to the buffer
         allocateToBuffer(IERC20(baseAsset).balanceOf(address(vault)));
-        vault.processAccounting();
 
         // Test the previewWithdraw function
         uint256 previewedWithdrawShares = vault.previewWithdraw(assets);

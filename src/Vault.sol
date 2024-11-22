@@ -141,7 +141,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         }
 
         uint256 ownerShares = balanceOf(owner);
-        (uint256 maxAssets,) = _convertToAssets(asset(), ownerShares, Math.Rounding.Floor);
+        uint256 maxAssets = convertToAssets(ownerShares);
 
         return bufferAssets < maxAssets ? bufferAssets : maxAssets;
     }
@@ -162,10 +162,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         }
 
         uint256 ownerShares = balanceOf(owner);
-        (uint256 ownerAssets,) = _convertToAssets(asset(), ownerShares, Math.Rounding.Floor);
-        (uint256 maxShares,) = _convertToShares(asset(), bufferAssets, Math.Rounding.Floor);
-
-        return bufferAssets < ownerAssets ? maxShares : ownerShares;
+        return bufferAssets < previewRedeem(ownerShares) ? previewWithdraw(bufferAssets) : ownerShares;
     }
 
     /**
@@ -193,7 +190,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (paused()) {
             revert Paused();
         }
-        (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Ceil);
+        (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
         _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
         return assets;
     }
