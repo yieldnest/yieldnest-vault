@@ -191,7 +191,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         if (rand < 1 || rand > 10_000 ether) return;
         uint256 depositAmountWETH = rand;
         uint256 depositAmountSTETH = rand;
-        
+
         bool success = false;
         uint256 expectedTotalAssets = 0;
         uint256 expectedTotalSupply = 0;
@@ -206,7 +206,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         expectedTotalSupply += shares;
         vm.stopPrank();
 
-        // Approve and deposit STETH : 
+        // Approve and deposit STETH :
         vm.startPrank(alice);
         deal(alice, depositAmountSTETH);
         (success,) = MC.STETH.call{value: depositAmountSTETH}("");
