@@ -67,7 +67,7 @@ contract StETHBuffer is ERC4626Upgradeable {
         _burn(owner, shares);
 
         // Swap stETH for ETH in Curve pool
-        uint256 stEthBalance = stETH.balanceOf(address(this));
+        stETH.approve(address(curvePool), assets);
         uint256 ethReceived = curvePool.exchange(1, 0, assets, 0);
 
         // Wrap ETH to WETH and transfer to receiver
@@ -76,4 +76,6 @@ contract StETHBuffer is ERC4626Upgradeable {
 
         return ethReceived;
     }
+
+    receive() external payable {}
 }
