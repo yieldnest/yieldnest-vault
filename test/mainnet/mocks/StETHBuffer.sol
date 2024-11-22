@@ -37,15 +37,12 @@ contract StETHBuffer is ERC4626Upgradeable {
         curvePool = ICurvePool(_curvePool);
     }
 
-    function deposit(uint256 assets, address receiver) public override returns (uint256) {
-        
-        // Transfer WETH from sender
-        weth.transferFrom(msg.sender, address(this), assets);
+    function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
+        // Transfer WETH from caller
+        weth.transferFrom(caller, address(this), assets);
 
         // Unwrap WETH to ETH
         weth.withdraw(assets);
-        // Calculate shares from assets
-        uint256 shares = previewDeposit(assets);
 
         // Submit ETH to Lido to get stETH
         stETH.submit{value: assets}(address(0));
@@ -53,8 +50,9 @@ contract StETHBuffer is ERC4626Upgradeable {
         // Mint shares to receiver
         _mint(receiver, shares);
 
-        return shares;
+        emit Deposit(caller, receiver, assets, shares);
     }
+
 
     function totalAssets() public view override returns (uint256) {
         return stETH.balanceOf(address(this));
