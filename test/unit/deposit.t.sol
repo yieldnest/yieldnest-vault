@@ -243,7 +243,8 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
         uint256 previewAmount = vault.previewDeposit(depositAmount);
 
-        // Send ETH to the vault
+        deal(alice, depositAmount);
+        // // Send ETH to the vault
         vm.prank(alice);
         (bool success,) = address(vault).call{value: depositAmount}("");
         require(success, "ETH transfer failed");
