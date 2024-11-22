@@ -60,10 +60,17 @@ contract StETHBuffer is ERC4626Upgradeable {
         return stETH.balanceOf(address(this));
     }
 
-    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256) {
-        uint256 assets = previewRedeem(shares);
-        
-        // Burn shares from owner
+    function _withdraw(
+        address caller,
+        address receiver,
+        address owner,
+        uint256 assets,
+        uint256 shares
+    ) internal override {
+        if (caller != owner) {
+            _spendAllowance(owner, caller, shares);
+        }
+
         _burn(owner, shares);
 
         // Swap stETH for ETH in Curve pool
@@ -74,7 +81,7 @@ contract StETHBuffer is ERC4626Upgradeable {
         weth.deposit{value: ethReceived}();
         weth.transfer(receiver, ethReceived);
 
-        return ethReceived;
+        emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
     receive() external payable {}
