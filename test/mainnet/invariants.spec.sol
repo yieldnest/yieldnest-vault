@@ -41,6 +41,57 @@ contract VaultMainnetInvariantsTest is Test, TestUtils, MainnetActors {
         if (assets < 2) return;
         if (assets > 100_000_000 ether) return;
 
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        // Test the decimals function
+        uint8 decimals = vault.decimals();
+        assertEq(decimals, 18, "Decimals should be 18");
+
+        // Test the asset function
+        address assetAddress = vault.asset();
+        assertEq(assetAddress, MC.WETH, "Asset address should be WETH");
+
+        // Test the totalAssets function
+        uint256 totalAssets = vault.totalAssets();
+        assertGt(totalAssets, 0, "Total assets should be greater than 0");
+
+        // Test the convertToShares function
+        uint256 shares = vault.convertToShares(assets);
+        assertGt(shares, 0, "Shares should be greater than 0");
+
+        // Test the convertToAssets function
+        uint256 convertedAssets = vault.convertToAssets(shares);
+        assertThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+
+        // Test the previewDeposit function
+        uint256 previewedShares = vault.previewDeposit(assets);
+        assertThreshold(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
+
+        // Test the previewMint function
+        uint256 previewedAssets = vault.previewMint(shares);
+        assertThreshold(previewedAssets, assets, 3, "Previewed assets should equal the original assets");
+
+        // Test the depositAsset function
+        (bool success,) = MC.WETH.call{value: assets}("");
+        if (!success) revert("Weth deposit failed");
+        IERC20(MC.WETH).approve(address(vault), assets);
+
+        address receiver = address(this);
+        uint256 depositedShares = vault.deposit(assets, receiver);
+        assertEq(depositedShares, shares, "Deposited shares should equal the converted shares");
+
+        totalSupplyInvariant(initialSupply + shares);
+        totalAssetsInvariant(initialAssets + assets);
+    }
+
+    function test_Vault_4626Invariants_depositAsset(uint256 assets) public {
+        if (assets < 2) return;
+        if (assets > 100_000_000 ether) return;
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
         // Test the decimals function
         uint8 decimals = vault.decimals();
         assertEq(decimals, 18, "Decimals should be 18");
@@ -78,10 +129,8 @@ contract VaultMainnetInvariantsTest is Test, TestUtils, MainnetActors {
         uint256 depositedShares = vault.depositAsset(assetAddress, assets, receiver);
         assertEq(depositedShares, shares, "Deposited shares should equal the converted shares");
 
-        // Test the processAccounting function
-        vault.processAccounting();
-        uint256 newTotalAssets = vault.totalAssets();
-        assertEq(newTotalAssets, totalAssets + assets, "New total assets should equal deposit amount plus original total assets");
+        totalSupplyInvariant(initialSupply + shares);
+        totalAssetsInvariant(initialAssets + assets);
     }
 
     function test_Vault_4626Invariants_redeem(uint256 assets) public {
