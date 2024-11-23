@@ -39,14 +39,14 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
         targets[0] = MC.WETH;
-        targets[1] = MC.BUFFER_STRATEGY;
+        targets[1] = MC.BUFFER;
 
         uint256[] memory values = new uint256[](2);
         values[0] = 0;
         values[1] = 0;
 
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.bufferStrategy(), amount);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
         data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
 
         vm.prank(ADMIN);

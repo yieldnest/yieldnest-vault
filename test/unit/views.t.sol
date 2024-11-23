@@ -70,7 +70,7 @@ contract VaultDepositUnitTest is Test, Etches {
 
     function test_Vault_getStrategies() public view {
         address[] memory expectedStrategies = new address[](1);
-        expectedStrategies[0] = MC.BUFFER_STRATEGY;
+        expectedStrategies[0] = MC.BUFFER;
         assertEq(vault.getStrategies().length, expectedStrategies.length);
         for (uint256 i = 0; i < expectedStrategies.length; i++) {
             assertEq(vault.getStrategies()[i], expectedStrategies[i]);
@@ -78,18 +78,18 @@ contract VaultDepositUnitTest is Test, Etches {
     }
 
     function test_Vault_getStrategy() public view {
-        address strategyAddress = MC.BUFFER_STRATEGY;
+        address strategyAddress = MC.BUFFER;
         IVault.StrategyParams memory expectedStrategyParams = IVault.StrategyParams(true, 0, 18, 0);
         assertEq(vault.getStrategy(strategyAddress).active, expectedStrategyParams.active);
         assertEq(vault.getStrategy(strategyAddress).index, expectedStrategyParams.index);
         assertEq(vault.getStrategy(strategyAddress).idleBalance, expectedStrategyParams.idleBalance);
     }
 
-    function test_Vault_rateProvider() public view {
-        assertEq(vault.rateProvider(), MC.ETH_RATE_PROVIDER, "Rate provider does not match expected");
+    function test_Vault_Provider() public view {
+        assertEq(vault.provider(), MC.PROVIDER, "Provider does not match expected");
     }
 
-    function test_Vault_bufferStrategy() public view {
-        assertEq(vault.bufferStrategy(), MC.BUFFER_STRATEGY, "Buffer strategy does not match expected");
+    function test_Vault_Buffer_public() public view {
+        assertEq(vault.buffer(), MC.BUFFER, "Buffer strategy does not match expected");
     }
 }

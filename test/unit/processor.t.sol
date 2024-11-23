@@ -58,7 +58,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.getAsset(address(steth)).idleBalance, 50 ether, "STETH balance not updated correctly");
     }
 
-    function test_Vault_processAccounting_bufferStrategyIdleBalance() public {
+    function test_Vault_processAccounting_bufferIdleBalance() public {
         // Simulate some asset and strategy balances
         deal(alice, 200 ether); // Simulate some ether balance for the vault
         weth.deposit{value: 100 ether}(); // Deposit ether into WETH
@@ -72,7 +72,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         steth.transfer(address(vault), START_BALANCE); // Transfer some STETH to the vault
 
         // Send some WETH to the buffer strategy
-        address bufferStrategy = vault.bufferStrategy();
+        address buffer = vault.buffer();
 
         vault.processAccounting();
 
@@ -81,14 +81,14 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         // Allocate funds to the buffer strategy
         address[] memory targets = new address[](2);
         targets[0] = address(weth);
-        targets[1] = bufferStrategy;
+        targets[1] = buffer;
 
         uint256[] memory values = new uint256[](2);
         values[0] = 0;
         values[1] = 0;
 
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", MC.BUFFER_STRATEGY, START_BALANCE);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", MC.BUFFER, START_BALANCE);
         data[1] = abi.encodeWithSignature("deposit(uint256,address)", ALLOCATION_BALANCE, address(vault));
 
         // Call the processor function to allocate funds to the buffer strategy
@@ -97,7 +97,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
 
         // Process accounting to update deployed assets
         vault.processAccounting();
-        uint256 afterBufferIdleBalance = vault.getStrategy(bufferStrategy).idleBalance;
+        uint256 afterBufferIdleBalance = vault.getStrategy(buffer).idleBalance;
 
         // Check that the deployed assets are updated correctly
         assertEq(
@@ -106,7 +106,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
             "WETH balance not updated correctly"
         );
         assertEq(
-            vault.getStrategy(bufferStrategy).idleBalance,
+            vault.getStrategy(buffer).idleBalance,
             afterBufferIdleBalance,
             "Buffer strategy idle balance not updated correctly"
         );
@@ -209,7 +209,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
 
     function test_Vault_getProcessorRule() public view {
         bytes4 sig = bytes4(keccak256("deposit(uint256,address)"));
-        IVault.FunctionRule memory rule = vault.getProcessorRule(MC.BUFFER_STRATEGY, sig);
+        IVault.FunctionRule memory rule = vault.getProcessorRule(MC.BUFFER, sig);
         IVault.FunctionRule memory expectedResult;
         expectedResult.isActive = true;
         expectedResult.paramRules = new IVault.ParamRule[](2);

@@ -21,10 +21,10 @@ library Guard {
     }
 
     function _validateAddress(address value, IVault.ParamRule storage rule) private view {
-        if (rule.allowList.length > 0 && !isInArray(value, rule.allowList)) revert AddressNotInAllowlist(value);
+        if (rule.allowList.length > 0 && !_isInArray(value, rule.allowList)) revert AddressNotInAllowlist(value);
     }
 
-    function isInArray(address value, address[] storage array) private view returns (bool) {
+    function _isInArray(address value, address[] storage array) private view returns (bool) {
         for (uint256 i = 0; i < array.length; i++) {
             if (array[i] == value) {
                 return true;

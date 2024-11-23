@@ -80,7 +80,7 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
         assertEq(assets.length, 5, "There should be 4 assets in the vault");
         assertEq(assets[0], MC.WETH, "First asset should be WETH");
         assertEq(assets[1], MC.STETH, "Second asset should be STETH");
-        assertEq(assets[2], MC.BUFFER_STRATEGY, "Second asset should be STETH");
+        assertEq(assets[2], MC.BUFFER, "Second asset should be STETH");
         assertEq(assets[3], MC.YNETH, "Third asset should be YNETH");
         assertEq(assets[4], MC.YNLSDE, "Fourth asset should be YNLSDE");
     }

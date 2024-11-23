@@ -15,7 +15,7 @@ import {
 
 import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
-import {IRateProvider} from "src/interface/IRateProvider.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 import {Guard} from "src/module/Guard.sol";
 
 contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
@@ -135,7 +135,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             return 0;
         }
 
-        uint256 bufferAssets = IStrategy(bufferStrategy()).maxWithdraw(address(this));
+        uint256 bufferAssets = IStrategy(buffer()).maxWithdraw(address(this));
         if (bufferAssets == 0) {
             return 0;
         }
@@ -156,7 +156,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             return 0;
         }
 
-        uint256 bufferAssets = IStrategy(bufferStrategy()).maxWithdraw(address(this));
+        uint256 bufferAssets = IStrategy(buffer()).maxWithdraw(address(this));
         if (bufferAssets == 0) {
             return 0;
         }
@@ -288,19 +288,19 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     /**
-     * @notice Returns the address of the rate provider.
-     * @return address The address of the rate provider.
+     * @notice Returns the address of the provider.
+     * @return address The address of the provider.
      */
-    function rateProvider() public view returns (address) {
-        return _getVaultStorage().rateProvider;
+    function provider() public view returns (address) {
+        return _getVaultStorage().provider;
     }
 
     /**
      * @notice Returns the address of the buffer strategy.
      * @return address The address of the buffer strategy.
      */
-    function bufferStrategy() public view returns (address) {
-        return _getVaultStorage().bufferStrategy;
+    function buffer() public view returns (address) {
+        return _getVaultStorage().buffer;
     }
 
     /**
@@ -355,11 +355,11 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         }
 
         StrategyStorage storage strategyStorage = _getStrategyStorage();
-        address rateProvider_ = _getVaultStorage().rateProvider;
+        IProvider rates = IProvider(_getVaultStorage().provider);
         uint256 strategyListLength = strategyStorage.list.length;
 
         for (uint256 i = 0; i < strategyListLength; i++) {
-            uint256 otherAssets = IRateProvider(rateProvider_).otherAssets(address(this), strategyStorage.list[i]);
+            uint256 otherAssets = rates.otherAssets(address(this), strategyStorage.list[i]);
             totalBaseBalance += otherAssets;
         }
 
@@ -411,7 +411,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             _spendAllowance(owner, caller, shares);
         }
 
-        IStrategy(vaultStorage.bufferStrategy).withdraw(assets, address(this), address(this));
+        IStrategy(vaultStorage.buffer).withdraw(assets, address(this), address(this));
 
         SafeERC20.safeTransfer(IERC20(asset_), receiver, assets);
 
@@ -461,7 +461,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      */
     function _convertAssetToBase(address asset_, uint256 assets) internal view returns (uint256) {
         if (asset_ == address(0)) revert ZeroAddress();
-        uint256 rate = IRateProvider(rateProvider()).getRate(asset_);
+        uint256 rate = IProvider(provider()).getRate(asset_);
         return assets.mulDiv(rate, 1e18, Math.Rounding.Floor);
     }
 
@@ -510,31 +510,31 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     bytes32 public constant PROCESSOR_ROLE = 0xe61decff6e4a5c6b5a3d3cbd28f882e595173563b49353ce5f31dba2de7f05ee;
 
     /**
-     * @notice Sets the rate provider.
-     * @param rateProvider_ The address of the rate provider.
+     * @notice Sets the provider.
+     * @param provider_ The address of the provider.
      */
-    function setRateProvider(address rateProvider_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (rateProvider_ == address(0)) {
+    function setProvider(address provider_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (provider_ == address(0)) {
             revert ZeroAddress();
         }
-        _getVaultStorage().rateProvider = rateProvider_;
-        emit SetRateProvider(rateProvider_);
+        _getVaultStorage().provider = provider_;
+        emit SetProvider(provider_);
     }
 
     /**
      * @notice Sets the buffer strategy.
-     * @param bufferStrategy_ The address of the buffer strategy.
+     * @param buffer_ The address of the buffer strategy.
      */
-    function setBufferStrategy(address bufferStrategy_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (bufferStrategy_ == address(0)) {
+    function setBuffer(address buffer_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (buffer_ == address(0)) {
             revert ZeroAddress();
         }
         StrategyStorage storage strategyStorage = _getStrategyStorage();
-        if (!strategyStorage.strategies[bufferStrategy_].active) {
-            revert InvalidStrategy(bufferStrategy_);
+        if (!strategyStorage.strategies[buffer_].active) {
+            revert InvalidStrategy(buffer_);
         }
-        _getVaultStorage().bufferStrategy = bufferStrategy_;
-        emit SetBufferStrategy(bufferStrategy_);
+        _getVaultStorage().buffer = buffer_;
+        emit SetBuffer(buffer_);
     }
 
     /**
@@ -630,10 +630,10 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      */
     function pause(bool paused_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         VaultStorage storage vaultStorage = _getVaultStorage();
-        if (rateProvider() == address(0)) {
-            revert RateProviderNotSet();
+        if (provider() == address(0)) {
+            revert ProviderNotSet();
         }
-        if (bufferStrategy() == address(0)) {
+        if (buffer() == address(0)) {
             revert BufferNotSet();
         }
         vaultStorage.paused = paused_;
