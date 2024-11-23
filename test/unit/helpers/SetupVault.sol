@@ -53,21 +53,21 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(MC.STETH, 18);
 
         // configure processor rules
-        setDepositRule(vault, MC.BUFFER_STRATEGY, address(vault));
+        setDepositRule(vault, MC.BUFFER, address(vault));
         setWethDepositRule(vault, MC.WETH);
 
-        setApprovalRule(vault, address(vault), MC.BUFFER_STRATEGY);
-        setApprovalRule(vault, MC.WETH, MC.BUFFER_STRATEGY);
+        setApprovalRule(vault, address(vault), MC.BUFFER);
+        setApprovalRule(vault, MC.WETH, MC.BUFFER);
         setApprovalRule(vault, address(vault), MC.YNETH);
         setApprovalRule(vault, address(vault), MC.YNLSDE);
 
         // add strategies
-        vault.addStrategy(MC.BUFFER_STRATEGY, 18);
+        vault.addStrategy(MC.BUFFER, 18);
 
         // test cannot unpause vault withtout buffer
         vm.expectRevert();
         vault.pause(false);
-        vault.setBufferStrategy(MC.BUFFER_STRATEGY);
+        vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault
         vault.pause(false);
@@ -103,22 +103,22 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(MC.YNETH, 18);
         vault.addAsset(MC.YNLSDE, 18);
 
-        setDepositRule(vault, MC.BUFFER_STRATEGY, address(vault));
+        setDepositRule(vault, MC.BUFFER, address(vault));
         setDepositRule(vault, MC.YNETH, address(vault));
         setDepositRule(vault, MC.YNLSDE, address(vault));
         setWethDepositRule(vault, MC.WETH);
 
-        setApprovalRule(vault, address(vault), MC.BUFFER_STRATEGY);
-        setApprovalRule(vault, MC.WETH, MC.BUFFER_STRATEGY);
+        setApprovalRule(vault, address(vault), MC.BUFFER);
+        setApprovalRule(vault, MC.WETH, MC.BUFFER);
         setApprovalRule(vault, address(vault), MC.YNETH);
         setApprovalRule(vault, address(vault), MC.YNLSDE);
 
         // add strategies
-        vault.addStrategy(MC.BUFFER_STRATEGY, 18);
+        vault.addStrategy(MC.BUFFER, 18);
         vault.addStrategy(MC.YNETH, 18);
         vault.addStrategy(MC.YNLSDE, 18);
 
-        vault.setBufferStrategy(MC.BUFFER_STRATEGY);
+        vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault
         vault.pause(false);

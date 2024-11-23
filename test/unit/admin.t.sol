@@ -121,21 +121,21 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.setProvider(address(0));
     }
 
-    function test_Vault_setBufferStrategy_nullAddress() public {
+    function test_Vault_setBuffer_nullAddress() public {
         vm.prank(ADMIN);
         vm.expectRevert();
-        vault.setBufferStrategy(address(0));
+        vault.setBuffer(address(0));
     }
 
-    function test_Vault_setBufferStrategy_failsIfStrategyAlreadyActive() public {
+    function test_Vault_setBuffer_failsIfStrategyAlreadyActive() public {
         vm.startPrank(ADMIN);
-        address buffer = vault.bufferStrategy();
+        address buffer = vault.buffer();
 
         // Attempt to set the same strategy as the buffer strategy again when it's not active
         vault.toggleStrategy(buffer, false);
         assertEq(vault.getStrategy(buffer).active, false);
         vm.expectRevert();
-        vault.setBufferStrategy(buffer);
+        vault.setBuffer(buffer);
     }
 
     function test_Vault_toggleStrategy_nonExistentStrategy() public {

@@ -8,7 +8,7 @@ interface IVault is IERC4626 {
         bool paused;
         uint256 totalAssets;
         address provider;
-        address bufferStrategy;
+        address buffer;
     }
 
     struct AssetParams {
@@ -82,7 +82,7 @@ interface IVault is IERC4626 {
 
     event DepositAsset(address indexed asset, address indexed vault, uint256 amount, address indexed receiver);
     event SetProvider(address indexed provider);
-    event SetBufferStrategy(address indexed bufferStrategy);
+    event SetBuffer(address indexed buffer);
     event NewAsset(address indexed asset, uint256 decimals, uint256 index);
     event NewStrategy(address indexed strategy, uint256 index);
     event ToggleAsset(address indexed asset, bool active);
@@ -99,13 +99,13 @@ interface IVault is IERC4626 {
     function previewDepositAsset(address assetAddress, uint256 assets) external view returns (uint256);
     function depositAsset(address assetAddress, uint256 amount, address receiver) external returns (uint256);
     function provider() external view returns (address);
-    function bufferStrategy() external view returns (address);
+    function buffer() external view returns (address);
     function processAccounting() external;
 
     // ADMIN
     function initialize(address admin_, string memory name_, string memory symbol_) external;
     function setProvider(address provider) external;
-    function setBufferStrategy(address bufferStrategy) external;
+    function setBuffer(address buffer) external;
     function setProcessorRule(address target, bytes4 functionSig, FunctionRule memory rule) external;
 
     function addStrategy(address strategy, uint8 decimals_) external;

@@ -135,7 +135,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             return 0;
         }
 
-        uint256 bufferAssets = IStrategy(bufferStrategy()).maxWithdraw(address(this));
+        uint256 bufferAssets = IStrategy(buffer()).maxWithdraw(address(this));
         if (bufferAssets == 0) {
             return 0;
         }
@@ -156,7 +156,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             return 0;
         }
 
-        uint256 bufferAssets = IStrategy(bufferStrategy()).maxWithdraw(address(this));
+        uint256 bufferAssets = IStrategy(buffer()).maxWithdraw(address(this));
         if (bufferAssets == 0) {
             return 0;
         }
@@ -299,8 +299,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @notice Returns the address of the buffer strategy.
      * @return address The address of the buffer strategy.
      */
-    function bufferStrategy() public view returns (address) {
-        return _getVaultStorage().bufferStrategy;
+    function buffer() public view returns (address) {
+        return _getVaultStorage().buffer;
     }
 
     /**
@@ -411,7 +411,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             _spendAllowance(owner, caller, shares);
         }
 
-        IStrategy(vaultStorage.bufferStrategy).withdraw(assets, address(this), address(this));
+        IStrategy(vaultStorage.buffer).withdraw(assets, address(this), address(this));
 
         SafeERC20.safeTransfer(IERC20(asset_), receiver, assets);
 
@@ -523,18 +523,18 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     /**
      * @notice Sets the buffer strategy.
-     * @param bufferStrategy_ The address of the buffer strategy.
+     * @param buffer_ The address of the buffer strategy.
      */
-    function setBufferStrategy(address bufferStrategy_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (bufferStrategy_ == address(0)) {
+    function setBuffer(address buffer_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (buffer_ == address(0)) {
             revert ZeroAddress();
         }
         StrategyStorage storage strategyStorage = _getStrategyStorage();
-        if (!strategyStorage.strategies[bufferStrategy_].active) {
-            revert InvalidStrategy(bufferStrategy_);
+        if (!strategyStorage.strategies[buffer_].active) {
+            revert InvalidStrategy(buffer_);
         }
-        _getVaultStorage().bufferStrategy = bufferStrategy_;
-        emit SetBufferStrategy(bufferStrategy_);
+        _getVaultStorage().buffer = buffer_;
+        emit SetBuffer(buffer_);
     }
 
     /**
@@ -633,7 +633,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (provider() == address(0)) {
             revert ProviderNotSet();
         }
-        if (bufferStrategy() == address(0)) {
+        if (buffer() == address(0)) {
             revert BufferNotSet();
         }
         vaultStorage.paused = paused_;

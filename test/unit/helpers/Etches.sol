@@ -83,6 +83,6 @@ contract Etches is Test {
     function mockBuffer() public {
         MockBuffer buffer = new MockBuffer();
         bytes memory code = address(buffer).code;
-        vm.etch(MainnetContracts.BUFFER_STRATEGY, code);
+        vm.etch(MainnetContracts.BUFFER, code);
     }
 }
