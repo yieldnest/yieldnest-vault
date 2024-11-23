@@ -36,6 +36,8 @@ interface IYNETH_WM {
         returns (uint256[] memory withdrawalIndexes, WithdrawalRequest[] memory requests);
 }
 
+/// https://github.com/yieldnest/yieldnest-protocol/blob/main/src/ynEIGEN/LSDRateProvider.sol#L52
+
 contract ETHRates is IRateProvider {
     // assets
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;

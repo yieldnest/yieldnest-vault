@@ -420,7 +420,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     /**
-     * @notice Internal function to convert shares to assets.
+     * @notice Internal function to convert vault shares to the base asset.
      * @param asset_ The address of the asset.
      * @param shares The amount of shares to convert.
      * @param rounding The rounding direction.
