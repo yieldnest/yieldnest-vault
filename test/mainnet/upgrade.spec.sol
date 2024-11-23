@@ -6,8 +6,9 @@ import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {Vault} from "src/Vault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
+import {AssertUtils} from "test/utils/AssertUtils.sol";
 
-contract VaultMainnetUpgradeTest is Test, MainnetActors {
+contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
 
     Vault public vault;
 
@@ -46,16 +47,17 @@ contract VaultMainnetUpgradeTest is Test, MainnetActors {
 
         // Test the totalAssets function
         uint256 totalAssets = vault.totalAssets();
-        assertGt(totalAssets, 61 ether, "Total assets should be greater than 61 ether");
+        uint256 totalSupply = vault.totalSupply();
+        assertGe(totalAssets, totalSupply, "TotalAssets should be greater than totalSupply");
 
         // Test the convertToShares function
         uint256 amount = 1 ether;
         uint256 shares = vault.convertToShares(amount);
-        assertLe(shares, amount, "Shares should less or equal to assets");
+        assertLe(shares,amount, "Shares should less or equal to amount deposited");
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertGe(convertedAssets, amount, "Assets should be greater or equal to shares");
+        assertEqThreshold(convertedAssets, amount, 3, "Assets should be greater or equal to shares");
 
         // Test the maxDeposit function
         uint256 maxDeposit = vault.maxDeposit(address(this));

@@ -8,6 +8,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {Vault,IVault} from "src/Vault.sol";
 import {IERC20} from "src/Common.sol";
 import {IRateProvider} from "src/interface/IRateProvider.sol";
+import {AssertUtils} from "test/utils/AssertUtils.sol";
 
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
@@ -15,7 +16,7 @@ interface IynETH {
     function approve(address spender, uint256 amount) external returns (uint256);
 }
 
-contract VaultMainnetYnETHTest is Test, MainnetActors {
+contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
     Vault public vault;
 
@@ -40,6 +41,8 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
 
         vm.prank(ADMIN);
         vault.processor(targets, values, data);
+
+        vault.processAccounting();
     }
 
         event Log(string,uint256);
@@ -60,7 +63,7 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
         (bool success,) = MC.WETH.call{value: assets}("");
         if (!success) revert("Weth deposit failed");
@@ -70,7 +73,7 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
         address receiver = address(this);
 
         uint256 depositedShares = vault.depositAsset(assetAddress, assets, receiver);
-        assertThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
+        assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
 
         // allocate 100% to the ynETH strategy
         address[] memory targets = new address[](2);
@@ -94,18 +97,10 @@ contract VaultMainnetYnETHTest is Test, MainnetActors {
 
         uint256 ynEthBalance = IERC20(MC.YNETH).balanceOf(MC.YNETHX);
         emit Log("ynEthBal", ynEthBalance);
-
-        // Test the processAccounting function
-        vault.processAccounting();
         vm.stopPrank();
 
         uint256 newTotalAssets = vault.totalAssets();
-        assertThreshold(newTotalAssets, totalAssets + assets, 5, "New total assets should equal deposit amount plus original total assets");
-    }
-
-    function assertThreshold(uint256 actual, uint256 expected, uint256 threshold, string memory errorMessage) internal pure {
-        assertGt(actual, expected - threshold, string(abi.encodePacked(errorMessage, ": actual should be within the lower threshold of the expected value")));
-        assertLt(actual, expected + threshold, string(abi.encodePacked(errorMessage, ": actual should be within the upper threshold of the expected value")));
+        assertEqThreshold(newTotalAssets, totalAssets + assets, 5, "New total assets should equal deposit amount plus original total assets");
     }
 
     function setWethWithdrawRule() internal {

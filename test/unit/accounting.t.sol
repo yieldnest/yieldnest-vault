@@ -9,8 +9,10 @@ import {MainnetActors} from "script/Actors.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
+import {IERC20} from "src/Common.sol";
+import {AssertUtils} from "test/utils/AssertUtils.sol";
 
-contract VaultAccountingUnitTest is Test, MainnetActors, Etches {
+contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -183,5 +185,59 @@ contract VaultAccountingUnitTest is Test, MainnetActors, Etches {
             depositAmount - withdrawAmount1 - withdrawAmount2,
             "Total supply should match the remaining amount after multiple withdrawals"
         );
+    }
+
+    function test_Vault_convertToAssets_multipleDepositsAndTransfers(uint256 rand) public {
+        if (rand < 1 || rand > 10_000 ether) return;
+        uint256 depositAmountWETH = rand;
+        uint256 depositAmountSTETH = rand;
+
+        bool success = false;
+        uint256 expectedTotalAssets = 0;
+        uint256 expectedTotalSupply = 0;
+
+        address steth = MC.STETH;
+
+        // Approve and deposit WETH : 1000 ether
+        vm.startPrank(alice);
+        weth.approve(address(vault), depositAmountWETH);
+        uint256 shares = vault.deposit(depositAmountWETH, alice);
+        expectedTotalAssets += depositAmountWETH;
+        expectedTotalSupply += shares;
+        vm.stopPrank();
+
+        // Approve and deposit STETH :
+        vm.startPrank(alice);
+        deal(alice, depositAmountSTETH);
+        (success,) = MC.STETH.call{value: depositAmountSTETH}("");
+        require(success, "Steth transfer failed");
+        IERC20(steth).approve(address(vault), depositAmountSTETH);
+        uint256 aliceStEthDepositAmount = IERC20(steth).balanceOf(alice);
+        shares = vault.depositAsset(steth, aliceStEthDepositAmount, alice);
+        expectedTotalAssets += depositAmountSTETH;
+        expectedTotalSupply += shares;
+        vm.stopPrank();
+
+        // Direct transfer of WETH to the vault
+        deal(address(this), depositAmountWETH);
+        (success,) = MC.WETH.call{value: depositAmountWETH}("");
+        require(success, "Weth transfer failed");
+        IERC20(MC.WETH).transfer(address(vault), depositAmountWETH);
+        expectedTotalAssets += depositAmountWETH;
+
+        // Direct transfer of STETH to the vault
+        deal(address(this), depositAmountSTETH);
+        (success,) = MC.STETH.call{value: depositAmountSTETH}("");
+        require(success, "Steth transfer failed");
+        IERC20(steth).transfer(address(vault), IERC20(steth).balanceOf(address(this)));
+        expectedTotalAssets += depositAmountSTETH;
+
+        vault.processAccounting();
+
+        uint256 totalAssets = vault.totalAssets();
+        uint256 totalSupply = vault.totalSupply();
+
+        assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should be expectedAssets");
+        assertEqThreshold(totalSupply, expectedTotalSupply, 5000, "totalSupply should be expectedSupply");
     }
 }
