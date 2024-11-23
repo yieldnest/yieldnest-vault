@@ -108,17 +108,17 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.addStrategy(address(0), 18);
     }
 
-    function test_Vault_setRateProvider() public {
-        address rateProvider = address(0x123);
+    function test_Vault_setProvider() public {
+        address provider = address(0x123);
         vm.startPrank(ADMIN);
-        vault.setRateProvider(rateProvider);
-        assertEq(vault.rateProvider(), rateProvider);
+        vault.setProvider(provider);
+        assertEq(vault.provider(), provider);
     }
 
-    function test_Vault_setRateProvider_nullAddress() public {
+    function test_Vault_setProvider_nullAddress() public {
         vm.prank(ADMIN);
         vm.expectRevert();
-        vault.setRateProvider(address(0));
+        vault.setProvider(address(0));
     }
 
     function test_Vault_setBufferStrategy_nullAddress() public {

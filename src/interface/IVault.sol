@@ -7,7 +7,7 @@ interface IVault is IERC4626 {
     struct VaultStorage {
         bool paused;
         uint256 totalAssets;
-        address rateProvider;
+        address provider;
         address bufferStrategy;
     }
 
@@ -76,12 +76,12 @@ interface IVault is IERC4626 {
     error ExceededMaxRedeem(address, uint256, uint256);
     error ProcessFailed(bytes, bytes);
     error ProcessInvalid(bytes);
-    error RateProviderNotSet();
+    error ProviderNotSet();
     error BufferNotSet();
     error DepositFailed();
 
     event DepositAsset(address indexed asset, address indexed vault, uint256 amount, address indexed receiver);
-    event SetRateProvider(address indexed rateProvider);
+    event SetProvider(address indexed provider);
     event SetBufferStrategy(address indexed bufferStrategy);
     event NewAsset(address indexed asset, uint256 decimals, uint256 index);
     event NewStrategy(address indexed strategy, uint256 index);
@@ -98,13 +98,13 @@ interface IVault is IERC4626 {
     function getProcessorRule(address contractAddress, bytes4 funcSig) external returns (FunctionRule memory);
     function previewDepositAsset(address assetAddress, uint256 assets) external view returns (uint256);
     function depositAsset(address assetAddress, uint256 amount, address receiver) external returns (uint256);
-    function rateProvider() external view returns (address);
+    function provider() external view returns (address);
     function bufferStrategy() external view returns (address);
     function processAccounting() external;
 
     // ADMIN
     function initialize(address admin_, string memory name_, string memory symbol_) external;
-    function setRateProvider(address rateProvider) external;
+    function setProvider(address provider) external;
     function setBufferStrategy(address bufferStrategy) external;
     function setProcessorRule(address target, bytes4 functionSig, FunctionRule memory rule) external;
 

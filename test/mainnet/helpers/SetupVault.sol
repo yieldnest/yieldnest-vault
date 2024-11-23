@@ -68,7 +68,7 @@ contract SetupVault is Test, MainnetActors, Etches {
         vm.startPrank(ADMIN);
         
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.setRateProvider(MC.ETH_RATE_PROVIDER);
+        vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
         vault.addAsset(MC.WETH, 18);

@@ -4,21 +4,20 @@ pragma solidity ^0.8.24;
 import {MockBuffer} from "test/mainnet/mocks/MockBuffer.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
-import {ETHRates} from "src/module/ETHRates.sol";
-import {IERC20,TransparentUpgradeableProxy as TUP} from "src/Common.sol";
+import {Provider} from "src/module/Provider.sol";
 
 import {Test} from "lib/forge-std/src/Test.sol";
 
 contract Etches is Test, MainnetActors {
     function mockAll() public {
-        mockETHRates();
+        mockProvider();
         mockBuffer();
     }
 
-    function mockETHRates() public {
-        ETHRates rateProvider = new ETHRates();
-        bytes memory code = address(rateProvider).code;
-        vm.etch(MC.ETH_RATE_PROVIDER, code);
+    function mockProvider() public {
+        Provider provider = new Provider();
+        bytes memory code = address(provider).code;
+        vm.etch(MC.PROVIDER, code);
     }
 
     function mockBuffer() public {

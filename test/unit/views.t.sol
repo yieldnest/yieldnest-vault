@@ -85,8 +85,8 @@ contract VaultDepositUnitTest is Test, Etches {
         assertEq(vault.getStrategy(strategyAddress).idleBalance, expectedStrategyParams.idleBalance);
     }
 
-    function test_Vault_rateProvider() public view {
-        assertEq(vault.rateProvider(), MC.ETH_RATE_PROVIDER, "Rate provider does not match expected");
+    function test_Vault_Provider() public view {
+        assertEq(vault.provider(), MC.PROVIDER, "Provider does not match expected");
     }
 
     function test_Vault_bufferStrategy() public view {

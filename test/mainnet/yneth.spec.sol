@@ -7,7 +7,7 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault,IVault} from "src/Vault.sol";
 import {IERC20} from "src/Common.sol";
-import {IRateProvider} from "src/interface/IRateProvider.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 
 interface IynETH {
@@ -150,7 +150,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         vault.depositAsset(MC.YNETH, bobYnETHBalance, bob);
 
         uint256 newTotalAssets = vault.totalAssets();
-        uint256 ynEthRate = IRateProvider(MC.ETH_RATE_PROVIDER).getRate(MC.YNETH);
+        uint256 ynEthRate = IProvider(MC.PROVIDER).getRate(MC.YNETH);
 
         assertEq(newTotalAssets, previousTotalAssets + (ynEthShares * ynEthRate / 1e18), "Total assets should match the previous total assets plus the equivalent ynETH shares in base denomination");
     }

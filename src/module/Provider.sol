@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IRateProvider} from "src/interface/IRateProvider.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 
 interface IStETH {
@@ -38,7 +38,7 @@ interface IYNETH_WM {
 
 /// https://github.com/yieldnest/yieldnest-protocol/blob/main/src/ynEIGEN/LSDRateProvider.sol#L52
 
-contract ETHRates is IRateProvider {
+contract Provider is IProvider {
     // assets
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
@@ -60,6 +60,12 @@ contract ETHRates is IRateProvider {
     function getRate(address asset) external view override returns (uint256) {
         if (asset == WETH) {
             return 1e18;
+        } else if (asset == YNETH) {
+            return _getYNETHRate();
+        } else if (asset == YNLSDE) {
+            return _getYNLSDERate();
+        } else if (asset == BUFFER) {
+            return _getBUFFERRate();
         } else if (asset == STETH) {
             return _getStETHRate();
         } else if (asset == METH) {
@@ -68,12 +74,6 @@ contract ETHRates is IRateProvider {
             return _getOETHRate();
         } else if (asset == RETH) {
             return _getRETHRate();
-        } else if (asset == YNETH) {
-            return _getYNETHRate();
-        } else if (asset == YNLSDE) {
-            return _getYNLSDERate();
-        } else if (asset == BUFFER) {
-            return _getBUFFERRate();
         }
 
         revert UnsupportedAsset(asset);

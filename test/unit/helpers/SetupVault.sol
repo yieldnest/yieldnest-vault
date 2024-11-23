@@ -44,10 +44,9 @@ contract SetupVault is Test, Etches, MainnetActors {
         // test cannot unpause vault withtout buffer
         vm.expectRevert();
         vault.pause(false);
-        vault.setRateProvider(MC.BUFFER_STRATEGY);
 
         // set the rate provider contract
-        vault.setRateProvider(MC.ETH_RATE_PROVIDER);
+        vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
         vault.addAsset(MC.WETH, 18);
@@ -96,7 +95,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         vm.startPrank(ADMIN);
 
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.setRateProvider(MC.ETH_RATE_PROVIDER);
+        vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
         vault.addAsset(MC.WETH, 18);
