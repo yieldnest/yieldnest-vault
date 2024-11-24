@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 library MainnetContracts {
+    address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant YNETHX = 0x657d9ABA1DBb59e53f9F3eCAA878447dCfC96dCb;
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant STETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
@@ -21,4 +22,6 @@ library MainnetContracts {
 
     address public constant YNLSDE_WM = 0x8Face3283E20b19d98a7a132274B69C1304D60b4;
     address public constant YNETH_WM = 0x0BC9BC81aD379810B36AD5cC95387112990AA67b;
+
+    address public constant CURVE_REGISTRY = 0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c;
 }
