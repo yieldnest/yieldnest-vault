@@ -3,40 +3,70 @@ pragma solidity ^0.8.24;
 
 // https://github.com/lidofinance/lido-dao/blob/master/contracts/0.4.24/StETH.sol
 import {ERC20} from "src/Common.sol";
+import {IStETH} from "src/interface/external/lido/IStETH.sol";
 
-contract MockSTETH is ERC20 {
-    uint256 private _pooledEthPerShare = 1e18; // Start with 1:1 ratio
-    mapping(address => uint256) public shares;
+contract MockSTETH is IStETH, ERC20 {
 
-    constructor() ERC20("Mock Staked Ether", "mstETH") {}
+    uint256 totalPooledEther;
 
-    function getSharesByPooledEth(uint256 _ethAmount) public pure returns (uint256) {
-        if (_ethAmount == 0) {
-            return 0;
+    constructor() ERC20("Mock Staked Ether", "mstETH") {
+
+    }
+
+    function balanceOf(address _account) public view override(ERC20) returns (uint256) {
+        return getPooledEthByShares(super.balanceOf(_account));
+    }
+
+    function getPooledEthByShares(uint256 _sharesAmount) public view override returns (uint256) {
+        if (_getTotalShares() == 0) {
+            return _sharesAmount;
         }
-        // Adjusted the calculation to return 0.95 ETH in wei for 1 ETH
-        return (_ethAmount * 95) / 100;
+        return _sharesAmount * _getTotalPooledEther() / _getTotalShares();
     }
 
-    function deposit() public payable {
-        uint256 depostShares = getSharesByPooledEth(msg.value);
-        _mint(msg.sender, depostShares);
-        shares[msg.sender] += depostShares;
+    function getSharesByPooledEth(uint256 _pooledEthAmount) public view override returns (uint256) {
+
+        if (_getTotalPooledEther() == 0) {
+            return _pooledEthAmount;
+        }
+        return _pooledEthAmount * _getTotalShares() / _getTotalPooledEther();
     }
 
-    function getPooledEthByShares(uint256 _sharesAmount) public pure returns (uint256) {
-        return (_sharesAmount * 100) / 95;
+    function totalSupply() public view override(ERC20) returns (uint256) {
+        return _getTotalPooledEther();
     }
 
-    // function balanceOf(address _account) public view override returns (uint256) {
-    //     return getPooledEthByShares(shares[_account]);
-    // }
+    function _getTotalShares() internal view returns (uint256) {
+        return super.totalSupply();
+    }
 
-    function _sharesOf(address _account) internal view returns (uint256) {
-        return shares[_account];
+    function _getTotalPooledEther() internal view returns (uint256) {
+        return totalPooledEther;
+    }
+
+    function submit(
+        address /*_referral*/
+    ) public payable override returns (uint256) {
+        require(msg.value != 0, "ZERO_DEPOSIT");
+        uint256 sharesAmount = getSharesByPooledEth(msg.value);
+        _mint(msg.sender, sharesAmount);
+
+        totalPooledEther += msg.value;
+        return sharesAmount;
+    }
+
+    function deposit() public payable returns (uint256) {
+        return submit(address(0));
     }
 
     receive() external payable {
-        deposit();
+        submit(address(0));
+    }
+
+    // Add rewards to simulate staking rewards being added to the pool
+    function addRewards() public payable {
+        require(msg.value > 0, "Must send ETH");
+        // Increase total pooled ether without minting new shares
+        totalPooledEther += msg.value;
     }
 }
