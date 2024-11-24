@@ -2,8 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {IVault} from "src/interface/IVault.sol";
-import {console} from "lib/forge-std/src/console.sol";
-
 
 library Guard {
     function validateCall(address target, bytes calldata data) internal view {
@@ -15,13 +13,6 @@ library Guard {
 
         for (uint256 i = 0; i < rule.paramRules.length; i++) {
             if (rule.paramRules[i].paramType == IVault.ParamType.ADDRESS) {
-                
-                if (rule.paramRules[i].paramType == IVault.ParamType.UINT256) {
-                    console.log("Parameter type: UINT256");
-                } else {
-                    console.log("Parameter type: ADDRESS");
-                }
-
                 address value = abi.decode(data[4 + i * 32:], (address));
                 _validateAddress(value, rule.paramRules[i]);
                 continue;
