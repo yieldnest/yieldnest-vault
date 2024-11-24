@@ -163,8 +163,7 @@ contract SetupVault is Test, MainnetActors, Etches {
                 paramRules: exchangeRules
             }));
         }
-
-
+        // Set approval rule to allow ethStethPool to spend stETH tokens from the vault
         setApprovalRule(vault, MC.STETH, ethStethPool);
     }
 

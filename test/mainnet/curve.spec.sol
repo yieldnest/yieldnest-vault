@@ -29,7 +29,7 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         vault = Vault(payable(MC.YNETHX));
     }
 
-    function testCurveSwapStETHtoETH() public {
+    function test_Vault_Curve_swapStETHtoETH() public {
         uint256 amount = 100 ether;
 
         // Create user and give them ETH
@@ -104,8 +104,8 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         // Assert total assets remains unchanged after swap
         assertApproxEqAbs(vault.totalAssets(), totalAssetsBefore, delta);
     }
-
-    function testCurveSwapETHToStETH() public {
+    
+    function test_Vault_Curve_swapETHToStETH() public {
         uint256 amount = 100 ether;
 
         // User deposits ETH
