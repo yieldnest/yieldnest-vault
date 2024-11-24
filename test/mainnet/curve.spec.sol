@@ -11,10 +11,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {ICurveRegistry} from "src/interface/external/curve/ICurveRegistry.sol";
 import {ICurvePool} from "src/interface/external/curve/ICurvePool.sol";
-import {console} from "lib/forge-std/src/console.sol";
 import {IStETH} from "src/interface/external/lido/IStETH.sol";
-
-
 
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
@@ -50,15 +47,19 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         vault.depositAsset(MC.STETH, amount, user);
         vm.stopPrank();
 
+        // Read total assets before swap
+        uint256 totalAssetsBefore = vault.totalAssets();
+
+
         // Exchange stETH for ETH via Curve pool
         ICurveRegistry registry = ICurveRegistry(MC.CURVE_REGISTRY);
         ICurvePool pool = ICurvePool(registry.find_pool_for_coins(MC.ETH, MC.STETH));
 
-        console.log("Curve pool address:", address(pool));
-
         uint256 swapAmount = amount / 2;
 
         uint256 minOut = pool.get_dy(1, 0, swapAmount); // Swap from stETH (1) to ETH (0)
+
+        uint256 delta = swapAmount - minOut + 2 wei; // wei difference from stETH balance error
 
         // Prepare approve data
         bytes memory approveData = abi.encodeWithSelector(
@@ -97,6 +98,11 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         // Assert stETH balance is 0 and ETH balance matches expected amount
         assertApproxEqAbs(IERC20(MC.STETH).balanceOf(address(vault)), amount - swapAmount, 2);
         assertApproxEqAbs(address(vault).balance, minOut, 2);
+
+        vault.processAccounting();
+
+        // Assert total assets remains unchanged after swap
+        assertApproxEqAbs(vault.totalAssets(), totalAssetsBefore, delta);
     }
 
     function testCurveSwapETHToStETH() public {
@@ -113,8 +119,6 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         // Get curve pool for ETH/stETH
         ICurveRegistry registry = ICurveRegistry(MC.CURVE_REGISTRY);
         ICurvePool pool = ICurvePool(registry.find_pool_for_coins(MC.ETH, MC.STETH));
-
-        console.log("Curve pool address:", address(pool));
 
         uint256 swapAmount = amount / 2;
         uint256 minOut = pool.get_dy(0, 1, swapAmount); // Swap from ETH (0) to stETH (1)
