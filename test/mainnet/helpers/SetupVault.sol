@@ -108,9 +108,15 @@ contract SetupVault is Test, MainnetActors, Etches {
         ICurveRegistry registry = ICurveRegistry(MC.CURVE_REGISTRY);
         address ethStethPool = registry.find_pool_for_coins(MC.ETH, MC.STETH);
 
+        // Get ynETHWstETH pool from two crypto factory
+        address ynETHWstETHPool = ICurveRegistry(MC.CURVE_TWOCRYPTO_FACTORY).find_pool_for_coins(MC.YNETH, MC.WSTETH);
+
         // Add curve pools to array
         address[] memory curvePools = new address[](1);
         curvePools[0] = ethStethPool;
+        curvePools = new address[](2);
+        curvePools[0] = ethStethPool;
+        curvePools[1] = ynETHWstETHPool;
 
         // Add curve pool actions
         for (uint256 i = 0; i < curvePools.length; i++) {
@@ -165,6 +171,10 @@ contract SetupVault is Test, MainnetActors, Etches {
         }
         // Set approval rule to allow ethStethPool to spend stETH tokens from the vault
         setApprovalRule(vault, MC.STETH, ethStethPool);
+
+        // Set approval rules for ynETH and wstETH to be spent by ynETHWstETH pool
+        setApprovalRule(vault, MC.YNETH, ynETHWstETHPool);
+        setApprovalRule(vault, MC.WSTETH, ynETHWstETHPool);
     }
 
     function setDepositRule(Vault vault_, address contractAddress, address receiver) internal {
@@ -186,12 +196,15 @@ contract SetupVault is Test, MainnetActors, Etches {
     }
 
     function setApprovalRule(Vault vault_, address contractAddress, address spender) internal {
+        address[] memory allowList = new address[](1);
+        allowList[0] = spender;
+        setApprovalRule(vault_, contractAddress, allowList);
+    }
+
+    function setApprovalRule(Vault vault_, address contractAddress, address[] memory allowList) internal {
         bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        address[] memory allowList = new address[](1);
-        allowList[0] = spender;
 
         paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 

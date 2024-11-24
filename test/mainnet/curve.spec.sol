@@ -12,6 +12,8 @@ import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {ICurveRegistry} from "src/interface/external/curve/ICurveRegistry.sol";
 import {ICurvePool} from "src/interface/external/curve/ICurvePool.sol";
 import {IStETH} from "src/interface/external/lido/IStETH.sol";
+import {console} from "lib/forge-std/src/console.sol";
+
 
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
@@ -104,7 +106,7 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         // Assert total assets remains unchanged after swap
         assertApproxEqAbs(vault.totalAssets(), totalAssetsBefore, delta);
     }
-    
+
     function test_Vault_Curve_swapETHToStETH() public {
         uint256 amount = 100 ether;
 
@@ -152,4 +154,60 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         assertApproxEqAbs(IERC20(MC.STETH).balanceOf(address(vault)), minOut, 2);
     }
 
+    function test_Vault_Curve_addLiquidity() public {
+        uint256 ethAmount = 100 ether;
+        uint256 stethAmount = 100 ether;
+
+        // User deposits ETH
+        address user = makeAddr("user");
+        vm.deal(user, ethAmount + stethAmount);
+        vm.startPrank(user);
+        (bool success,) = address(vault).call{value: ethAmount}("");
+        require(success, "ETH transfer failed");
+
+        // Get stETH by depositing ETH to Lido
+        (success,) = MC.STETH.call{value: stethAmount}("");
+        require(success, "stETH deposit failed");
+        IERC20(MC.STETH).approve(address(vault), stethAmount);
+        IERC20(MC.STETH).transfer(address(vault), stethAmount);
+        vm.stopPrank();
+
+        // Get curve pool for ETH/stETH
+        ICurveRegistry registry = ICurveRegistry(MC.CURVE_REGISTRY);
+        ICurvePool pool = ICurvePool(registry.find_pool_for_coins(MC.ETH, MC.STETH));
+
+        // Prepare amounts array for add_liquidity
+        uint256[2] memory amounts = [ethAmount, stethAmount];
+        uint256 minLpOut = (pool.calc_token_amount(amounts, true) * 999) / 1000; // 0.1% slippage
+
+        // Prepare add_liquidity data
+        bytes memory addLiquidityData = abi.encodeWithSelector(
+            bytes4(keccak256("add_liquidity(uint256[2],uint256)")),
+            amounts,
+            minLpOut
+        );
+        {
+            address[] memory targets = new address[](2);
+            targets[0] = MC.STETH;
+            targets[1] = address(pool);
+
+            uint256[] memory values = new uint256[](2);
+            values[0] = 0;
+            values[1] = ethAmount; // Send ETH with the call
+
+            bytes[] memory callData = new bytes[](2);
+            callData[0] = abi.encodeWithSignature("approve(address,uint256)", address(pool), stethAmount);
+            callData[1] = addLiquidityData;
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets, values, callData);
+            vm.stopPrank();
+        }
+
+        // Assert ETH balance is reduced and LP tokens were received
+        assertApproxEqAbs(address(vault).balance, 0, 2);
+        assertApproxEqAbs(IERC20(MC.STETH).balanceOf(address(vault)), 0, 2);
+        uint256 lpBalance = IERC20(pool.lp_token()).balanceOf(address(vault));
+        assertGt(lpBalance, minLpOut);
+    }
 }
