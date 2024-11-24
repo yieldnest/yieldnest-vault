@@ -6,12 +6,9 @@ import {ERC20} from "src/Common.sol";
 import {IStETH} from "src/interface/external/lido/IStETH.sol";
 
 contract MockSTETH is IStETH, ERC20 {
-
     uint256 totalPooledEther;
 
-    constructor() ERC20("Mock Staked Ether", "mstETH") {
-
-    }
+    constructor() ERC20("Mock Staked Ether", "mstETH") {}
 
     function balanceOf(address _account) public view override(ERC20) returns (uint256) {
         return getPooledEthByShares(super.balanceOf(_account));
@@ -25,7 +22,6 @@ contract MockSTETH is IStETH, ERC20 {
     }
 
     function getSharesByPooledEth(uint256 _pooledEthAmount) public view override returns (uint256) {
-
         if (_getTotalPooledEther() == 0) {
             return _pooledEthAmount;
         }
@@ -44,9 +40,7 @@ contract MockSTETH is IStETH, ERC20 {
         return totalPooledEther;
     }
 
-    function submit(
-        address /*_referral*/
-    ) public payable override returns (uint256) {
+    function submit(address /*_referral*/ ) public payable override returns (uint256) {
         require(msg.value != 0, "ZERO_DEPOSIT");
         uint256 sharesAmount = getSharesByPooledEth(msg.value);
         _mint(msg.sender, sharesAmount);
