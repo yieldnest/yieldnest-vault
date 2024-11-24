@@ -24,6 +24,8 @@ contract Provider is IProvider {
             return IERC4626(MC.BUFFER).previewRedeem(1e18);
         } else if (asset == MC.STETH) {
             return 1e18;
+        } else if (asset == MC.WSTETH) {
+            return IStETH(MC.STETH).getPooledEthByShares(1e18);
         } else if (asset == MC.METH) {
             return IMETH(MC.METH).ratio();
         } else if (asset == MC.OETH) {
