@@ -175,11 +175,10 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
     function test_Vault_getAsset() public view {
         address assetAddress = MC.WETH;
-        IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18, 0);
+        IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18);
         assertEq(vault.getAsset(assetAddress).active, expectedAssetParams.active);
         assertEq(vault.getAsset(assetAddress).index, expectedAssetParams.index);
         assertEq(vault.getAsset(assetAddress).decimals, expectedAssetParams.decimals);
-        assertEq(vault.getAsset(assetAddress).idleBalance, expectedAssetParams.idleBalance);
     }
 
     function test_Vault_maxDeposit() public view {
@@ -261,6 +260,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
     function test_Vault_receiveETH_zeroValue() public {
         // Send zero ETH to the vault
         vm.prank(alice);
+        vm.expectRevert();
         (bool success,) = address(vault).call{value: 0}("");
         require(success, "ETH transfer failed");
 

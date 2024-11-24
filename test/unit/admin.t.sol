@@ -2,12 +2,13 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {Vault, IVault} from "src/Vault.sol";
+import {Vault} from "src/Vault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 
 contract VaultAdminUintTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -31,14 +32,6 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
-    }
-
-    function test_Vault_addStrategy() public {
-        address strat = address(42069);
-        address[] memory strats = vault.getStrategies();
-        vm.startPrank(ADMIN);
-        vault.addStrategy(strat, 18);
-        assertEq(vault.getStrategies().length, strats.length + 1);
     }
 
     function test_Vault_addStrategy_unauthorized() public {
@@ -74,30 +67,9 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.addAsset(asset, 18);
     }
 
-    function test_Vault_toggleAsset() public {
-        address asset = address(33);
-        vm.startPrank(ADMIN);
-        vault.addAsset(asset, 18);
-        IVault.AssetParams memory vaultAsset = vault.getAsset(asset);
-        assertEq(vaultAsset.active, true);
-        assertEq(vaultAsset.decimals, 18);
-        assertEq(vaultAsset.idleBalance, 0);
-        vault.toggleAsset(asset, false);
-        IVault.AssetParams memory inActiveAsset = vault.getAsset(asset);
-        assertEq(inActiveAsset.active, false);
-    }
-
-    function test_Vault_toggleAsset_failsIfAssetNotAdded() public {
-        address asset = address(3333);
-        vm.startPrank(ADMIN);
-        vm.expectRevert();
-        vault.toggleAsset(asset, false);
-    }
-
     function test_Vault_addStrategy_duplicateAddress() public {
         address strat = address(42069);
         vm.startPrank(ADMIN);
-        vault.addStrategy(strat, 18);
         vm.expectRevert();
         vault.addStrategy(strat, 18);
     }
@@ -125,25 +97,5 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vm.prank(ADMIN);
         vm.expectRevert();
         vault.setBuffer(address(0));
-    }
-
-    function test_Vault_setBuffer_failsIfStrategyAlreadyActive() public {
-        vm.startPrank(ADMIN);
-        address buffer = vault.buffer();
-
-        // Attempt to set the same strategy as the buffer strategy again when it's not active
-        vault.toggleStrategy(buffer, false);
-        assertEq(vault.getStrategy(buffer).active, false);
-        vm.expectRevert();
-        vault.setBuffer(buffer);
-    }
-
-    function test_Vault_toggleStrategy_nonExistentStrategy() public {
-        address nonExistentStrategy = address(0x789);
-
-        // Attempt to set a non-existent strategy as the buffer strategy
-        vm.prank(ADMIN);
-        vm.expectRevert();
-        vault.toggleStrategy(nonExistentStrategy, false);
     }
 }

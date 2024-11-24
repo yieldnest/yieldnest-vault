@@ -34,6 +34,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         vm.prank(ADMIN);
         vault.processor(targets, values, data);
+
         vault.processAccounting();
     }
 

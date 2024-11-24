@@ -266,7 +266,11 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @return StrategyParams The parameters of the strategy.
      */
     function getStrategy(address asset_) public view returns (StrategyParams memory) {
-        return _getStrategyStorage().strategies[asset_];
+        StrategyParams memory strategy = _getStrategyStorage().strategies[asset_];
+        if (strategy.index == 0 && strategy.decimals == 0) {
+            revert InvalidStrategy(asset_);
+        }
+        return strategy;
     }
 
     /**
@@ -310,9 +314,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @return shares The equivalent amount of shares.
      */
     function previewDepositAsset(address asset_, uint256 assets_) public view returns (uint256 shares) {
-        if (!getAsset(asset_).active) {
-            revert InvalidAsset(asset_);
-        }
         (shares,) = _convertToShares(asset_, assets_, Math.Rounding.Floor);
     }
 
@@ -327,43 +328,9 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (paused()) {
             revert Paused();
         }
-        if (!getAsset(asset_).active) {
-            revert InvalidAsset(asset_);
-        }
         (uint256 shares, uint256 baseAssets) = _convertToShares(asset_, assets, Math.Rounding.Floor);
         _deposit(asset_, _msgSender(), receiver, assets, shares, baseAssets);
         return shares;
-    }
-
-    /**
-     * @notice Updates Vault.totalAssets
-     * @dev We coprocess this accounting update to improve deposit UX.
-     */
-    function processAccounting() public {
-        uint256 totalBaseBalance = address(this).balance;
-        AssetStorage storage assetStorage = _getAssetStorage();
-        uint256 assetListLength = assetStorage.list.length;
-
-        for (uint256 i = 0; i < assetListLength; i++) {
-            address asset_ = assetStorage.list[i];
-            uint256 idleBalance = IERC20(asset_).balanceOf(address(this));
-
-            if (idleBalance > 0) {
-                assetStorage.assets[asset_].idleBalance = idleBalance;
-            }
-            totalBaseBalance += _convertAssetToBase(asset_, idleBalance);
-        }
-
-        StrategyStorage storage strategyStorage = _getStrategyStorage();
-        IProvider rates = IProvider(_getVaultStorage().provider);
-        uint256 strategyListLength = strategyStorage.list.length;
-
-        for (uint256 i = 0; i < strategyListLength; i++) {
-            uint256 otherAssets = rates.otherAssets(address(this), strategyStorage.list[i]);
-            totalBaseBalance += otherAssets;
-        }
-
-        _getVaultStorage().totalAssets = totalBaseBalance;
     }
 
     //// INTERNAL ////
@@ -529,10 +496,9 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (buffer_ == address(0)) {
             revert ZeroAddress();
         }
-        StrategyStorage storage strategyStorage = _getStrategyStorage();
-        if (!strategyStorage.strategies[buffer_].active) {
-            revert InvalidStrategy(buffer_);
-        }
+        
+        getStrategy(buffer_);
+        
         _getVaultStorage().buffer = buffer_;
         emit SetBuffer(buffer_);
     }
@@ -562,12 +528,19 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         StrategyStorage storage strategyStorage = _getStrategyStorage();
         uint256 index = strategyStorage.list.length;
 
-        if (index > 0 && strategyStorage.strategies[strategy].index != 0) {
+        if (strategyStorage.strategies[strategy].decimals > 0) {
             revert DuplicateStrategy(strategy);
         }
+        uint256 shares = IERC20(strategy).balanceOf(address(this));
+        uint256 assets = _convertAssetToBase(strategy, shares);
 
-        strategyStorage.strategies[strategy] =
-            StrategyParams({active: true, index: index, decimals: decimals_, idleBalance: 0});
+        strategyStorage.strategies[strategy] = StrategyParams({
+            index: index,
+            decimals: decimals_,
+            shares: shares,
+            assets: assets,
+            debt: 0
+        });
         strategyStorage.list.push(strategy);
 
         AssetStorage storage assetStorage = _getAssetStorage();
@@ -575,20 +548,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             addAsset(strategy, decimals_);
         }
         emit NewStrategy(strategy, index);
-    }
-
-    /**
-     * @notice Toggles the active status of a strategy.
-     * @param strategy The address of the strategy.
-     * @param active The new active status.
-     */
-    function toggleStrategy(address strategy, bool active) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        StrategyStorage storage strategyStorage = _getStrategyStorage();
-        if (strategyStorage.strategies[strategy].decimals == 0) {
-            revert InvalidStrategy(strategy);
-        }
-        strategyStorage.strategies[strategy].active = active;
-        emit ToggleStrategy(strategy, active);
     }
 
     /**
@@ -605,23 +564,9 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (index > 0 && assetStorage.assets[asset_].index != 0) {
             revert DuplicateAsset(asset_);
         }
-        assetStorage.assets[asset_] = AssetParams({active: true, index: index, decimals: decimals_, idleBalance: 0});
+        assetStorage.assets[asset_] = AssetParams({active: true, index: index, decimals: decimals_});
         assetStorage.list.push(asset_);
         emit NewAsset(asset_, decimals_, index);
-    }
-
-    /**
-     * @notice Toggles the active status of an asset.
-     * @param asset_ The address of the asset.
-     * @param active The new active status.
-     */
-    function toggleAsset(address asset_, bool active) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        AssetStorage storage assetStorage = _getAssetStorage();
-        if (assetStorage.assets[asset_].decimals == 0) {
-            revert InvalidAsset(asset_);
-        }
-        assetStorage.assets[asset_].active = active;
-        emit ToggleAsset(asset_, active);
     }
 
     /**
@@ -640,6 +585,41 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit Pause(paused_);
     }
 
+    // TODO: Update this
+    function processStrategy(address strategy) public onlyRole(PROCESSOR_ROLE) {
+
+    }
+
+    // TODO: Update this
+    function processAsset(address asset_) public onlyRole(PROCESSOR_ROLE) {
+
+    }
+
+    // TODO: Update this
+    function processAccounting() public {
+        uint256 totalBaseBalance = address(this).balance;
+        AssetStorage storage assetStorage = _getAssetStorage();
+        uint256 assetListLength = assetStorage.list.length;
+
+        for (uint256 i = 0; i < assetListLength; i++) {
+            address asset_ = assetStorage.list[i];
+            uint256 idleBalance = IERC20(asset_).balanceOf(address(this));
+
+            totalBaseBalance += _convertAssetToBase(asset_, idleBalance);
+        }
+
+        StrategyStorage storage strategyStorage = _getStrategyStorage();
+        IProvider rates = IProvider(_getVaultStorage().provider);
+        uint256 strategyListLength = strategyStorage.list.length;
+
+        for (uint256 i = 0; i < strategyListLength; i++) {
+            uint256 otherAssets = rates.otherAssets(address(this), strategyStorage.list[i]);
+            totalBaseBalance += otherAssets;
+        }
+
+        _getVaultStorage().totalAssets = totalBaseBalance;
+    }
+
     /**
      * @notice Processes a series of calls to target contracts.
      * @param targets The addresses of the target contracts.
@@ -652,6 +632,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         onlyRole(PROCESSOR_ROLE)
         returns (bytes[] memory returnData)
     {
+        uint256 initialGas = gasleft();
         uint256 targetsLength = targets.length;
         returnData = new bytes[](targetsLength);
 
@@ -663,6 +644,10 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
                 revert ProcessFailed(data[i], returnData_);
             }
             returnData[i] = returnData_;
+
+            if (gasleft() < initialGas / 10) {
+                revert("Out of gas");
+            }
         }
         emit ProcessSuccess(targets, values, returnData);
     }
@@ -688,26 +673,9 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     // ETH //
 
     /**
-     * @notice Internal function to mint shares for ETH.
-     * @param amount The amount of ETH to deposit.
-     */
-    function _mintSharesForETH(uint256 amount) private {
-        if (paused()) {
-            revert Paused();
-        }
-        address sender = _msgSender();
-        uint256 shares = previewDeposit(amount);
-        _mint(sender, shares);
-        emit Deposit(sender, sender, amount, shares);
-    }
-
-    /**
      * @notice Fallback function to handle ETH deposits.
      */
     receive() external payable {
-        address sender = _msgSender();
-        if (msg.value > 0 && sender != address(this) && sender != asset()) {
-            _mintSharesForETH(msg.value);
-        }
+        _getAssetStorage().assets[msg.sender];
     }
 }

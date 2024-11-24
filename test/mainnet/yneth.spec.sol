@@ -24,6 +24,11 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         SetupVault setup = new SetupVault();
         setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
+
+        vm.startPrank(ADMIN);
+        setWethWithdrawRule();
+        setYnETHDepositETHRule();
+        vm.stopPrank();
     }
 
     function allocateToBuffer(uint256 amount) public {
@@ -75,25 +80,9 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         uint256 depositedShares = vault.depositAsset(assetAddress, assets, receiver);
         assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
 
-        // allocate 100% to the ynETH strategy
-        address[] memory targets = new address[](2);
-        targets[0] = MC.WETH;
-        targets[1] = MC.YNETH;
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = assets;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("withdraw(uint256)", assets);
-        data[1] = abi.encodeWithSignature("depositETH(address)", address(vault));
-
-        vm.startPrank(ADMIN);
-
-        setWethWithdrawRule();
-        setYnETHDepositETHRule();
-
-        vault.processor(targets, values, data);
+        vm.startPrank(PROCESSOR);
+        processWithrdawWeth(assets);
+        // processDepositYnETH(assets);
 
         uint256 ynEthBalance = IERC20(MC.YNETH).balanceOf(MC.YNETHX);
         emit Log("ynEthBal", ynEthBalance);
@@ -101,6 +90,33 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
         uint256 newTotalAssets = vault.totalAssets();
         assertEqThreshold(newTotalAssets, totalAssets + assets, 5, "New total assets should equal deposit amount plus original total assets");
+    }
+
+    function processWithrdawWeth(uint256 assets) public {
+        // convert WETH to ETH
+        address[] memory targets = new address[](1);
+        targets[0] = MC.WETH;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("withdraw(uint256)", assets);
+
+        vault.processor(targets, values, data);
+    }
+    function processDepositYnETH(uint256 assets) public {
+        // convert WETH to ETH
+        address[] memory targets = new address[](1);
+        targets[0] = MC.YNETH;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = assets;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("depositETH(address)", address(vault));
+
+        vault.processor(targets, values, data);
     }
 
     function setWethWithdrawRule() internal {

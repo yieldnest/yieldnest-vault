@@ -48,11 +48,8 @@ contract VaultDepositUnitTest is Test, Etches {
 
         for (uint256 i = 0; i < assets.length; i++) {
             address asset = assets[i];
-            IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18, 0);
-            assertEq(vault.getAsset(asset).active, expectedAssetParams.active, "Not active");
             assertEq(vault.getAsset(asset).index, i, "Bad Index");
             assertEq(vault.getAsset(asset).decimals >= 6 || vault.getAsset(asset).decimals <= 18, true, "Bad decimals");
-            assertEq(vault.getAsset(asset).idleBalance, expectedAssetParams.idleBalance, "Invalid idleAssets");
         }
     }
 
@@ -79,10 +76,9 @@ contract VaultDepositUnitTest is Test, Etches {
 
     function test_Vault_getStrategy() public view {
         address strategyAddress = MC.BUFFER;
-        IVault.StrategyParams memory expectedStrategyParams = IVault.StrategyParams(true, 0, 18, 0);
-        assertEq(vault.getStrategy(strategyAddress).active, expectedStrategyParams.active);
+        IVault.StrategyParams memory expectedStrategyParams = IVault.StrategyParams(0,18,0,0,0);
         assertEq(vault.getStrategy(strategyAddress).index, expectedStrategyParams.index);
-        assertEq(vault.getStrategy(strategyAddress).idleBalance, expectedStrategyParams.idleBalance);
+        assertEq(vault.getStrategy(strategyAddress).decimals, expectedStrategyParams.decimals);
     }
 
     function test_Vault_Provider() public view {

@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
-import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
@@ -14,7 +13,6 @@ import {AssertUtils} from "test/utils/AssertUtils.sol";
 
 contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
     Vault public vaultImplementation;
-    TransparentUpgradeableProxy public vaultProxy;
 
     Vault public vault;
     WETH9 public weth;
