@@ -26,15 +26,13 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
 
     Vault public vault;
 
-    
-
     function setUp() public {
         SetupVault setup = new SetupVault();
         setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
     }
 
-    function testCurveSwap() public {
+    function testCurveSwapStETHtoETH() public {
         uint256 amount = 100 ether;
 
         // Create user and give them ETH
@@ -99,6 +97,55 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         // Assert stETH balance is 0 and ETH balance matches expected amount
         assertApproxEqAbs(IERC20(MC.STETH).balanceOf(address(vault)), amount - swapAmount, 2);
         assertApproxEqAbs(address(vault).balance, minOut, 2);
+    }
+
+    function testCurveSwapETHToStETH() public {
+        uint256 amount = 100 ether;
+
+        // User deposits ETH
+        address user = makeAddr("user");
+        vm.deal(user, amount);
+        vm.startPrank(user);
+        (bool success,) = address(vault).call{value: amount}("");
+        require(success, "ETH transfer failed");
+        vm.stopPrank();
+
+        // Get curve pool for ETH/stETH
+        ICurveRegistry registry = ICurveRegistry(MC.CURVE_REGISTRY);
+        ICurvePool pool = ICurvePool(registry.find_pool_for_coins(MC.ETH, MC.STETH));
+
+        console.log("Curve pool address:", address(pool));
+
+        uint256 swapAmount = amount / 2;
+        uint256 minOut = pool.get_dy(0, 1, swapAmount); // Swap from ETH (0) to stETH (1)
+
+        // Prepare exchange data
+        bytes memory exchangeData = abi.encodeWithSelector(
+            bytes4(keccak256("exchange(int128,int128,uint256,uint256)")),
+            0, // ETH index
+            1, // stETH index
+            swapAmount,
+            minOut
+        );
+
+        {
+            address[] memory targets = new address[](1);
+            targets[0] = address(pool);
+
+            uint256[] memory values = new uint256[](1);
+            values[0] = swapAmount; // Send ETH with the call
+
+            bytes[] memory callData = new bytes[](1);
+            callData[0] = exchangeData;
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets, values, callData);
+            vm.stopPrank();
+        }
+
+        // Assert ETH balance is reduced and stETH balance matches expected amount
+        assertApproxEqAbs(address(vault).balance, amount - swapAmount, 2);
+        assertApproxEqAbs(IERC20(MC.STETH).balanceOf(address(vault)), minOut, 2);
     }
 
 }
