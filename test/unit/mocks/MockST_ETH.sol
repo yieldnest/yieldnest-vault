@@ -6,7 +6,7 @@ import {ERC20} from "src/Common.sol";
 import {IStETH} from "test/interface/external/lido/IStETH.sol";
 
 contract MockSTETH is IStETH, ERC20 {
-    uint256 totalPooledEther;
+    uint256 public totalPooledEther;
 
     constructor() ERC20("Mock Staked Ether", "mstETH") {}
 
