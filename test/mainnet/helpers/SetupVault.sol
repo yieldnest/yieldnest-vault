@@ -7,8 +7,6 @@ import {TimelockController as TLC} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
-import {ICurveRegistry} from "src/interface/external/curve/ICurveRegistry.sol";
-import {ICurvePool} from "src/interface/external/curve/ICurvePool.sol";
 
 contract SetupVault is Test, MainnetActors, Etches {
 
@@ -91,9 +89,7 @@ contract SetupVault is Test, MainnetActors, Etches {
         vault.addStrategy(MC.YNETH, 18);
         vault.addStrategy(MC.YNLSDE, 18);
 
-        vault.setBuffer(MC.BUFFER);     
-
-        configureCurveActions(vault);                                                           
+        vault.setBuffer(MC.BUFFER);                                                       
 
         // Unpause the vault
         vault.pause(false);
@@ -102,82 +98,7 @@ contract SetupVault is Test, MainnetActors, Etches {
         vault.processAccounting();
     }
 
-    function configureCurveActions(Vault vault) internal {
-
-        // Get ethSteth pool from registry
-        ICurveRegistry registry = ICurveRegistry(MC.CURVE_REGISTRY);
-        address ethStethPool = registry.find_pool_for_coins(MC.ETH, MC.STETH);
-
-        // Get ynETHWstETH pool from two crypto factory
-        address ynETHWstETHPool = ICurveRegistry(MC.CURVE_TWOCRYPTO_FACTORY).find_pool_for_coins(MC.YNETH, MC.WSTETH);
-
-        // Add curve pools to array
-        address[] memory curvePools = new address[](1);
-        curvePools[0] = ethStethPool;
-        curvePools = new address[](2);
-        curvePools[0] = ethStethPool;
-        curvePools[1] = ynETHWstETHPool;
-
-        // Add curve pool actions
-        for (uint256 i = 0; i < curvePools.length; i++) {
-            // Add liquidity functions
-            bytes4 addLiq2 = bytes4(keccak256("add_liquidity(uint256[2],uint256)"));
-
-            IVault.ParamRule[] memory addLiqRules = new IVault.ParamRule[](2);
-            addLiqRules[0] = IVault.ParamRule({
-                paramType: IVault.ParamType.UINT256,
-                isArray: true,
-                allowList: new address[](0)
-            });
-            addLiqRules[1] = IVault.ParamRule({
-                paramType: IVault.ParamType.UINT256,
-                isArray: false,
-                allowList: new address[](0)
-            });
-
-            vault.setProcessorRule(curvePools[i], addLiq2, IVault.FunctionRule({
-                isActive: true,
-                paramRules: addLiqRules
-            }));
-
-            // Exchange function
-            bytes4 exchange = bytes4(keccak256("exchange(int128,int128,uint256,uint256)"));
-            IVault.ParamRule[] memory exchangeRules = new IVault.ParamRule[](4);
-            exchangeRules[0] = IVault.ParamRule({
-                paramType: IVault.ParamType.UINT256,
-                isArray: false,
-                allowList: new address[](0)
-            });
-            exchangeRules[1] = IVault.ParamRule({
-                paramType: IVault.ParamType.UINT256,
-                isArray: false,
-                allowList: new address[](0)
-            });
-            exchangeRules[2] = IVault.ParamRule({
-                paramType: IVault.ParamType.UINT256,
-                isArray: false,
-                allowList: new address[](0)
-            });
-            exchangeRules[3] = IVault.ParamRule({
-                paramType: IVault.ParamType.UINT256,
-                isArray: false,
-                allowList: new address[](0)
-            });
-
-            vault.setProcessorRule(curvePools[i], exchange, IVault.FunctionRule({
-                isActive: true,
-                paramRules: exchangeRules
-            }));
-        }
-        // Set approval rule to allow ethStethPool to spend stETH tokens from the vault
-        setApprovalRule(vault, MC.STETH, ethStethPool);
-
-        // Set approval rules for ynETH and wstETH to be spent by ynETHWstETH pool
-        setApprovalRule(vault, MC.YNETH, ynETHWstETHPool);
-        setApprovalRule(vault, MC.WSTETH, ynETHWstETHPool);
-    }
-
-    function setDepositRule(Vault vault_, address contractAddress, address receiver) internal {
+    function setDepositRule(Vault vault_, address contractAddress, address receiver) public {
         bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
@@ -195,13 +116,13 @@ contract SetupVault is Test, MainnetActors, Etches {
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
 
-    function setApprovalRule(Vault vault_, address contractAddress, address spender) internal {
+    function setApprovalRule(Vault vault_, address contractAddress, address spender) public {
         address[] memory allowList = new address[](1);
         allowList[0] = spender;
         setApprovalRule(vault_, contractAddress, allowList);
     }
 
-    function setApprovalRule(Vault vault_, address contractAddress, address[] memory allowList) internal {
+    function setApprovalRule(Vault vault_, address contractAddress, address[] memory allowList) public {
         bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);

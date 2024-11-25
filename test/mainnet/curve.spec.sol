@@ -29,6 +29,94 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         SetupVault setup = new SetupVault();
         setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
+
+        // Grant DEFAULT_ADMIN_ROLE to setup contract
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
+        vm.stopPrank();
+
+        configureCurveActions(setup, vault);
+
+        // Remove DEFAULT_ADMIN_ROLE from setup contract
+        vm.startPrank(ADMIN);
+        vault.revokeRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
+        vm.stopPrank();
+    }
+    function configureCurveActions(SetupVault setup, Vault _vault) internal {
+
+        vm.startPrank(ADMIN);
+
+        // Get ethSteth pool from registry
+        ICurveRegistry registry = ICurveRegistry(MC.CURVE_REGISTRY);
+        address ethStethPool = registry.find_pool_for_coins(MC.ETH, MC.STETH);
+
+        // Get ynETHWstETH pool from two crypto factory
+        address ynETHWstETHPool = ICurveRegistry(MC.CURVE_TWOCRYPTO_FACTORY).find_pool_for_coins(MC.YNETH, MC.WSTETH);
+
+        // Add curve pools to array
+        address[] memory curvePools = new address[](2);
+        curvePools[0] = ethStethPool;
+        curvePools[1] = ynETHWstETHPool;
+
+        // Add curve pool actions
+        for (uint256 i = 0; i < curvePools.length; i++) {
+            // Add liquidity functions
+            bytes4 addLiq2 = bytes4(keccak256("add_liquidity(uint256[2],uint256)"));
+
+            IVault.ParamRule[] memory addLiqRules = new IVault.ParamRule[](2);
+            addLiqRules[0] = IVault.ParamRule({
+                paramType: IVault.ParamType.UINT256,
+                isArray: true,
+                allowList: new address[](0)
+            });
+            addLiqRules[1] = IVault.ParamRule({
+                paramType: IVault.ParamType.UINT256,
+                isArray: false,
+                allowList: new address[](0)
+            });
+
+            _vault.setProcessorRule(curvePools[i], addLiq2, IVault.FunctionRule({
+                isActive: true,
+                paramRules: addLiqRules
+            }));
+
+            // Exchange function
+            bytes4 exchange = bytes4(keccak256("exchange(int128,int128,uint256,uint256)"));
+            IVault.ParamRule[] memory exchangeRules = new IVault.ParamRule[](4);
+            exchangeRules[0] = IVault.ParamRule({
+                paramType: IVault.ParamType.UINT256,
+                isArray: false,
+                allowList: new address[](0)
+            });
+            exchangeRules[1] = IVault.ParamRule({
+                paramType: IVault.ParamType.UINT256,
+                isArray: false,
+                allowList: new address[](0)
+            });
+            exchangeRules[2] = IVault.ParamRule({
+                paramType: IVault.ParamType.UINT256,
+                isArray: false,
+                allowList: new address[](0)
+            });
+            exchangeRules[3] = IVault.ParamRule({
+                paramType: IVault.ParamType.UINT256,
+                isArray: false,
+                allowList: new address[](0)
+            });
+
+            _vault.setProcessorRule(curvePools[i], exchange, IVault.FunctionRule({
+                isActive: true,
+                paramRules: exchangeRules
+            }));
+        }
+        // Set approval rule to allow ethStethPool to spend stETH tokens from the vault
+        setup.setApprovalRule(_vault, MC.STETH, ethStethPool);
+
+        // Set approval rules for ynETH and wstETH to be spent by ynETHWstETH pool
+        setup.setApprovalRule(_vault, MC.YNETH, ynETHWstETHPool);
+        setup.setApprovalRule(_vault, MC.WSTETH, ynETHWstETHPool);
+
+        vm.stopPrank();
     }
 
     function test_Vault_Curve_swapStETHtoETH() public {
