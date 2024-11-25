@@ -23,8 +23,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     using Address for address;
     using Math for uint256;
 
-    address private constant UNDERLYING_ASSET = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-
     /**
      * @notice Returns the number of decimals of the underlying asset.
      * @return uint256 The number of decimals.
@@ -445,6 +443,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     //// ADMIN ////
 
+    address private constant UNDERLYING_ASSET = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
     bytes32 public constant PROCESSOR_ROLE = 0xe61decff6e4a5c6b5a3d3cbd28f882e595173563b49353ce5f31dba2de7f05ee;
 
     /**
@@ -499,7 +499,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (index > 0 && assetStorage.assets[asset_].index != 0) {
             revert DuplicateAsset(asset_);
         }
-        assetStorage.assets[asset_] = AssetParams({active: true, index: index, decimals: decimals_, assets: 0});
+        assetStorage.assets[asset_] = AssetParams({active: true, index: index, decimals: decimals_});
         assetStorage.list.push(asset_);
 
         emit NewAsset(asset_, decimals_, index);

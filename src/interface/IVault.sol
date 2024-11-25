@@ -15,8 +15,6 @@ interface IVault is IERC4626 {
         bool active;
         uint256 index;
         uint8 decimals;
-        // assets: base denominated assets;
-        uint256 assets;
     }
 
     struct AssetStorage {
