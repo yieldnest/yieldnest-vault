@@ -82,7 +82,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
         vm.startPrank(PROCESSOR);
         processWithrdawWeth(assets);
-        // processDepositYnETH(assets);
+        processDepositYnETH(assets);
 
         uint256 ynEthBalance = IERC20(MC.YNETH).balanceOf(MC.YNETHX);
         emit Log("ynEthBal", ynEthBalance);

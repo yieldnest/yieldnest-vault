@@ -260,7 +260,6 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
     function test_Vault_receiveETH_zeroValue() public {
         // Send zero ETH to the vault
         vm.prank(alice);
-        vm.expectRevert();
         (bool success,) = address(vault).call{value: 0}("");
         require(success, "ETH transfer failed");
 

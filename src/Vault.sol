@@ -496,9 +496,9 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (buffer_ == address(0)) {
             revert ZeroAddress();
         }
-        
+
         getStrategy(buffer_);
-        
+
         _getVaultStorage().buffer = buffer_;
         emit SetBuffer(buffer_);
     }
@@ -534,13 +534,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         uint256 shares = IERC20(strategy).balanceOf(address(this));
         uint256 assets = _convertAssetToBase(strategy, shares);
 
-        strategyStorage.strategies[strategy] = StrategyParams({
-            index: index,
-            decimals: decimals_,
-            shares: shares,
-            assets: assets,
-            debt: 0
-        });
+        strategyStorage.strategies[strategy] =
+            StrategyParams({index: index, decimals: decimals_, shares: shares, assets: assets, debt: 0});
         strategyStorage.list.push(strategy);
 
         AssetStorage storage assetStorage = _getAssetStorage();
@@ -586,14 +581,10 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     // TODO: Update this
-    function processStrategy(address strategy) public onlyRole(PROCESSOR_ROLE) {
-
-    }
+    function processStrategy(address strategy) public onlyRole(PROCESSOR_ROLE) {}
 
     // TODO: Update this
-    function processAsset(address asset_) public onlyRole(PROCESSOR_ROLE) {
-
-    }
+    function processAsset(address asset_) public onlyRole(PROCESSOR_ROLE) {}
 
     // TODO: Update this
     function processAccounting() public {
@@ -673,9 +664,28 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     // ETH //
 
     /**
+     * @notice Internal function to mint shares for ETH.
+     * @param amount The amount of ETH to deposit.
+     */
+    function _mintSharesForETH(uint256 amount, address sender) private {
+        if (paused()) {
+            revert Paused();
+        }
+
+        if (sender == address(this)) {
+            revert DepositFailed();
+        }
+        uint256 shares = previewDeposit(amount);
+        _mint(sender, shares);
+        emit Deposit(sender, sender, amount, shares);
+    }
+
+    /**
      * @notice Fallback function to handle ETH deposits.
      */
     receive() external payable {
-        _getAssetStorage().assets[msg.sender];
+        if (msg.sender != asset()) {
+            _mintSharesForETH(msg.value, msg.sender);
+        }
     }
 }
