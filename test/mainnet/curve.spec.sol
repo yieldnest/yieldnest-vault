@@ -7,7 +7,6 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault,IVault} from "src/Vault.sol";
 import {IERC20} from "src/Common.sol";
-import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {ICurveRegistry} from "test/interface/external/curve/ICurveRegistry.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
