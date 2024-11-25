@@ -520,7 +520,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     /**
      * @notice Processes the accounting of the vault by calculating the total base balance.
-     * @dev This function iterates through the list of assets, gets their balances and rates, 
+     * @dev This function iterates through the list of assets, gets their balances and rates,
      *      and updates the total assets denominated in the base asset.
      */
     function processAccounting() public {
