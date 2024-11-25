@@ -23,6 +23,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     using Address for address;
     using Math for uint256;
 
+    address private constant UNDERLYING_ASSET = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
     /**
      * @notice Returns the number of decimals of the underlying asset.
      * @return uint256 The number of decimals.
@@ -36,8 +38,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @notice Returns the address of the underlying asset.
      * @return address The address of the asset.
      */
-    function asset() public view returns (address) {
-        return _getAssetStorage().list[0];
+    function asset() public pure returns (address) {
+        return UNDERLYING_ASSET;
     }
 
     /**
@@ -310,11 +312,11 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     /**
      * @notice Previews the amount of shares that would be received for a given amount of assets for a specific asset.
      * @param asset_ The address of the asset.
-     * @param assets_ The amount of assets to deposit.
+     * @param assets The amount of assets to deposit.
      * @return shares The equivalent amount of shares.
      */
-    function previewDepositAsset(address asset_, uint256 assets_) public view returns (uint256 shares) {
-        (shares,) = _convertToShares(asset_, assets_, Math.Rounding.Floor);
+    function previewDepositAsset(address asset_, uint256 assets) public view returns (uint256 shares) {
+        (shares,) = _convertToShares(asset_, assets, Math.Rounding.Floor);
     }
 
     /**
@@ -517,35 +519,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     /**
-     * @notice Adds a new strategy to the vault.
-     * @param strategy The address of the strategy.
-     * @param decimals_ The number of decimals of the strategy.
-     */
-    function addStrategy(address strategy, uint8 decimals_) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (strategy == address(0)) {
-            revert ZeroAddress();
-        }
-        StrategyStorage storage strategyStorage = _getStrategyStorage();
-        uint256 index = strategyStorage.list.length;
-
-        if (strategyStorage.strategies[strategy].decimals > 0) {
-            revert DuplicateStrategy(strategy);
-        }
-        uint256 shares = IERC20(strategy).balanceOf(address(this));
-        uint256 assets = _convertAssetToBase(strategy, shares);
-
-        strategyStorage.strategies[strategy] =
-            StrategyParams({index: index, decimals: decimals_, shares: shares, assets: assets, debt: 0});
-        strategyStorage.list.push(strategy);
-
-        AssetStorage storage assetStorage = _getAssetStorage();
-        if (assetStorage.assets[strategy].index == 0 && assetStorage.assets[strategy].decimals == 0) {
-            addAsset(strategy, decimals_);
-        }
-        emit NewStrategy(strategy, index);
-    }
-
-    /**
      * @notice Adds a new asset to the vault.
      * @param asset_ The address of the asset.
      * @param decimals_ The number of decimals of the asset.
@@ -559,8 +532,9 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (index > 0 && assetStorage.assets[asset_].index != 0) {
             revert DuplicateAsset(asset_);
         }
-        assetStorage.assets[asset_] = AssetParams({active: true, index: index, decimals: decimals_});
+        assetStorage.assets[asset_] = AssetParams({active: true, index: index, decimals: decimals_, assets: 0});
         assetStorage.list.push(asset_);
+
         emit NewAsset(asset_, decimals_, index);
     }
 
@@ -580,32 +554,15 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit Pause(paused_);
     }
 
-    // TODO: Update this
-    function processStrategy(address strategy) public onlyRole(PROCESSOR_ROLE) {}
-
-    // TODO: Update this
-    function processAsset(address asset_) public onlyRole(PROCESSOR_ROLE) {}
-
-    // TODO: Update this
     function processAccounting() public {
         uint256 totalBaseBalance = address(this).balance;
         AssetStorage storage assetStorage = _getAssetStorage();
-        uint256 assetListLength = assetStorage.list.length;
+        uint256 assetList = assetStorage.list;
+        uint256 assetListLength = assetList.length;
 
         for (uint256 i = 0; i < assetListLength; i++) {
-            address asset_ = assetStorage.list[i];
-            uint256 idleBalance = IERC20(asset_).balanceOf(address(this));
-
-            totalBaseBalance += _convertAssetToBase(asset_, idleBalance);
-        }
-
-        StrategyStorage storage strategyStorage = _getStrategyStorage();
-        IProvider rates = IProvider(_getVaultStorage().provider);
-        uint256 strategyListLength = strategyStorage.list.length;
-
-        for (uint256 i = 0; i < strategyListLength; i++) {
-            uint256 otherAssets = rates.otherAssets(address(this), strategyStorage.list[i]);
-            totalBaseBalance += otherAssets;
+            uint256 idleBalance = IERC20(assetList[i]).balanceOf(address(this));
+            totalBaseBalance += IProvider(provider).rate[assetList[i]];
         }
 
         _getVaultStorage().totalAssets = totalBaseBalance;
@@ -684,8 +641,12 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @notice Fallback function to handle ETH deposits.
      */
     receive() external payable {
-        if (msg.sender != asset()) {
-            _mintSharesForETH(msg.value, msg.sender);
+        if (msg.sender == UNDERLYING_ASSET) return;
+
+        if (msg.sender == address(this)) {
+            revert DepositFailed();
         }
+
+        _mintSharesForETH(msg.value, msg.sender);
     }
 }

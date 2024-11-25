@@ -42,7 +42,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
 
     function test_Vault_addAsset() public {
         address asset = address(200);
-        vm.startPrank(ADMIN);
+        vm.prank(ADMIN);
         vault.addAsset(asset, 18);
         assertEq(vault.getAsset(address(200)).active, true);
     }
@@ -68,7 +68,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_addStrategy_duplicateAddress() public {
-        address strat = address(42069);
+        address strat = MC.BUFFER;
         vm.startPrank(ADMIN);
         vm.expectRevert();
         vault.addStrategy(strat, 18);

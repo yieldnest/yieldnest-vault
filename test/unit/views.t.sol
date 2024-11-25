@@ -76,7 +76,7 @@ contract VaultDepositUnitTest is Test, Etches {
 
     function test_Vault_getStrategy() public view {
         address strategyAddress = MC.BUFFER;
-        IVault.StrategyParams memory expectedStrategyParams = IVault.StrategyParams(0, 18, 0, 0, 0);
+        IVault.StrategyParams memory expectedStrategyParams = IVault.StrategyParams(0, 18);
         assertEq(vault.getStrategy(strategyAddress).index, expectedStrategyParams.index);
         assertEq(vault.getStrategy(strategyAddress).decimals, expectedStrategyParams.decimals);
     }

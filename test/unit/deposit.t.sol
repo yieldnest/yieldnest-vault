@@ -175,7 +175,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
     function test_Vault_getAsset() public view {
         address assetAddress = MC.WETH;
-        IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18);
+        IVault.AssetParams memory expectedAssetParams = IVault.AssetParams(true, 0, 18, 0);
         assertEq(vault.getAsset(assetAddress).active, expectedAssetParams.active);
         assertEq(vault.getAsset(assetAddress).index, expectedAssetParams.index);
         assertEq(vault.getAsset(assetAddress).decimals, expectedAssetParams.decimals);
