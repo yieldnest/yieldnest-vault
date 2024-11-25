@@ -9,10 +9,9 @@ import {Vault,IVault} from "src/Vault.sol";
 import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
-import {ICurveRegistry} from "src/interface/external/curve/ICurveRegistry.sol";
-import {ICurvePool} from "src/interface/external/curve/ICurvePool.sol";
-import {IStETH} from "src/interface/external/lido/IStETH.sol";
-import {console} from "lib/forge-std/src/console.sol";
+import {ICurveRegistry} from "test/interface/external/curve/ICurveRegistry.sol";
+import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
+import {IStETH} from "test/interface/external/lido/IStETH.sol";
 
 
 interface IynETH {
