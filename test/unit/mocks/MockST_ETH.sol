@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 // https://github.com/lidofinance/lido-dao/blob/master/contracts/0.4.24/StETH.sol
 import {ERC20} from "src/Common.sol";
-import {IStETH} from "src/interface/external/lido/IStETH.sol";
+import {IStETH} from "test/interface/external/lido/IStETH.sol";
 
 contract MockSTETH is IStETH, ERC20 {
     uint256 totalPooledEther;
