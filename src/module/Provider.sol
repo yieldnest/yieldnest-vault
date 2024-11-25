@@ -17,14 +17,14 @@ contract Provider is IProvider {
     function getRate(address asset) external view override returns (uint256) {
         if (asset == MC.WETH) {
             return 1e18;
+        } else if (asset == MC.STETH) {
+            return 1e18;
         } else if (asset == MC.YNETH) {
-            return rates[asset]; //IERC4626(MC.YNETH).previewRedeem(1e18);
+            return IERC4626(MC.YNETH).previewRedeem(1e18);
         } else if (asset == MC.YNLSDE) {
             return IERC4626(MC.YNLSDE).previewRedeem(1e18);
         } else if (asset == MC.BUFFER) {
             return IERC4626(MC.BUFFER).previewRedeem(1e18);
-        } else if (asset == MC.STETH) {
-            return 1e18;
         } else if (asset == MC.WSTETH) {
             return IStETH(MC.STETH).getPooledEthByShares(1e18);
         } else if (asset == MC.METH) {
