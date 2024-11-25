@@ -24,20 +24,19 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     using Math for uint256;
 
     /**
-     * @notice Returns the number of decimals of the underlying asset.
-     * @return uint256 The number of decimals.
-     */
-    function decimals() public view virtual override(ERC20Upgradeable, IERC20Metadata) returns (uint8) {
-        AssetStorage storage assetStorage = _getAssetStorage();
-        return assetStorage.assets[assetStorage.list[0]].decimals;
-    }
-
-    /**
      * @notice Returns the address of the underlying asset.
      * @return address The address of the asset.
      */
     function asset() public pure returns (address) {
-        return UNDERLYING_ASSET;
+        return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    }
+
+    /**
+     * @notice Returns the number of decimals of the underlying asset.
+     * @return uint256 The number of decimals.
+     */
+    function decimals() public view virtual override(ERC20Upgradeable, IERC20Metadata) returns (uint8) {
+        return _getAssetStorage().assets[asset()].decimals;
     }
 
     /**
@@ -443,8 +442,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     //// ADMIN ////
 
-    address private constant UNDERLYING_ASSET = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-
     bytes32 public constant PROCESSOR_ROLE = 0xe61decff6e4a5c6b5a3d3cbd28f882e595173563b49353ce5f31dba2de7f05ee;
 
     /**
@@ -479,7 +476,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @param rule The function rule.
      */
     function setProcessorRule(address target, bytes4 functionSig, FunctionRule calldata rule)
-        external
+        public
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         _getProcessorStorage().rules[target][functionSig] = rule;
@@ -523,13 +520,14 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
 
     function processAccounting() public {
         uint256 totalBaseBalance = address(this).balance;
-        AssetStorage storage assetStorage = _getAssetStorage();
-        address[] memory assetList = assetStorage.list;
+        address[] memory assetList = _getAssetStorage().list;
         uint256 assetListLength = assetList.length;
 
         for (uint256 i = 0; i < assetListLength; i++) {
             uint256 balance = IERC20(assetList[i]).balanceOf(address(this));
-            totalBaseBalance += _convertAssetToBase(assetList[i], balance);
+            if (balance == 0) continue;
+            uint256 rate = IProvider(provider()).getRate(assetList[i]);
+            totalBaseBalance += balance.mulDiv(rate, 1e18, Math.Rounding.Floor);
         }
 
         _getVaultStorage().totalAssets = totalBaseBalance;
@@ -547,7 +545,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         onlyRole(PROCESSOR_ROLE)
         returns (bytes[] memory returnData)
     {
-        uint256 initialGas = gasleft();
         uint256 targetsLength = targets.length;
         returnData = new bytes[](targetsLength);
 
@@ -559,10 +556,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
                 revert ProcessFailed(data[i], returnData_);
             }
             returnData[i] = returnData_;
-
-            if (gasleft() < initialGas / 10) {
-                revert("Out of gas");
-            }
         }
         emit ProcessSuccess(targets, values, returnData);
     }
@@ -596,9 +589,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             revert Paused();
         }
 
-        if (sender == address(this)) {
-            revert DepositFailed();
-        }
         uint256 shares = previewDeposit(amount);
         _mint(sender, shares);
         emit Deposit(sender, sender, amount, shares);
@@ -608,7 +598,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @notice Fallback function to handle ETH deposits.
      */
     receive() external payable {
-        if (msg.sender == UNDERLYING_ASSET) return;
+        if (msg.sender == asset()) return;
 
         if (msg.sender == address(this)) {
             revert DepositFailed();
