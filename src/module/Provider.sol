@@ -12,11 +12,13 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 contract Provider is IProvider {
     error UnsupportedAsset(address asset);
 
+    mapping(address => uint256) public rates; // in WETH
+
     function getRate(address asset) external view override returns (uint256) {
         if (asset == MC.WETH) {
             return 1e18;
         } else if (asset == MC.YNETH) {
-            return IERC4626(MC.YNETH).previewRedeem(1e18);
+            return rates[asset]; //IERC4626(MC.YNETH).previewRedeem(1e18);
         } else if (asset == MC.YNLSDE) {
             return IERC4626(MC.YNLSDE).previewRedeem(1e18);
         } else if (asset == MC.BUFFER) {

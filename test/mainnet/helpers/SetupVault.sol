@@ -72,7 +72,10 @@ contract SetupVault is Test, MainnetActors, Etches {
 
         // Add assets: Base asset always first
         vault.addAsset(MC.WETH, 18);
+        vault.addAsset(MC.BUFFER, 18);
         vault.addAsset(MC.STETH, 18);
+        vault.addAsset(MC.YNETH, 18);
+        vault.addAsset(MC.YNLSDE, 18);
 
         setDepositRule(vault, MC.BUFFER, address(vault));
         setDepositRule(vault, MC.YNETH, address(vault));
@@ -84,12 +87,7 @@ contract SetupVault is Test, MainnetActors, Etches {
         setApprovalRule(vault, address(vault), MC.YNETH);
         setApprovalRule(vault, address(vault), MC.YNLSDE);
 
-        // add strategies
-        vault.addStrategy(MC.BUFFER, 18);
-        vault.addStrategy(MC.YNETH, 18);
-        vault.addStrategy(MC.YNLSDE, 18);
-
-        vault.setBuffer(MC.BUFFER);                                                       
+        vault.setBuffer(MC.BUFFER);                                                                  
 
         // Unpause the vault
         vault.pause(false);

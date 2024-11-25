@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import {IERC4626} from "src/Common.sol";
 
 interface IVault is IERC4626 {
-
     struct VaultStorage {
         bool paused;
         uint256 totalAssets;
@@ -94,7 +93,6 @@ interface IVault is IERC4626 {
     function addAsset(address asset_, uint8 decimals_) external;
     function pause(bool paused) external;
 
-    function processAsset(address asset_) external;
     function processAccounting() external;
     function processor(address[] calldata targets, uint256[] calldata values, bytes[] calldata data)
         external

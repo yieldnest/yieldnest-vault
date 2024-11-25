@@ -34,12 +34,6 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         weth.approve(address(vault), type(uint256).max);
     }
 
-    function test_Vault_addStrategy_unauthorized() public {
-        address strat = address(42069);
-        vm.expectRevert();
-        vault.addStrategy(strat, 18);
-    }
-
     function test_Vault_addAsset() public {
         address asset = address(200);
         vm.prank(ADMIN);
@@ -65,19 +59,6 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         address asset = address(200);
         vm.expectRevert();
         vault.addAsset(asset, 18);
-    }
-
-    function test_Vault_addStrategy_duplicateAddress() public {
-        address strat = MC.BUFFER;
-        vm.startPrank(ADMIN);
-        vm.expectRevert();
-        vault.addStrategy(strat, 18);
-    }
-
-    function test_Vault_addStrategy_nullAddress() public {
-        vm.prank(ADMIN);
-        vm.expectRevert();
-        vault.addStrategy(address(0), 18);
     }
 
     function test_Vault_setProvider() public {

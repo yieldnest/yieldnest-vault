@@ -65,22 +65,6 @@ contract VaultDepositUnitTest is Test, Etches {
         assertEq(amount, shares, "Conversion to assets failed");
     }
 
-    function test_Vault_getStrategies() public view {
-        address[] memory expectedStrategies = new address[](1);
-        expectedStrategies[0] = MC.BUFFER;
-        assertEq(vault.getStrategies().length, expectedStrategies.length);
-        for (uint256 i = 0; i < expectedStrategies.length; i++) {
-            assertEq(vault.getStrategies()[i], expectedStrategies[i]);
-        }
-    }
-
-    function test_Vault_getStrategy() public view {
-        address strategyAddress = MC.BUFFER;
-        IVault.StrategyParams memory expectedStrategyParams = IVault.StrategyParams(0, 18);
-        assertEq(vault.getStrategy(strategyAddress).index, expectedStrategyParams.index);
-        assertEq(vault.getStrategy(strategyAddress).decimals, expectedStrategyParams.decimals);
-    }
-
     function test_Vault_Provider() public view {
         assertEq(vault.provider(), MC.PROVIDER, "Provider does not match expected");
     }

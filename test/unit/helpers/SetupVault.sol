@@ -50,6 +50,7 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         // Add assets: Base asset always first
         vault.addAsset(MC.WETH, 18);
+        vault.addAsset(MC.BUFFER, 18);
         vault.addAsset(MC.STETH, 18);
 
         // configure processor rules
@@ -62,7 +63,6 @@ contract SetupVault is Test, Etches, MainnetActors {
         setApprovalRule(vault, address(vault), MC.YNLSDE);
 
         // add strategies
-        vault.addStrategy(MC.BUFFER, 18);
 
         // test cannot unpause vault withtout buffer
         vm.expectRevert();
@@ -112,11 +112,6 @@ contract SetupVault is Test, Etches, MainnetActors {
         setApprovalRule(vault, MC.WETH, MC.BUFFER);
         setApprovalRule(vault, address(vault), MC.YNETH);
         setApprovalRule(vault, address(vault), MC.YNLSDE);
-
-        // add strategies
-        vault.addStrategy(MC.BUFFER, 18);
-        vault.addStrategy(MC.YNETH, 18);
-        vault.addStrategy(MC.YNLSDE, 18);
 
         vault.setBuffer(MC.BUFFER);
 

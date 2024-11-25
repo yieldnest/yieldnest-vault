@@ -255,27 +255,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     /**
-     * @notice Returns the list of strategy addresses.
-     * @return addresses The list of strategy addresses.
-     */
-    function getStrategies() public view returns (address[] memory) {
-        return _getStrategyStorage().list;
-    }
-
-    /**
-     * @notice Returns the parameters of a given strategy.
-     * @param asset_ The address of the strategy.
-     * @return StrategyParams The parameters of the strategy.
-     */
-    function getStrategy(address asset_) public view returns (StrategyParams memory) {
-        StrategyParams memory strategy = _getStrategyStorage().strategies[asset_];
-        if (strategy.index == 0 && strategy.decimals == 0) {
-            revert InvalidStrategy(asset_);
-        }
-        return strategy;
-    }
-
-    /**
      * @notice Returns the function rule for a given contract address and function signature.
      * @param contractAddress The address of the contract.
      * @param funcSig The function signature.
@@ -455,16 +434,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     /**
-     * @notice Internal function to get the strategy storage.
-     * @return $ The strategy storage.
-     */
-    function _getStrategyStorage() internal pure returns (StrategyStorage storage $) {
-        assembly {
-            $.slot := 0x36e313fea70c5f83d23dd12fc41865566e392cbac4c21baf7972d39f7af1774d
-        }
-    }
-
-    /**
      * @notice Internal function to get the processor storage.
      * @return $ The processor storage.
      */
@@ -498,8 +467,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         if (buffer_ == address(0)) {
             revert ZeroAddress();
         }
-
-        getStrategy(buffer_);
 
         _getVaultStorage().buffer = buffer_;
         emit SetBuffer(buffer_);
@@ -557,12 +524,12 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     function processAccounting() public {
         uint256 totalBaseBalance = address(this).balance;
         AssetStorage storage assetStorage = _getAssetStorage();
-        uint256 assetList = assetStorage.list;
+        address[] memory assetList = assetStorage.list;
         uint256 assetListLength = assetList.length;
 
         for (uint256 i = 0; i < assetListLength; i++) {
-            uint256 idleBalance = IERC20(assetList[i]).balanceOf(address(this));
-            totalBaseBalance += IProvider(provider).rate[assetList[i]];
+            uint256 balance = IERC20(assetList[i]).balanceOf(address(this));
+            totalBaseBalance += _convertAssetToBase(assetList[i], balance);
         }
 
         _getVaultStorage().totalAssets = totalBaseBalance;
