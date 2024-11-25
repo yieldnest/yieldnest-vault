@@ -518,6 +518,11 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         emit Pause(paused_);
     }
 
+    /**
+     * @notice Processes the accounting of the vault by calculating the total base balance.
+     * @dev This function iterates through the list of assets, gets their balances and rates, 
+     *      and updates the total assets denominated in the base asset.
+     */
     function processAccounting() public {
         uint256 totalBaseBalance = address(this).balance;
         address[] memory assetList = _getAssetStorage().list;
@@ -578,13 +583,13 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
         _disableInitializers();
     }
 
-    // ETH //
+    // native asset transfers //
 
     /**
-     * @notice Internal function to mint shares for ETH.
-     * @param amount The amount of ETH to deposit.
+     * @notice Internal function to mint shares for native assets.
+     * @param amount The amount of native asset transfered.
      */
-    function _mintSharesForETH(uint256 amount, address sender) private {
+    function _mintSharesForNative(uint256 amount, address sender) private {
         if (paused()) {
             revert Paused();
         }
@@ -595,7 +600,7 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     }
 
     /**
-     * @notice Fallback function to handle ETH deposits.
+     * @notice Fallback function to handle native asset transfers.
      */
     receive() external payable {
         if (msg.sender == asset()) return;
@@ -604,6 +609,6 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             revert DepositFailed();
         }
 
-        _mintSharesForETH(msg.value, msg.sender);
+        _mintSharesForNative(msg.value, msg.sender);
     }
 }
