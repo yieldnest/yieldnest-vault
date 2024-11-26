@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IStrategy} from "src/interface/IStrategy.sol";
 import {SafeERC20, IERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
 
