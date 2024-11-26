@@ -428,7 +428,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function _convertAssetToBase(address asset_, uint256 assets) internal view virtual returns (uint256) {
         if (asset_ == address(0)) revert ZeroAddress();
         uint256 rate = IProvider(provider()).getRate(asset_);
-        return assets.mulDiv(rate, 1e18, Math.Rounding.Floor);
+        return assets.mulDiv(rate,  10 ** (_getAssetStorage().assets[asset()].decimals), Math.Rounding.Floor);
     }
 
     /**
@@ -440,7 +440,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function _convertBaseToAsset(address asset_, uint256 assets) internal view virtual returns (uint256) {
         if (asset_ == address(0)) revert ZeroAddress();
         uint256 rate = IProvider(provider()).getRate(asset_);
-        return assets.mulDiv(1e18, rate, Math.Rounding.Floor);
+        return assets.mulDiv(10 ** (_getAssetStorage().assets[asset()].decimals), rate, Math.Rounding.Floor);
     }
 
     /**
@@ -583,12 +583,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         uint256 totalBaseBalance = address(this).balance;
         address[] memory assetList = _getAssetStorage().list;
         uint256 assetListLength = assetList.length;
+        uint256 baseAssetUnit = 10 ** (_getAssetStorage().assets[asset()].decimals);
 
         for (uint256 i = 0; i < assetListLength; i++) {
             uint256 balance = IERC20(assetList[i]).balanceOf(address(this));
             if (balance == 0) continue;
             uint256 rate = IProvider(provider()).getRate(assetList[i]);
-            totalBaseBalance += balance.mulDiv(rate, 1e18, Math.Rounding.Floor);
+            totalBaseBalance += balance.mulDiv(rate, baseAssetUnit, Math.Rounding.Floor);
         }
 
         _getVaultStorage().totalAssets = totalBaseBalance;
