@@ -26,6 +26,7 @@ contract Strategy is BaseVault {
      * @notice Returns the maximum amount of assets that can be withdrawn by a given owner.
      * @param owner The address of the owner.
      * @return uint256 The maximum amount of assets.
+     * @dev override the maxWithdraw function for strategies
      */
     function maxWithdraw(address owner) public view override returns (uint256) {
         if (paused()) {
@@ -47,6 +48,7 @@ contract Strategy is BaseVault {
      * @notice Returns the maximum amount of shares that can be redeemed by a given owner.
      * @param owner The address of the owner.
      * @return uint256 The maximum amount of shares.
+     * @dev override the maxRedeem function for strategies
      */
     function maxRedeem(address owner) public view override returns (uint256) {
         if (paused()) {
@@ -70,6 +72,7 @@ contract Strategy is BaseVault {
      * @param assets The amount of assets to deposit.
      * @param shares The amount of shares to mint.
      * @param baseAssets The base asset convertion of shares.
+     * @dev The _deposit function for strategies is permissioned by the allocator vault ALLOCATOR_ROLE
      */
     function _deposit(
         address asset_,
@@ -96,6 +99,7 @@ contract Strategy is BaseVault {
      * @param owner The address of the owner.
      * @param assets The amount of assets to withdraw.
      * @param shares The equivalent amount of shares.
+     * @dev The _withdraw function for strategies is permissioned by the allocator vault ALLOCATOR_ROLE
      */
     function _withdraw(address asset_, address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
