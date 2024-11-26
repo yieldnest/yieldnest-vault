@@ -93,7 +93,6 @@ contract Strategy is BaseVault {
 
     /**
      * @notice Internal function to handle withdrawals.
-     * @param asset_ The address of the asset.
      * @param caller The address of the caller.
      * @param receiver The address of the receiver.
      * @param owner The address of the owner.
@@ -101,7 +100,7 @@ contract Strategy is BaseVault {
      * @param shares The equivalent amount of shares.
      * @dev The _withdraw function for strategies is permissioned by the allocator vault ALLOCATOR_ROLE
      */
-    function _withdraw(address asset_, address caller, address receiver, address owner, uint256 assets, uint256 shares)
+    function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
         override
         onlyRole(ALLOCATOR_ROLE)
@@ -112,8 +111,7 @@ contract Strategy is BaseVault {
             _spendAllowance(owner, caller, shares);
         }
 
-        IStrategy(vaultStorage.buffer).withdraw(assets, address(this), address(this));
-        SafeERC20.safeTransfer(IERC20(asset_), receiver, assets);
+        IStrategy(vaultStorage.buffer).withdraw(assets, receiver, address(this));
 
         _burn(owner, shares);
         emit Withdraw(caller, receiver, owner, assets, shares);

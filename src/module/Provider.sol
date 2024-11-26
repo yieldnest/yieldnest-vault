@@ -37,29 +37,6 @@ contract Provider is IProvider {
 
         revert UnsupportedAsset(asset);
     }
-
-    function otherAssets(address vault, address strategy) public view returns (uint256 assets) {
-        if (strategy == MC.YNETH) {
-            (uint256[] memory withdrawalIndexes, WithdrawalRequest[] memory requests) =
-                IynETHwm(MC.YNETH_WM).withdrawalRequestsForOwner(vault);
-
-            uint256 length = withdrawalIndexes.length;
-            if (length == 0) return 0;
-
-            uint256 ynethRate = IERC4626(MC.YNETH).previewRedeem(1e18);
-            for (uint256 i = 0; i < length; i++) {
-                if (!requests[i].processed) {
-                    assets += requests[i].amount * ynethRate / 1e18;
-                }
-            }
-        } else if (strategy == MC.YNLSDE) {
-            // TODO
-            assets = 0;
-        }
-
-        // if strategy not handled, return 0 for other assets.
-        assets = 0;
-    }
 }
 
 interface IStETH {

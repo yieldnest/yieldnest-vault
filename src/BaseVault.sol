@@ -216,7 +216,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert ExceededMaxWithdraw(owner, assets, maxAssets);
         }
         shares = previewWithdraw(assets);
-        _withdraw(asset(), _msgSender(), receiver, owner, assets, shares);
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
     }
 
     /**
@@ -240,7 +240,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert ExceededMaxRedeem(owner, shares, maxShares);
         }
         assets = previewRedeem(shares);
-        _withdraw(asset(), _msgSender(), receiver, owner, assets, shares);
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
     }
 
     //// 4626-MAX ////
@@ -361,14 +361,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Internal function to handle withdrawals.
-     * @param asset_ The address of the asset.
      * @param caller The address of the caller.
      * @param receiver The address of the receiver.
      * @param owner The address of the owner.
      * @param assets The amount of assets to withdraw.
      * @param shares The equivalent amount of shares.
      */
-    function _withdraw(address asset_, address caller, address receiver, address owner, uint256 assets, uint256 shares)
+    function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
         virtual
     {
@@ -378,9 +377,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             _spendAllowance(owner, caller, shares);
         }
 
-        IStrategy(vaultStorage.buffer).withdraw(assets, address(this), address(this));
-
-        SafeERC20.safeTransfer(IERC20(asset_), receiver, assets);
+        IStrategy(vaultStorage.buffer).withdraw(assets, receiver, address(this));
 
         _burn(owner, shares);
         emit Withdraw(caller, receiver, owner, assets, shares);
@@ -548,7 +545,6 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (provider() == address(0)) {
             revert ProviderNotSet();
         }
-
         vaultStorage.paused = paused_;
         emit Pause(paused_);
     }

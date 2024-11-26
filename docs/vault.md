@@ -153,8 +153,7 @@ sequenceDiagram
     Strategy-->>Vault: Return Balance
     alt Sufficient Balance
         Vault->>Strategy: Withdraw Funds
-        Strategy-->>Vault: Transfer Funds
-        Vault->>Asset: Transfer to User
+        Strategy-->>Asset: Transfer Funds
         Asset-->>User: Funds Received
     else Insufficient Balance
         Vault-->>User: Revert Transaction
