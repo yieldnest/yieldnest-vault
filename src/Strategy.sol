@@ -23,6 +23,46 @@ contract Strategy is BaseVault {
     }
 
     /**
+     * @notice Returns the maximum amount of assets that can be withdrawn by a given owner.
+     * @param owner The address of the owner.
+     * @return uint256 The maximum amount of assets.
+     */
+    function maxWithdraw(address owner) public view override returns (uint256) {
+        if (paused()) {
+            return 0;
+        }
+
+        uint256 bufferAssets = IStrategy(buffer()).maxWithdraw(address(this));
+        if (bufferAssets == 0) {
+            return 0;
+        }
+
+        uint256 ownerShares = balanceOf(owner);
+        uint256 maxAssets = convertToAssets(ownerShares);
+
+        return bufferAssets < maxAssets ? bufferAssets : maxAssets;
+    }
+
+    /**
+     * @notice Returns the maximum amount of shares that can be redeemed by a given owner.
+     * @param owner The address of the owner.
+     * @return uint256 The maximum amount of shares.
+     */
+    function maxRedeem(address owner) public view override returns (uint256) {
+        if (paused()) {
+            return 0;
+        }
+
+        uint256 bufferAssets = IStrategy(buffer()).maxWithdraw(address(this));
+        if (bufferAssets == 0) {
+            return 0;
+        }
+
+        uint256 ownerShares = balanceOf(owner);
+        return bufferAssets < previewRedeem(ownerShares) ? previewWithdraw(bufferAssets) : ownerShares;
+    }
+
+    /**
      * @notice Internal function to handle deposits.
      * @param asset_ The address of the asset.
      * @param caller The address of the caller.

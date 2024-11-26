@@ -19,6 +19,16 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         vault = Vault(payable(MC.YNETHX));
     }
 
+    function totalSupplyInvariant(uint256 supply) public view {
+        uint256 finalVaultTotalSupply = vault.totalSupply();
+        assertEqThreshold(supply, finalVaultTotalSupply, 3, "Vault totalSupply should be original totalSupply plus additional");
+    }
+
+    function totalAssetsInvariant(uint256 assets) public view {
+        uint256 finalVaultTotalAssets = vault.totalAssets();
+        assertEqThreshold(assets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional");
+    }    
+
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
         targets[0] = MC.WETH;
@@ -286,13 +296,5 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         totalAssetsInvariant(initialAssets);
     }
 
-    function totalSupplyInvariant(uint256 initialSupply) public view {
-        uint256 finalVaultTotalSupply = vault.totalSupply();
-        assertEqThreshold(initialSupply, finalVaultTotalSupply, 3, "Vault totalSupply should be original totalSupply");
-    }
 
-    function totalAssetsInvariant(uint256 initialAssets) public view {
-        uint256 finalVaultTotalAssets = vault.totalAssets();
-        assertEqThreshold(initialAssets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets");
-    }
 }

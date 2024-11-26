@@ -548,9 +548,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (provider() == address(0)) {
             revert ProviderNotSet();
         }
-        if (buffer() == address(0)) {
-            revert BufferNotSet();
-        }
+
         vaultStorage.paused = paused_;
         emit Pause(paused_);
     }
