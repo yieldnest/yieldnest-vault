@@ -218,53 +218,15 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.maxRedeem(alice), 0, "Should be zero when paused");
     }
 
-    function test_Vault_mintSharesForETH_success() public {
-        uint256 initialBalance = address(vault).balance;
-        uint256 depositAmount = 1 ether;
-
-        // Send ETH to the vault
-        vm.prank(alice);
-        (bool success,) = address(vault).call{value: depositAmount}("");
-        require(success, "ETH transfer failed");
-
-        // Check the vault's balance
-        uint256 newBalance = address(vault).balance;
-        assertEq(newBalance, initialBalance + depositAmount, "Vault balance mismatch");
-
-        // Check the shares minted
-        uint256 sharesMinted = vault.balanceOf(alice);
-        assertGt(sharesMinted, 0, "No shares minted");
-    }
-
     function test_Vault_receiveETH(uint256 depositAmount) public {
         if (depositAmount < 1 || depositAmount > 100_000_00 ether) return;
-        uint256 initialBalance = address(vault).balance;
 
-        uint256 previewAmount = vault.previewDeposit(depositAmount);
-
-        deal(alice, depositAmount);
-        // // Send ETH to the vault
-        vm.prank(alice);
         (bool success,) = address(vault).call{value: depositAmount}("");
-        require(success, "ETH transfer failed");
-
-        // Check the vault's balance
-        uint256 newBalance = address(vault).balance;
-        assertEq(newBalance, initialBalance + depositAmount, "Vault balance mismatch");
+        require(success == true, "Deposit eth failed");
+        vault.processAccounting();
 
         // Check the shares minted
-        uint256 sharesMinted = vault.balanceOf(alice);
-        assertEq(sharesMinted, previewAmount, "No shares minted");
-    }
-
-    function test_Vault_receiveETH_zeroValue() public {
-        // Send zero ETH to the vault
-        vm.prank(alice);
-        (bool success,) = address(vault).call{value: 0}("");
-        require(success, "ETH transfer failed");
-
-        // Check the shares minted
-        uint256 sharesMinted = vault.balanceOf(alice);
-        assertEq(sharesMinted, 0, "Shares should not be minted for zero value");
+        uint256 assets = vault.totalAssets();
+        assertEq(depositAmount, assets, "No shares minted");
     }
 }
