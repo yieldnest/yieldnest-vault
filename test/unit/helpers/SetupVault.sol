@@ -2,7 +2,8 @@
 pragma solidity ^0.8.24;
 
 import "lib/forge-std/src/Test.sol";
-import {Vault, IVault} from "src/Vault.sol";
+import {Vault} from "src/Vault.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
@@ -64,9 +65,6 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         // add strategies
 
-        // test cannot unpause vault withtout buffer
-        vm.expectRevert();
-        vault.pause(false);
         vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault

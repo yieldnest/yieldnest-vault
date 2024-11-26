@@ -2,7 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {Vault, IVault} from "src/Vault.sol";
+import {Vault} from "src/Vault.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
