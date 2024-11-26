@@ -23,6 +23,10 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
     using Address for address;
     using Math for uint256;
 
+    uint256 private constant _BASIS_POINT_SCALE = 1e6;
+    uint256 public constant feeBasisPoints = 10;
+
+
     /**
      * @notice Returns the address of the underlying asset.
      * @return address The address of the asset.
@@ -89,6 +93,8 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
      * @return shares The equivalent amount of shares.
      */
     function previewWithdraw(uint256 assets) public view returns (uint256 shares) {
+
+        uint256 fee = 
         (shares,) = _convertToShares(asset(), assets, Math.Rounding.Ceil);
     }
 
@@ -563,6 +569,18 @@ contract Vault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, Reen
             returnData[i] = returnData_;
         }
         emit ProcessSuccess(targets, values, returnData);
+    }
+
+    // Withdrawal Fees //
+
+    function _feeOnRaw(uint256 assets) public pure returns (uint256) {
+        return assets.mulDiv(feeBasisPoints, _BASIS_POINT_SCALE, Math.Rounding.Ceil);
+    }
+
+    /// @dev Calculates the fee part of an amount `assets` that already includes fees.
+    /// Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
+    function _feeOnTotal(uint256 assets) public pure returns (uint256) {
+        return assets.mulDiv(feeBasisPoints, feeBasisPoints + _BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
 
     /**
