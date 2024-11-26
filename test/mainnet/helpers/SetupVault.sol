@@ -8,12 +8,13 @@ import {TimelockController as TLC} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
+import {ynETHxVault} from "src/ynETHxVault.sol";
 
 contract SetupVault is Test, MainnetActors, Etches {
 
     function upgrade() public {
 
-        Vault newVault = new Vault();
+        Vault newVault = Vault(payable(new ynETHxVault()));
 
         TLC timelock = TLC(payable(MC.TIMELOCK));
 
@@ -23,8 +24,9 @@ contract SetupVault is Test, MainnetActors, Etches {
         uint256 value = 0;
 
         bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
-
-        bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(newVault), "");
+        
+        bytes memory initData = abi.encodeWithSelector(ynETHxVault.initialize.selector, 18);
+        bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(newVault), initData);
 
         bytes32 predecessor = bytes32(0);
         bytes32 salt = keccak256("chad");

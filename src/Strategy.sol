@@ -11,12 +11,15 @@ contract Strategy is BaseVault {
      * @param name The name of the vault.
      * @param symbol The symbol of the vault.
      */
-    function initialize(address admin, string memory name, string memory symbol) external initializer {
+    function initialize(address admin, string memory name, string memory symbol, uint8 decimals) external initializer {
         __ERC20_init(name, symbol);
         __AccessControl_init();
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _getVaultStorage().paused = true;
+
+        VaultStorage storage vaultStorage = _getVaultStorage();
+        vaultStorage.paused = true;
+        vaultStorage.decimals = decimals;
     }
 
     /**

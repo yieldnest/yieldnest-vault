@@ -37,7 +37,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The number of decimals.
      */
     function decimals() public view virtual override(ERC20Upgradeable, IERC20Metadata) returns (uint8) {
-        return _getAssetStorage().assets[asset()].decimals;
+        return _getVaultStorage().decimals;
     }
 
     /**
@@ -428,7 +428,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function _convertAssetToBase(address asset_, uint256 assets) internal view virtual returns (uint256) {
         if (asset_ == address(0)) revert ZeroAddress();
         uint256 rate = IProvider(provider()).getRate(asset_);
-        return assets.mulDiv(rate,  10 ** (_getAssetStorage().assets[asset()].decimals), Math.Rounding.Floor);
+        return assets.mulDiv(rate, 10 ** (_getAssetStorage().assets[asset()].decimals), Math.Rounding.Floor);
     }
 
     /**
