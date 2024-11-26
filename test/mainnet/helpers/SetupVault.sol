@@ -69,6 +69,13 @@ contract SetupVault is Test, MainnetActors, Etches {
         vm.startPrank(ADMIN);
         
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
+        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
+        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
@@ -89,9 +96,7 @@ contract SetupVault is Test, MainnetActors, Etches {
         setApprovalRule(vault, address(vault), MC.YNLSDE);
 
         vault.setBuffer(MC.BUFFER);                                                                  
-
-        // Unpause the vault
-        vault.pause(false);
+        
         vm.stopPrank();
 
         vault.processAccounting();

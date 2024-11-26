@@ -39,7 +39,7 @@ contract Vault4626ComplianceUnitTest is Test, MainnetActors, Etches {
     */
     function test_Vault_Compliance_maxWithdraw_paused() public {
         vm.prank(ADMIN);
-        vault.pause(true);
+        vault.pause();
         uint256 maxWithdrawAmount = vault.maxWithdraw(alice);
         assertEq(maxWithdrawAmount, 0, "Max withdraw amount should be 0 when paused");
     }

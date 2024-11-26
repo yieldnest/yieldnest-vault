@@ -9,6 +9,7 @@ import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
     function setup() public returns (Vault vault, WETH9 weth) {
@@ -41,10 +42,16 @@ contract SetupVault is Test, Etches, MainnetActors {
         vm.startPrank(ADMIN);
 
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
+        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
+        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
 
         // test cannot unpause vault withtout buffer
         vm.expectRevert();
-        vault.pause(false);
+        vault.unpause();
 
         // set the rate provider contract
         vault.setProvider(MC.PROVIDER);
@@ -68,7 +75,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault
-        vault.pause(false);
+        vault.unpause();
         vm.stopPrank();
     }
 
@@ -93,6 +100,13 @@ contract SetupVault is Test, Etches, MainnetActors {
         vm.startPrank(ADMIN);
 
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
+        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
+        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
@@ -114,7 +128,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault
-        vault.pause(false);
+        vault.unpause();
         vm.stopPrank();
     }
 
