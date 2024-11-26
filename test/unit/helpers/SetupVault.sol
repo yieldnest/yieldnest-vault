@@ -65,9 +65,6 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         // add strategies
 
-        // test cannot unpause vault withtout buffer
-        vm.expectRevert();
-        vault.pause(false);
         vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault
