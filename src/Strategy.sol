@@ -68,7 +68,7 @@ contract Strategy is BaseVault {
         uint256 assets,
         uint256 shares,
         uint256 baseAssets
-    ) internal override onlyRole(ALLOCATOR_ROLE) {
+    ) internal override {
         VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.totalAssets += baseAssets;
 
