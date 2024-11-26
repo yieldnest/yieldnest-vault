@@ -5,15 +5,16 @@ import {IERC4626} from "src/Common.sol";
 
 interface IVault is IERC4626 {
     struct VaultStorage {
-        bool paused;
         uint256 totalAssets;
         address provider;
         address buffer;
+        bool paused;
+        uint8 decimals;
     }
 
     struct AssetParams {
-        bool active;
         uint256 index;
+        bool active;
         uint8 decimals;
     }
 
@@ -85,7 +86,6 @@ interface IVault is IERC4626 {
     function buffer() external view returns (address);
 
     // ADMIN
-    function initialize(address admin_, string memory name_, string memory symbol_) external;
     function setProvider(address provider) external;
     function setBuffer(address buffer) external;
     function setProcessorRule(address target, bytes4 functionSig, FunctionRule memory rule) external;

@@ -19,7 +19,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         Vault vaultImplementation = new Vault();
 
         // Deploy the proxy
-        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol);
+        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18);
 
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
@@ -90,7 +90,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         Vault vaultImplementation = new Vault();
 
         // Deploy the proxy
-        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol);
+        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18);
 
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
