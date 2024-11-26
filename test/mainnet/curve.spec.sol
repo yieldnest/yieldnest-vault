@@ -32,6 +32,7 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         // Grant DEFAULT_ADMIN_ROLE to setup contract
         vm.startPrank(ADMIN);
         vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
         vm.stopPrank();
 
         configureCurveActions(setup, vault);
@@ -39,6 +40,7 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         // Remove DEFAULT_ADMIN_ROLE from setup contract
         vm.startPrank(ADMIN);
         vault.revokeRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
+        vault.revokeRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
         vm.stopPrank();
     }
     function configureCurveActions(SetupVault setup, Vault _vault) internal {

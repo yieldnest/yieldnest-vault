@@ -475,13 +475,19 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     //// ADMIN ////
 
-    bytes32 public constant PROCESSOR_ROLE = 0xe61decff6e4a5c6b5a3d3cbd28f882e595173563b49353ce5f31dba2de7f05ee;
+    bytes32 public constant PROCESSOR_ROLE = keccak256("PROCESSOR_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
+    bytes32 public constant PROVIDER_MANAGER_ROLE = keccak256("PROVIDER_MANAGER_ROLE");
+    bytes32 public constant BUFFER_MANAGER_ROLE = keccak256("BUFFER_MANAGER_ROLE");
+    bytes32 public constant ASSET_MANAGER_ROLE = keccak256("ASSET_MANAGER_ROLE");
+    bytes32 public constant PROCESSOR_MANAGER_ROLE = keccak256("PROCESSOR_MANAGER_ROLE");
 
     /**
      * @notice Sets the provider.
      * @param provider_ The address of the provider.
      */
-    function setProvider(address provider_) external virtual onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setProvider(address provider_) external virtual onlyRole(PROVIDER_MANAGER_ROLE) {
         if (provider_ == address(0)) {
             revert ZeroAddress();
         }
@@ -493,7 +499,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @notice Sets the buffer strategy.
      * @param buffer_ The address of the buffer strategy.
      */
-    function setBuffer(address buffer_) external virtual onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setBuffer(address buffer_) external virtual onlyRole(BUFFER_MANAGER_ROLE) {
         if (buffer_ == address(0)) {
             revert ZeroAddress();
         }
@@ -511,7 +517,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function setProcessorRule(address target, bytes4 functionSig, FunctionRule calldata rule)
         public
         virtual
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(PROCESSOR_MANAGER_ROLE)
     {
         _getProcessorStorage().rules[target][functionSig] = rule;
     }
@@ -521,7 +527,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param asset_ The address of the asset.
      * @param decimals_ The number of decimals of the asset.
      */
-    function addAsset(address asset_, uint8 decimals_) public virtual onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addAsset(address asset_, uint8 decimals_) public virtual onlyRole(ASSET_MANAGER_ROLE) {
         if (asset_ == address(0)) {
             revert ZeroAddress();
         }
@@ -537,16 +543,35 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
-     * @notice Pauses or unpauses the vault.
-     * @param paused_ The new paused status.
+     * @notice Pauses the vault.
      */
-    function pause(bool paused_) external virtual onlyRole(DEFAULT_ADMIN_ROLE) {
+    function pause() external virtual onlyRole(PAUSER_ROLE) {
+        if (paused()) {
+            revert Paused();
+        }
+
         VaultStorage storage vaultStorage = _getVaultStorage();
         if (provider() == address(0)) {
             revert ProviderNotSet();
         }
-        vaultStorage.paused = paused_;
-        emit Pause(paused_);
+        vaultStorage.paused = true;
+        emit Pause(true);
+    }
+
+    /**
+     * @notice Unpauses the vault.
+     */
+    function unpause() external virtual onlyRole(UNPAUSER_ROLE) {
+        if (!paused()) {
+            revert Unpaused();
+        }
+
+        VaultStorage storage vaultStorage = _getVaultStorage();
+        if (provider() == address(0)) {
+            revert ProviderNotSet();
+        }
+        vaultStorage.paused = false;
+        emit Pause(false);
     }
 
     /**

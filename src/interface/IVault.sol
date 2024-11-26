@@ -45,6 +45,7 @@ interface IVault is IERC4626 {
     }
 
     error Paused();
+    error Unpaused();
     error ZeroAddress();
     error ZeroAmount();
     error ZeroRate();
@@ -90,7 +91,8 @@ interface IVault is IERC4626 {
     function setProcessorRule(address target, bytes4 functionSig, FunctionRule memory rule) external;
 
     function addAsset(address asset_, uint8 decimals_) external;
-    function pause(bool paused) external;
+    function pause() external;
+    function unpause() external;
 
     function processAccounting() external;
     function processor(address[] calldata targets, uint256[] calldata values, bytes[] calldata data)
