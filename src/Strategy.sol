@@ -33,6 +33,7 @@ contract Strategy is BaseVault {
             return 0;
         }
 
+        // NOTE: The strategy would need to remove the buffer specific handling here
         uint256 bufferAssets = IStrategy(buffer()).maxWithdraw(address(this));
         if (bufferAssets == 0) {
             return 0;
@@ -54,7 +55,8 @@ contract Strategy is BaseVault {
         if (paused()) {
             return 0;
         }
-
+        
+        // NOTE: The strategy would need to remove the buffer specific handling here
         uint256 bufferAssets = IStrategy(buffer()).maxWithdraw(address(this));
         if (bufferAssets == 0) {
             return 0;
