@@ -86,6 +86,7 @@ contract Strategy is BaseVault {
         vaultStorage.totalAssets += baseAssets;
 
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
+
         _mint(receiver, shares);
         emit Deposit(caller, receiver, assets, shares);
     }

@@ -400,7 +400,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         returns (uint256, uint256)
     {
         uint256 assets = shares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** 0, rounding);
+<<<<<<< HEAD
         uint256 baseAssets = _convertBaseToAsset(asset_, assets);
+=======
+        uint256 baseAssets = _convertAssetToBase(asset_, assets);
+>>>>>>> b9f401a (Moves Vault logic to abstract base contract)
         return (assets, baseAssets);
     }
 
@@ -435,6 +439,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+<<<<<<< HEAD
      * @notice Internal function to convert base denominated amount to asset value.
      * @param asset_ The address of the asset.
      * @param assets The amount of the asset.
@@ -447,6 +452,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+=======
+>>>>>>> b9f401a (Moves Vault logic to abstract base contract)
      * @notice Internal function to get the vault storage.
      * @return $ The vault storage.
      */
@@ -548,7 +555,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (provider() == address(0)) {
             revert ProviderNotSet();
         }
+<<<<<<< HEAD
 
+=======
+        if (buffer() == address(0)) {
+            revert BufferNotSet();
+        }
+>>>>>>> b9f401a (Moves Vault logic to abstract base contract)
         vaultStorage.paused = paused_;
         emit Pause(paused_);
     }
