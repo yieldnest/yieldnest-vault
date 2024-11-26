@@ -6,7 +6,6 @@ import {SafeERC20, IERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
 
 contract Strategy is BaseVault {
-    bytes32 public constant ALLOCATOR_ROLE = 0x68bf109b95a5c15fb2bb99041323c27d15f8675e11bf7420a1cd6ad64c394f46;
 
     /**
      * @notice Initializes the Strategy Vault.
@@ -33,15 +32,10 @@ contract Strategy is BaseVault {
             return 0;
         }
 
-        uint256 bufferAssets = IStrategy(buffer()).maxWithdraw(address(this));
-        if (bufferAssets == 0) {
-            return 0;
-        }
-
         uint256 ownerShares = balanceOf(owner);
         uint256 maxAssets = convertToAssets(ownerShares);
 
-        return bufferAssets < maxAssets ? bufferAssets : maxAssets;
+        return maxAssets;
     }
 
     /**
@@ -55,13 +49,7 @@ contract Strategy is BaseVault {
             return 0;
         }
 
-        uint256 bufferAssets = IStrategy(buffer()).maxWithdraw(address(this));
-        if (bufferAssets == 0) {
-            return 0;
-        }
-
-        uint256 ownerShares = balanceOf(owner);
-        return bufferAssets < previewRedeem(ownerShares) ? previewWithdraw(bufferAssets) : ownerShares;
+        return balanceOf(owner);
     }
 
     /**
@@ -72,8 +60,8 @@ contract Strategy is BaseVault {
      * @param assets The amount of assets to deposit.
      * @param shares The amount of shares to mint.
      * @param baseAssets The base asset convertion of shares.
-     * @dev The _deposit function for strategies is permissioned by the allocator vault ALLOCATOR_ROLE
-     */
+     * @dev This is an example:
+        The _deposit function for strategies needs an override     */
     function _deposit(
         address asset_,
         address caller,
@@ -98,12 +86,12 @@ contract Strategy is BaseVault {
      * @param owner The address of the owner.
      * @param assets The amount of assets to withdraw.
      * @param shares The equivalent amount of shares.
-     * @dev The _withdraw function for strategies is permissioned by the allocator vault ALLOCATOR_ROLE
+     * @dev This is an example:
+        The _withdraw function for strategies needs an override
      */
     function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
         override
-        onlyRole(ALLOCATOR_ROLE)
     {
         VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.totalAssets -= assets;
@@ -111,7 +99,7 @@ contract Strategy is BaseVault {
             _spendAllowance(owner, caller, shares);
         }
 
-        IStrategy(vaultStorage.buffer).withdraw(assets, receiver, address(this));
+        SafeERC20.safeTransferFrom(IERC20(asset()), caller, address(this), assets);
 
         _burn(owner, shares);
         emit Withdraw(caller, receiver, owner, assets, shares);
