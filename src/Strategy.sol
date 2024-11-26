@@ -81,7 +81,7 @@ contract Strategy is BaseVault {
         uint256 assets,
         uint256 shares,
         uint256 baseAssets
-    ) internal override onlyRole(ALLOCATOR_ROLE) {
+    ) internal override {
         VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.totalAssets += baseAssets;
 
@@ -103,7 +103,6 @@ contract Strategy is BaseVault {
     function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
         override
-        onlyRole(ALLOCATOR_ROLE)
     {
         VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.totalAssets -= assets;
