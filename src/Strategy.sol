@@ -6,7 +6,6 @@ import {SafeERC20, IERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
 
 contract Strategy is BaseVault {
-
     /**
      * @notice Initializes the Strategy Vault.
      * @param admin The address of the admin.
@@ -61,7 +60,8 @@ contract Strategy is BaseVault {
      * @param shares The amount of shares to mint.
      * @param baseAssets The base asset convertion of shares.
      * @dev This is an example:
-        The _deposit function for strategies needs an override     */
+     *     The _deposit function for strategies needs an override
+     */
     function _deposit(
         address asset_,
         address caller,
@@ -87,7 +87,7 @@ contract Strategy is BaseVault {
      * @param assets The amount of assets to withdraw.
      * @param shares The equivalent amount of shares.
      * @dev This is an example:
-        The _withdraw function for strategies needs an override
+     *     The _withdraw function for strategies needs an override
      */
     function _withdraw(address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
