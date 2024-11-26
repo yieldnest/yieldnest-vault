@@ -581,9 +581,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function processAccounting() public virtual {
         uint256 totalBaseBalance = address(this).balance;
-        address[] memory assetList = _getAssetStorage().list;
+        AssetStorage storage assetStorage = _getAssetStorage();
+        address[] memory assetList = assetStorage.list;
         uint256 assetListLength = assetList.length;
-        uint256 baseAssetUnit = 10 ** (_getAssetStorage().assets[asset()].decimals);
+        uint256 baseAssetUnit = 10 ** (assetStorage.assets[asset()].decimals);
 
         for (uint256 i = 0; i < assetListLength; i++) {
             uint256 balance = IERC20(assetList[i]).balanceOf(address(this));
