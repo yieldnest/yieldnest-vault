@@ -93,7 +93,6 @@ contract Strategy is BaseVault {
 
     /**
      * @notice Internal function to handle withdrawals.
-     * @param asset_ The address of the asset.
      * @param caller The address of the caller.
      * @param receiver The address of the receiver.
      * @param owner The address of the owner.
@@ -103,7 +102,6 @@ contract Strategy is BaseVault {
      */
     function _withdraw(address asset_, address caller, address receiver, address owner, uint256 assets, uint256 shares)
         internal
-        override
         onlyRole(ALLOCATOR_ROLE)
     {
         VaultStorage storage vaultStorage = _getVaultStorage();
