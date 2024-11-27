@@ -599,6 +599,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
 
         _getVaultStorage().totalAssets = totalBaseBalance;
+        emit ProcessAccounting(block.timestamp, totalBaseBalance);
     }
 
     /**

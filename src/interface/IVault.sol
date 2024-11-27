@@ -73,8 +73,9 @@ interface IVault is IERC4626 {
     event SetWhitelist(address target, bytes4 funcsig);
     event ProcessSuccess(address[] targets, uint256[] values, bytes[] data);
     event Pause(bool paused);
-    event SetTotalAssets(uint256 totalAssets);
+    event SetProcessorRule(address, bytes4, FunctionRule);
     event NativeDeposit(uint256 amount);
+    event ProcessAccounting(uint256 timestamp, uint256 totalAssets);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);

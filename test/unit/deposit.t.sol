@@ -265,8 +265,6 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         weth.approve(MC.BUFFER, 1000);
         IERC4626(MC.BUFFER).deposit(1000, user);
 
-        uint256 bufferBalance = IERC4626(MC.BUFFER).balanceOf(user);
-
         IERC4626(MC.BUFFER).approve(address(vault), 1000);
 
         vm.expectRevert(IVault.AssetNotActive.selector);
