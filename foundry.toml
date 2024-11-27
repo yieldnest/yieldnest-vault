@@ -13,6 +13,6 @@ src = "src"
 out = "out"
 libs = ["lib"]
 test = "test/mainnet"
-eth_rpc_url = "https://rpc.ankr.com/eth"
+eth_rpc_url = "https://rpc.ankr.com/bsc"
 evm_version = "cancun"
 solc_version = "0.8.24"
