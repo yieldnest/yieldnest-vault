@@ -477,7 +477,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
     }
 
-    //// ADMIN ////
+    //// ADMIN //// 
 
     bytes32 public constant PROCESSOR_ROLE = keccak256("PROCESSOR_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -599,6 +599,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
 
         _getVaultStorage().totalAssets = totalBaseBalance;
+        emit ProcessAccounting(block.timestamp, totalBaseBalance);
     }
 
     /**
