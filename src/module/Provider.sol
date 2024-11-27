@@ -28,7 +28,7 @@ contract Provider is IProvider {
         } else if (asset == MC.WSTETH) {
             return IStETH(MC.STETH).getPooledEthByShares(1e18);
         } else if (asset == MC.METH) {
-            return IMETH(MC.METH).ratio();
+            return IMETH(MC.METH_STAKING_MANAGER).mETHToETH(1e18);
         } else if (asset == MC.OETH) {
             return IOETH(MC.OETH).assetToEth(1e18);
         } else if (asset == MC.RETH) {
@@ -44,7 +44,7 @@ interface IStETH {
 }
 
 interface IMETH {
-    function ratio() external view returns (uint256);
+    function mETHToETH(uint256 mETHAmount) external view returns (uint256);
 }
 
 interface IOETH {

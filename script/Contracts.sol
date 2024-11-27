@@ -27,4 +27,6 @@ library MainnetContracts {
     address public constant CURVE_REGISTRY = 0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c;
 
     address public constant CURVE_TWOCRYPTO_FACTORY = 0x98EE851a00abeE0d95D08cF4CA2BdCE32aeaAF7F;
+
+    address public constant METH_STAKING_MANAGER = 0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f;
 }
