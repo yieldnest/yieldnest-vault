@@ -23,7 +23,7 @@ contract ProviderTest is Test, Etches {
 
     function test_Provider_GetRateSTETH() public view {
         uint256 rate = provider.getRate(MC.STETH);
-        uint256 expectedPrice = uint256(IChainlinkAggregator(MC.CL_STETH_FEED).latestAnswer());
+        uint256 expectedPrice = 1e18;
         assertEq(rate, expectedPrice, "Rate for STETH should be 1e18");
     }
 
