@@ -59,15 +59,16 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(MC.WETH, 18, true);
         vault.addAsset(MC.BUFFER, 18, false);
         vault.addAsset(MC.STETH, 18, true);
+        vault.addAsset(MC.YNETH, 18, true);
 
         // configure processor rules
         setDepositRule(vault, MC.BUFFER, address(vault));
+        setDepositRule(vault, MC.YNETH, address(vault));
         setWethDepositRule(vault, MC.WETH);
 
         setApprovalRule(vault, address(vault), MC.BUFFER);
         setApprovalRule(vault, MC.WETH, MC.BUFFER);
         setApprovalRule(vault, address(vault), MC.YNETH);
-        setApprovalRule(vault, address(vault), MC.YNLSDE);
 
         // add strategies
 
@@ -111,19 +112,13 @@ contract SetupVault is Test, Etches, MainnetActors {
         // Add assets: Base asset always first
         vault.addAsset(MC.WETH, 18, true);
         vault.addAsset(MC.STETH, 18, true);
-        vault.addAsset(MC.YNETH, 18, true);
-        vault.addAsset(MC.YNLSDE, 18, true);
+        vault.addAsset(MC.BUFFER, 18, false);
 
         setDepositRule(vault, MC.BUFFER, address(vault));
-        setDepositRule(vault, MC.YNETH, address(vault));
-        setDepositRule(vault, MC.YNLSDE, address(vault));
         setWethDepositRule(vault, MC.WETH);
 
         setApprovalRule(vault, address(vault), MC.BUFFER);
         setApprovalRule(vault, MC.WETH, MC.BUFFER);
-        setApprovalRule(vault, address(vault), MC.YNETH);
-        setApprovalRule(vault, address(vault), MC.YNLSDE);
-
         vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault

@@ -5,34 +5,12 @@ interface IProvider {
     function getRate(address asset) external view returns (uint256);
 }
 
-interface IStETH {
-    function getPooledEthByShares(uint256 _ethAmount) external view returns (uint256);
+interface IBNBXStakeManagerV2 {
+    function convertBnbToBnbX(uint256 amount) external view returns (uint256);
+    function convertBnbXToBnb(uint256 amount) external view returns (uint256);
 }
 
-interface IMETH {
-    function mETHToETH(uint256 mETHAmount) external view returns (uint256);
-}
-
-interface IOETH {
-    function assetToEth(uint256 _assetAmount) external view returns (uint256);
-}
-
-interface IRETH {
-    function getExchangeRate() external view returns (uint256);
-}
-
-interface IswETH {
-    function swETHToETHRate() external view returns (uint256);
-}
-
-interface IChainlinkAggregator {
-    function latestAnswer() external view returns (int256);
-}
-
-interface IsfrxETH {
-    function pricePerShare() external view returns (uint256);
-}
-
-interface IFrxEthWethDualOracle {
-    function getCurveEmaEthPerFrxEth() external view returns (uint256);
+interface ISlisBnbStakeManager {
+    function convertSnBnbToBnb(uint256 amount) external view returns (uint256);
+    function convertBnbToSnBnb(uint256 amount) external view returns (uint256);
 }

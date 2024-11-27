@@ -9,6 +9,9 @@ import {MockCL_STETH} from "test/unit/mocks/MockCL_STETH.sol";
 import {MockYNLSDE} from "test/unit/mocks/MockYNLSDE.sol";
 import {Provider} from "src/module/Provider.sol";
 import {MockBuffer} from "test/unit/mocks/MockBuffer.sol";
+import {MockBNBxStakeManagerV2} from "test/unit/mocks/MockBNBxStakeManagerV2.sol";
+import {MockSlisBnbStakeManager} from "test/unit/mocks/MockSlisBnbStakeManager.sol";
+
 
 import "lib/forge-std/src/Test.sol";
 
@@ -16,14 +19,12 @@ contract Etches is Test {
     function mockAll() public {
         mockWETH9();
         mockStETH();
-        mockYNETH();
-        mockYNLSDE();
         mockRETH();
-        mockMETH();
-        mockOETH();
-        mockCL_STETH();
+        mockYNETH();
         mockProvider();
         mockBuffer();
+        mockBnbxStakeManager();
+        mockSlisBnbStakeManager();
     }
 
     function mockWETH9() public {
@@ -38,46 +39,34 @@ contract Etches is Test {
         vm.etch(MainnetContracts.STETH, code);
     }
 
-    function mockYNETH() public {
-        MockYNETH yneth = new MockYNETH();
-        bytes memory code = address(yneth).code;
-        vm.etch(MainnetContracts.YNETH, code);
-    }
-
-    function mockYNLSDE() public {
-        MockYNLSDE ynlsde = new MockYNLSDE();
-        bytes memory code = address(ynlsde).code;
-        vm.etch(MainnetContracts.YNLSDE, code);
-    }
-
     function mockRETH() public {
         WETH9 reth = new WETH9();
         bytes memory code = address(reth).code;
         vm.etch(MainnetContracts.RETH, code);
     }
 
-    function mockMETH() public {
-        WETH9 meth = new WETH9();
-        bytes memory code = address(meth).code;
-        vm.etch(MainnetContracts.METH, code);
-    }
-
-    function mockOETH() public {
-        WETH9 oeth = new WETH9();
-        bytes memory code = address(oeth).code;
-        vm.etch(MainnetContracts.OETH, code);
-    }
-
-    function mockCL_STETH() public {
-        MockCL_STETH cl_steth = new MockCL_STETH();
-        bytes memory code = address(cl_steth).code;
-        vm.etch(MainnetContracts.CL_STETH_FEED, code);
+    function mockYNETH() public {
+        MockYNETH yneth = new MockYNETH();
+        bytes memory code = address(yneth).code;
+        vm.etch(MainnetContracts.YNETH, code);
     }
 
     function mockProvider() public {
         Provider provider = new Provider();
         bytes memory code = address(provider).code;
         vm.etch(MainnetContracts.PROVIDER, code);
+    }
+
+    function mockBnbxStakeManager() public {
+        MockBNBxStakeManagerV2 bnbxStakeManager = new MockBNBxStakeManagerV2();
+        bytes memory code = address(bnbxStakeManager).code;
+        vm.etch(MainnetContracts.BNBX_STAKE_MANAGER, code);
+    }
+
+    function mockSlisBnbStakeManager() public {
+        MockSlisBnbStakeManager slisBnbStakeManager = new MockSlisBnbStakeManager();
+        bytes memory code = address(slisBnbStakeManager).code;
+        vm.etch(MainnetContracts.SLIS_BNB_STAKE_MANAGER, code);
     }
 
     function mockBuffer() public {
