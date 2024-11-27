@@ -37,28 +37,35 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     function test_Vault_addAsset() public {
         address asset = address(200);
         vm.prank(ADMIN);
-        vault.addAsset(asset, 18);
+        vault.addAsset(asset, 18, true);
         assertEq(vault.getAsset(address(200)).active, true);
+    }
+
+    function test_Vault_addAsset_notActive() public {
+        address asset = address(200);
+        vm.prank(ADMIN);
+        vault.addAsset(asset, 18, false);
+        assertEq(vault.getAsset(address(200)).active, false);
     }
 
     function test_Vault_addAsset_nullAddress() public {
         vm.prank(ADMIN);
         vm.expectRevert();
-        vault.addAsset(address(0), 18);
+        vault.addAsset(address(0), 18, true);
     }
 
     function test_Vault_addAsset_duplicateAddress() public {
         address asset = address(200);
         vm.startPrank(ADMIN);
-        vault.addAsset(asset, 18);
+        vault.addAsset(asset, 18, true);
         vm.expectRevert();
-        vault.addAsset(asset, 18);
+        vault.addAsset(asset, 18, true);
     }
 
     function test_Vault_addAsset_unauthorized() public {
         address asset = address(200);
         vm.expectRevert();
-        vault.addAsset(asset, 18);
+        vault.addAsset(asset, 18, true);
     }
 
     function test_Vault_setProvider() public {

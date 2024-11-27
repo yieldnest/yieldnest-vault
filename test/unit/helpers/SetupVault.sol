@@ -9,7 +9,6 @@ import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
     function setup() public returns (Vault vault, WETH9 weth) {
@@ -57,9 +56,9 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(MC.WETH, 18);
-        vault.addAsset(MC.BUFFER, 18);
-        vault.addAsset(MC.STETH, 18);
+        vault.addAsset(MC.WETH, 18, true);
+        vault.addAsset(MC.BUFFER, 18, false);
+        vault.addAsset(MC.STETH, 18, true);
 
         // configure processor rules
         setDepositRule(vault, MC.BUFFER, address(vault));
@@ -110,10 +109,10 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(MC.WETH, 18);
-        vault.addAsset(MC.STETH, 18);
-        vault.addAsset(MC.YNETH, 18);
-        vault.addAsset(MC.YNLSDE, 18);
+        vault.addAsset(MC.WETH, 18, true);
+        vault.addAsset(MC.STETH, 18, true);
+        vault.addAsset(MC.YNETH, 18, true);
+        vault.addAsset(MC.YNLSDE, 18, true);
 
         setDepositRule(vault, MC.BUFFER, address(vault));
         setDepositRule(vault, MC.YNETH, address(vault));

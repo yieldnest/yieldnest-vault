@@ -81,11 +81,11 @@ contract SetupVault is Test, MainnetActors, Etches {
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(MC.WETH, 18);
-        vault.addAsset(MC.BUFFER, 18);
-        vault.addAsset(MC.STETH, 18);
-        vault.addAsset(MC.YNETH, 18);
-        vault.addAsset(MC.YNLSDE, 18);
+        vault.addAsset(MC.WETH, 18, true);
+        vault.addAsset(MC.BUFFER, 18, false);
+        vault.addAsset(MC.STETH, 18, true);
+        vault.addAsset(MC.YNETH, 18, true);
+        vault.addAsset(MC.YNLSDE, 18, true);
 
         setDepositRule(vault, MC.BUFFER, address(vault));
         setDepositRule(vault, MC.YNETH, address(vault));
