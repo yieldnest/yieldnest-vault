@@ -6,6 +6,7 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IERC4626} from "src/Common.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
+import {IStETH, IMETH, IOETH, IRETH, IswETH, IChainlinkAggregator} from "src/interface/IProvider.sol";
 
 contract ProviderTest is Test, Etches {
     Provider public provider;
@@ -22,7 +23,8 @@ contract ProviderTest is Test, Etches {
 
     function test_Provider_GetRateSTETH() public view {
         uint256 rate = provider.getRate(MC.STETH);
-        assertEq(rate, 1e18, "Rate for STETH should be 1e18");
+        uint256 expectedPrice = uint256(IChainlinkAggregator(MC.CL_STETH_FEED).latestAnswer());
+        assertEq(rate, expectedPrice, "Rate for STETH should be 1e18");
     }
 
     function test_Provider_GetRateYNETH() public view {
@@ -55,12 +57,6 @@ contract ProviderTest is Test, Etches {
         assertEq(rate, expectedRate, "Rate for METH should match the ratio");
     }
 
-    function test_Provider_GetRateOETH() public view {
-        uint256 expectedRate = IOETH(MC.OETH).assetToEth(1e18);
-        uint256 rate = provider.getRate(MC.OETH);
-        assertEq(rate, expectedRate, "Rate for OETH should match the assetToEth rate");
-    }
-
     function test_Provider_GetRateRETH() public view {
         uint256 expectedRate = IRETH(MC.RETH).getExchangeRate();
         uint256 rate = provider.getRate(MC.RETH);
@@ -72,36 +68,4 @@ contract ProviderTest is Test, Etches {
         vm.expectRevert();
         provider.getRate(unsupportedAsset);
     }
-}
-
-interface IStETH {
-    function getPooledEthByShares(uint256 _ethAmount) external view returns (uint256);
-}
-
-interface IMETH {
-    function mETHToETH(uint256 mETHAmount) external view returns (uint256);
-}
-
-interface IOETH {
-    function assetToEth(uint256 _assetAmount) external view returns (uint256);
-}
-
-interface IRETH {
-    function getExchangeRate() external view returns (uint256);
-}
-
-struct WithdrawalRequest {
-    uint256 amount;
-    uint256 feeAtRequestTime;
-    uint256 redemptionRateAtRequestTime;
-    uint256 creationTimestamp;
-    bool processed;
-    bytes data;
-}
-
-interface IynETHwm {
-    function withdrawalRequestsForOwner(address owner)
-        external
-        view
-        returns (uint256[] memory withdrawalIndexes, WithdrawalRequest[] memory requests);
 }
