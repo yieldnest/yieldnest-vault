@@ -2,28 +2,28 @@
 pragma solidity ^0.8.24;
 
 import "lib/forge-std/src/Test.sol";
-import {Vault, IVault} from "src/Vault.sol";
+import {Vault} from "src/Vault.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
-import {WETH9} from "test/mocks/MockWETH.sol";
-import {Etches} from "test/helpers/Etches.sol";
+import {WETH9} from "test/unit/mocks/MockWETH.sol";
+import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
-
     function setup() public returns (Vault vault, WETH9 weth) {
-
         string memory name = "YieldNest MAX";
         string memory symbol = "ynMAx";
-        
+
         Vault vaultImplementation = new Vault();
 
         // Deploy the proxy
-        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol);
+        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18);
 
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
-        vault = Vault(address(vaultProxy));
-        weth = WETH9(payable(WETH));
+        vault = Vault(payable(address(vaultProxy)));
+        weth = WETH9(payable(MC.WETH));
 
         if (block.chainid == 31337) {
             configureLocal(vault);
@@ -37,97 +37,97 @@ contract SetupVault is Test, Etches, MainnetActors {
     function configureLocal(Vault vault) internal {
         // etch to mock the mainnet contracts
         mockAll();
-        
+
         vm.startPrank(ADMIN);
-        
+
+        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
+        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
+        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+
         // test cannot unpause vault withtout buffer
         vm.expectRevert();
-        vault.pause(false);
-        vault.setRateProvider(BUFFER_STRATEGY);
+        vault.unpause();
 
         // set the rate provider contract
-        vault.setRateProvider(ETH_RATE_PROVIDER);
+        vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(WETH, 18);
-        vault.addAsset(STETH, 18);
-        vault.addAsset(YNETH, 18);
-        vault.addAsset(YNLSDE, 18);
+        vault.addAsset(MC.WETH, 18, true);
+        vault.addAsset(MC.BUFFER, 18, false);
+        vault.addAsset(MC.STETH, 18, true);
 
         // configure processor rules
-        setDepositRule(vault, BUFFER_STRATEGY, address(vault));
-        setDepositRule(vault, YNETH, address(vault));
-        setDepositRule(vault, YNLSDE, address(vault));
-        setWethDepositRule(vault, WETH);
+        setDepositRule(vault, MC.BUFFER, address(vault));
+        setWethDepositRule(vault, MC.WETH);
 
-        setApprovalRule(vault, address(vault), BUFFER_STRATEGY);
-        setApprovalRule(vault, WETH, BUFFER_STRATEGY);
-        setApprovalRule(vault, address(vault), YNETH);
-        setApprovalRule(vault, address(vault), YNLSDE);
+        setApprovalRule(vault, address(vault), MC.BUFFER);
+        setApprovalRule(vault, MC.WETH, MC.BUFFER);
+        setApprovalRule(vault, address(vault), MC.YNETH);
+        setApprovalRule(vault, address(vault), MC.YNLSDE);
 
         // add strategies
-        vault.addStrategy(BUFFER_STRATEGY, 18);
-        vault.addStrategy(YNETH, 18);
-        vault.addStrategy(YNLSDE, 18);
 
-        // test cannot unpause vault withtout buffer
-        vm.expectRevert();
-        vault.pause(false);
-        vault.setBufferStrategy(BUFFER_STRATEGY);
+        vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault
-        vault.pause(false);
+        vault.unpause();
         vm.stopPrank();
     }
 
-   function configureMainnet(Vault vault) internal {
-
+    function configureMainnet(Vault vault) internal {
         // etch to mock the mainnet contracts
 
         mockAll();
-        
+
         string memory name = "YieldNest ETH MAX";
         string memory symbol = "ynETHx";
-        
+
         Vault vaultImplementation = new Vault();
 
         // Deploy the proxy
-        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol);
+        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18);
 
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
         // Create a Vault interface pointing to the proxy
-        vault = Vault(address(vaultProxy));
+        vault = Vault(payable(address(vaultProxy)));
 
         vm.startPrank(ADMIN);
 
-        vault.setRateProvider(ETH_RATE_PROVIDER);
+        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
+        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
+        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+
+        vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(WETH, 18);
-        vault.addAsset(STETH, 18);
-        vault.addAsset(YNETH, 18);
-        vault.addAsset(YNLSDE, 18);
+        vault.addAsset(MC.WETH, 18, true);
+        vault.addAsset(MC.STETH, 18, true);
+        vault.addAsset(MC.YNETH, 18, true);
+        vault.addAsset(MC.YNLSDE, 18, true);
 
-        setDepositRule(vault, BUFFER_STRATEGY, address(vault));
-        setDepositRule(vault, YNETH, address(vault));
-        setDepositRule(vault, YNLSDE, address(vault));
-        setWethDepositRule(vault, WETH);
+        setDepositRule(vault, MC.BUFFER, address(vault));
+        setDepositRule(vault, MC.YNETH, address(vault));
+        setDepositRule(vault, MC.YNLSDE, address(vault));
+        setWethDepositRule(vault, MC.WETH);
 
-        setApprovalRule(vault, address(vault), BUFFER_STRATEGY);
-        setApprovalRule(vault, WETH, BUFFER_STRATEGY);
-        setApprovalRule(vault, address(vault), YNETH);
-        setApprovalRule(vault, address(vault), YNLSDE);
+        setApprovalRule(vault, address(vault), MC.BUFFER);
+        setApprovalRule(vault, MC.WETH, MC.BUFFER);
+        setApprovalRule(vault, address(vault), MC.YNETH);
+        setApprovalRule(vault, address(vault), MC.YNLSDE);
 
-        // add strategies
-        vault.addStrategy(BUFFER_STRATEGY, 18);
-        vault.addStrategy(YNETH, 18);
-        vault.addStrategy(YNLSDE, 18);
-
-        vault.setBufferStrategy(BUFFER_STRATEGY);
+        vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault
-        vault.pause(false);
+        vault.unpause();
         vm.stopPrank();
     }
 
@@ -144,7 +144,7 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -162,7 +162,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         paramRules[1] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -172,7 +172,7 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, maxGas: 0});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
 
         vault_.setProcessorRule(weth_, funcSig, rule);
     }

@@ -2,16 +2,17 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {Vault, IVault} from "src/Vault.sol";
+import {Vault} from "src/Vault.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
-import {MainnetContracts} from "script/Contracts.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
-import {Etches} from "test/helpers/Etches.sol";
-import {WETH9} from "test/mocks/MockWETH.sol";
-import {SetupVault} from "test/helpers/SetupVault.sol";
-import {MockSTETH} from "test/mocks/MockST_ETH.sol";
+import {Etches} from "test/unit/helpers/Etches.sol";
+import {WETH9} from "test/unit/mocks/MockWETH.sol";
+import {SetupVault} from "test/unit/helpers/SetupVault.sol";
+import {MockSTETH} from "test/unit/mocks/MockST_ETH.sol";
 
-contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
+contract VaultProcessUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -27,7 +28,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         (vault, weth) = setupVault.setup();
 
         // Replace the steth mock with our custom MockSTETH
-        steth = MockSTETH(payable(STETH));
+        steth = MockSTETH(payable(MC.STETH));
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
@@ -50,66 +51,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         weth.transfer(address(vault), 50 ether); // Transfer some WETH to the vault
         steth.transfer(address(vault), 50 ether); // Transfer some STETH to the vault
 
-        // Process accounting to update deployed assets
         vault.processAccounting();
-
-        // Check that the deployed assets are updated correctly
-        assertEq(vault.getAsset(address(weth)).idleBalance, 50 ether, "WETH balance not updated correctly");
-        assertEq(vault.getAsset(address(steth)).idleBalance, 50 ether, "STETH balance not updated correctly");
-    }
-
-    function test_Vault_processAccounting_bufferStrategyIdleBalance() public {
-        // Simulate some asset and strategy balances
-        deal(alice, 200 ether); // Simulate some ether balance for the vault
-        weth.deposit{value: 100 ether}(); // Deposit ether into WETH
-        steth.deposit{value: 100 ether}(); // Mint some STETH
-
-        // Set up some initial balances for assets and strategies
-
-        uint256 START_BALANCE = 50 ether;
-        vm.prank(alice);
-        weth.transfer(address(vault), START_BALANCE); // Transfer some WETH to the vault
-        steth.transfer(address(vault), START_BALANCE); // Transfer some STETH to the vault
-
-        // Send some WETH to the buffer strategy
-        address bufferStrategy = vault.bufferStrategy();
-
-        vault.processAccounting();
-
-        uint256 ALLOCATION_BALANCE = 20 ether;
-
-        // Allocate funds to the buffer strategy
-        address[] memory targets = new address[](2);
-        targets[0] = address(weth);
-        targets[1] = bufferStrategy;
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", BUFFER_STRATEGY, START_BALANCE);
-        data[1] = abi.encodeWithSignature("deposit(uint256,address)", ALLOCATION_BALANCE, address(vault));
-
-        // Call the processor function to allocate funds to the buffer strategy
-        vm.prank(ADMIN);
-        vault.processor(targets, values, data);
-
-        // Process accounting to update deployed assets
-        vault.processAccounting();
-        uint256 afterBufferIdleBalance = vault.getStrategy(bufferStrategy).idleBalance;
-
-        // Check that the deployed assets are updated correctly
-        assertEq(
-            vault.getAsset(address(weth)).idleBalance,
-            START_BALANCE - ALLOCATION_BALANCE,
-            "WETH balance not updated correctly"
-        );
-        assertEq(
-            vault.getStrategy(bufferStrategy).idleBalance,
-            afterBufferIdleBalance,
-            "Buffer strategy idle balance not updated correctly"
-        );
     }
 
     function test_Vault_processor_fails_with_invalid_asset_approve() public {
@@ -126,7 +68,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("approve(address,uint256)", address(vault), 50 ether);
 
         // Expect the processAllocation to fail with an invalid asset
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vm.expectRevert();
         vault.processor(targets, values, data);
     }
@@ -145,7 +87,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("transfer(address,uint256)", address(vault), 50 ether);
 
         // Expect the processAllocation to fail with an invalid asset
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vm.expectRevert();
         vault.processor(targets, values, data);
     }
@@ -155,7 +97,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 
         // Prepare allocation targets and values
         address[] memory targets = new address[](1);
-        targets[0] = address(YNETH);
+        targets[0] = address(MC.YNETH);
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
@@ -164,7 +106,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("deposit(uint256,address)", 100_001 ether, address(vault));
 
         // Expect the processAllocation to fail with an invalid asset
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vm.expectRevert();
         vault.processor(targets, values, data);
     }
@@ -174,7 +116,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 
         // Prepare allocation targets and values
         address[] memory targets = new address[](1);
-        targets[0] = address(YNETH);
+        targets[0] = MC.YNETH;
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
@@ -183,7 +125,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("deposit(uint256,address)", 1, address(vault));
 
         // Expect the processAllocation to fail with an invalid asset
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vm.expectRevert();
         vault.processor(targets, values, data);
     }
@@ -193,7 +135,7 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
 
         // Prepare allocation targets and values
         address[] memory targets = new address[](1);
-        targets[0] = address(YNETH);
+        targets[0] = MC.YNETH;
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
@@ -202,14 +144,14 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("deposit(uint256,address)", 100, address(420));
 
         // Expect the processAllocation to fail with an invalid asset
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vm.expectRevert();
         vault.processor(targets, values, data);
     }
 
     function test_Vault_getProcessorRule() public view {
         bytes4 sig = bytes4(keccak256("deposit(uint256,address)"));
-        IVault.FunctionRule memory rule = vault.getProcessorRule(BUFFER_STRATEGY, sig);
+        IVault.FunctionRule memory rule = vault.getProcessorRule(MC.BUFFER, sig);
         IVault.FunctionRule memory expectedResult;
         expectedResult.isActive = true;
         expectedResult.paramRules = new IVault.ParamRule[](2);
@@ -218,7 +160,6 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
         expectedResult.paramRules[1] =
             IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: new address[](1)});
         expectedResult.paramRules[1].allowList[0] = address(vault);
-        expectedResult.maxGas = 0;
 
         // Add assertions
         assertEq(rule.isActive, expectedResult.isActive, "isActive does not match");
@@ -245,7 +186,56 @@ contract VaultProcessUnitTest is Test, MainnetContracts, MainnetActors, Etches {
                 );
             }
         }
+    }
 
-        assertEq(rule.maxGas, expectedResult.maxGas, "maxGas does not match");
+    function test_Vault_processorCall_failsWithBadTarget() public {
+        address[] memory targets = new address[](1);
+        targets[0] = address(0); // Invalid target address
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 100, address(420));
+
+        // Expect the processor call to fail with an invalid target
+        vm.prank(PROCESSOR);
+        vm.expectRevert();
+        vault.processor(targets, values, data);
+    }
+
+    function test_Vault_processorCall_failsWithBadCalldata() public {
+        // make sure the processor rule has been set
+
+        bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        address[] memory allowList = new address[](1);
+        allowList[0] = address(vault);
+
+        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+
+        vm.prank(PROCESSOR_MANAGER);
+        vault.setProcessorRule(MC.BUFFER, funcSig, rule);
+
+        address[] memory targets = new address[](1);
+        targets[0] = MC.BUFFER;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 10000000 ether, address(vault)); // Invalid function signature
+
+        // Expect the processor call to fail with and send return data
+        vm.prank(PROCESSOR);
+        vm.expectRevert();
+        vault.processor(targets, values, data);
     }
 }
