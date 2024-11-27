@@ -10,6 +10,8 @@ import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
+import {IProvider, IChainlinkAggregator} from "src/interface/IProvider.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -194,6 +196,9 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         uint256 expectedTotalAssets = 0;
         uint256 expectedTotalSupply = 0;
 
+        console.log("expectedTotalAssets:", expectedTotalAssets);
+        console.log("expectedTotalSupply:", expectedTotalSupply);
+
         address steth = MC.STETH;
 
         // Approve and deposit WETH : 1000 ether
@@ -204,31 +209,41 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         expectedTotalSupply += shares;
         vm.stopPrank();
 
+        console.log("expectedTotalAssets:", expectedTotalAssets);
+        console.log("expectedTotalSupply:", expectedTotalSupply);
+
         // Approve and deposit STETH :
         vm.startPrank(alice);
         deal(alice, depositAmountSTETH);
         (success,) = MC.STETH.call{value: depositAmountSTETH}("");
         require(success, "Steth transfer failed");
-        IERC20(steth).approve(address(vault), depositAmountSTETH);
         uint256 aliceStEthDepositAmount = IERC20(steth).balanceOf(alice);
+
+        IERC20(steth).approve(address(vault), aliceStEthDepositAmount);
         shares = vault.depositAsset(steth, aliceStEthDepositAmount, alice);
-        expectedTotalAssets += depositAmountSTETH;
+        expectedTotalAssets += vault.previewRedeem(shares);
         expectedTotalSupply += shares;
-        vm.stopPrank();
+
+        console.log("expectedTotalAssets:", expectedTotalAssets);
+        console.log("expectedTotalSupply:", expectedTotalSupply);
 
         // Direct transfer of WETH to the vault
-        deal(address(this), depositAmountWETH);
+        deal(alice, depositAmountWETH);
         (success,) = MC.WETH.call{value: depositAmountWETH}("");
         require(success, "Weth transfer failed");
         IERC20(MC.WETH).transfer(address(vault), depositAmountWETH);
         expectedTotalAssets += depositAmountWETH;
 
         // Direct transfer of STETH to the vault
-        deal(address(this), depositAmountSTETH);
+        deal(alice, depositAmountSTETH);
         (success,) = MC.STETH.call{value: depositAmountSTETH}("");
         require(success, "Steth transfer failed");
-        IERC20(steth).transfer(address(vault), IERC20(steth).balanceOf(address(this)));
-        expectedTotalAssets += depositAmountSTETH;
+        aliceStEthDepositAmount = IERC20(steth).balanceOf(alice);
+
+        uint256 rate = IProvider(MC.PROVIDER).getRate(MC.STETH);
+        expectedTotalAssets += (aliceStEthDepositAmount * rate) / (10 ** 18);
+
+        IERC20(steth).transfer(address(vault), aliceStEthDepositAmount);
 
         vault.processAccounting();
 

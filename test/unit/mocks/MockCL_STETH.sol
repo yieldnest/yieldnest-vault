@@ -2,8 +2,6 @@
 pragma solidity ^0.8.24;
 
 contract MockCL_STETH {
-    uint256 private rate = 1e18;
-
     constructor() {}
 
     function latestRoundData()
@@ -12,5 +10,9 @@ contract MockCL_STETH {
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
         return (1, 1000000000000000000, 1630000000, 1630000000, 1);
+    }
+
+    function latestAnswer() external pure returns (int256) {
+        return int256(1e18 - 99987e13 + 1e18);
     }
 }
