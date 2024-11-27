@@ -26,12 +26,12 @@ contract Provider is IProvider {
             return 1e18;
         }
 
-        if (asset == MC.BUFFER || asset == MC.YNETH || asset == MC.YNLSDE || asset == MC.WOETH) {
-            return IERC4626(asset).previewRedeem(1e18);
+        if (asset == MC.STETH) {
+            return 1e18;
         }
 
-        if (asset == MC.STETH) {
-            return uint256(IChainlinkAggregator(MC.CL_STETH_FEED).latestAnswer());
+        if (asset == MC.BUFFER || asset == MC.YNETH || asset == MC.YNLSDE || asset == MC.WOETH) {
+            return IERC4626(asset).previewRedeem(1e18);
         }
 
         if (asset == MC.WSTETH) {
