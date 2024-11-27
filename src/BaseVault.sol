@@ -477,7 +477,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
     }
 
-    //// ADMIN ////
+    //// ADMIN //// 
 
     bytes32 public constant PROCESSOR_ROLE = keccak256("PROCESSOR_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -524,6 +524,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         onlyRole(PROCESSOR_MANAGER_ROLE)
     {
         _getProcessorStorage().rules[target][functionSig] = rule;
+        emit SetProcessorRule(target, functionSig, rule);
     }
 
     /**
@@ -556,9 +557,6 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
 
         VaultStorage storage vaultStorage = _getVaultStorage();
-        if (provider() == address(0)) {
-            revert ProviderNotSet();
-        }
         vaultStorage.paused = true;
         emit Pause(true);
     }

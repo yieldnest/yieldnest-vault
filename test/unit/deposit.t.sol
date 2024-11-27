@@ -271,4 +271,22 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         vault.depositAsset(bufferAsset, 1000, user);
         vm.stopPrank();
     }
+
+    function test_maxDeposit_is_zero_when_paused() public {
+        // Pause the vault
+        vm.startPrank(PAUSER);
+        vault.pause();
+
+        // Check that maxDeposit is zero for Alice
+        uint256 maxDepositAmount = vault.maxDeposit(alice);
+        assertEq(maxDepositAmount, 0, "maxDeposit should be zero when paused");
+
+        // Unpause the vault
+        vm.startPrank(UNPAUSER);
+        vault.unpause();
+
+        // Check that maxDeposit is no longer zero for Alice
+        maxDepositAmount = vault.maxDeposit(alice);
+        assertGt(maxDepositAmount, 0, "maxDeposit should not be zero when unpaused");
+    }
 }

@@ -187,4 +187,55 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
             }
         }
     }
+
+    function test_Vault_processorCall_failsWithBadTarget() public {
+        address[] memory targets = new address[](1);
+        targets[0] = address(0); // Invalid target address
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 100, address(420));
+
+        // Expect the processor call to fail with an invalid target
+        vm.prank(PROCESSOR);
+        vm.expectRevert();
+        vault.processor(targets, values, data);
+    }
+
+    function test_Vault_processorCall_failsWithBadCalldata() public {
+        // make sure the processor rule has been set
+
+        bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        address[] memory allowList = new address[](1);
+        allowList[0] = address(vault);
+
+        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+
+        vm.prank(PROCESSOR_MANAGER);
+        vault.setProcessorRule(MC.BUFFER, funcSig, rule);
+
+        address[] memory targets = new address[](1);
+        targets[0] = MC.BUFFER;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 10000000 ether, address(vault)); // Invalid function signature
+
+        // Expect the processor call to fail with and send return data
+        vm.prank(PROCESSOR);
+        vm.expectRevert();
+        vault.processor(targets, values, data);
+    }
 }
