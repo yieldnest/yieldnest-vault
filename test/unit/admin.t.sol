@@ -86,4 +86,18 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vm.expectRevert();
         vault.setBuffer(address(0));
     }
+
+    function test_Vault_pause_whenPaused() public {
+        vm.prank(PAUSER);
+        vault.pause();
+        vm.prank(PAUSER);
+        vm.expectRevert();
+        vault.pause();
+    }
+
+    function test_Vault_unpause_notPaused() public {
+        vm.prank(UNPAUSER);
+        vm.expectRevert();
+        vault.unpause();
+    }
 }
