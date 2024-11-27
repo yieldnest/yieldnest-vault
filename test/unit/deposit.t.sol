@@ -11,6 +11,9 @@ import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MockSTETH} from "test/unit/mocks/MockST_ETH.sol";
 import {IVault} from "src/interface/IVault.sol";
+import {MockERC20} from "test/unit/mocks/MockERC20.sol";
+import {IERC4626} from "src/Common.sol";
+import {Provider} from "src/module/Provider.sol";
 
 contract VaultDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -228,5 +231,46 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         // Check the shares minted
         uint256 assets = vault.totalAssets();
         assertEq(depositAmount, assets, "No shares minted");
+    }
+
+    function test_Vault_depositAsset_InvalidAsset() public {
+        // Deploy a random ERC20 token that hasn't been added to vault
+        MockERC20 randomToken = new MockERC20("Random", "RND");
+
+        vm.startPrank(alice);
+        // Mint some tokens to alice
+        randomToken.mint(1000);
+
+        // Try to deposit the random token
+        randomToken.approve(address(vault), 1000);
+        bytes memory encodedError = abi.encodeWithSelector(Provider.UnsupportedAsset.selector, address(randomToken));
+        vm.expectRevert(encodedError);
+        vault.depositAsset(address(randomToken), 1000, alice);
+        vm.stopPrank();
+    }
+
+    function test_Vault_depositAsset_BufferAsset() public {
+        // Get the buffer asset address
+        address bufferAsset = MC.BUFFER;
+
+        // Try to deposit the buffer asset
+        address user = address(0xdeadbeef);
+        vm.startPrank(user);
+
+        // Give user some ETH and convert to WETH
+        deal(user, 1000);
+        weth.deposit{value: 1000}();
+
+        // Deposit WETH to buffer to get buffer tokens
+        weth.approve(MC.BUFFER, 1000);
+        IERC4626(MC.BUFFER).deposit(1000, user);
+
+        uint256 bufferBalance = IERC4626(MC.BUFFER).balanceOf(user);
+
+        IERC4626(MC.BUFFER).approve(address(vault), 1000);
+
+        vm.expectRevert(IVault.AssetNotActive.selector);
+        vault.depositAsset(bufferAsset, 1000, user);
+        vm.stopPrank();
     }
 }

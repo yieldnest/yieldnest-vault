@@ -57,7 +57,6 @@ interface IVault is IERC4626 {
     error InvalidTarget(address);
     error InvalidDecimals();
     error InvalidFunction(address target, bytes4 funcSig);
-    error AssetNotFound();
     error DuplicateAsset(address asset);
     error ExceededMaxWithdraw(address, uint256, uint256);
     error ExceededMaxRedeem(address, uint256, uint256);
@@ -66,6 +65,7 @@ interface IVault is IERC4626 {
     error ProviderNotSet();
     error BufferNotSet();
     error DepositFailed();
+    error AssetNotActive();
 
     event SetProvider(address indexed provider);
     event SetBuffer(address indexed buffer);
@@ -90,7 +90,7 @@ interface IVault is IERC4626 {
     function setBuffer(address buffer) external;
     function setProcessorRule(address target, bytes4 functionSig, FunctionRule memory rule) external;
 
-    function addAsset(address asset_, uint8 decimals_) external;
+    function addAsset(address asset_, uint8 decimals_, bool active_) external;
     function pause() external;
     function unpause() external;
 
