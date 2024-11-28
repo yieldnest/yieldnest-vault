@@ -11,10 +11,9 @@ import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IERC4626} from "src/Common.sol";
+import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
 
-
-
-contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
+contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
     Vault public vault;
 
@@ -23,7 +22,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         vault = setup.deploy();
 
         vm.startPrank(ADMIN);
-        setWethWithdrawRule();
+        setWBNBWithdrawRule();
         setYnBNBkDepositRule();
         vm.stopPrank();
     }
@@ -53,45 +52,59 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
     function test_Vault_ynBNBk_depositAndAllocate() public {
         // if (assets < 0.1 ether) return;
         // if (assets > 100_000 ether) return;
-        uint256 assets = 1 ether;
 
-        // Test the totalAssets function
-        uint256 totalAssets = vault.totalAssets();
-        assertGt(totalAssets, 0, "Total assets should be greater than 0");
+        address bob = address(1776);
 
-        // Test the convertToShares function
-        uint256 shares = vault.convertToShares(assets);
-        assertGt(shares, 0, "Shares should be greater than 0");
+        vm.deal(bob, 10000 ether);
 
-        // Test the convertToAssets function
-        uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        address assetAddress = MC.SLISBNB;
+    
+        // deposit BNB to SLISBNB through stake manager
+        ISlisBnbStakeManager stakeManager = ISlisBnbStakeManager(MC.SLIS_BNB_STAKE_MANAGER);
 
-        (bool success,) = MC.WETH.call{value: assets}("");
-        if (!success) revert("Weth deposit failed");
-        IERC20(MC.WETH).approve(address(vault), assets);
+        uint256 assets = 100 ether;
 
-        address assetAddress = vault.asset();
-        address receiver = address(this);
+        vm.prank(bob);
+        stakeManager.deposit{value: assets * 2}();
+        
+        vm.startPrank(bob);
+        // previous vault total Assets
+        uint256 previousTotalAssets = vault.totalAssets();
 
-        uint256 depositedShares = vault.depositAsset(assetAddress, assets, receiver);
-        assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
+        IERC20(assetAddress).approve(address(vault), assets);
+        uint256 depositedShares = vault.depositAsset(assetAddress, assets, bob);
+
+        uint256 assetBalance = IERC20(assetAddress).balanceOf(address(vault));
+        assertEq(assetBalance, assets, "Vault should hold the deposited assets");
 
         vm.startPrank(PROCESSOR);
-        processWithrdawWeth(assets);
-        processDepositYnETH(assets);
+        processApproveAsset(assetAddress, assets, MC.YNBNBk);
+        processDepositYnBNBk(assets);
 
         uint256 ynBnbkBalance = IERC20(MC.YNBNBk).balanceOf(address(vault));
         vm.stopPrank();
 
         uint256 newTotalAssets = vault.totalAssets();
-        assertEqThreshold(newTotalAssets, totalAssets + assets, 5, "New total assets should equal deposit amount plus original total assets");
+        assertApproxEqAbs(newTotalAssets, previousTotalAssets + stakeManager.convertSnBnbToBnb(assets), 100, "New total assets should equal deposit amount plus original total assets");
     }
 
-    function processWithrdawWeth(uint256 assets) public {
-        // convert WETH to ETH
+    function processApproveAsset(address asset, uint256 amount, address target) public {
         address[] memory targets = new address[](1);
-        targets[0] = MC.WETH;
+        targets[0] = asset;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", target, amount);
+
+        vault.processor(targets, values, data);
+    }
+
+    function processWithrdawWBNB(uint256 assets) public {
+        // convert WBNB to BNB
+        address[] memory targets = new address[](1);
+        targets[0] = MC.WBNB;
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
@@ -101,21 +114,22 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
         vault.processor(targets, values, data);
     }
-    function processDepositYnETH(uint256 assets) public {
-        // convert WETH to ETH
+
+    function processDepositYnBNBk(uint256 assets) public {
+        // deposit BNB to ynBNBk
         address[] memory targets = new address[](1);
-        targets[0] = MC.YNETH;
+        targets[0] = MC.YNBNBk;
 
         uint256[] memory values = new uint256[](1);
-        values[0] = assets;
+        values[0] = 0;
 
         bytes[] memory data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("depositETH(address)", address(vault));
+        data[0] = abi.encodeWithSignature("deposit(uint256,address)", assets, address(vault));
 
         vault.processor(targets, values, data);
     }
 
-    function setWethWithdrawRule() internal {
+    function setWBNBWithdrawRule() internal {
         bytes4 funcSig = bytes4(keccak256("withdraw(uint256)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](1);
@@ -151,9 +165,15 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
         address bob = address(1776);
 
-        vm.deal(bob, 100 ether);
+        vm.deal(bob, 10000 ether);
 
+        // deposit BNB to SLISBNB through stake manager
+        ISlisBnbStakeManager stakeManager = ISlisBnbStakeManager(MC.SLIS_BNB_STAKE_MANAGER);
 
+        uint256 depositAmount = 100 ether;
+
+        vm.prank(bob);
+        stakeManager.deposit{value: depositAmount * 2}();
         
         vm.startPrank(bob);
         // previous vault total Assets

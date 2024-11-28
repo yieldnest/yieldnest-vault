@@ -32,7 +32,10 @@ contract SetupVault is Test, MainnetActors, Etches {
         assertEq(vault.symbol(), "ynBNBx");
 
         configureMainnet(vault);
-        
+
+        vm.prank(ADMIN);
+        vault.unpause();
+
         return vault;
     }
 
@@ -67,6 +70,7 @@ contract SetupVault is Test, MainnetActors, Etches {
         setApprovalRule(vault, address(vault), MC.BUFFER);
         setApprovalRule(vault, MC.WBNB, MC.BUFFER);
         setApprovalRule(vault, address(vault), MC.YNBNBk);
+        setApprovalRule(vault, MC.SLISBNB, MC.YNBNBk);
 
         vault.setBuffer(MC.BUFFER);                                                                  
         
