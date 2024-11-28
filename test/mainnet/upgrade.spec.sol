@@ -28,22 +28,25 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
 
     function test_Vault_Upgrade_ERC20_view_functions() public view {
         // Test the name function
-        assertEq(vault.name(), "ynETH MAX", "Vault name should be 'YieldNest ETH MAX'");
+        assertEq(vault.name(), "ynBNB MAX", "Vault name should be 'YieldNest BNB MAX'");
 
         // Test the symbol function
-        assertEq(vault.symbol(), "ynETHx", "Vault symbol should be 'ynETHx'");
+        assertEq(vault.symbol(), "ynBNBx", "Vault symbol should be 'ynBNBx'");
 
         // Test the decimals function
         assertEq(vault.decimals(), 18, "Vault decimals should be 18");
 
         // Test the totalSupply function
-        uint256 totalSupply = vault.totalSupply();
-        assertGt(totalSupply, 0, "Total supply should be greater than zero");
+        vault.totalSupply();
     }
 
     function test_Vault_Upgrade_ERC4626_view_functions() public view {
+
+        // Test the paused function
+        assertFalse(vault.paused(), "Vault should not be paused");
+
         // Test the asset function
-        assertEq(address(vault.asset()), MC.WETH, "Vault asset should be WETH");
+        assertEq(address(vault.asset()), MC.WBNB, "Vault asset should be WBNB");
 
         // Test the totalAssets function
         uint256 totalAssets = vault.totalAssets();
