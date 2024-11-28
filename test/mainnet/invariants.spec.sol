@@ -15,8 +15,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
     function setUp() public {
         SetupVault setup = new SetupVault();
-        setup.upgrade();
-        vault = Vault(payable(MC.YNETHX));
+        vault = setup.deploy();
     }
 
     function totalSupplyInvariant(uint256 supply) public view {

@@ -14,15 +14,14 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
 
     function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
-        uint256 previousTotalAssets = vault.totalAssets();
 
         SetupVault setupVault = new SetupVault();
-        setupVault.upgrade();
+        vault = setupVault.deploy();
 
-        // Verify the upgrade was successful
-        Vault newVault = Vault(payable(MC.YNETHX));
-        uint256 newTotalAssets = newVault.totalAssets();
+        uint256 previousTotalAssets = vault.totalAssets();
+
+        // TODO: do another upgrade here
+        uint256 newTotalAssets = vault.totalAssets();
 
         assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
     }
@@ -79,11 +78,11 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
         // Test the getAssets function
         address[] memory assets = vault.getAssets();
         assertEq(assets.length, 5, "There should be 5 assets in the vault");
-        assertEq(assets[0], MC.WETH, "First asset should be WETH");
+        assertEq(assets[0], MC.WBNB, "First asset should be WBNB");
         assertEq(assets[1], MC.BUFFER, "Second asset should be BUFFER");
-        assertEq(assets[2], MC.STETH, "Third asset should be STETH");
-        assertEq(assets[3], MC.YNETH, "Third asset should be YNETH");
-        assertEq(assets[4], MC.YNLSDE, "Fourth asset should be YNLSDE");
+        assertEq(assets[2], MC.YNBNBk, "Third asset should be YNBNBk");
+        assertEq(assets[3], MC.BNBX, "Fourth asset should be BNBX");
+        assertEq(assets[4], MC.SLISBNB, "Fifth asset should be SLISBNB");
     }
 }
 

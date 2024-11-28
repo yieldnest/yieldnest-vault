@@ -10,12 +10,9 @@ import {IVault} from "src/interface/IVault.sol";
 import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
+import {IERC4626} from "src/Common.sol";
 
-interface IynETH {
-    function depositETH(address receiver) external payable returns (uint256);
-    function balanceOf(address owner) external returns (uint256);
-    function approve(address spender, uint256 amount) external returns (uint256);
-}
+
 
 contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
@@ -23,12 +20,11 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
     function setUp() public {
         SetupVault setup = new SetupVault();
-        setup.upgrade();
-        vault = Vault(payable(MC.YNETHX));
+        vault = setup.deploy();
 
         vm.startPrank(ADMIN);
         setWethWithdrawRule();
-        setYnETHDepositETHRule();
+        setYnBNBkDepositRule();
         vm.stopPrank();
     }
 
@@ -54,7 +50,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         event Log(string,uint256);
 
 
-    function test_Vault_ynETH_depositAndAllocate() public {
+    function test_Vault_ynBNBk_depositAndAllocate() public {
         // if (assets < 0.1 ether) return;
         // if (assets > 100_000 ether) return;
         uint256 assets = 1 ether;
@@ -85,8 +81,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         processWithrdawWeth(assets);
         processDepositYnETH(assets);
 
-        uint256 ynEthBalance = IERC20(MC.YNETH).balanceOf(MC.YNETHX);
-        emit Log("ynEthBal", ynEthBalance);
+        uint256 ynBnbkBalance = IERC20(MC.YNBNBk).balanceOf(address(vault));
         vm.stopPrank();
 
         uint256 newTotalAssets = vault.totalAssets();
@@ -130,45 +125,53 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         
         IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
 
-        vault.setProcessorRule(MC.WETH, funcSig, rule);
+        vault.setProcessorRule(MC.WBNB, funcSig, rule);
     }
 
-    function setYnETHDepositETHRule() internal {
-        bytes4 funcSig = bytes4(keccak256("depositETH(address)"));
+    function setYnBNBkDepositRule() internal {
+        bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
 
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](1);
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        paramRules[0] = 
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         address[] memory allowList = new address[](1);
-        allowList[0] = MC.YNETHX; // receiver
+        allowList[0] = address(vault); // receiver
 
-        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
         IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
 
-        vault.setProcessorRule(MC.YNETH, funcSig, rule);
+        vault.setProcessorRule(MC.YNBNBk, funcSig, rule);
     }
 
-    function test_Vault_ynETH_depositETH() public {
-        IynETH yneth = IynETH(payable(MC.YNETH));
+    function test_Vault_ynBNBk_depositBNB() public {
+        IERC4626 ynbnbk = IERC4626(payable(MC.YNBNBk));
 
         address bob = address(1776);
 
         vm.deal(bob, 100 ether);
+
+
         
         vm.startPrank(bob);
         // previous vault total Assets
         uint256 previousTotalAssets = vault.totalAssets();
-        uint256 ynEthShares = yneth.depositETH{value: 100 ether}(bob);
-        uint256 bobYnETHBalance = yneth.balanceOf(bob);
 
-        assertEq(ynEthShares, bobYnETHBalance, "Eth deposited in ynETH should be correct");
+        IERC20(MC.SLISBNB).approve(address(ynbnbk), 100 ether);
+        uint256 ynBnbkShares = ynbnbk.deposit(100 ether, bob);
 
-        yneth.approve(MC.YNETHX, bobYnETHBalance);
-        vault.depositAsset(MC.YNETH, bobYnETHBalance, bob);
+        uint256 bobYnBNBkBalance = ynbnbk.balanceOf(bob);
+
+        assertEq(ynBnbkShares, bobYnBNBkBalance, "BNB deposited in ynBNBk should be correct");
+
+        ynbnbk.approve(address(vault), bobYnBNBkBalance);
+        vault.depositAsset(MC.YNBNBk, bobYnBNBkBalance, bob);
 
         uint256 newTotalAssets = vault.totalAssets();
-        uint256 ynEthRate = IProvider(MC.PROVIDER).getRate(MC.YNETH);
+        uint256 ynBnbkRate = IProvider(MC.PROVIDER).getRate(MC.YNBNBk);
 
-        assertEq(newTotalAssets, previousTotalAssets + (ynEthShares * ynEthRate / 1e18), "Total assets should match the previous total assets plus the equivalent ynETH shares in base denomination");
+        assertEq(newTotalAssets, previousTotalAssets + (ynBnbkShares * ynBnbkRate / 1e18), "Total assets should match the previous total assets plus the equivalent ynBNBk shares in base denomination");
     }
 }
