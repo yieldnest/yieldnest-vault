@@ -104,14 +104,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Returns the maximum amount of assets that can be deposited by a given owner.
-     * @param owner The address of the owner.
      * @return uint256 The maximum amount of assets.
      */
-    function maxDeposit(address owner) public view virtual returns (uint256) {
+    function maxDeposit(address) public view virtual returns (uint256) {
         if (paused()) {
             return 0;
         }
-        return IERC20(asset()).balanceOf(owner);
+        return type(uint256).max;
     }
 
     /**

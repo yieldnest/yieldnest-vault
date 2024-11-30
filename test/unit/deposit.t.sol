@@ -186,7 +186,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
     function test_Vault_maxDeposit() public view {
         uint256 maxDeposit = vault.maxDeposit(alice);
-        assertEq(maxDeposit, weth.balanceOf(alice), "Max deposit does not match");
+        assertEq(maxDeposit, type(uint256).max, "Max deposit does not match");
     }
 
     function test_Vault_previewDepositAsset() public view {
