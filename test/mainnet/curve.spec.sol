@@ -12,6 +12,8 @@ import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {ICurveRegistry} from "test/interface/external/curve/ICurveRegistry.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {IStETH} from "test/interface/external/lido/IStETH.sol";
+import {IValidator} from "src/interface/IValidator.sol";
+
 
 
 interface IynETH {
@@ -88,7 +90,8 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
 
             _vault.setProcessorRule(curvePools[i], exchange, IVault.FunctionRule({
                 isActive: true,
-                paramRules: exchangeRules
+                paramRules: exchangeRules,
+                validator: IValidator(address(0))
             }));
         }
         // Set approval rule to allow ethStethPool to spend stETH tokens from the vault

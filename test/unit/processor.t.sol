@@ -11,6 +11,20 @@ import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MockSTETH} from "test/unit/mocks/MockST_ETH.sol";
+import {IValidator} from "src/interface/IValidator.sol";
+
+// Mock validator contract for testing
+contract MockValidator is IValidator {
+    bool public validationResult = true;
+
+    function setValidationResult(bool result) external {
+        validationResult = result;
+    }
+
+    function validate(address target, uint256 value, bytes calldata data) external view {
+        require(validationResult, "Validation failed");
+    }
+}
 
 contract VaultProcessUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -219,7 +233,8 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vm.prank(PROCESSOR_MANAGER);
         vault.setProcessorRule(MC.BUFFER, funcSig, rule);
@@ -236,6 +251,88 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         // Expect the processor call to fail with and send return data
         vm.prank(PROCESSOR);
         vm.expectRevert();
+        vault.processor(targets, values, data);
+    }
+
+    function _setupValidatorRule() internal returns (MockValidator) {
+        bytes4 funcSig = bytes4(keccak256("deposit2()"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        // First param rule for uint256 amount
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        // Second param rule for address receiver
+        address[] memory allowList = new address[](1);
+        // set to wrong target, but should be ignored
+        allowList[0] = address(MC.YNETH);
+        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        // Create mock validator contract
+        MockValidator validator = new MockValidator();
+
+        // Create rule with validator
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(validator))});
+
+        // Set the rule
+        vm.prank(PROCESSOR_MANAGER);
+        vault.setProcessorRule(MC.STETH, funcSig, rule);
+
+        // Verify rule was set correctly
+        IVault.FunctionRule memory setRule = vault.getProcessorRule(MC.STETH, funcSig);
+        assertTrue(setRule.isActive, "Rule should be active");
+        assertEq(address(setRule.validator), address(validator), "Validator address should match");
+        assertEq(setRule.paramRules.length, paramRules.length, "Param rules length should match");
+
+        return validator;
+    }
+
+    function test_Vault_processorRule_withValidator_success() public {
+        MockValidator validator = _setupValidatorRule();
+
+        // Send 10 ether to vault
+        deal(address(vault), 10 ether);
+
+        // Prepare allocation targets and values
+        address[] memory targets = new address[](1);
+        targets[0] = MC.STETH;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 10 ether;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit2()");
+
+        validator.setValidationResult(true);
+
+        // Call processor with 10 ether value
+        vm.prank(PROCESSOR);
+        vault.processor(targets, values, data);
+    }
+
+    function test_Vault_processorRule_withValidator_failure() public {
+        MockValidator validator = _setupValidatorRule();
+
+        // Send 10 ether to vault
+        deal(address(vault), 10 ether);
+
+        // Prepare allocation targets and values
+        address[] memory targets = new address[](1);
+        targets[0] = MC.STETH;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 10 ether;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit2()");
+
+        validator.setValidationResult(false);
+
+        // Call processor with 10 ether value
+        vm.prank(PROCESSOR);
+        vm.expectRevert("Validation failed");
         vault.processor(targets, values, data);
     }
 }
