@@ -22,7 +22,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
 
     function setUp() public {
         SetupVault setupVault = new SetupVault();
-        (vault, weth) = setupVault.setup();
+        (vault, weth,) = setupVault.setup();
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);

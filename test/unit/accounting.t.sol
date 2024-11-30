@@ -8,6 +8,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
+import {TestPlugin} from "test/unit/helpers/TestPlugin.sol";
 import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IProvider, IChainlinkAggregator} from "src/interface/IProvider.sol";
@@ -18,13 +19,14 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
 
     Vault public vault;
     WETH9 public weth;
+    TestPlugin public plugin;
 
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 100_000 ether;
 
     function setUp() public {
         SetupVault setupVault = new SetupVault();
-        (vault, weth) = setupVault.setup();
+        (vault, weth, plugin) = setupVault.setup();
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
@@ -38,16 +40,17 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
 
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
-        targets[0] = MC.WETH;
-        targets[1] = MC.BUFFER;
+        targets[0] = address(plugin);
+        targets[1] = address(plugin);
 
         uint256[] memory values = new uint256[](2);
         values[0] = 0;
         values[1] = 0;
 
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
-        data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
+        data[0] = abi.encodeWithSignature("approveToken(address,address,uint256)", MC.WETH, vault.buffer(), amount);
+        data[1] =
+            abi.encodeWithSignature("depositIntoVault(address,uint256,address)", MC.BUFFER, amount, address(vault));
 
         vm.prank(ADMIN);
         vault.processor(targets, values, data);

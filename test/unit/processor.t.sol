@@ -10,6 +10,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
+import {TestPlugin} from "test/unit/helpers/TestPlugin.sol";
 import {MockSTETH} from "test/unit/mocks/MockST_ETH.sol";
 
 contract VaultProcessUnitTest is Test, MainnetActors, Etches {
@@ -19,13 +20,14 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
     WETH9 public weth;
     MockSTETH public steth;
+    TestPlugin public plugin;
 
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 200_000 ether;
 
     function setUp() public {
         SetupVault setupVault = new SetupVault();
-        (vault, weth) = setupVault.setup();
+        (vault, weth, plugin) = setupVault.setup();
 
         // Replace the steth mock with our custom MockSTETH
         steth = MockSTETH(payable(MC.STETH));
@@ -54,7 +56,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         vault.processAccounting();
     }
 
-    function test_Vault_processor_fails_with_invalid_asset_approve() public {
+    function test_Vault_processor_fails_with_invalid_plugin() public {
         // Set up some initial balances for assets and strategies
 
         // Prepare allocation targets and values
@@ -65,7 +67,26 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         values[0] = 0;
 
         bytes[] memory data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", address(vault), 50 ether);
+
+        // Expect the processAllocation to fail with an invalid asset
+        vm.prank(PROCESSOR);
+        vm.expectRevert();
+        vault.processor(targets, values, data);
+    }
+
+    function test_Vault_processor_fails_with_invalid_asset_approve() public {
+        // Set up some initial balances for assets and strategies
+
+        // Prepare allocation targets and values
+        address[] memory targets = new address[](1);
+        targets[0] = address(plugin);
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] =
+            abi.encodeWithSignature("approveToken(address,address,uint256)", address(420), address(vault), 50 ether);
 
         // Expect the processAllocation to fail with an invalid asset
         vm.prank(PROCESSOR);
@@ -97,13 +118,15 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
 
         // Prepare allocation targets and values
         address[] memory targets = new address[](1);
-        targets[0] = address(MC.YNETH);
+        targets[0] = address(plugin);
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
 
         bytes[] memory data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 100_001 ether, address(vault));
+        data[0] = abi.encodeWithSignature(
+            "depositIntoVault(address,uint256,address)", address(MC.YNETH), 100_001 ether, address(vault)
+        );
 
         // Expect the processAllocation to fail with an invalid asset
         vm.prank(PROCESSOR);
@@ -116,13 +139,14 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
 
         // Prepare allocation targets and values
         address[] memory targets = new address[](1);
-        targets[0] = MC.YNETH;
+        targets[0] = address(plugin);
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
 
         bytes[] memory data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 1, address(vault));
+        data[0] =
+            abi.encodeWithSignature("depositIntoVault(address,uint256,address)", address(MC.YNETH), 1, address(vault));
 
         // Expect the processAllocation to fail with an invalid asset
         vm.prank(PROCESSOR);
@@ -135,13 +159,14 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
 
         // Prepare allocation targets and values
         address[] memory targets = new address[](1);
-        targets[0] = MC.YNETH;
+        targets[0] = address(plugin);
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
 
         bytes[] memory data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 100, address(420));
+        data[0] =
+            abi.encodeWithSignature("depositIntoVault(address,uint256,address)", address(MC.YNETH), 100, address(420));
 
         // Expect the processAllocation to fail with an invalid asset
         vm.prank(PROCESSOR);
@@ -149,43 +174,9 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         vault.processor(targets, values, data);
     }
 
-    function test_Vault_getProcessorRule() public view {
-        bytes4 sig = bytes4(keccak256("deposit(uint256,address)"));
-        IVault.FunctionRule memory rule = vault.getProcessorRule(MC.BUFFER, sig);
-        IVault.FunctionRule memory expectedResult;
-        expectedResult.isActive = true;
-        expectedResult.paramRules = new IVault.ParamRule[](2);
-        expectedResult.paramRules[0] =
-            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-        expectedResult.paramRules[1] =
-            IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: new address[](1)});
-        expectedResult.paramRules[1].allowList[0] = address(vault);
-
-        // Add assertions
-        assertEq(rule.isActive, expectedResult.isActive, "isActive does not match");
-        assertEq(rule.paramRules.length, expectedResult.paramRules.length, "paramRules length does not match");
-
-        for (uint256 i = 0; i < rule.paramRules.length; i++) {
-            assertEq(
-                uint256(rule.paramRules[i].paramType),
-                uint256(expectedResult.paramRules[i].paramType),
-                "paramType does not match"
-            );
-            assertEq(rule.paramRules[i].isArray, expectedResult.paramRules[i].isArray, "isArray does not match");
-            assertEq(
-                rule.paramRules[i].allowList.length,
-                expectedResult.paramRules[i].allowList.length,
-                "allowList length does not match"
-            );
-
-            for (uint256 j = 0; j < rule.paramRules[i].allowList.length; j++) {
-                assertEq(
-                    rule.paramRules[i].allowList[j],
-                    expectedResult.paramRules[i].allowList[j],
-                    "allowList element does not match"
-                );
-            }
-        }
+    function test_Vault_isTargetWhitelisted() public view {
+        assertTrue(vault.isTargetWhitelisted(address(plugin)));
+        assertFalse(vault.isTargetWhitelisted(address(420)));
     }
 
     function test_Vault_processorCall_failsWithBadTarget() public {
@@ -207,25 +198,8 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
     function test_Vault_processorCall_failsWithBadCalldata() public {
         // make sure the processor rule has been set
 
-        bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        paramRules[0] =
-            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-
-        address[] memory allowList = new address[](1);
-        allowList[0] = address(vault);
-
-        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
-
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
-
-        vm.prank(PROCESSOR_MANAGER);
-        vault.setProcessorRule(MC.BUFFER, funcSig, rule);
-
         address[] memory targets = new address[](1);
-        targets[0] = MC.BUFFER;
+        targets[0] = address(plugin);
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;

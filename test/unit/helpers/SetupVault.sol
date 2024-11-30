@@ -4,14 +4,15 @@ pragma solidity ^0.8.24;
 import "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
 import {IVault} from "src/interface/IVault.sol";
-import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
+import {TransparentUpgradeableProxy as TUProxy, IERC20} from "src/Common.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
+import {TestPlugin} from "test/unit/helpers/TestPlugin.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
-    function setup() public returns (Vault vault, WETH9 weth) {
+    function setup() public returns (Vault vault, WETH9 weth, TestPlugin plugin) {
         string memory name = "YieldNest MAX";
         string memory symbol = "ynMAx";
 
@@ -26,15 +27,17 @@ contract SetupVault is Test, Etches, MainnetActors {
         weth = WETH9(payable(MC.WETH));
 
         if (block.chainid == 31337) {
-            configureLocal(vault);
+            plugin = configureLocal(vault);
+            return (vault, weth, plugin);
         }
 
         if (block.chainid == 1) {
-            configureMainnet(vault);
+            plugin = configureMainnet(vault);
+            return (vault, weth, plugin);
         }
     }
 
-    function configureLocal(Vault vault) internal {
+    function configureLocal(Vault vault) internal returns (TestPlugin plugin) {
         // etch to mock the mainnet contracts
         mockAll();
 
@@ -60,17 +63,39 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(MC.BUFFER, 18, false);
         vault.addAsset(MC.STETH, 18, true);
 
-        // configure processor rules
-        setDepositRule(vault, MC.BUFFER, address(vault));
-        setWethDepositRule(vault, MC.WETH);
+        plugin = new TestPlugin();
 
-        setApprovalRule(vault, address(vault), MC.BUFFER);
-        setApprovalRule(vault, MC.WETH, MC.BUFFER);
-        setApprovalRule(vault, address(vault), MC.YNETH);
-        setApprovalRule(vault, address(vault), MC.YNLSDE);
+        // configure processor rules
+
+        // setDepositRule(vault, MC.BUFFER, address(vault));
+        // setWethDepositRule(vault, MC.WETH);
+
+        // setApprovalRule(vault, address(vault), MC.BUFFER);
+        // setApprovalRule(vault, MC.WETH, MC.BUFFER);
+        // setApprovalRule(vault, address(vault), MC.YNETH);
+        // setApprovalRule(vault, address(vault), MC.YNLSDE);
+
+        // configure plugins
+
+        TestPlugin.DepositData[] memory depositData = new TestPlugin.DepositData[](1);
+        depositData[0] = TestPlugin.DepositData(MC.BUFFER, address(vault));
+
+        TestPlugin.ApprovalData[] memory approvalData = new TestPlugin.ApprovalData[](4);
+        approvalData[0] = TestPlugin.ApprovalData(address(vault), MC.BUFFER);
+        approvalData[1] = TestPlugin.ApprovalData(MC.WETH, MC.BUFFER);
+        approvalData[2] = TestPlugin.ApprovalData(address(vault), MC.YNETH);
+        approvalData[3] = TestPlugin.ApprovalData(address(vault), MC.YNLSDE);
+
+        TestPlugin.WethDepositData[] memory wethDepositData = new TestPlugin.WethDepositData[](1);
+        wethDepositData[0] = TestPlugin.WethDepositData(MC.WETH);
+
+        TestPlugin.PluginData memory data = TestPlugin.PluginData(depositData, approvalData, wethDepositData);
+
+        bytes memory dataBytes = abi.encode(data);
+
+        vault.addTarget(address(plugin), dataBytes);
 
         // add strategies
-
         vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault
@@ -78,7 +103,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         vm.stopPrank();
     }
 
-    function configureMainnet(Vault vault) internal {
+    function configureMainnet(Vault vault) internal returns (TestPlugin plugin) {
         // etch to mock the mainnet contracts
 
         mockAll();
@@ -114,66 +139,41 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(MC.YNETH, 18, true);
         vault.addAsset(MC.YNLSDE, 18, true);
 
-        setDepositRule(vault, MC.BUFFER, address(vault));
-        setDepositRule(vault, MC.YNETH, address(vault));
-        setDepositRule(vault, MC.YNLSDE, address(vault));
-        setWethDepositRule(vault, MC.WETH);
+        plugin = new TestPlugin();
+        // setDepositRule(vault, MC.BUFFER, address(vault));
+        // setDepositRule(vault, MC.YNETH, address(vault));
+        // setDepositRule(vault, MC.YNLSDE, address(vault));
+        // setWethDepositRule(vault, MC.WETH);
+        //
+        // setApprovalRule(vault, address(vault), MC.BUFFER);
+        // setApprovalRule(vault, MC.WETH, MC.BUFFER);
+        // setApprovalRule(vault, address(vault), MC.YNETH);
+        // setApprovalRule(vault, address(vault), MC.YNLSDE);
 
-        setApprovalRule(vault, address(vault), MC.BUFFER);
-        setApprovalRule(vault, MC.WETH, MC.BUFFER);
-        setApprovalRule(vault, address(vault), MC.YNETH);
-        setApprovalRule(vault, address(vault), MC.YNLSDE);
+        TestPlugin.ApprovalData[] memory approvalData = new TestPlugin.ApprovalData[](4);
+        approvalData[0] = TestPlugin.ApprovalData(address(vault), MC.BUFFER);
+        approvalData[1] = TestPlugin.ApprovalData(MC.WETH, MC.BUFFER);
+        approvalData[2] = TestPlugin.ApprovalData(address(vault), MC.YNETH);
+        approvalData[3] = TestPlugin.ApprovalData(address(vault), MC.YNLSDE);
+
+        TestPlugin.WethDepositData[] memory wethDepositData = new TestPlugin.WethDepositData[](1);
+        wethDepositData[0] = TestPlugin.WethDepositData(MC.WETH);
+
+        TestPlugin.DepositData[] memory depositData = new TestPlugin.DepositData[](3);
+        depositData[0] = TestPlugin.DepositData(MC.BUFFER, address(vault));
+        depositData[1] = TestPlugin.DepositData(MC.YNETH, address(vault));
+        depositData[2] = TestPlugin.DepositData(MC.YNLSDE, address(vault));
+
+        TestPlugin.PluginData memory data = TestPlugin.PluginData(depositData, approvalData, wethDepositData);
+
+        bytes memory dataBytes = abi.encode(data);
+
+        vault.addTarget(address(plugin), dataBytes);
 
         vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault
         vault.unpause();
         vm.stopPrank();
-    }
-
-    function setDepositRule(Vault vault_, address contractAddress, address receiver) internal {
-        bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        paramRules[0] =
-            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-
-        address[] memory allowList = new address[](1);
-        allowList[0] = receiver;
-
-        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
-
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
-
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
-    }
-
-    function setApprovalRule(Vault vault_, address contractAddress, address spender) internal {
-        bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        address[] memory allowList = new address[](1);
-        allowList[0] = spender;
-
-        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
-
-        paramRules[1] =
-            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
-
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
-    }
-
-    function setWethDepositRule(Vault vault_, address weth_) public {
-        bytes4 funcSig = bytes4(keccak256("deposit()"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
-
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
-
-        vault_.setProcessorRule(weth_, funcSig, rule);
     }
 }

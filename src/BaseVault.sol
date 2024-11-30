@@ -264,16 +264,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     /**
      * @notice Returns the function rule for a given contract address and function signature.
      * @param contractAddress The address of the contract.
-     * @param funcSig The function signature.
-     * @return FunctionRule The function rule.
+     * @return bool True if the contract is whitelisted, false otherwise.
      */
-    function getProcessorRule(address contractAddress, bytes4 funcSig)
-        public
-        view
-        virtual
-        returns (FunctionRule memory)
-    {
-        return _getProcessorStorage().rules[contractAddress][funcSig];
+    function isTargetWhitelisted(address contractAddress) public view virtual returns (bool) {
+        return _getProcessorStorage().whitelist[contractAddress];
     }
 
     /**
@@ -514,16 +508,31 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     /**
      * @notice Sets the processor rule for a given contract address and function signature.
      * @param target The address of the target contract.
-     * @param functionSig The function signature.
-     * @param rule The function rule.
+     * @param data The calldata to be passed to the target contract.
      */
-    function setProcessorRule(address target, bytes4 functionSig, FunctionRule calldata rule)
-        public
-        virtual
-        onlyRole(PROCESSOR_MANAGER_ROLE)
-    {
-        _getProcessorStorage().rules[target][functionSig] = rule;
-        emit SetProcessorRule(target, functionSig, rule);
+    function addTarget(address target, bytes memory data) external virtual onlyRole(PROCESSOR_MANAGER_ROLE) {
+        if (target == address(0)) {
+            revert ZeroAddress();
+        }
+        _getProcessorStorage().whitelist[target] = true;
+        bytes memory initData = abi.encodeWithSignature("init(bytes)", data);
+        (bool success, bytes memory returnData) = target.delegatecall(initData);
+        if (!success) {
+            revert ProcessFailed(data, returnData);
+        }
+
+        emit AddTarget(target);
+    }
+
+    function removeTarget(address target) external virtual onlyRole(PROCESSOR_MANAGER_ROLE) {
+        if (target == address(0)) {
+            revert ZeroAddress();
+        }
+        if (!_getProcessorStorage().whitelist[target]) {
+            revert InvalidTarget(target);
+        }
+        _getProcessorStorage().whitelist[target] = false;
+        emit RemoveTarget(target);
     }
 
     /**
@@ -616,9 +625,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         returnData = new bytes[](targetsLength);
 
         for (uint256 i = 0; i < targetsLength; i++) {
-            Guard.validateCall(targets[i], data[i]);
+            Guard.validateTarget(targets[i]);
 
-            (bool success, bytes memory returnData_) = targets[i].call{value: values[i]}(data[i]);
+            (bool success, bytes memory returnData_) = targets[i].delegatecall(data[i]);
             if (!success) {
                 revert ProcessFailed(data[i], returnData_);
             }
