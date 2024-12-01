@@ -17,15 +17,40 @@ library FeeMath {
 
     uint256 public constant BUFFER_FEE_FLAT_PORTION = 8e7;
 
-    uint256 public constant QUADRATIC_A_FACTOR = 1e7;
+    uint256 public constant QUADRATIC_A_FACTOR = 5e7;
 
     function linearFee(uint256 amount, uint256 fee) internal pure returns (uint256) {
         return amount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
 
-    // <----|--X---------------->
-    // <--|~~~~|---------------->
 
+    /*
+    Fee Rate
+    ^
+    |    ....
+    |       ....
+    |           ....
+    |               ....
+    |                   ..... 
+    |                        _________________ Linear portion (high buffer)
+    |                   Quadratic portion
+    |                (low buffer region)
+    +---------------------------------> Buffer Available
+                                       (increases →)
+    
+    Formula:
+    For linear portion (buffer > bufferNonLinearAmount):
+        fee = amount * baseFee
+    
+    For quadratic portion (buffer <= bufferNonLinearAmount): 
+        fee = ∫(ax² + baseFee)dx from start to end
+        where:
+        - a = QUADRATIC_A_FACTOR 
+        - start = max(0, bufferNonLinearAmount - bufferAvailable)
+        - end = start + withdrawalAmount
+        
+    Fee increases quadratically as buffer decreases below threshold
+    */
     function quadraticBufferFee(
         uint256 withdrawalAmount,
         uint256 bufferMaxSize,
@@ -59,8 +84,7 @@ library FeeMath {
 
             uint256 nonLinearEnd
                 = bufferAvailableAmount >= bufferNonLinearAmount ? nonLinearFeeTaxedAmount : nonLinearStart + withdrawalAmount;
-                
-                 
+
             nonLinearFeeAmount = calculateQuadraticTotalFee(
                 QUADRATIC_A_FACTOR,
                 fee,
