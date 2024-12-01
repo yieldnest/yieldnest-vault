@@ -17,7 +17,7 @@ library Fee {
 
     uint256 public constant BUFFER_FEE_FLAT_PORTION = 8e7;
 
-    uint256 public constant QUADRATIC_B_FACTOR = 2;
+    uint256 public constant QUADRATIC_A_FACTOR = 1e7;
 
     function linearFee(uint256 amount, uint256 fee) internal pure returns (uint256) {
         return amount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
@@ -30,7 +30,8 @@ library Fee {
         uint256 withdrawalAmount,
         uint256 bufferMaxSize,
         uint256 bufferAvailableAmount,
-        uint256 fee
+        uint256 fee,
+        uint256 amountDecimals
     ) internal pure returns (uint256) {
         uint256 bufferNonLinearAmount =
             (BASIS_POINT_SCALE - BUFFER_FEE_FLAT_PORTION) * bufferMaxSize / BASIS_POINT_SCALE;
@@ -53,24 +54,36 @@ library Fee {
         // Calculate the non-linear fee using a quadratic function
         uint256 nonLinearFeeAmount = 0;
         if (nonLinearFeeTaxedAmount > 0) {
-            uint256 nonLinearStart = bufferNonLinearAmount - bufferAvailableAmount + nonLinearFeeTaxedAmount;
-            nonLinearFeeAmount = QUADRATIC_A_FACTOR * nonLinearStart * nonLinearStart +
-                                 QUADRATIC_B_FACTOR * nonLinearStart;
+            uint256 nonLinearStart = bufferNonLinearAmount + nonLinearFeeTaxedAmount - bufferAvailableAmount;
+            uint256 nonLinearEnd = 
+            nonLinearFeeAmount = calculateQuadraticTotalFee(
+                QUADRATIC_A_FACTOR,
+                fee,
+                nonLinearStart,
+                nonLinearEnd,
+                amountDecimals
+            );
             nonLinearFeeAmount = nonLinearFeeAmount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
         }
 
         return linearFeeAmount + nonLinearFeeAmount;
     }
 
-    function calculateTotalFee(uint256 A, uint256 baseFee, uint256 start, uint256 end) public pure returns (uint256) {
+    function calculateQuadraticTotalFee(
+        uint256 A,
+        uint256 baseFee,
+        uint256 start,
+        uint256 end,
+        uint256 amountDecimals
+        ) public pure returns (uint256) {
+        uint256 unit = 10 ** amountDecimals;
         // Calculate end^3 and start^3
-        uint256 F3 = end * end * end;
-        uint256 S3 = start * start * start;
+        uint256 end3 = end * end * end / unit / unit;
+        uint256 start3 = start * start * start / unit / unit;
 
         // Calculate the total fee
-        uint256 totalFee = (A * (F3 - S3)) / 3 + BaseFee * (end - start);
+        uint256 totalFee = (A * (end3 - start3) / BASIS_POINT_SCALE) / 3 + baseFee * (end - start);
 
         return totalFee;
-    }
     }
 }
