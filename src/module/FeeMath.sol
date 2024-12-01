@@ -10,7 +10,7 @@ import {IStrategy} from "src/interface/IStrategy.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {Guard} from "src/module/Guard.sol";
 
-library Fee {
+library FeeMath {
     using Math for uint256;
 
     uint256 public constant BASIS_POINT_SCALE = 1e8;
@@ -54,8 +54,13 @@ library Fee {
         // Calculate the non-linear fee using a quadratic function
         uint256 nonLinearFeeAmount = 0;
         if (nonLinearFeeTaxedAmount > 0) {
-            uint256 nonLinearStart = bufferNonLinearAmount + nonLinearFeeTaxedAmount - bufferAvailableAmount;
-            uint256 nonLinearEnd = 
+            uint256 nonLinearStart
+                = bufferAvailableAmount >= bufferNonLinearAmount ? 0 : bufferNonLinearAmount - bufferAvailableAmount;
+
+            uint256 nonLinearEnd
+                = bufferAvailableAmount >= bufferNonLinearAmount ? nonLinearFeeTaxedAmount : nonLinearStart + withdrawalAmount;
+                
+                 
             nonLinearFeeAmount = calculateQuadraticTotalFee(
                 QUADRATIC_A_FACTOR,
                 fee,
