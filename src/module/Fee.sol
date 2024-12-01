@@ -61,4 +61,16 @@ library Fee {
 
         return linearFeeAmount + nonLinearFeeAmount;
     }
+
+    function calculateTotalFee(uint256 A, uint256 baseFee, uint256 start, uint256 end) public pure returns (uint256) {
+        // Calculate end^3 and start^3
+        uint256 F3 = end * end * end;
+        uint256 S3 = start * start * start;
+
+        // Calculate the total fee
+        uint256 totalFee = (A * (F3 - S3)) / 3 + BaseFee * (end - start);
+
+        return totalFee;
+    }
+    }
 }
