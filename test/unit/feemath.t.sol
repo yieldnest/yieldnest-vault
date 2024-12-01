@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 
+
 contract FeeMathTest is Test {
     uint256 constant BASIS_POINT_SCALE = 1e8;
     uint256 constant BUFFER_FEE_FLAT_PORTION = 8e7; // 80%
@@ -24,7 +25,6 @@ contract FeeMathTest is Test {
         uint256 bufferMaxSize = 1000 ether;
         uint256 bufferAvailable = 1000 ether; // Full buffer
         uint256 fee = 1e4; // 0.01% fee
-        uint256 decimals = 18;
 
         // With full buffer, should just be linear fee
         uint256 expectedFee = FeeMath.linearFee(withdrawalAmount, fee);
@@ -32,8 +32,7 @@ contract FeeMathTest is Test {
             withdrawalAmount,
             bufferMaxSize,
             bufferAvailable,
-            fee,
-            decimals
+            fee
         );
 
         assertEq(actualFee, expectedFee, "Full buffer fee calculation incorrect");
@@ -44,7 +43,6 @@ contract FeeMathTest is Test {
         uint256 bufferMaxSize = 1000 ether;
         uint256 bufferAvailable = 100 ether; // Low buffer
         uint256 fee = 1e4; // 0.01% fee
-        uint256 decimals = 18;
 
         uint256 bufferNonLinearAmount = (BASIS_POINT_SCALE - BUFFER_FEE_FLAT_PORTION) * bufferMaxSize / BASIS_POINT_SCALE;
         
@@ -54,8 +52,7 @@ contract FeeMathTest is Test {
             withdrawalAmount,
             bufferMaxSize,
             bufferAvailable,
-            fee,
-            decimals
+            fee
         );
 
         assertTrue(actualFee > linearFee, "Low buffer fee should be higher than linear fee");
@@ -66,14 +63,12 @@ contract FeeMathTest is Test {
         uint256 bufferMaxSize = 1000 ether;
         uint256 bufferAvailable = 0; // Zero buffer
         uint256 fee = 1e4; // 0.01% fee
-        uint256 decimals = 18;
 
         uint256 actualFee = FeeMath.quadraticBufferFee(
             withdrawalAmount,
             bufferMaxSize,
             bufferAvailable,
-            fee,
-            decimals
+            fee
         );
 
         uint256 linearFee = FeeMath.linearFee(withdrawalAmount, fee);
@@ -81,18 +76,14 @@ contract FeeMathTest is Test {
     }
 
     function test_CalculateQuadraticTotalFee() public {
-        uint256 A = QUADRATIC_A_FACTOR;
         uint256 baseFee = 1e4;
         uint256 start = 0;
         uint256 end = 100 ether;
-        uint256 decimals = 18;
 
         uint256 fee = FeeMath.calculateQuadraticTotalFee(
-            A,
             baseFee,
             start,
-            end,
-            decimals
+            end
         );
 
         assertTrue(fee > 0, "Quadratic fee should be greater than zero");
@@ -103,7 +94,6 @@ contract FeeMathTest is Test {
         uint256 bufferMaxSize = 1000 ether;
         uint256 bufferAvailable = 400 ether; // Just above non-linear threshold
         uint256 fee = 1e4;
-        uint256 decimals = 18;
 
         uint256 bufferNonLinearAmount = (BASIS_POINT_SCALE - BUFFER_FEE_FLAT_PORTION) * bufferMaxSize / BASIS_POINT_SCALE;
         uint256 linearPortion = bufferAvailable - bufferNonLinearAmount;
@@ -112,8 +102,7 @@ contract FeeMathTest is Test {
             withdrawalAmount,
             bufferMaxSize,
             bufferAvailable,
-            fee,
-            decimals
+            fee
         );
 
         uint256 linearOnlyFee = FeeMath.linearFee(withdrawalAmount, fee);

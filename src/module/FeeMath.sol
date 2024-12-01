@@ -17,8 +17,6 @@ library FeeMath {
 
     uint256 public constant BUFFER_FEE_FLAT_PORTION = 8e7; // 80%
 
-    uint256 public constant QUADRATIC_A_FACTOR = 5e7; // 50%
-
     function linearFee(uint256 amount, uint256 fee) internal pure returns (uint256) {
         return amount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
@@ -45,7 +43,7 @@ library FeeMath {
     For quadratic portion (buffer <= bufferNonLinearAmount): 
         fee = ∫(ax² + baseFee)dx from start to end
         where:
-        - a = QUADRATIC_A_FACTOR 
+        - a = (1 - fee) 
         - start = max(0, bufferNonLinearAmount - bufferAvailable)
         - end = start + withdrawalAmount
         
@@ -55,9 +53,8 @@ library FeeMath {
         uint256 withdrawalAmount,
         uint256 bufferMaxSize,
         uint256 bufferAvailableAmount,
-        uint256 fee,
-        uint256 amountDecimals
-    ) internal pure returns (uint256) {
+        uint256 fee
+    ) internal view returns (uint256) {
         uint256 bufferNonLinearAmount =
             (BASIS_POINT_SCALE - BUFFER_FEE_FLAT_PORTION) * bufferMaxSize / BASIS_POINT_SCALE;
 
@@ -77,42 +74,40 @@ library FeeMath {
         uint256 linearFeeAmount = linearFee(linearFeeTaxedAmount, fee);
 
         // Calculate the non-linear fee using a quadratic function
-        uint256 nonLinearFeeAmount = 0;
+        uint256 nonLinearFee = 0;
         if (nonLinearFeeTaxedAmount > 0) {
             uint256 nonLinearStart
                 = bufferAvailableAmount >= bufferNonLinearAmount ? 0 : bufferNonLinearAmount - bufferAvailableAmount;
 
+            uint256 nonLinearStartScaled = nonLinearStart * BASIS_POINT_SCALE / bufferMaxSize;
+
             uint256 nonLinearEnd
                 = bufferAvailableAmount >= bufferNonLinearAmount ? nonLinearFeeTaxedAmount : nonLinearStart + withdrawalAmount;
 
-            nonLinearFeeAmount = calculateQuadraticTotalFee(
-                QUADRATIC_A_FACTOR,
+            uint256 nonLinearEndScaled = nonLinearEnd * BASIS_POINT_SCALE / bufferMaxSize;
+
+            nonLinearFee = calculateQuadraticTotalFee(
                 fee,
-                nonLinearStart,
-                nonLinearEnd,
-                amountDecimals
+                nonLinearStartScaled,
+                nonLinearEndScaled
             );
-            nonLinearFeeAmount = nonLinearFeeAmount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
         }
 
-        return linearFeeAmount + nonLinearFeeAmount;
+        return linearFeeAmount + nonLinearFee * nonLinearFeeTaxedAmount / BASIS_POINT_SCALE;
     }
 
     function calculateQuadraticTotalFee(
-        uint256 A,
         uint256 baseFee,
         uint256 start,
-        uint256 end,
-        uint256 amountDecimals
+        uint256 end
         ) public pure returns (uint256) {
-        uint256 unit = 10 ** amountDecimals;
         // Calculate end^3 and start^3
-        uint256 end3 = end * end * end / unit / unit;
-        uint256 start3 = start * start * start / unit / unit;
+        uint256 end3 = end * end * end / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
+        uint256 start3 = start * start * start / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
 
         // Calculate the total fee
-        uint256 totalFee = (A * (end3 - start3) / BASIS_POINT_SCALE) / 3 + baseFee * (end - start);
+        uint256 totalFee = (BASIS_POINT_SCALE - baseFee) * (end3 - start3) / 3 + baseFee * (end - start);
 
-        return totalFee;
+        return totalFee; // adjusted to BASIS_POINT_SCALE
     }
 }
