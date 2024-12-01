@@ -21,18 +21,17 @@ library FeeMath {
         return amount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
 
-
     /*
     Fee Rate
     ^
-    |    ....
-    |       ....
-    |           ....
+    | 100% ....
+    |          ....
     |               ....
-    |                   ..... 
-    |                        _________________ Linear portion (high buffer)
-    |                   Quadratic portion
-    |                (low buffer region)
+    |                    ....
+    |                         ..... 
+    |                              _________________ Linear portion (high buffer)
+    |                         Quadratic portion      baseFee (e.g. 0.01%)
+    |                     (low buffer region)
     +---------------------------------> Buffer Available
                                        (increases →)
     
@@ -47,7 +46,8 @@ library FeeMath {
         - start = max(0, bufferNonLinearAmount - bufferAvailable)
         - end = start + withdrawalAmount
         
-    Fee increases quadratically as buffer decreases below threshold
+    Fee increases quadratically from baseFee up to 100% as buffer decreases below threshold
+    */
     */
     function quadraticBufferFee(
         uint256 withdrawalAmount,
