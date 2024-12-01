@@ -14,6 +14,10 @@ import {console} from "lib/forge-std/src/console.sol";
 library FeeMath {
     using Math for uint256;
 
+    error AmountExceedsScale();
+    error BufferExceedsMax(uint256 bufferAvailable, uint256 bufferMax);
+    error WithdrawalExceedsBuffer(uint256 withdrawalAmount, uint256 bufferAvailable);
+
     uint256 public constant BASIS_POINT_SCALE = 1e8;
 
     uint256 public constant BUFFER_FEE_FLAT_PORTION = 8e7; // 80%
@@ -55,6 +59,19 @@ library FeeMath {
         uint256 bufferAvailableAmount,
         uint256 fee
     ) internal view returns (uint256) {
+
+        if (fee > BASIS_POINT_SCALE) {
+            revert AmountExceedsScale();
+        }
+
+        if (bufferAvailableAmount > bufferMaxSize) {
+            revert BufferExceedsMax(bufferAvailableAmount, bufferMaxSize);
+        }
+
+        if (withdrawalAmount > bufferAvailableAmount) {
+            revert WithdrawalExceedsBuffer(withdrawalAmount, bufferAvailableAmount);
+        }
+
         uint256 bufferNonLinearAmount =
             (BASIS_POINT_SCALE - BUFFER_FEE_FLAT_PORTION) * bufferMaxSize / BASIS_POINT_SCALE;
 
@@ -106,6 +123,11 @@ library FeeMath {
         uint256 start,
         uint256 end
         ) public pure returns (uint256) {
+
+        if (start > BASIS_POINT_SCALE || end > BASIS_POINT_SCALE || baseFee > BASIS_POINT_SCALE) {
+            revert AmountExceedsScale();
+        }
+
         // Calculate end^3 and start^3
         uint256 end3 = end * end * end / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
         uint256 start3 = start * start * start / BASIS_POINT_SCALE / BASIS_POINT_SCALE;

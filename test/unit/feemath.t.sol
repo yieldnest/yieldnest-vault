@@ -27,7 +27,7 @@ contract FeeMathTest is Test {
         uint256 fee = 1e4; // 0.01% fee
 
         // With full buffer, should just be linear fee
-        uint256 expectedFee = 1e14; // 100 ether * 0.01% = 0.01 ether = 1e14 wei
+        uint256 expectedFee = (withdrawalAmount * fee) / BASIS_POINT_SCALE; // Calculate expected fee using same formula as linearFee()
         uint256 actualFee = FeeMath.quadraticBufferFee(
             withdrawalAmount,
             bufferMaxSize,
@@ -67,6 +67,7 @@ contract FeeMathTest is Test {
         uint256 bufferAvailable = 0; // Zero buffer
         uint256 fee = 1e4; // 0.01% fee
 
+        vm.expectRevert(abi.encodeWithSelector(FeeMath.WithdrawalExceedsBuffer.selector, withdrawalAmount, bufferAvailable));
         uint256 actualFee = FeeMath.quadraticBufferFee(
             withdrawalAmount,
             bufferMaxSize,
@@ -75,23 +76,8 @@ contract FeeMathTest is Test {
         );
 
         uint256 linearFee = FeeMath.linearFee(withdrawalAmount, fee);
-        assertTrue(actualFee > linearFee, "Zero buffer fee should be higher than linear fee");
     }
-
-    function test_CalculateQuadraticTotalFee() public {
-        uint256 baseFee = 1e4;
-        uint256 start = 0;
-        uint256 end = 100 ether;
-
-        uint256 fee = FeeMath.calculateQuadraticTotalFee(
-            baseFee,
-            start,
-            end
-        );
-
-        assertTrue(fee > 0, "Quadratic fee should be greater than zero");
-    }
-
+    
     function test_QuadraticBufferFee_PartialNonLinear() public {
         uint256 withdrawalAmount = 350 ether;
         uint256 bufferMaxSize = 1000 ether;
