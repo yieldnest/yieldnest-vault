@@ -108,4 +108,68 @@ contract FeeMathTest is Test {
         uint256 linearOnlyFee = FeeMath.linearFee(withdrawalAmount, fee);
         assertGt(actualFee, linearOnlyFee, "Partial non-linear fee should be higher than pure linear fee");
     }
+
+    function test_CalculateQuadraticTotalFee_PartialBuffer() public {
+        uint256 baseFee = 1e6; // 1% base fee
+        
+        // Test interval [0.4, 0.6] normalized to BASIS_POINT_SCALE
+        uint256 start = 4e7; // 0.4 * BASIS_POINT_SCALE 
+        uint256 end = 6e7;   // 0.6 * BASIS_POINT_SCALE
+
+        uint256 fee = FeeMath.calculateQuadraticTotalFee(
+            baseFee,
+            start, 
+            end
+        );
+
+        assertEq(fee, 5216000, "Fee should equal 5215999");
+    }
+
+    function test_CalculateQuadraticTotalFee_LowBuffer() public {
+        uint256 baseFee = 1e6; // 1% base fee
+        
+        // Test interval [0.1, 0.2] normalized to BASIS_POINT_SCALE
+        uint256 start = 1e7; // 0.1 * BASIS_POINT_SCALE
+        uint256 end = 2e7;   // 0.2 * BASIS_POINT_SCALE
+
+        uint256 fee = FeeMath.calculateQuadraticTotalFee(
+            baseFee,
+            start,
+            end
+        );
+
+        assertEq(fee, 331000, "Fee should be higher in low buffer region");
+    }
+
+    function test_CalculateQuadraticTotalFee_HighBuffer() public {
+        uint256 baseFee = 1e6; // 1% base fee
+        
+        // Test interval [0.8, 0.9] normalized to BASIS_POINT_SCALE
+        uint256 start = 8e7; // 0.8 * BASIS_POINT_SCALE
+        uint256 end = 9e7;   // 0.9 * BASIS_POINT_SCALE
+
+        uint256 fee = FeeMath.calculateQuadraticTotalFee(
+            baseFee,
+            start,
+            end
+        );
+
+        assertEq(fee, 7261000, "Fee should be much higher in high buffer region");
+    }
+
+    function test_CalculateQuadraticTotalFee_FullRange() public {
+        uint256 baseFee = 1e6; // 1% base fee
+        
+        // Test full interval [0, 1] normalized to BASIS_POINT_SCALE
+        uint256 start = 0;
+        uint256 end = 1e8;   // BASIS_POINT_SCALE
+
+        uint256 fee = FeeMath.calculateQuadraticTotalFee(
+            baseFee,
+            start,
+            end
+        );
+
+        assertEq(fee, 34000000, "Fee should be maximum for full range");
+    }
 }

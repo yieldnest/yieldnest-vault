@@ -48,7 +48,6 @@ library FeeMath {
         
     Fee increases quadratically from baseFee up to 100% as buffer decreases below threshold
     */
-    */
     function quadraticBufferFee(
         uint256 withdrawalAmount,
         uint256 bufferMaxSize,
@@ -106,7 +105,7 @@ library FeeMath {
         uint256 start3 = start * start * start / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
 
         // Calculate the total fee
-        uint256 totalFee = (BASIS_POINT_SCALE - baseFee) * (end3 - start3) / 3 + baseFee * (end - start);
+        uint256 totalFee = ((BASIS_POINT_SCALE - baseFee) * (end3 - start3) / 3 + baseFee * (end - start)) / BASIS_POINT_SCALE;
 
         return totalFee; // adjusted to BASIS_POINT_SCALE
     }
