@@ -17,6 +17,8 @@ library Fee {
 
     uint256 public constant BUFFER_FEE_FLAT_PORTION = 8e7;
 
+    uint256 public constant QUADRATIC_B_FACTOR = 2;
+
     function linearFee(uint256 amount, uint256 fee) internal pure returns (uint256) {
         return amount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
@@ -39,13 +41,24 @@ library Fee {
             if (bufferAvailableAmount - withdrawalAmount >= bufferNonLinearAmount) {
                 linearFeeTaxedAmount = withdrawalAmount;
             } else {
-                linearFeeTaxedAmount = bufferAvailableAmount - bufferAvailableAmount;
+                linearFeeTaxedAmount = bufferAvailableAmount - bufferNonLinearAmount;
                 nonLinearFeeTaxedAmount = withdrawalAmount - linearFeeTaxedAmount;
             }
         } else {
             nonLinearFeeTaxedAmount = withdrawalAmount;
         }
 
-        return linearFee(linearFeeTaxedAmount, fee); // TODO: add non linear component
+        uint256 linearFeeAmount = linearFee(linearFeeTaxedAmount, fee);
+
+        // Calculate the non-linear fee using a quadratic function
+        uint256 nonLinearFeeAmount = 0;
+        if (nonLinearFeeTaxedAmount > 0) {
+            uint256 nonLinearStart = bufferNonLinearAmount - bufferAvailableAmount + nonLinearFeeTaxedAmount;
+            nonLinearFeeAmount = QUADRATIC_A_FACTOR * nonLinearStart * nonLinearStart +
+                                 QUADRATIC_B_FACTOR * nonLinearStart;
+            nonLinearFeeAmount = nonLinearFeeAmount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
+        }
+
+        return linearFeeAmount + nonLinearFeeAmount;
     }
 }
