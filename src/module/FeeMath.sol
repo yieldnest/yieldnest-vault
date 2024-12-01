@@ -9,7 +9,6 @@ import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {Guard} from "src/module/Guard.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 library FeeMath {
     using Math for uint256;
@@ -44,13 +43,22 @@ library FeeMath {
     For linear portion (buffer > bufferNonLinearAmount):
         fee = amount * baseFee
     
-    For quadratic portion (buffer <= bufferNonLinearAmount): 
+    For quadratic portion (buffer <= bufferNonLinearAmount):
         fee = ∫(ax² + baseFee)dx from start to end
         where:
-        - a = (1 - fee) 
-        - start = max(0, bufferNonLinearAmount - bufferAvailable)
+        - a = (1 - fee)
+        - start = max(0, bufferNonLinearAmount - bufferAvailable) 
         - end = start + withdrawalAmount
+
+        Solving the integral:
+        fee = [ax³/3 + baseFee*x]|start to end
+        fee = (a*end³/3 + baseFee*end) - (a*start³/3 + baseFee*start)
+        fee = a*(end³ - start³)/3 + baseFee*(end - start)
         
+        This is implemented in calculateQuadraticTotalFee() where:
+        - Values are normalized to BASIS_POINT_SCALE
+        - start and end are the x-coordinates scaled to BASIS_POINT_SCALE
+        - baseFee is the linear fee rate
     Fee increases quadratically from baseFee up to 100% as buffer decreases below threshold
     */
     function quadraticBufferFee(
@@ -102,11 +110,6 @@ library FeeMath {
                 = bufferAvailableAmount >= bufferNonLinearAmount ? nonLinearFeeTaxedAmount : nonLinearStart + withdrawalAmount;
 
             uint256 nonLinearEndScaled = nonLinearEnd * BASIS_POINT_SCALE / bufferNonLinearAmount;
-
-            console.log("nonLinearStartScaled:", nonLinearStartScaled);
-            console.log("nonLinearEndScaled:", nonLinearEndScaled);
-            console.log("fee:", fee);
-            console.log("bufferMaxSize:", bufferMaxSize);
 
             nonLinearFee = calculateQuadraticTotalFee(
                 fee,
