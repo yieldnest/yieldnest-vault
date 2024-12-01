@@ -9,6 +9,7 @@ import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {Guard} from "src/module/Guard.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 library FeeMath {
     using Math for uint256;
@@ -78,12 +79,17 @@ library FeeMath {
             uint256 nonLinearStart
                 = bufferAvailableAmount >= bufferNonLinearAmount ? 0 : bufferNonLinearAmount - bufferAvailableAmount;
 
-            uint256 nonLinearStartScaled = nonLinearStart * BASIS_POINT_SCALE / bufferMaxSize;
+            uint256 nonLinearStartScaled = nonLinearStart * BASIS_POINT_SCALE / bufferNonLinearAmount;
 
             uint256 nonLinearEnd
                 = bufferAvailableAmount >= bufferNonLinearAmount ? nonLinearFeeTaxedAmount : nonLinearStart + withdrawalAmount;
 
-            uint256 nonLinearEndScaled = nonLinearEnd * BASIS_POINT_SCALE / bufferMaxSize;
+            uint256 nonLinearEndScaled = nonLinearEnd * BASIS_POINT_SCALE / bufferNonLinearAmount;
+
+            console.log("nonLinearStartScaled:", nonLinearStartScaled);
+            console.log("nonLinearEndScaled:", nonLinearEndScaled);
+            console.log("fee:", fee);
+            console.log("bufferMaxSize:", bufferMaxSize);
 
             nonLinearFee = calculateQuadraticTotalFee(
                 fee,

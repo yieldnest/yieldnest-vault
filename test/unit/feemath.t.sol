@@ -3,12 +3,12 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 
 contract FeeMathTest is Test {
     uint256 constant BASIS_POINT_SCALE = 1e8;
     uint256 constant BUFFER_FEE_FLAT_PORTION = 8e7; // 80%
-    uint256 constant QUADRATIC_A_FACTOR = 5e7; // 50%
 
     function test_LinearFee() public {
         uint256 amount = 1000 ether;
@@ -27,7 +27,7 @@ contract FeeMathTest is Test {
         uint256 fee = 1e4; // 0.01% fee
 
         // With full buffer, should just be linear fee
-        uint256 expectedFee = FeeMath.linearFee(withdrawalAmount, fee);
+        uint256 expectedFee = 1e14; // 100 ether * 0.01% = 0.01 ether = 1e14 wei
         uint256 actualFee = FeeMath.quadraticBufferFee(
             withdrawalAmount,
             bufferMaxSize,
@@ -43,8 +43,6 @@ contract FeeMathTest is Test {
         uint256 bufferMaxSize = 1000 ether;
         uint256 bufferAvailable = 100 ether; // Low buffer
         uint256 fee = 1e4; // 0.01% fee
-
-        uint256 bufferNonLinearAmount = (BASIS_POINT_SCALE - BUFFER_FEE_FLAT_PORTION) * bufferMaxSize / BASIS_POINT_SCALE;
         
         // With low buffer, fee should be higher than linear fee
         uint256 linearFee = FeeMath.linearFee(withdrawalAmount, fee);
@@ -55,6 +53,11 @@ contract FeeMathTest is Test {
             fee
         );
 
+        // Expected fee calculation:
+        // At 100 ether buffer (10% of max), we're well into the quadratic portion
+        uint256 expectedFee = 29168750 * withdrawalAmount / BASIS_POINT_SCALE;
+        
+        assertEq(actualFee, expectedFee, "Low buffer fee calculation incorrect");
         assertTrue(actualFee > linearFee, "Low buffer fee should be higher than linear fee");
     }
 
@@ -171,5 +174,22 @@ contract FeeMathTest is Test {
         );
 
         assertEq(fee, 34000000, "Fee should be maximum for full range");
+    }
+
+
+    function test_CalculateQuadraticTotalFee_HalfRange() public {
+        uint256 baseFee = 1e4; // 0.01% base fee
+        
+        // Test half-interval interval [0.5, 1] normalized to BASIS_POINT_SCALE
+        uint256 start = 5e7;
+        uint256 end = 1e8;   // BASIS_POINT_SCALE
+
+        uint256 fee = FeeMath.calculateQuadraticTotalFee(
+            baseFee,
+            start,
+            end
+        );
+
+        assertEq(fee, 29168750, "Fee should be maximum for full range");
     }
 }
