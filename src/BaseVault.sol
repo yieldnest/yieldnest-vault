@@ -23,7 +23,6 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     using Address for address;
     using Math for uint256;
 
-
     uint256 private constant BASIS_POINT_SCALE = 1e8;
     uint256 public constant withdrawalFee = 1e4;
 
