@@ -15,9 +15,9 @@ library FeeMath {
 
     uint256 public constant BASIS_POINT_SCALE = 1e8;
 
-    uint256 public constant BUFFER_FEE_FLAT_PORTION = 8e7;
+    uint256 public constant BUFFER_FEE_FLAT_PORTION = 8e7; // 80%
 
-    uint256 public constant QUADRATIC_A_FACTOR = 5e7;
+    uint256 public constant QUADRATIC_A_FACTOR = 5e7; // 50%
 
     function linearFee(uint256 amount, uint256 fee) internal pure returns (uint256) {
         return amount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
