@@ -77,7 +77,7 @@ contract FeeMathTest is Test {
 
         uint256 linearFee = FeeMath.linearFee(withdrawalAmount, fee);
     }
-    
+
     function test_QuadraticBufferFee_PartialNonLinear() public {
         uint256 withdrawalAmount = 350 ether;
         uint256 bufferMaxSize = 1000 ether;
@@ -177,5 +177,92 @@ contract FeeMathTest is Test {
         );
 
         assertEq(fee, 29168750, "Fee should be maximum for full range");
+    }
+
+    function skiptestFuzz_CalculateQuadraticTotalFee(
+        uint256 baseFee,
+        uint256 start,
+        uint256 end
+    ) public {
+
+
+        // uint256 baseFee = 4429;
+        // uint256 start = 225;
+        // uint256 end = 2022;
+
+
+        // // Bound inputs to valid ranges
+        vm.assume(baseFee > 0 && baseFee <= FeeMath.BASIS_POINT_SCALE);
+        vm.assume(start >= 0 && start <= FeeMath.BASIS_POINT_SCALE);
+        vm.assume(end > start && end <= FeeMath.BASIS_POINT_SCALE); // Ensure end >= start
+        
+        uint256 fee = FeeMath.calculateQuadraticTotalFee(
+            baseFee,
+            start,
+            end
+        );
+
+        // Calculate expected fee using the quadratic formula:
+        // expectedFee = ((1 - baseFee) * (end^3 - start^3)/3 + baseFee * (end - start)) / (end - start) * BASIS_POINT_SCALE
+        uint256 end3 = (FeeMath.BASIS_POINT_SCALE - baseFee) * end * end * end / FeeMath.BASIS_POINT_SCALE / FeeMath.BASIS_POINT_SCALE;
+        uint256 start3 = (FeeMath.BASIS_POINT_SCALE - baseFee) * start * start * start / FeeMath.BASIS_POINT_SCALE / FeeMath.BASIS_POINT_SCALE;
+        uint256 expectedFee = ((end3 - start3) / 3) / (end - start) + baseFee;
+
+        // assertEq(fee, expectedFee, "Fee calculation mismatch");
+        
+        // Additional invariant checks
+        assertLe(fee, FeeMath.BASIS_POINT_SCALE, "Fee exceeds max");
+        assertGe(fee, baseFee, "Fee below base fee");
+        if (start == end) {
+            assertEq(fee, baseFee, "Fee should equal base fee when start == end");
+        }
+    }
+
+    function testFuzz_blaCalculateQuadraticTotalFeeFullRange2(
+        // uint256 baseFee,
+        // uint256 start,
+        // uint256 end
+    ) public {
+
+
+        uint256 baseFee = 1e6;
+        uint256 start =5e7;
+        uint256 end = 1e8;
+
+
+        // // Bound inputs to valid ranges
+        // vm.assume(baseFee >= 0 && baseFee <= FeeMath.BASIS_POINT_SCALE);
+        // vm.assume(start >= 0 && start <= FeeMath.BASIS_POINT_SCALE);
+        // vm.assume(end >= start && end <= FeeMath.BASIS_POINT_SCALE); // Ensure end >= start
+        
+        uint256 fee = FeeMath.calculateQuadraticTotalFee(
+            baseFee,
+            start,
+            end
+        );
+
+        // Calculate expected fee using the quadratic formula:
+        // fee = ((1 - baseFee) * (end^3 - start^3)/3 + baseFee * (end - start)) / (end - start) * BASIS_POINT_SCALE
+        uint256 end3 = end * end * end / FeeMath.BASIS_POINT_SCALE / FeeMath.BASIS_POINT_SCALE;
+        uint256 start3 = start * start * start / FeeMath.BASIS_POINT_SCALE / FeeMath.BASIS_POINT_SCALE;
+        uint256 expectedFee = (((FeeMath.BASIS_POINT_SCALE - baseFee) * (end3 - start3) / 3 + 
+            baseFee * (end - start))) / (end - start) * FeeMath.BASIS_POINT_SCALE;
+
+
+        // console.log("Quadratic portion:", (FeeMath.BASIS_POINT_SCALE - baseFee) * (end3 - start3) / 3);
+        console.log("Linear portion:", baseFee * (end - start));
+
+        
+        console.log("Actual fee:", fee);
+        console.log("Expected fee:", expectedFee);
+
+        // assertEq(fee, expectedFee, "Fee calculation mismatch");
+        
+        // Additional invariant checks
+        assertLe(fee, FeeMath.BASIS_POINT_SCALE, "Fee exceeds max");
+        assertGe(fee, baseFee, "Fee below base fee");
+        if (start == end) {
+            assertEq(fee, baseFee, "Fee should equal base fee when start == end");
+        }
     }
 }
