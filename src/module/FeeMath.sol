@@ -9,6 +9,8 @@ import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {Guard} from "src/module/Guard.sol";
+import {console} from "forge-std/console.sol";
+
 
 library FeeMath {
     using Math for uint256;
@@ -132,11 +134,20 @@ library FeeMath {
         }
 
         // Calculate end^3 and start^3
-        uint256 end3 = end * end * end / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
-        uint256 start3 = start * start * start / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
+        uint256 end3 = (BASIS_POINT_SCALE - baseFee) * end * end * end / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
+        uint256 start3 =  (BASIS_POINT_SCALE - baseFee) * start * start * start / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
+
+        /* compute integral between End and Start */
 
         // Calculate the total fee
-        uint256 totalFee = ((BASIS_POINT_SCALE - baseFee) * (end3 - start3) / 3 + baseFee * (end - start)) / BASIS_POINT_SCALE;
+        uint256 totalFee =
+            ((end3 - start3) / 3) / (end - start)
+            + baseFee;
+
+        console.log("end3:", end3);
+        console.log("start3:", start3);
+
+        console.log("Quadratic fee portion:", ((end3 - start3) / 3) / (end - start));
 
         return totalFee; // adjusted to BASIS_POINT_SCALE
     }
