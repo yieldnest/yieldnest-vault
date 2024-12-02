@@ -21,8 +21,6 @@ library FeeMath {
 
     uint256 public constant BASIS_POINT_SCALE = 1e8;
 
-    uint256 public constant BUFFER_FEE_FLAT_PORTION = 8e7; // 80%
-
     function linearFee(uint256 amount, uint256 fee) internal pure returns (uint256) {
         return amount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
@@ -36,7 +34,7 @@ library FeeMath {
     |                    ....
     |                         ..... 
     |                              _________________ Linear portion (high buffer)
-    |                         Quadratic portion      baseFee (e.g. 0.01%)
+    |                         Quadratic portion      baseFee (e.g. 0.1%)
     |                     (low buffer region)
     +---------------------------------> Buffer Available
                                        (increases →)
@@ -67,6 +65,7 @@ library FeeMath {
         uint256 withdrawalAmount,
         uint256 bufferMaxSize,
         uint256 bufferAvailableAmount,
+        uint256 bufferFeeFlatFraction,
         uint256 fee
     ) internal view returns (uint256) {
 
@@ -83,7 +82,7 @@ library FeeMath {
         }
 
         uint256 bufferNonLinearAmount =
-            (BASIS_POINT_SCALE - BUFFER_FEE_FLAT_PORTION) * bufferMaxSize / BASIS_POINT_SCALE;
+            (BASIS_POINT_SCALE - bufferFeeFlatFraction) * bufferMaxSize / BASIS_POINT_SCALE;
 
         uint256 linearFeeTaxedAmount = 0;
         uint256 nonLinearFeeTaxedAmount = 0;

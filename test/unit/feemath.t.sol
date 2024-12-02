@@ -32,6 +32,7 @@ contract FeeMathTest is Test {
             withdrawalAmount,
             bufferMaxSize,
             bufferAvailable,
+            BUFFER_FEE_FLAT_PORTION,
             fee
         );
 
@@ -50,6 +51,7 @@ contract FeeMathTest is Test {
             withdrawalAmount,
             bufferMaxSize,
             bufferAvailable,
+            BUFFER_FEE_FLAT_PORTION,
             fee
         );
 
@@ -72,6 +74,7 @@ contract FeeMathTest is Test {
             withdrawalAmount,
             bufferMaxSize,
             bufferAvailable,
+            BUFFER_FEE_FLAT_PORTION,
             fee
         );
 
@@ -91,6 +94,7 @@ contract FeeMathTest is Test {
             withdrawalAmount,
             bufferMaxSize,
             bufferAvailable,
+            BUFFER_FEE_FLAT_PORTION,
             fee
         );
 
