@@ -17,7 +17,7 @@ contract Vault is BaseVault {
 
     function _getFeeStorage() internal pure returns (FeeStorage storage $) {
         assembly {
-            $.slot := 0x3c5c9c0c1b2c0e0d0f0e0d0c0b0a090807060504030201000f0e0d0c0b0a0908
+            $.slot := 0xde924653ae91bd33356774e603163bd5862c93462f31acccae5f965be6e6599b
         }
     }
 
