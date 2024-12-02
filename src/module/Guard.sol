@@ -2,19 +2,26 @@
 pragma solidity ^0.8.24;
 
 import {IVault} from "src/interface/IVault.sol";
+import {IValidator} from "src/interface/IValidator.sol";
 
 library Guard {
-    function validateCall(address target, bytes calldata data) internal view {
+    function validateCall(address target, uint256 value, bytes calldata data) internal view {
         bytes4 funcSig = bytes4(data[:4]);
 
         IVault.FunctionRule storage rule = _getProcessorStorage().rules[target][funcSig];
 
         if (!rule.isActive) revert RuleNotActive(target, funcSig);
 
+        IValidator validator = rule.validator;
+        if (address(validator) != address(0)) {
+            validator.validate(target, value, data);
+            return;
+        }
+
         for (uint256 i = 0; i < rule.paramRules.length; i++) {
             if (rule.paramRules[i].paramType == IVault.ParamType.ADDRESS) {
-                address value = abi.decode(data[4 + i * 32:], (address));
-                _validateAddress(value, rule.paramRules[i]);
+                address addressValue = abi.decode(data[4 + i * 32:], (address));
+                _validateAddress(addressValue, rule.paramRules[i]);
                 continue;
             }
         }

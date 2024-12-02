@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC4626} from "src/Common.sol";
+import {IValidator} from "src/interface/IValidator.sol";
 
 interface IVault is IERC4626 {
     struct VaultStorage {
@@ -37,6 +38,7 @@ interface IVault is IERC4626 {
     struct FunctionRule {
         bool isActive;
         ParamRule[] paramRules;
+        IValidator validator;
     }
 
     struct ProcessorStorage {

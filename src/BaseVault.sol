@@ -616,7 +616,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         returnData = new bytes[](targetsLength);
 
         for (uint256 i = 0; i < targetsLength; i++) {
-            Guard.validateCall(targets[i], data[i]);
+            Guard.validateCall(targets[i], values[i], data[i]);
 
             (bool success, bytes memory returnData_) = targets[i].call{value: values[i]}(data[i]);
             if (!success) {

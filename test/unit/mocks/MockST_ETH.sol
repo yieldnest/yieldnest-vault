@@ -53,6 +53,10 @@ contract MockSTETH is IStETH, ERC20 {
         return submit(address(0));
     }
 
+    function deposit2() public payable returns (uint256) {
+        return deposit();
+    }
+
     receive() external payable {
         submit(address(0));
     }
