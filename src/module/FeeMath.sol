@@ -68,7 +68,6 @@ library FeeMath {
         uint256 bufferFlatFeeFraction,
         uint256 fee
     ) internal view returns (uint256) {
-
         if (fee > BASIS_POINT_SCALE) {
             revert AmountExceedsScale();
         }
@@ -81,8 +80,7 @@ library FeeMath {
             revert WithdrawalExceedsBuffer(withdrawalAmount, bufferAvailableAmount);
         }
 
-        uint256 bufferNonLinearAmount =
-            (BASIS_POINT_SCALE - bufferFlatFeeFraction) * bufferMaxSize / BASIS_POINT_SCALE;
+        uint256 bufferNonLinearAmount = (BASIS_POINT_SCALE - bufferFlatFeeFraction) * bufferMaxSize / BASIS_POINT_SCALE;
 
         uint256 linearFeeTaxedAmount = 0;
         uint256 nonLinearFeeTaxedAmount = 0;
@@ -102,32 +100,24 @@ library FeeMath {
         // Calculate the non-linear fee using a quadratic function
         uint256 nonLinearFee = 0;
         if (nonLinearFeeTaxedAmount > 0) {
-            uint256 nonLinearStart
-                = bufferAvailableAmount >= bufferNonLinearAmount ? 0 : bufferNonLinearAmount - bufferAvailableAmount;
+            uint256 nonLinearStart =
+                bufferAvailableAmount >= bufferNonLinearAmount ? 0 : bufferNonLinearAmount - bufferAvailableAmount;
 
             uint256 nonLinearStartScaled = nonLinearStart * BASIS_POINT_SCALE / bufferNonLinearAmount;
 
-            uint256 nonLinearEnd
-                = bufferAvailableAmount >= bufferNonLinearAmount ? nonLinearFeeTaxedAmount : nonLinearStart + withdrawalAmount;
+            uint256 nonLinearEnd = bufferAvailableAmount >= bufferNonLinearAmount
+                ? nonLinearFeeTaxedAmount
+                : nonLinearStart + withdrawalAmount;
 
             uint256 nonLinearEndScaled = nonLinearEnd * BASIS_POINT_SCALE / bufferNonLinearAmount;
 
-            nonLinearFee = calculateQuadraticTotalFee(
-                fee,
-                nonLinearStartScaled,
-                nonLinearEndScaled
-            );
+            nonLinearFee = calculateQuadraticTotalFee(fee, nonLinearStartScaled, nonLinearEndScaled);
         }
 
         return linearFeeAmount + nonLinearFee * nonLinearFeeTaxedAmount / BASIS_POINT_SCALE;
     }
 
-    function calculateQuadraticTotalFee(
-        uint256 baseFee,
-        uint256 start,
-        uint256 end
-        ) public pure returns (uint256) {
-
+    function calculateQuadraticTotalFee(uint256 baseFee, uint256 start, uint256 end) public pure returns (uint256) {
         if (start >= end) {
             revert StartMustBeLessThanEnd(start, end);
         }
@@ -138,14 +128,12 @@ library FeeMath {
 
         // Calculate end^3 and start^3
         uint256 end3 = (BASIS_POINT_SCALE - baseFee) * end * end * end / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
-        uint256 start3 =  (BASIS_POINT_SCALE - baseFee) * start * start * start / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
+        uint256 start3 = (BASIS_POINT_SCALE - baseFee) * start * start * start / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
 
         /* compute integral between End and Start */
 
         // Calculate the total fee
-        uint256 totalFee =
-            ((end3 - start3) / 3) / (end - start)
-            + baseFee;
+        uint256 totalFee = ((end3 - start3) / 3) / (end - start) + baseFee;
 
         return totalFee; // adjusted to BASIS_POINT_SCALE
     }

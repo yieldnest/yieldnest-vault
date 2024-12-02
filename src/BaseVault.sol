@@ -642,7 +642,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /// FEES ///
-    function _feeOnRaw(uint256 assets) public virtual override view returns (uint256);
+    function _feeOnRaw(uint256 assets) public view virtual override returns (uint256);
 
-    function _feeOnTotal(uint256 assets) public virtual override view returns (uint256);
+    function _feeOnTotal(uint256 assets) public view virtual override returns (uint256);
 }

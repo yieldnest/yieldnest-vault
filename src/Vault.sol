@@ -6,14 +6,12 @@ import {FeeMath} from "src/module/FeeMath.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 import {Math} from "./Common.sol";
 
-
 contract Vault is BaseVault {
-
     using Math for uint256;
 
     struct FeeStorage {
         uint64 baseWithdrawalFee;
-        uint64 bufferFlatFeeFraction; 
+        uint64 bufferFlatFeeFraction;
         uint64 vaultBufferFraction;
     }
 
@@ -25,14 +23,17 @@ contract Vault is BaseVault {
 
     uint256 internal constant BASIS_POINT_SCALE = 10000;
 
-
     /**
      * @notice Initializes the vault.
      * @param admin The address of the admin.
      * @param name The name of the vault.
      * @param symbol The symbol of the vault.
      */
-    function initialize(address admin, string memory name, string memory symbol, uint8 decimals_) external virtual initializer {
+    function initialize(address admin, string memory name, string memory symbol, uint8 decimals_)
+        external
+        virtual
+        initializer
+    {
         __ERC20_init(name, symbol);
         __AccessControl_init();
         __ReentrancyGuard_init();
@@ -46,7 +47,6 @@ contract Vault is BaseVault {
     //// FEES ////
 
     function _feeOnRaw(uint256 assets) public view override returns (uint256) {
-
         FeeStorage storage fees = _getFeeStorage();
         uint256 baseWithdrawalFee = fees.baseWithdrawalFee;
         uint256 bufferFlatFeeFraction = fees.bufferFlatFeeFraction;
@@ -54,17 +54,13 @@ contract Vault is BaseVault {
         if (baseWithdrawalFee == 0) {
             return 0;
         }
-        
+
         uint256 bufferAvailableAmount = IStrategy(buffer()).totalAssets();
         uint256 totalAssets_ = totalAssets();
         uint256 bufferMaxSize = _bufferMaxSize(totalAssets_, vaultBufferFraction);
 
         uint256 feeInAssets = FeeMath.quadraticBufferFee(
-            assets,
-            bufferMaxSize,
-            bufferAvailableAmount,
-            bufferFlatFeeFraction,
-            baseWithdrawalFee
+            assets, bufferMaxSize, bufferAvailableAmount, bufferFlatFeeFraction, baseWithdrawalFee
         );
 
         return feeInAssets;
@@ -82,10 +78,7 @@ contract Vault is BaseVault {
         return assets.mulDiv(withdrawalFee, withdrawalFee + BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
 
-    function _bufferMaxSize(
-        uint256 totalAssets_,
-        uint256 bufferFraction_
-    ) internal pure returns (uint256) {
+    function _bufferMaxSize(uint256 totalAssets_, uint256 bufferFraction_) internal pure returns (uint256) {
         return totalAssets_.mulDiv(bufferFraction_, BASIS_POINT_SCALE, Math.Rounding.Floor);
     }
 }
