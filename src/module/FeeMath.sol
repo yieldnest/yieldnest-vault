@@ -11,7 +11,6 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {Guard} from "src/module/Guard.sol";
 import {console} from "forge-std/console.sol";
 
-
 library FeeMath {
     using Math for uint256;
 
@@ -148,11 +147,6 @@ library FeeMath {
         uint256 totalFee =
             ((end3 - start3) / 3) / (end - start)
             + baseFee;
-
-        console.log("end3:", end3);
-        console.log("start3:", start3);
-
-        console.log("Quadratic fee portion:", ((end3 - start3) / 3) / (end - start));
 
         return totalFee; // adjusted to BASIS_POINT_SCALE
     }
