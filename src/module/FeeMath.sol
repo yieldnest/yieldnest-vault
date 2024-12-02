@@ -67,7 +67,7 @@ library FeeMath {
         uint256 bufferAvailableAmount,
         uint256 bufferFlatFeeFraction,
         uint256 fee
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         if (fee > BASIS_POINT_SCALE) {
             revert AmountExceedsScale();
         }
