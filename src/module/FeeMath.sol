@@ -18,6 +18,7 @@ library FeeMath {
     error AmountExceedsScale();
     error BufferExceedsMax(uint256 bufferAvailable, uint256 bufferMax);
     error WithdrawalExceedsBuffer(uint256 withdrawalAmount, uint256 bufferAvailable);
+    error StartMustBeLessThanEnd(uint256 start, uint256 end);
 
     uint256 public constant BASIS_POINT_SCALE = 1e8;
 
@@ -128,6 +129,10 @@ library FeeMath {
         uint256 start,
         uint256 end
         ) public pure returns (uint256) {
+
+        if (start >= end) {
+            revert StartMustBeLessThanEnd(start, end);
+        }
 
         if (start > BASIS_POINT_SCALE || end > BASIS_POINT_SCALE || baseFee > BASIS_POINT_SCALE) {
             revert AmountExceedsScale();
