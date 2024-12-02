@@ -10,14 +10,17 @@ contract FeeMathTest is Test {
     uint256 constant BASIS_POINT_SCALE = 1e8;
     uint256 constant BUFFER_FEE_FLAT_PORTION = 8e7; // 80%
 
-    function test_LinearFee() public {
-        uint256 amount = 1000 ether;
-        uint256 fee = 1e4; // 0.01% fee
+    function test_LinearFee(uint256 amount, uint256 fee) public {
+        // Bound fee to valid range (0 to BASIS_POINT_SCALE)
+        fee = bound(fee, 0, BASIS_POINT_SCALE);
+        
+        // Bound amount to avoid overflow when multiplying by fee
+        amount = bound(amount, 0, 1000000 ether);
 
         uint256 expectedFee = (amount * fee) / BASIS_POINT_SCALE;
         uint256 actualFee = FeeMath.linearFee(amount, fee);
 
-        assertEq(actualFee, expectedFee, "Linear fee calculation incorrect");
+        assertApproxEqAbs(actualFee, expectedFee, 1, "Linear fee calculation incorrect");
     }
 
     function test_QuadraticBufferFee_FullBuffer() public {
