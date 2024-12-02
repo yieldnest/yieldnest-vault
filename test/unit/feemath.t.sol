@@ -10,7 +10,7 @@ contract FeeMathTest is Test {
     uint256 constant BASIS_POINT_SCALE = 1e8;
     uint256 constant BUFFER_FEE_FLAT_PORTION = 8e7; // 80%
 
-    function test_LinearFee(uint256 amount, uint256 fee) public {
+    function test_LinearFee(uint256 amount, uint256 fee) public pure {
         // Bound fee to valid range (0 to BASIS_POINT_SCALE)
         fee = bound(fee, 0, BASIS_POINT_SCALE);
         
@@ -23,7 +23,7 @@ contract FeeMathTest is Test {
         assertApproxEqAbs(actualFee, expectedFee, 1, "Linear fee calculation incorrect");
     }
 
-    function test_QuadraticBufferFee_FullBuffer() public {
+    function test_QuadraticBufferFee_FullBuffer() public view {
         uint256 withdrawalAmount = 100 ether;
         uint256 bufferMaxSize = 1000 ether;
         uint256 bufferAvailable = 1000 ether; // Full buffer
@@ -42,7 +42,7 @@ contract FeeMathTest is Test {
         assertEq(actualFee, expectedFee, "Full buffer fee calculation incorrect");
     }
 
-    function test_QuadraticBufferFee_LowBuffer() public {
+    function test_QuadraticBufferFee_LowBuffer() public view {
         uint256 withdrawalAmount = 100 ether;
         uint256 bufferMaxSize = 1000 ether;
         uint256 bufferAvailable = 100 ether; // Low buffer
@@ -73,25 +73,22 @@ contract FeeMathTest is Test {
         uint256 fee = 1e4; // 0.01% fee
 
         vm.expectRevert(abi.encodeWithSelector(FeeMath.WithdrawalExceedsBuffer.selector, withdrawalAmount, bufferAvailable));
-        uint256 actualFee = FeeMath.quadraticBufferFee(
+        FeeMath.quadraticBufferFee(
             withdrawalAmount,
             bufferMaxSize,
             bufferAvailable,
             BUFFER_FEE_FLAT_PORTION,
             fee
         );
-
-        uint256 linearFee = FeeMath.linearFee(withdrawalAmount, fee);
     }
 
-    function test_QuadraticBufferFee_PartialNonLinear() public {
+    function test_QuadraticBufferFee_PartialNonLinear() public view {
         uint256 withdrawalAmount = 350 ether;
         uint256 bufferMaxSize = 1000 ether;
         uint256 bufferAvailable = 400 ether; // Just above non-linear threshold
         uint256 fee = 1e4;
 
         uint256 bufferNonLinearAmount = (BASIS_POINT_SCALE - BUFFER_FEE_FLAT_PORTION) * bufferMaxSize / BASIS_POINT_SCALE;
-        uint256 linearPortion = bufferAvailable - bufferNonLinearAmount;
         
         uint256 actualFee = FeeMath.quadraticBufferFee(
             withdrawalAmount,
@@ -105,7 +102,7 @@ contract FeeMathTest is Test {
         assertGt(actualFee, linearOnlyFee, "Partial non-linear fee should be higher than pure linear fee");
     }
 
-    function test_CalculateQuadraticTotalFee_PartialBuffer() public {
+    function test_CalculateQuadraticTotalFee_PartialBuffer() public pure {
         uint256 baseFee = 1e6; // 1% base fee
         
         // Test interval [0.4, 0.6] normalized to BASIS_POINT_SCALE
@@ -121,7 +118,7 @@ contract FeeMathTest is Test {
         assertEq(fee, 26080000, "Fee should equal expected");
     }
 
-    function test_CalculateQuadraticTotalFee_LowBuffer() public {
+    function test_CalculateQuadraticTotalFee_LowBuffer() public pure {
         uint256 baseFee = 1e6; // 1% base fee
         
         // Test interval [0.1, 0.2] normalized to BASIS_POINT_SCALE
@@ -137,7 +134,7 @@ contract FeeMathTest is Test {
         assertEq(fee, 3310000, "Fee should be higher in low buffer region");
     }
 
-    function test_CalculateQuadraticTotalFee_HighBuffer() public {
+    function test_CalculateQuadraticTotalFee_HighBuffer() public pure {
         uint256 baseFee = 1e6; // 1% base fee
         
         // Test interval [0.8, 0.9] normalized to BASIS_POINT_SCALE
@@ -153,7 +150,7 @@ contract FeeMathTest is Test {
         assertEq(fee, 72610000, "Fee should be much higher in high buffer region");
     }
 
-    function test_CalculateQuadraticTotalFee_FullRange() public {
+    function test_CalculateQuadraticTotalFee_FullRange() public pure {
         uint256 baseFee = 1e6; // 1% base fee
         
         // Test full interval [0, 1] normalized to BASIS_POINT_SCALE
@@ -170,7 +167,7 @@ contract FeeMathTest is Test {
     }
 
 
-    function test_CalculateQuadraticTotalFee_HalfRange() public {
+    function test_CalculateQuadraticTotalFee_HalfRange() public pure {
         uint256 baseFee = 1e4; // 0.01% base fee
         
         // Test half-interval interval [0.5, 1] normalized to BASIS_POINT_SCALE
@@ -190,7 +187,7 @@ contract FeeMathTest is Test {
         uint256 baseFee,
         uint256 start,
         uint256 end
-    ) public {
+    ) public pure {
 
 
         // // Bound inputs to valid ranges
@@ -212,7 +209,7 @@ contract FeeMathTest is Test {
         uint256 quadraticPortion = (FeeMath.BASIS_POINT_SCALE - baseFee) * (scaledEnd - scaledStart) / FeeMath.BASIS_POINT_SCALE / FeeMath.BASIS_POINT_SCALE / 3;
         uint256 expectedFee = quadraticPortion / (end - start) + baseFee;
 
-        // assertEq(fee, expectedFee, "Fee calculation mismatch");
+        assertEq(fee, expectedFee, "Fee calculation mismatch");
         
         // Additional invariant checks
         assertLe(fee, FeeMath.BASIS_POINT_SCALE, "Fee exceeds max");
