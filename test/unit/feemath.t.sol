@@ -17,7 +17,7 @@ contract FeeMathTest is Test {
         amount = bound(amount, 0, 1000000 ether);
 
         uint256 expectedFee = (amount * fee) / BASIS_POINT_SCALE;
-        uint256 actualFee = FeeMath.linearFee(amount, fee);
+        uint256 actualFee = FeeMath.linearFee(amount, fee, FeeMath.FeeType.OnRaw);
 
         assertApproxEqAbs(actualFee, expectedFee, 1, "Linear fee calculation incorrect");
     }
@@ -30,8 +30,9 @@ contract FeeMathTest is Test {
 
         // With full buffer, should just be linear fee
         uint256 expectedFee = (withdrawalAmount * fee) / BASIS_POINT_SCALE; // Calculate expected fee using same formula as linearFee()
-        uint256 actualFee =
-            FeeMath.quadraticBufferFee(withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, fee);
+        uint256 actualFee = FeeMath.quadraticBufferFee(
+            withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, fee, FeeMath.FeeType.OnRaw
+        );
 
         assertEq(actualFee, expectedFee, "Full buffer fee calculation incorrect");
     }
@@ -43,9 +44,10 @@ contract FeeMathTest is Test {
         uint256 fee = 1e4; // 0.01% fee
 
         // With low buffer, fee should be higher than linear fee
-        uint256 linearFee = FeeMath.linearFee(withdrawalAmount, fee);
-        uint256 actualFee =
-            FeeMath.quadraticBufferFee(withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, fee);
+        uint256 linearFee = FeeMath.linearFee(withdrawalAmount, fee, FeeMath.FeeType.OnRaw);
+        uint256 actualFee = FeeMath.quadraticBufferFee(
+            withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, fee, FeeMath.FeeType.OnRaw
+        );
 
         // Expected fee calculation:
         // At 100 ether buffer (10% of max), we're well into the quadratic portion
@@ -64,7 +66,9 @@ contract FeeMathTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(FeeMath.WithdrawalExceedsBuffer.selector, withdrawalAmount, bufferAvailable)
         );
-        FeeMath.quadraticBufferFee(withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, fee);
+        FeeMath.quadraticBufferFee(
+            withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, fee, FeeMath.FeeType.OnRaw
+        );
     }
 
     function test_QuadraticBufferFee_PartialNonLinear() public view {
@@ -76,10 +80,11 @@ contract FeeMathTest is Test {
         uint256 bufferNonLinearAmount =
             (BASIS_POINT_SCALE - BUFFER_FEE_FLAT_PORTION) * bufferMaxSize / BASIS_POINT_SCALE;
 
-        uint256 actualFee =
-            FeeMath.quadraticBufferFee(withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, fee);
+        uint256 actualFee = FeeMath.quadraticBufferFee(
+            withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, fee, FeeMath.FeeType.OnRaw
+        );
 
-        uint256 linearOnlyFee = FeeMath.linearFee(withdrawalAmount, fee);
+        uint256 linearOnlyFee = FeeMath.linearFee(withdrawalAmount, fee, FeeMath.FeeType.OnRaw);
         assertGt(actualFee, linearOnlyFee, "Partial non-linear fee should be higher than pure linear fee");
     }
 

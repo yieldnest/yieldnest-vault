@@ -60,7 +60,12 @@ contract Vault is BaseVault {
         uint256 bufferMaxSize = _bufferMaxSize(totalAssets_, vaultBufferFraction);
 
         uint256 feeInAssets = FeeMath.quadraticBufferFee(
-            assets, bufferMaxSize, bufferAvailableAmount, bufferFlatFeeFraction, baseWithdrawalFee
+            assets,
+            bufferMaxSize,
+            bufferAvailableAmount,
+            bufferFlatFeeFraction,
+            baseWithdrawalFee,
+            FeeMath.FeeType.OnRaw
         );
 
         return feeInAssets;

@@ -12,17 +12,37 @@ import {Guard} from "src/module/Guard.sol";
 import {console} from "forge-std/console.sol";
 
 library FeeMath {
+    enum FeeType {
+        OnRaw,
+        OnTotal
+    }
+
     using Math for uint256;
 
     error AmountExceedsScale();
     error BufferExceedsMax(uint256 bufferAvailable, uint256 bufferMax);
     error WithdrawalExceedsBuffer(uint256 withdrawalAmount, uint256 bufferAvailable);
     error StartMustBeLessThanEnd(uint256 start, uint256 end);
+    error UnsupportedFeeType(FeeType feeType);
 
     uint256 public constant BASIS_POINT_SCALE = 1e8;
 
-    function linearFee(uint256 amount, uint256 fee) internal pure returns (uint256) {
+    function linearFee(uint256 amount, uint256 fee, FeeType feeType) internal pure returns (uint256) {
+        if (feeType == FeeType.OnRaw) {
+            return feeOnRaw(amount, fee);
+        } else if (feeType == FeeType.OnTotal) {
+            return feeOnTotal(amount, fee);
+        } else {
+            revert UnsupportedFeeType(feeType);
+        }
+    }
+
+    function feeOnRaw(uint256 amount, uint256 fee) internal pure returns (uint256) {
         return amount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
+    }
+
+    function feeOnTotal(uint256 amount, uint256 fee) internal pure returns (uint256) {
+        return amount.mulDiv(fee, fee + BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
 
     /*
@@ -66,7 +86,8 @@ library FeeMath {
         uint256 bufferMaxSize,
         uint256 bufferAvailableAmount,
         uint256 bufferFlatFeeFraction,
-        uint256 fee
+        uint256 fee,
+        FeeType feeType
     ) internal pure returns (uint256) {
         if (fee > BASIS_POINT_SCALE) {
             revert AmountExceedsScale();
@@ -95,8 +116,6 @@ library FeeMath {
             nonLinearFeeTaxedAmount = withdrawalAmount;
         }
 
-        uint256 linearFeeAmount = linearFee(linearFeeTaxedAmount, fee);
-
         // Calculate the non-linear fee using a quadratic function
         uint256 nonLinearFee = 0;
         if (nonLinearFeeTaxedAmount > 0) {
@@ -114,7 +133,14 @@ library FeeMath {
             nonLinearFee = calculateQuadraticTotalFee(fee, nonLinearStartScaled, nonLinearEndScaled);
         }
 
-        return linearFeeAmount + nonLinearFee * nonLinearFeeTaxedAmount / BASIS_POINT_SCALE;
+        // Return fee based on type
+        if (feeType == FeeType.OnRaw) {
+            return feeOnRaw(linearFeeTaxedAmount, fee) + feeOnRaw(nonLinearFeeTaxedAmount, nonLinearFee);
+        } else if (feeType == FeeType.OnTotal) {
+            revert("Unspported FeeType.OnTotal");
+        } else {
+            revert UnsupportedFeeType(feeType);
+        }
     }
 
     function calculateQuadraticTotalFee(uint256 baseFee, uint256 start, uint256 end) public pure returns (uint256) {
