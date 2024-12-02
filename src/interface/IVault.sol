@@ -101,4 +101,8 @@ interface IVault is IERC4626 {
     function processor(address[] calldata targets, uint256[] calldata values, bytes[] calldata data)
         external
         returns (bytes[] memory);
+
+    // FEES
+    function _feeOnRaw(uint256 assets) external view returns (uint256);
+    function _feeOnTotal(uint256 assets) external view returns (uint256);
 }

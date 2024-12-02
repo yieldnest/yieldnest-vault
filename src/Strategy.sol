@@ -110,4 +110,12 @@ contract Strategy is BaseVault {
         _burn(owner, shares);
         emit Withdraw(caller, receiver, owner, assets, shares);
     }
+
+    function _feeOnRaw(uint256) public pure override returns (uint256) {
+        return 0;
+    }
+
+    function _feeOnTotal(uint256) public pure override returns (uint256) {
+        return 0;
+    }
 }

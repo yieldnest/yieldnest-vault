@@ -23,9 +23,6 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     using Address for address;
     using Math for uint256;
 
-    uint256 private constant BASIS_POINT_SCALE = 1e8;
-    uint256 public constant withdrawalFee = 1e4;
-
     /**
      * @notice Returns the address of the underlying asset.
      * @return address The address of the asset.
@@ -644,15 +641,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         emit NativeDeposit(msg.value);
     }
 
-    //// FEES ////
+    /// FEES ///
+    function _feeOnRaw(uint256 assets) public virtual override view returns (uint256);
 
-    function _feeOnRaw(uint256 assets) public pure returns (uint256) {
-        return assets.mulDiv(withdrawalFee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
-    }
-
-    /// @dev Calculates the fee part of an amount `assets` that already includes fees.
-    /// Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
-    function _feeOnTotal(uint256 assets) public pure returns (uint256) {
-        return assets.mulDiv(withdrawalFee, withdrawalFee + BASIS_POINT_SCALE, Math.Rounding.Ceil);
-    }
+    function _feeOnTotal(uint256 assets) public virtual override view returns (uint256);
 }

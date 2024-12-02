@@ -27,7 +27,7 @@ contract SetupVault is Test, MainnetActors, Etches {
 
         bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
         
-        bytes memory initData = abi.encodeWithSelector(ynETHxVault.initialize.selector, 18);
+        bytes memory initData = abi.encodeWithSelector(ynETHxVault.initializeV2.selector, 18);
         bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(newVault), initData);
 
         bytes32 predecessor = bytes32(0);

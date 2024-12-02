@@ -65,7 +65,7 @@ library FeeMath {
         uint256 withdrawalAmount,
         uint256 bufferMaxSize,
         uint256 bufferAvailableAmount,
-        uint256 bufferFeeFlatFraction,
+        uint256 bufferFlatFeeFraction,
         uint256 fee
     ) internal view returns (uint256) {
 
@@ -82,7 +82,7 @@ library FeeMath {
         }
 
         uint256 bufferNonLinearAmount =
-            (BASIS_POINT_SCALE - bufferFeeFlatFraction) * bufferMaxSize / BASIS_POINT_SCALE;
+            (BASIS_POINT_SCALE - bufferFlatFeeFraction) * bufferMaxSize / BASIS_POINT_SCALE;
 
         uint256 linearFeeTaxedAmount = 0;
         uint256 nonLinearFeeTaxedAmount = 0;
