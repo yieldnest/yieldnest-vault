@@ -57,9 +57,9 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(MC.WETH, 18, true);
-        vault.addAsset(MC.BUFFER, 18, false);
-        vault.addAsset(MC.STETH, 18, true);
+        vault.addAsset(MC.WETH, true);
+        vault.addAsset(MC.BUFFER, false);
+        vault.addAsset(MC.STETH, true);
 
         // configure processor rules
         setDepositRule(vault, MC.BUFFER, address(vault));
@@ -110,10 +110,10 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(MC.WETH, 18, true);
-        vault.addAsset(MC.STETH, 18, true);
-        vault.addAsset(MC.YNETH, 18, true);
-        vault.addAsset(MC.YNLSDE, 18, true);
+        vault.addAsset(MC.WETH, true);
+        vault.addAsset(MC.STETH, true);
+        vault.addAsset(MC.YNETH, true);
+        vault.addAsset(MC.YNLSDE, true);
 
         setDepositRule(vault, MC.BUFFER, address(vault));
         setDepositRule(vault, MC.YNETH, address(vault));

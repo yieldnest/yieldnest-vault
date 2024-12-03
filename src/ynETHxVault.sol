@@ -6,10 +6,10 @@ import {BaseVault} from "src/BaseVault.sol";
 contract ynETHxVault is BaseVault {
     /**
      * @notice Initializes the vault.
-     * @param decimals The number of decimals for the vault token.
+     * @param decimals_ The number of decimals for the vault token.
      */
-    function initialize(uint8 decimals) external reinitializer(2) {
+    function initialize(uint8 decimals_) external reinitializer(2) {
         VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.decimals = decimals;
+        vaultStorage.decimals = decimals_;
     }
 }

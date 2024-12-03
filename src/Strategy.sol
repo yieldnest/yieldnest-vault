@@ -10,8 +10,12 @@ contract Strategy is BaseVault {
      * @param admin The address of the admin.
      * @param name The name of the vault.
      * @param symbol The symbol of the vault.
+     * @param decimals_ The number of decimals for the vault token.
      */
-    function initialize(address admin, string memory name, string memory symbol, uint8 decimals) external initializer {
+    function initialize(address admin, string memory name, string memory symbol, uint8 decimals_)
+        external
+        initializer
+    {
         __ERC20_init(name, symbol);
         __AccessControl_init();
         __ReentrancyGuard_init();
@@ -19,7 +23,7 @@ contract Strategy is BaseVault {
 
         VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.paused = true;
-        vaultStorage.decimals = decimals;
+        vaultStorage.decimals = decimals_;
     }
 
     /**
@@ -101,7 +105,7 @@ contract Strategy is BaseVault {
             _spendAllowance(owner, caller, shares);
         }
 
-        SafeERC20.safeTransferFrom(IERC20(asset()), caller, address(this), assets);
+        SafeERC20.safeTransferFrom(IERC20(asset()), address(this), caller, assets);
 
         _burn(owner, shares);
         emit Withdraw(caller, receiver, owner, assets, shares);

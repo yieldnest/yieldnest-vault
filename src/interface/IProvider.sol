@@ -25,10 +25,6 @@ interface IswETH {
     function swETHToETHRate() external view returns (uint256);
 }
 
-interface IChainlinkAggregator {
-    function latestAnswer() external view returns (int256);
-}
-
 interface IsfrxETH {
     function pricePerShare() external view returns (uint256);
 }

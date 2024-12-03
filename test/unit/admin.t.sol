@@ -9,6 +9,8 @@ import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
+import {IVault} from "src/interface/IVault.sol";
+import {MockERC20} from "test/unit/mocks/MockERC20.sol";
 
 contract VaultAdminUintTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -16,6 +18,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
 
     Vault public vault;
     WETH9 public weth;
+    MockERC20 public asset;
 
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 1_000 * 10 ** 18;
@@ -32,40 +35,39 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
+
+        // Deploy mock asset
+        asset = new MockERC20("Mock Token", "MOCK");
     }
 
     function test_Vault_addAsset() public {
-        address asset = address(200);
-        vm.prank(ADMIN);
-        vault.addAsset(asset, 18, true);
-        assertEq(vault.getAsset(address(200)).active, true);
+        vm.prank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+        assertEq(vault.getAsset(address(asset)).active, true);
     }
 
     function test_Vault_addAsset_notActive() public {
-        address asset = address(200);
-        vm.prank(ADMIN);
-        vault.addAsset(asset, 18, false);
-        assertEq(vault.getAsset(address(200)).active, false);
+        vm.prank(ASSET_MANAGER);
+        vault.addAsset(address(asset), false);
+        assertEq(vault.getAsset(address(asset)).active, false);
     }
 
     function test_Vault_addAsset_nullAddress() public {
-        vm.prank(ADMIN);
-        vm.expectRevert();
-        vault.addAsset(address(0), 18, true);
+        vm.prank(ASSET_MANAGER);
+        vm.expectRevert(IVault.ZeroAddress.selector);
+        vault.addAsset(address(0), true);
     }
 
     function test_Vault_addAsset_duplicateAddress() public {
-        address asset = address(200);
-        vm.startPrank(ADMIN);
-        vault.addAsset(asset, 18, true);
-        vm.expectRevert();
-        vault.addAsset(asset, 18, true);
+        vm.startPrank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+        vm.expectRevert(abi.encodeWithSelector(IVault.DuplicateAsset.selector, address(asset)));
+        vault.addAsset(address(asset), true);
     }
 
     function test_Vault_addAsset_unauthorized() public {
-        address asset = address(200);
         vm.expectRevert();
-        vault.addAsset(asset, 18, true);
+        vault.addAsset(address(asset), true);
     }
 
     function test_Vault_setProvider() public {

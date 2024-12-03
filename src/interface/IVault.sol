@@ -93,7 +93,7 @@ interface IVault is IERC4626 {
     function setBuffer(address buffer) external;
     function setProcessorRule(address target, bytes4 functionSig, FunctionRule memory rule) external;
 
-    function addAsset(address asset_, uint8 decimals_, bool active_) external;
+    function addAsset(address asset_, bool active_) external;
     function pause() external;
     function unpause() external;
 

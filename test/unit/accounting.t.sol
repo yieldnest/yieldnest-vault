@@ -10,7 +10,7 @@ import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
-import {IProvider, IChainlinkAggregator} from "src/interface/IProvider.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
 contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
