@@ -12,6 +12,7 @@ import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MockSTETH} from "test/unit/mocks/MockST_ETH.sol";
 import {IValidator} from "src/interface/IValidator.sol";
+import {IERC20} from "src/Common.sol";
 
 // Mock validator contract for testing
 contract MockValidator is IValidator {
@@ -334,5 +335,59 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         vm.prank(PROCESSOR);
         vm.expectRevert("Validation failed");
         vault.processor(targets, values, data);
+    }
+    
+    function test_Vault_processorCall_depositETHtoWETH() public {
+        uint256 depositAmount = 1 ether;
+
+        address[] memory targets = new address[](1);
+        targets[0] = MC.WETH;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = depositAmount;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit()");
+
+        // Send ETH to vault for deposit
+        deal(address(vault), depositAmount);
+
+        // Process accounting and check initial total assets
+        vault.processAccounting();
+        uint256 totalAssetsBefore = vault.totalAssets();
+
+        vm.prank(PROCESSOR);
+        vault.processor(targets, values, data);
+
+        // Process accounting and verify total assets unchanged
+        vault.processAccounting();
+        uint256 totalAssetsAfter = vault.totalAssets();
+        assertEq(totalAssetsAfter, totalAssetsBefore, "Total assets should not change");
+
+        // Verify WETH balance increased
+        assertEq(IERC20(MC.WETH).balanceOf(address(vault)), depositAmount, "WETH balance should match deposit");
+    }
+
+    function test_Vault_processorCall_depositETHtoWETH_InsufficientBalance() public {
+        uint256 depositAmount = 1 ether;
+
+        address[] memory targets = new address[](1);
+        targets[0] = MC.WETH;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = depositAmount;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit()");
+
+        // Send less ETH to vault than needed for deposit
+        deal(address(vault), depositAmount - 0.1 ether);
+
+        vm.prank(PROCESSOR);
+        vm.expectRevert();
+        vault.processor(targets, values, data);
+
+        // Verify WETH balance did not change
+        assertEq(IERC20(MC.WETH).balanceOf(address(vault)), 0, "WETH balance should be zero");
     }
 }
