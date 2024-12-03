@@ -22,11 +22,7 @@ contract FeeMathTest is Test {
         assertApproxEqAbs(actualFee, expectedFee, 1, "Linear fee calculation incorrect");
     }
 
-    function test_QuadraticBufferFee_FullBuffer(
-        uint256 withdrawalAmount,
-        uint256 bufferMaxSize,
-        uint256 baseFee
-    )
+    function test_QuadraticBufferFee_FullBuffer(uint256 withdrawalAmount, uint256 bufferMaxSize, uint256 baseFee)
         public
         pure
     {
@@ -121,6 +117,18 @@ contract FeeMathTest is Test {
         assertEq(fee, 3310000, "Fee should be higher in low buffer region");
     }
 
+    function test_CalculateQuadraticTotalFee_OneWeiInterval() public pure {
+        uint256 baseFee = 1e6; // 1% base fee
+
+        // Test interval [0.1, 0.1 + i 1 wei] normalized to BASIS_POINT_SCALE
+        uint256 start = 1e7; // 0.1 * BASIS_POINT_SCALE
+        uint256 end = start + 1 wei; // 0.2 * BASIS_POINT_SCALE
+
+        uint256 fee = FeeMath.calculateQuadraticTotalFee(baseFee, start, end);
+
+        assertEq(fee, 1990000, "Fee should be higher in low buffer region");
+    }
+
     function test_CalculateQuadraticTotalFee_HighBuffer() public pure {
         uint256 baseFee = 1e6; // 1% base fee
 
@@ -196,22 +204,23 @@ contract FeeMathTest is Test {
         vm.assume(bufferAvailable > 0 && bufferAvailable <= bufferMaxSize);
         vm.assume(baseFee > 0 && baseFee <= FeeMath.BASIS_POINT_SCALE / 2);
 
+        // uint256 withdrawalAmount = 1365142;
+        // uint256 bufferMaxSize = 469088685828058101105;
+        // uint256 bufferAvailable = 27572698;
+        // uint256 baseFee = 3919;
+
         uint256 actualFee = FeeMath.quadraticBufferFee(
-            withdrawalAmount,
-            bufferMaxSize, 
-            bufferAvailable,
-            BUFFER_FEE_FLAT_PORTION,
-            baseFee,
-            FeeMath.FeeType.OnRaw
+            withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, baseFee, FeeMath.FeeType.OnRaw
         );
 
         // Calculate expected fee using equivalent formula:
         // If buffer available > flat portion threshold:
-        //   fee = baseFee * withdrawalAmount 
+        //   fee = baseFee * withdrawalAmount
         // Else:
         //   fee = baseFee * withdrawalAmount * (1 + quadratic_multiplier)
         // Where quadratic_multiplier increases as buffer decreases
-        uint256 bufferNonLinearAmount = (BASIS_POINT_SCALE - BUFFER_FEE_FLAT_PORTION) * bufferMaxSize / BASIS_POINT_SCALE;
+        uint256 bufferNonLinearAmount =
+            (BASIS_POINT_SCALE - BUFFER_FEE_FLAT_PORTION) * bufferMaxSize / BASIS_POINT_SCALE;
         uint256 expectedFee;
 
         if (bufferAvailable > bufferNonLinearAmount) {
@@ -223,14 +232,13 @@ contract FeeMathTest is Test {
                 // Straddles linear and non-linear regions
                 uint256 linearAmount = bufferAvailable - bufferNonLinearAmount;
                 uint256 nonLinearAmount = withdrawalAmount - linearAmount;
-                
+
                 uint256 linearFee = linearAmount * baseFee / BASIS_POINT_SCALE;
-                uint256 nonLinearFee = nonLinearAmount * FeeMath.calculateQuadraticTotalFee(
-                    baseFee,
-                    0,
-                    nonLinearAmount * BASIS_POINT_SCALE / bufferNonLinearAmount
-                ) / BASIS_POINT_SCALE;
-                
+                uint256 nonLinearFee = nonLinearAmount
+                    * FeeMath.calculateQuadraticTotalFee(
+                        baseFee, 0, nonLinearAmount * BASIS_POINT_SCALE / bufferNonLinearAmount
+                    ) / BASIS_POINT_SCALE;
+
                 expectedFee = linearFee + nonLinearFee;
             }
         } else {
@@ -241,18 +249,14 @@ contract FeeMathTest is Test {
             uint256 endScaled = end * BASIS_POINT_SCALE / bufferNonLinearAmount;
 
             if (startScaled == endScaled) {
-                expectedFee = 0;
-            } else {
-                expectedFee = withdrawalAmount * FeeMath.calculateQuadraticTotalFee(
-                    baseFee,
-                    startScaled,
-                    endScaled
-                ) / BASIS_POINT_SCALE;
+                endScaled = startScaled + 1; // create a 1 wei difference
             }
+            expectedFee = withdrawalAmount * FeeMath.calculateQuadraticTotalFee(baseFee, startScaled, endScaled)
+                / BASIS_POINT_SCALE;
         }
 
         assertApproxEqAbs(actualFee, expectedFee, 100, "Fee calculation mismatch");
         assertLe(actualFee, withdrawalAmount, "Fee cannot exceed withdrawal amount");
-        //assertGe(actualFee, withdrawalAmount * baseFee / BASIS_POINT_SCALE, "Fee cannot be less than base fee");
+        assertGe(actualFee, withdrawalAmount * baseFee / BASIS_POINT_SCALE, "Fee cannot be less than base fee");
     }
 }
