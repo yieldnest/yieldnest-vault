@@ -336,7 +336,7 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         vm.expectRevert("Validation failed");
         vault.processor(targets, values, data);
     }
-    
+
     function test_Vault_processorCall_depositETHtoWETH() public {
         uint256 depositAmount = 1 ether;
 
