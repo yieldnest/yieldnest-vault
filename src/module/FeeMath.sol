@@ -152,13 +152,26 @@ library FeeMath {
             revert AmountExceedsScale();
         }
 
-        // Calculate end^3 and start^3
+        // The original formula is:
+        // fee = ((1 - baseFee) * ((end / BASIS_POINT_SCALE)^3 - (start / BASIS_POINT_SCALE)^3)/3 + baseFee * ((end / BASIS_POINT_SCALE) - (start / BASIS_POINT_SCALE))) / (end  - start) * BASIS_POINT_SCALE
+        //
+        // Step 1: Factor out (1-baseFee) from first term
+        // fee = (1-baseFee) * ((end / BASIS_POINT_SCALE)^3 - (start / BASIS_POINT_SCALE)^3)/3 / (end-start) * BASIS_POINT_SCALE
+        //       + baseFee * ((end / BASIS_POINT_SCALE) - (start / BASIS_POINT_SCALE)) / (end-start) * BASIS_POINT_SCALE
+        //
+        // Step 2: Simplify second term - the division by (end-start) cancels out, multiplication by BASIS_POINT_SCALE cancels out
+        // fee = (1-baseFee) * ((end / BASIS_POINT_SCALE)^3 - (start / BASIS_POINT_SCALE)^3)/3 / (end-start) * BASIS_POINT_SCALE
+        //       + baseFee
+        //
+        // Step 3: Delay division by BASIS_POINT_SCALE in first term to maximize precision
+        // fee = (1-baseFee) * (end^3 - start^3) / BASIS_POINT_SCALE / BASIS_POINT_SCALE / 3 / (end-start)
+        //       + baseFee
+
         uint256 end3 = (BASIS_POINT_SCALE - baseFee) * end * end * end / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
         uint256 start3 = (BASIS_POINT_SCALE - baseFee) * start * start * start / BASIS_POINT_SCALE / BASIS_POINT_SCALE;
 
-        /* compute integral between End and Start */
-
-        // Calculate the total fee
+        // The division by 3 comes from integrating x^2 to get x^3/3
+        // The division by (end-start) normalizes the integral over the interval
         uint256 totalFee = ((end3 - start3) / 3) / (end - start) + baseFee;
 
         return totalFee; // adjusted to BASIS_POINT_SCALE
