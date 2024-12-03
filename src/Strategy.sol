@@ -101,7 +101,7 @@ contract Strategy is BaseVault {
             _spendAllowance(owner, caller, shares);
         }
 
-        SafeERC20.safeTransferFrom(IERC20(asset()), caller, address(this), assets);
+        SafeERC20.safeTransferFrom(IERC20(asset()), address(this), caller, assets);
 
         _burn(owner, shares);
         emit Withdraw(caller, receiver, owner, assets, shares);
