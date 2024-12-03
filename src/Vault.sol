@@ -89,14 +89,26 @@ contract Vault is BaseVault {
 
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
+    /** @notice Sets the base withdrawal fee for the vault
+     * @param baseWithdrawalFee_ The new base withdrawal fee in basis points (1/10000)
+     * @dev Only callable by accounts with FEE_MANAGER_ROLE
+     */
     function setBaseWithdrawalFee(uint64 baseWithdrawalFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
         _getFeeStorage().baseWithdrawalFee = baseWithdrawalFee_;
     }
 
+    /** @notice Sets the flat fee fraction applied when using the buffer
+     * @param bufferFlatFeeFraction_ The new buffer flat fee fraction in basis points (1/10000)
+     * @dev Only callable by accounts with FEE_MANAGER_ROLE
+     */
     function setBufferFlatFeeFraction(uint64 bufferFlatFeeFraction_) external virtual onlyRole(FEE_MANAGER_ROLE) {
         _getFeeStorage().bufferFlatFeeFraction = bufferFlatFeeFraction_;
     }
 
+    /** @notice Sets the maximum buffer size as a fraction of total assets
+     * @param vaultBufferFraction_ The new vault buffer fraction in basis points (1/10000)
+     * @dev Only callable by accounts with FEE_MANAGER_ROLE
+     */
     function setVaultBufferFraction(uint64 vaultBufferFraction_) external virtual onlyRole(FEE_MANAGER_ROLE) {
         _getFeeStorage().vaultBufferFraction = vaultBufferFraction_;
     }
