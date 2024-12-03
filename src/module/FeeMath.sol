@@ -107,26 +107,50 @@ library FeeMath {
         uint256 nonLinearFeeTaxedAmount = 0;
         if (bufferAvailableAmount > bufferNonLinearAmount) {
             if (bufferAvailableAmount - withdrawalAmount >= bufferNonLinearAmount) {
+                // the entire withdrawalAmount is applied the linear fee in this case
                 linearFeeTaxedAmount = withdrawalAmount;
             } else {
+                // in case bufferAvailableAmount - withdrawalAmount < bufferNonLinearAmount
+                // what is in excess of the bufferNonLinearAmount is applied a linear fee
                 linearFeeTaxedAmount = bufferAvailableAmount - bufferNonLinearAmount;
+                // what remains of the withdrawalAmount is a applied the nonLinearFee 
                 nonLinearFeeTaxedAmount = withdrawalAmount - linearFeeTaxedAmount;
             }
         } else {
+            // in case bufferAvailableAmount <= bufferNonLinearAmount
+            // the entire withdrawalAmount is applied the nonlinear fee
             nonLinearFeeTaxedAmount = withdrawalAmount;
         }
 
         // Calculate the non-linear fee using a quadratic function
         uint256 nonLinearFee = 0;
         if (nonLinearFeeTaxedAmount > 0) {
-            uint256 nonLinearStart =
-                bufferAvailableAmount >= bufferNonLinearAmount ? 0 : bufferNonLinearAmount - bufferAvailableAmount;
+            
+            uint256 nonLinearStart;
+            uint256 nonLinearEnd;
+            
+            // Case 1: When linearFeeTaxedAmount > 0
+            // This means we're straddling the threshold between linear and non-linear regions
+            // Buffer:  [----linear----|----nonlinear----]
+            // Amount:           [withdrawal]
+            //                   ^        ^
+            //              start=0   end=nonLinearFeeTaxedAmount
+            if (linearFeeTaxedAmount > 0) {
+                nonLinearStart = 0;
+                nonLinearEnd = nonLinearFeeTaxedAmount;
+            }
+            // Case 2: When linearFeeTaxedAmount = 0 
+            // This means we're fully in the non-linear region
+            // Buffer:  [----linear----|----nonlinear----]
+            // Amount:                      [withdrawal]
+            //                              ^     ^
+            //                           start   end
+            else {
+                nonLinearStart = bufferNonLinearAmount - bufferAvailableAmount;
+                nonLinearEnd = nonLinearStart + withdrawalAmount;
+            }
 
-            uint256 nonLinearStartScaled = nonLinearStart * BASIS_POINT_SCALE / bufferNonLinearAmount;
-
-            uint256 nonLinearEnd = bufferAvailableAmount >= bufferNonLinearAmount
-                ? nonLinearFeeTaxedAmount
-                : nonLinearStart + withdrawalAmount;
+            uint256 nonLinearStartScaled = nonLinearStart * BASIS_POINT_SCALE / bufferNonLinearAmount;    
 
             uint256 nonLinearEndScaled = nonLinearEnd * BASIS_POINT_SCALE / bufferNonLinearAmount;
 
