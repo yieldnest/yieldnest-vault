@@ -10,7 +10,10 @@ contract Vault is BaseVault {
      * @param name The name of the vault.
      * @param symbol The symbol of the vault.
      */
-    function initialize(address admin, string memory name, string memory symbol, uint8 decimals) external initializer {
+    function initialize(address admin, string memory name, string memory symbol, uint8 decimals_)
+        external
+        initializer
+    {
         __ERC20_init(name, symbol);
         __AccessControl_init();
         __ReentrancyGuard_init();
@@ -18,6 +21,6 @@ contract Vault is BaseVault {
 
         VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.paused = true;
-        vaultStorage.decimals = decimals;
+        vaultStorage.decimals = decimals_;
     }
 }
