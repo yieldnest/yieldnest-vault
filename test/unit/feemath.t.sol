@@ -22,19 +22,27 @@ contract FeeMathTest is Test {
         assertApproxEqAbs(actualFee, expectedFee, 1, "Linear fee calculation incorrect");
     }
 
-    function test_QuadraticBufferFee_FullBuffer() public view {
-        uint256 withdrawalAmount = 100 ether;
-        uint256 bufferMaxSize = 1000 ether;
-        uint256 bufferAvailable = 1000 ether; // Full buffer
-        uint256 fee = 1e4; // 0.01% fee
+    function test_QuadraticBufferFee_FullBuffer(uint256 withdrawalAmount, uint256 bufferMaxSize, uint256 baseFee)
+        public
+        view
+    {
+        uint256 bufferAvailable = bufferMaxSize; // Full buffer
+
+        vm.assume(bufferMaxSize >= 10 && bufferMaxSize <= 100000 ether);
+        vm.assume(
+            withdrawalAmount > 0
+                && withdrawalAmount <= bufferMaxSize * BUFFER_FEE_FLAT_PORTION / FeeMath.BASIS_POINT_SCALE
+        );
+        vm.assume(baseFee > 0 && baseFee <= FeeMath.BASIS_POINT_SCALE);
+        vm.assume(baseFee <= FeeMath.BASIS_POINT_SCALE); // Ensure end >= start
 
         // With full buffer, should just be linear fee
-        uint256 expectedFee = (withdrawalAmount * fee) / BASIS_POINT_SCALE; // Calculate expected fee using same formula as linearFee()
+        uint256 expectedFee = (withdrawalAmount * baseFee) / BASIS_POINT_SCALE; // Calculate expected fee using same formula as linearFee()
         uint256 actualFee = FeeMath.quadraticBufferFee(
-            withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, fee, FeeMath.FeeType.OnRaw
+            withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, baseFee, FeeMath.FeeType.OnRaw
         );
 
-        assertEq(actualFee, expectedFee, "Full buffer fee calculation incorrect");
+        assertApproxEqAbs(actualFee, expectedFee, 1, "Full buffer fee calculation incorrect");
     }
 
     function test_QuadraticBufferFee_LowBuffer() public view {

@@ -21,8 +21,6 @@ contract Vault is BaseVault {
         }
     }
 
-    uint256 internal constant BASIS_POINT_SCALE = 10000;
-
     /**
      * @notice Initializes the vault.
      * @param admin The address of the admin.
@@ -80,10 +78,26 @@ contract Vault is BaseVault {
             return 0;
         }
 
-        return assets.mulDiv(withdrawalFee, withdrawalFee + BASIS_POINT_SCALE, Math.Rounding.Ceil);
+        return assets.mulDiv(withdrawalFee, withdrawalFee + FeeMath.BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
 
     function _bufferMaxSize(uint256 totalAssets_, uint256 bufferFraction_) internal pure returns (uint256) {
-        return totalAssets_.mulDiv(bufferFraction_, BASIS_POINT_SCALE, Math.Rounding.Floor);
+        return totalAssets_.mulDiv(bufferFraction_, FeeMath.BASIS_POINT_SCALE, Math.Rounding.Floor);
+    }
+
+    //// FEES ADMIN ////
+
+    bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
+
+    function setBaseWithdrawalFee(uint64 baseWithdrawalFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+        _getFeeStorage().baseWithdrawalFee = baseWithdrawalFee_;
+    }
+
+    function setBufferFlatFeeFraction(uint64 bufferFlatFeeFraction_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+        _getFeeStorage().bufferFlatFeeFraction = bufferFlatFeeFraction_;
+    }
+
+    function setVaultBufferFraction(uint64 vaultBufferFraction_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+        _getFeeStorage().vaultBufferFraction = vaultBufferFraction_;
     }
 }

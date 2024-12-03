@@ -137,7 +137,7 @@ library FeeMath {
         if (feeType == FeeType.OnRaw) {
             return feeOnRaw(linearFeeTaxedAmount, fee) + feeOnRaw(nonLinearFeeTaxedAmount, nonLinearFee);
         } else if (feeType == FeeType.OnTotal) {
-            revert("Unspported FeeType.OnTotal");
+            return feeOnTotal(linearFeeTaxedAmount, fee) + feeOnTotal(nonLinearFeeTaxedAmount, nonLinearFee);
         } else {
             revert UnsupportedFeeType(feeType);
         }
