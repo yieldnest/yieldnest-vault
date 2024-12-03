@@ -529,10 +529,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     /**
      * @notice Adds a new asset to the vault.
      * @param asset_ The address of the asset.
-     * @param decimals_ The number of decimals of the asset.
      * @param active_ Whether the asset is active or not.
      */
-    function addAsset(address asset_, uint8 decimals_, bool active_) public virtual onlyRole(ASSET_MANAGER_ROLE) {
+    function addAsset(address asset_, bool active_) public virtual onlyRole(ASSET_MANAGER_ROLE) {
         if (asset_ == address(0)) {
             revert ZeroAddress();
         }
@@ -541,6 +540,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (index > 0 && assetStorage.assets[asset_].index != 0) {
             revert DuplicateAsset(asset_);
         }
+        uint8 decimals_ = IERC20Metadata(asset_).decimals();
         assetStorage.assets[asset_] = AssetParams({active: active_, index: index, decimals: decimals_});
         assetStorage.list.push(asset_);
 
