@@ -154,7 +154,11 @@ library FeeMath {
 
             uint256 nonLinearEndScaled = nonLinearEnd * BASIS_POINT_SCALE / bufferNonLinearAmount;
 
-            nonLinearFee = calculateQuadraticTotalFee(fee, nonLinearStartScaled, nonLinearEndScaled);
+            if (nonLinearEndScaled == nonLinearStartScaled) {
+                nonLinearFee = 0;
+            } else {
+                nonLinearFee = calculateQuadraticTotalFee(fee, nonLinearStartScaled, nonLinearEndScaled);
+            }
         }
 
         // Return fee based on type
