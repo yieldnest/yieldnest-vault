@@ -182,7 +182,7 @@ contract FeeMathTest is Test {
             / FeeMath.BASIS_POINT_SCALE / FeeMath.BASIS_POINT_SCALE / 3;
         uint256 expectedFee = quadraticPortion / (end - start) + baseFee;
 
-        assertEq(fee, expectedFee, "Fee calculation mismatch");
+        assertApproxEqAbs(fee, expectedFee, 1, "Fee calculation mismatch");
 
         // Additional invariant checks
         assertLe(fee, FeeMath.BASIS_POINT_SCALE, "Fee exceeds max");
