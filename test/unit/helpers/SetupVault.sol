@@ -48,6 +48,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+        vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
 
         // test cannot unpause vault withtout buffer
         vm.expectRevert();

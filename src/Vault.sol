@@ -120,4 +120,28 @@ contract Vault is BaseVault {
         if (vaultBufferFraction_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints();
         _getFeeStorage().vaultBufferFraction = vaultBufferFraction_;
     }
+
+    /**
+     * @notice Returns the base withdrawal fee
+     * @return uint64 The base withdrawal fee in basis points (1/10000)
+     */
+    function baseWithdrawalFee() external view returns (uint64) {
+        return _getFeeStorage().baseWithdrawalFee;
+    }
+
+    /**
+     * @notice Returns the flat fee fraction applied when using the buffer
+     * @return uint64 The buffer flat fee fraction in basis points (1/10000)
+     */
+    function bufferFlatFeeFraction() external view returns (uint64) {
+        return _getFeeStorage().bufferFlatFeeFraction;
+    }
+
+    /**
+     * @notice Returns the maximum buffer size as a fraction of total assets
+     * @return uint64 The vault buffer fraction in basis points (1/10000)
+     */
+    function vaultBufferFraction() external view returns (uint64) {
+        return _getFeeStorage().vaultBufferFraction;
+    }
 }
