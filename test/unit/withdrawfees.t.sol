@@ -68,9 +68,15 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vault.processor(targets, values, data);
     }
 
-    function test_Vault_previewRedeemWithFees(uint256 assets) external {
-        if (assets < 100000) return;
-        if (assets > 100_000 ether) return;
+    function test_Vault_previewRedeemWithFees(
+        uint256 assets,
+        uint256 withdrawnShares,
+        uint256 withdrawnAssets
+    ) external {
+        // Bound inputs to valid ranges
+        vm.assume(assets >= 100000 && assets <= 100_000 ether);
+        vm.assume(withdrawnAssets <= assets);
+        vm.assume(withdrawnShares > 0);
 
         // uint256 assets = 1000 ether;
 
@@ -82,40 +88,15 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.prank(ADMIN);
         allocateToBuffer(maxBufferAssets);
 
-        uint256 withdrawnShares = depositShares / 10;
-        uint256 withdrawnAssets = assets / 10;
+  
+        uint256 withdrawnAssets = assets;
+        uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
 
         uint256 redeemedPreview = vault.previewRedeem(withdrawnShares);
-        // Base withdrawal fee is 0.1% (100_000)
-        // Buffer flat fee ratio is 80% (80_000_000)
-        // Vault buffer fraction is 10% (10_000_000)
         uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
         assertApproxEqRel(
             redeemedPreview, withdrawnAssets - expectedFee, 1e14, "Withdrawal fee should be 0.1% of assets"
         );
-    }
-
-    function test_Vault_feeOnRaw_FlatFee(uint256 assets) external {
-        if (assets < 10) return;
-        if (assets > 100_000 ether) return;
-
-        vm.prank(alice);
-        uint256 depositShares = vault.deposit(assets, alice);
-
-        uint256 bufferRatio = vault.vaultBufferFraction();
-        uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
-        vm.prank(ADMIN);
-        allocateToBuffer(maxBufferAssets);
-
-        uint256 withdrawnAssets = maxBufferAssets / 2;
-
-        uint256 fee = vault._feeOnRaw(withdrawnAssets);
-
-        // Base withdrawal fee is 0.1% (100_000)
-        // Buffer flat fee ratio is 80% (80_000_000)
-        // Vault buffer fraction is 10% (10_000_000)
-        uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
-        assertApproxEqAbs(fee, expectedFee, 1, "Fee should be 0.1% of assets");
     }
 
     function test_Vault_previewWithdrawWithFees(uint256 assets) external {
@@ -139,6 +120,29 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
         uint256 expectedShares = vault.convertToShares(withdrawnAssets + expectedFee);
         assertApproxEqAbs(withdrawPreview, expectedShares, 1, "Preview withdraw shares should match expected");
+    }
+
+    function test_Vault_feeOnRaw_FlatFee(uint256 assets) external {
+        if (assets < 10) return;
+        if (assets > 100_000 ether) return;
+
+        vm.prank(alice);
+        uint256 depositShares = vault.deposit(assets, alice);
+
+        uint256 bufferRatio = vault.vaultBufferFraction();
+        uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
+        vm.prank(ADMIN);
+        allocateToBuffer(maxBufferAssets);
+
+        uint256 withdrawnAssets = maxBufferAssets / 2;
+
+        uint256 fee = vault._feeOnRaw(withdrawnAssets);
+
+        // Base withdrawal fee is 0.1% (100_000)
+        // Buffer flat fee ratio is 80% (80_000_000)
+        // Vault buffer fraction is 10% (10_000_000)
+        uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
+        assertApproxEqAbs(fee, expectedFee, 1, "Fee should be 0.1% of assets");
     }
 
     function skiptest_Vault_withdraw_success(uint256 assets) external {
