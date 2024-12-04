@@ -11,12 +11,17 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {Guard} from "src/module/Guard.sol";
 
 library FeeMath {
+    using Math for uint256;
+
+    enum FeeFormula {
+        Linear,
+        Quadratic
+    }
+
     enum FeeType {
         OnRaw,
         OnTotal
     }
-
-    using Math for uint256;
 
     error AmountExceedsScale();
     error BufferExceedsMax(uint256 bufferAvailable, uint256 bufferMax);
@@ -43,6 +48,14 @@ library FeeMath {
     function feeOnTotal(uint256 amount, uint256 fee) internal pure returns (uint256) {
         return amount.mulDiv(fee, fee + BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
+
+    /// @notice EXPERIMENTAL - DO NOT USE IN PRODUCTION. DO NOT AUDIT
+    /// @dev The fee calculations (quadraticBufferFee, calculateQuadraticTotalFee)
+    ///      are experimental and have not been audited.
+    ///      They are subject to change without notice and may contain critical bugs.
+    ///      Using these functions could result in loss of funds.
+    /// @dev These fee calculations are experimental and have not been audited.
+    ///      Use at your own risk. Subject to change.
 
     /*
     Fee Rate

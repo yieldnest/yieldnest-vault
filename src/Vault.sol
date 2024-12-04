@@ -20,6 +20,8 @@ contract Vault is BaseVault {
         uint64 bufferFlatFeeFraction;
         /// @notice The target buffer size as a fraction of total assets, in basis points (1e8 = 100%). Only used by quadratic fees
         uint64 vaultBufferFraction;
+        /// @notice The fee formula to use for calculating withdrawal fees
+        FeeMath.FeeFormula formula;
     }
 
     function _getFeeStorage() internal pure returns (FeeStorage storage $) {
@@ -34,11 +36,13 @@ contract Vault is BaseVault {
      * @param name The name of the vault.
      * @param symbol The symbol of the vault.
      */
-    function initialize(address admin, string memory name, string memory symbol, uint8 decimals_)
-        external
-        virtual
-        initializer
-    {
+    function initialize(
+        address admin,
+        string memory name,
+        string memory symbol,
+        uint8 decimals_,
+        uint64 baseWithdrawalFee_
+    ) external virtual initializer {
         __ERC20_init(name, symbol);
         __AccessControl_init();
         __ReentrancyGuard_init();
@@ -47,6 +51,9 @@ contract Vault is BaseVault {
         VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.paused = true;
         vaultStorage.decimals = decimals_;
+
+        FeeStorage storage fees = _getFeeStorage();
+        fees.baseWithdrawalFee = baseWithdrawalFee_;
     }
 
     //// FEES ////
@@ -129,5 +136,13 @@ contract Vault is BaseVault {
      */
     function vaultBufferFraction() external view returns (uint64) {
         return _getFeeStorage().vaultBufferFraction;
+    }
+
+    /**
+     * @notice Returns the fee formula used by the vault for calculating withdrawal fees
+     * @return FeeMath.FeeFormula The current fee formula configuration
+     */
+    function vaultFeeFormula() external view returns (FeeMath.FeeFormula) {
+        return _getFeeStorage().formula;
     }
 }
