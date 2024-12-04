@@ -19,7 +19,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         Vault vaultImplementation = new Vault();
 
         // Deploy the proxy
-        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18);
+        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18, 0, true);
 
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
@@ -48,6 +48,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+        vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
 
         // test cannot unpause vault withtout buffer
         vm.expectRevert();

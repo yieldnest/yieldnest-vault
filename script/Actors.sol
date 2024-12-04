@@ -41,4 +41,5 @@ contract MainnetActors is IActors {
     address public constant PROCESSOR_MANAGER = 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975;
     address public constant PAUSER = 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975;
     address public constant UNPAUSER = 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975;
+    address public constant FEE_MANAGER = 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975;
 }

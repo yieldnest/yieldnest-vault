@@ -90,7 +90,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return shares The equivalent amount of shares.
      */
     function previewWithdraw(uint256 assets) public view virtual returns (uint256 shares) {
-        (shares,) = _convertToShares(asset(), assets, Math.Rounding.Ceil);
+        uint256 fee = _feeOnRaw(assets);
+        (shares,) = _convertToShares(asset(), assets + fee, Math.Rounding.Ceil);
     }
 
     /**
@@ -100,6 +101,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function previewRedeem(uint256 shares) public view virtual returns (uint256 assets) {
         (assets,) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
+
+        return assets - _feeOnTotal(assets);
     }
 
     /**
@@ -582,7 +585,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      *      and updates the total assets denominated in the base asset.
      */
     function processAccounting() public virtual {
-        uint256 totalBaseBalance = address(this).balance;
+        VaultStorage storage vaultStorage = _getVaultStorage();
+
+        uint256 totalBaseBalance = vaultStorage.countNativeAsset ? address(this).balance : 0;
+
         AssetStorage storage assetStorage = _getAssetStorage();
         address[] memory assetList = assetStorage.list;
         uint256 assetListLength = assetList.length;
@@ -637,4 +643,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     receive() external payable {
         emit NativeDeposit(msg.value);
     }
+
+    /// FEES ///
+    function _feeOnRaw(uint256 assets) public view virtual override returns (uint256);
+
+    function _feeOnTotal(uint256 assets) public view virtual override returns (uint256);
 }
