@@ -68,11 +68,9 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vault.processor(targets, values, data);
     }
 
-    function test_Vault_previewRedeemWithFees(
-        uint256 assets,
-        uint256 withdrawnShares,
-        uint256 withdrawnAssets
-    ) external {
+    function test_Vault_previewRedeemWithFees(uint256 assets, uint256 withdrawnShares, uint256 withdrawnAssets)
+        external
+    {
         // Bound inputs to valid ranges
         vm.assume(assets >= 100000 && assets <= 100_000 ether);
         vm.assume(withdrawnAssets <= assets);
@@ -88,7 +86,6 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.prank(ADMIN);
         allocateToBuffer(maxBufferAssets);
 
-  
         uint256 withdrawnAssets = assets;
         uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
 

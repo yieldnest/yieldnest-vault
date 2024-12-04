@@ -11,6 +11,7 @@ interface IVault is IERC4626 {
         address buffer;
         bool paused;
         uint8 decimals;
+        bool countNativeAsset;
     }
 
     struct AssetParams {

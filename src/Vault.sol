@@ -41,7 +41,8 @@ contract Vault is BaseVault {
         string memory name,
         string memory symbol,
         uint8 decimals_,
-        uint64 baseWithdrawalFee_
+        uint64 baseWithdrawalFee_,
+        bool countNativeAsset_
     ) external virtual initializer {
         __ERC20_init(name, symbol);
         __AccessControl_init();
@@ -51,6 +52,7 @@ contract Vault is BaseVault {
         VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.paused = true;
         vaultStorage.decimals = decimals_;
+        vaultStorage.countNativeAsset = countNativeAsset_;
 
         FeeStorage storage fees = _getFeeStorage();
         fees.baseWithdrawalFee = baseWithdrawalFee_;
