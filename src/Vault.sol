@@ -11,9 +11,14 @@ contract Vault is BaseVault {
 
     error ExceedsMaxBasisPoints();
 
+    bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
+
     struct FeeStorage {
+        /// @notice The base withdrawal fee in basis points (1e8 = 100%)
         uint64 baseWithdrawalFee;
+        /// @notice The fraction of the buffer below which flat fees apply, in basis points (1e8 = 100%). Only used by quadratic fees
         uint64 bufferFlatFeeFraction;
+        /// @notice The target buffer size as a fraction of total assets, in basis points (1e8 = 100%). Only used by quadratic fees
         uint64 vaultBufferFraction;
     }
 
@@ -48,39 +53,22 @@ contract Vault is BaseVault {
 
     function _feeOnRaw(uint256 assets) public view override returns (uint256) {
         FeeStorage storage fees = _getFeeStorage();
-        uint256 baseWithdrawalFee = fees.baseWithdrawalFee;
-        uint256 bufferFlatFeeFraction = fees.bufferFlatFeeFraction;
-        uint256 vaultBufferFraction = fees.vaultBufferFraction;
-        if (baseWithdrawalFee == 0) {
+        uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;
+        if (baseWithdrawalFee_ == 0) {
             return 0;
         }
-
-        uint256 bufferAvailableAmount = IStrategy(buffer()).totalAssets();
-        uint256 totalAssets_ = totalAssets();
-        uint256 bufferMaxSize = _bufferMaxSize(totalAssets_, vaultBufferFraction);
-
-        uint256 feeInAssets = FeeMath.quadraticBufferFee(
-            assets,
-            bufferMaxSize,
-            bufferAvailableAmount,
-            bufferFlatFeeFraction,
-            baseWithdrawalFee,
-            FeeMath.FeeType.OnRaw
-        );
-
-        return feeInAssets;
+        return FeeMath.feeOnRaw(assets, baseWithdrawalFee_);
     }
 
     /// @dev Calculates the fee part of an amount `assets` that already includes fees.
     /// Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
     function _feeOnTotal(uint256 assets) public view override returns (uint256) {
         FeeStorage storage fees = _getFeeStorage();
-        uint256 withdrawalFee = fees.baseWithdrawalFee;
-        if (withdrawalFee == 0) {
+        uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;
+        if (baseWithdrawalFee_ == 0) {
             return 0;
         }
-
-        return assets.mulDiv(withdrawalFee, withdrawalFee + FeeMath.BASIS_POINT_SCALE, Math.Rounding.Ceil);
+        return FeeMath.feeOnTotal(assets, baseWithdrawalFee_);
     }
 
     function _bufferMaxSize(uint256 totalAssets_, uint256 bufferFraction_) internal pure returns (uint256) {
@@ -88,8 +76,6 @@ contract Vault is BaseVault {
     }
 
     //// FEES ADMIN ////
-
-    bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
     /**
      * @notice Sets the base withdrawal fee for the vault
