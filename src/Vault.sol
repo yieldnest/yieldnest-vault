@@ -20,8 +20,6 @@ contract Vault is BaseVault {
         uint64 bufferFlatFeeFraction;
         /// @notice The target buffer size as a fraction of total assets, in basis points (1e8 = 100%). Only used by quadratic fees
         uint64 vaultBufferFraction;
-        /// @notice The fee formula to use for calculating withdrawal fees
-        FeeMath.FeeFormula formula;
     }
 
     function _getFeeStorage() internal pure returns (FeeStorage storage $) {
@@ -138,13 +136,5 @@ contract Vault is BaseVault {
      */
     function vaultBufferFraction() external view returns (uint64) {
         return _getFeeStorage().vaultBufferFraction;
-    }
-
-    /**
-     * @notice Returns the fee formula used by the vault for calculating withdrawal fees
-     * @return FeeMath.FeeFormula The current fee formula configuration
-     */
-    function vaultFeeFormula() external view returns (FeeMath.FeeFormula) {
-        return _getFeeStorage().formula;
     }
 }

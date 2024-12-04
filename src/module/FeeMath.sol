@@ -13,11 +13,6 @@ import {Guard} from "src/module/Guard.sol";
 library FeeMath {
     using Math for uint256;
 
-    enum FeeFormula {
-        Linear,
-        Quadratic
-    }
-
     enum FeeType {
         OnRaw,
         OnTotal
