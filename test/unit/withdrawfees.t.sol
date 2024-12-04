@@ -68,18 +68,15 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vault.processor(targets, values, data);
     }
 
-    function test_Vault_previewRedeemWithFees(uint256 assets, uint256 withdrawnShares, uint256 withdrawnAssets)
-        external
-    {
+    function test_Vault_previewRedeemWithFees(uint256 assets, uint256 withdrawnAssets) external {
         // Bound inputs to valid ranges
         vm.assume(assets >= 100000 && assets <= 100_000 ether);
         vm.assume(withdrawnAssets <= assets);
-        vm.assume(withdrawnShares > 0);
 
         // uint256 assets = 1000 ether;
 
         vm.prank(alice);
-        uint256 depositShares = vault.deposit(assets, alice);
+        vault.deposit(assets, alice);
 
         uint256 bufferRatio = vault.vaultBufferFraction();
         uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
@@ -101,7 +98,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         if (assets > 100_000 ether) return;
 
         vm.prank(alice);
-        uint256 depositShares = vault.deposit(assets, alice);
+        vault.deposit(assets, alice);
 
         uint256 bufferRatio = vault.vaultBufferFraction();
         uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
@@ -124,7 +121,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         if (assets > 100_000 ether) return;
 
         vm.prank(alice);
-        uint256 depositShares = vault.deposit(assets, alice);
+        vault.deposit(assets, alice);
 
         uint256 bufferRatio = vault.vaultBufferFraction();
         uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
