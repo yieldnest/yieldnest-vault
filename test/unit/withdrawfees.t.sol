@@ -72,8 +72,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         // Bound inputs to valid ranges
         vm.assume(assets >= 100000 && assets <= 100_000 ether);
         vm.assume(withdrawnAssets <= assets);
-
-        // uint256 assets = 1000 ether;
+        vm.assume(withdrawnAssets > 100000);
 
         vm.prank(alice);
         vault.deposit(assets, alice);
@@ -83,7 +82,6 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.prank(ADMIN);
         allocateToBuffer(maxBufferAssets);
 
-        uint256 withdrawnAssets = assets;
         uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
 
         uint256 redeemedPreview = vault.previewRedeem(withdrawnShares);
@@ -93,9 +91,10 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         );
     }
 
-    function test_Vault_previewWithdrawWithFees(uint256 assets) external {
-        if (assets < 100000) return;
-        if (assets > 100_000 ether) return;
+    function test_Vault_previewWithdrawWithFees(uint256 assets, uint256 withdrawnAssets) external {
+        vm.assume(assets >= 100000 && assets <= 100_000 ether);
+        vm.assume(withdrawnAssets <= assets);
+        vm.assume(withdrawnAssets > 0);
 
         vm.prank(alice);
         vault.deposit(assets, alice);
@@ -104,8 +103,6 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
         vm.prank(ADMIN);
         allocateToBuffer(maxBufferAssets);
-
-        uint256 withdrawnAssets = maxBufferAssets / 2;
 
         uint256 withdrawPreview = vault.previewWithdraw(withdrawnAssets);
         // Base withdrawal fee is 0.1% (100_000)
