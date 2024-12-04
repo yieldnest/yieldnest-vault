@@ -261,7 +261,6 @@ contract FeeMathTest is Test {
         uint256 bufferAvailable,
         uint256 fee
     ) public pure {
-
         // Bound inputs to valid ranges
         vm.assume(bufferMaxSize >= 10 && bufferMaxSize <= 100000 ether);
         vm.assume(withdrawalAmount > 0 && withdrawalAmount <= bufferAvailable);
@@ -318,10 +317,6 @@ contract FeeMathTest is Test {
 
         assertApproxEqAbs(actualFee, expectedFee, 100, "Fee calculation mismatch");
         assertLe(actualFee, withdrawalAmount, "Fee cannot exceed withdrawal amount");
-        assertGe(
-            actualFee,
-            withdrawalAmount * fee / (fee + BASIS_POINT_SCALE),
-            "Fee cannot be less than base fee"
-        );
+        assertGe(actualFee, withdrawalAmount * fee / (fee + BASIS_POINT_SCALE), "Fee cannot be less than base fee");
     }
 }
