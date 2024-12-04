@@ -9,6 +9,8 @@ import {Math} from "./Common.sol";
 contract Vault is BaseVault {
     using Math for uint256;
 
+    error ExceedsMaxBasisPoints();
+
     struct FeeStorage {
         uint64 baseWithdrawalFee;
         uint64 bufferFlatFeeFraction;
@@ -95,6 +97,7 @@ contract Vault is BaseVault {
      * @dev Only callable by accounts with FEE_MANAGER_ROLE
      */
     function setBaseWithdrawalFee(uint64 baseWithdrawalFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+        if (baseWithdrawalFee_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints();
         _getFeeStorage().baseWithdrawalFee = baseWithdrawalFee_;
     }
 
@@ -104,6 +107,7 @@ contract Vault is BaseVault {
      * @dev Only callable by accounts with FEE_MANAGER_ROLE
      */
     function setBufferFlatFeeFraction(uint64 bufferFlatFeeFraction_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+        if (bufferFlatFeeFraction_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints();
         _getFeeStorage().bufferFlatFeeFraction = bufferFlatFeeFraction_;
     }
 
@@ -113,6 +117,7 @@ contract Vault is BaseVault {
      * @dev Only callable by accounts with FEE_MANAGER_ROLE
      */
     function setVaultBufferFraction(uint64 vaultBufferFraction_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+        if (vaultBufferFraction_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints();
         _getFeeStorage().vaultBufferFraction = vaultBufferFraction_;
     }
 }
