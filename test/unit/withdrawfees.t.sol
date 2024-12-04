@@ -113,6 +113,48 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         assertApproxEqAbs(withdrawPreview, expectedShares, 1, "Preview withdraw shares should match expected");
     }
 
+    function test_Vault_redeemWithFees(uint256 assets, uint256 withdrawnAssets) external {
+        // Bound inputs to valid ranges
+        vm.assume(assets >= 100000 && assets <= 100_000 ether);
+        vm.assume(withdrawnAssets <= assets);
+        vm.assume(withdrawnAssets > 100000);
+
+        vm.prank(alice);
+        vault.deposit(assets, alice);
+
+        vm.prank(ADMIN);
+        allocateToBuffer(assets);
+
+        uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
+
+        vm.prank(alice);
+        uint256 redeemedAmount = vault.redeem(withdrawnShares, alice, alice);
+        uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
+        assertApproxEqRel(
+            redeemedAmount, withdrawnAssets - expectedFee, 1e14, "Withdrawal fee should be 0.1% of assets"
+        );
+    }
+
+    function test_Vault_withdrawWithFees(uint256 assets, uint256 withdrawnAssets) external {
+        vm.assume(assets >= 100000 && assets <= 100_000 ether);
+        vm.assume(withdrawnAssets <= assets);
+        vm.assume(withdrawnAssets > 0);
+
+        vm.prank(alice);
+        vault.deposit(assets, alice);
+
+        vm.prank(ADMIN);
+        allocateToBuffer(assets);
+
+        uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
+        uint256 expectedShares = vault.convertToShares(withdrawnAssets + expectedFee);
+
+        vm.prank(alice);
+        uint256 withdrawAmount = vault.withdraw(withdrawnAssets, alice, alice);
+
+        assertApproxEqAbs(withdrawAmount, expectedShares, 2, "Preview withdraw shares should match expected");
+    }
+
     function test_Vault_feeOnRaw_FlatFee(uint256 assets) external {
         if (assets < 10) return;
         if (assets > 100_000 ether) return;
