@@ -12,7 +12,6 @@ import {MockBuffer} from "test/unit/mocks/MockBuffer.sol";
 import {MockBNBxStakeManagerV2} from "test/unit/mocks/MockBNBxStakeManagerV2.sol";
 import {MockSlisBnbStakeManager} from "test/unit/mocks/MockSlisBnbStakeManager.sol";
 
-
 import "lib/forge-std/src/Test.sol";
 
 contract Etches is Test {

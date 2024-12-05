@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
@@ -13,4 +12,3 @@ contract MockBNBxStakeManagerV2 is IBNBXStakeManagerV2 {
         return amount;
     }
 }
-

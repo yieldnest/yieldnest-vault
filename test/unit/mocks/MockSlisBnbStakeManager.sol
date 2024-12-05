@@ -12,6 +12,5 @@ contract MockSlisBnbStakeManager is ISlisBnbStakeManager {
         return amount;
     }
 
-    function deposit() external payable {
-    }
+    function deposit() external payable {}
 }

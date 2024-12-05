@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC4626} from "src/Common.sol";
+import {IValidator} from "src/interface/IValidator.sol";
 
 interface IVault is IERC4626 {
     struct VaultStorage {
@@ -10,6 +11,7 @@ interface IVault is IERC4626 {
         address buffer;
         bool paused;
         uint8 decimals;
+        bool countNativeAsset;
     }
 
     struct AssetParams {
@@ -37,6 +39,7 @@ interface IVault is IERC4626 {
     struct FunctionRule {
         bool isActive;
         ParamRule[] paramRules;
+        IValidator validator;
     }
 
     struct ProcessorStorage {
@@ -91,7 +94,7 @@ interface IVault is IERC4626 {
     function setBuffer(address buffer) external;
     function setProcessorRule(address target, bytes4 functionSig, FunctionRule memory rule) external;
 
-    function addAsset(address asset_, uint8 decimals_, bool active_) external;
+    function addAsset(address asset_, bool active_) external;
     function pause() external;
     function unpause() external;
 
@@ -99,4 +102,8 @@ interface IVault is IERC4626 {
     function processor(address[] calldata targets, uint256[] calldata values, bytes[] calldata data)
         external
         returns (bytes[] memory);
+
+    // FEES
+    function _feeOnRaw(uint256 assets) external view returns (uint256);
+    function _feeOnTotal(uint256 assets) external view returns (uint256);
 }

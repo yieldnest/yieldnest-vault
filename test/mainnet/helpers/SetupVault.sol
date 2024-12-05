@@ -8,6 +8,8 @@ import {TimelockController as TLC} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
+import {IValidator} from "src/interface/IValidator.sol";
+
 
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 
@@ -19,7 +21,7 @@ contract SetupVault is Test, MainnetActors, Etches {
         Vault implementation = new Vault();
 
         // Deploy transparent proxy
-        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector,MainnetActors.ADMIN, "ynBNB MAX", "ynBNBx", 18);
+        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector,MainnetActors.ADMIN, "ynBNB MAX", "ynBNBx", 18, 0, true);
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(implementation),
             address(MainnetActors.ADMIN),
@@ -57,11 +59,11 @@ contract SetupVault is Test, MainnetActors, Etches {
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(MC.WBNB, 18, true);
-        vault.addAsset(MC.BUFFER, 18, false);
-        vault.addAsset(MC.YNBNBk, 18, true);
-        vault.addAsset(MC.BNBX, 18, true);
-        vault.addAsset(MC.SLISBNB, 18, true);
+        vault.addAsset(MC.WBNB, true);
+        vault.addAsset(MC.BUFFER, false);
+        vault.addAsset(MC.YNBNBk, true);
+        vault.addAsset(MC.BNBX, true);
+        vault.addAsset(MC.SLISBNB, true);
 
         setDepositRule(vault, MC.BUFFER, address(vault));
         setDepositRule(vault, MC.YNBNBk, address(vault));
@@ -92,7 +94,11 @@ contract SetupVault is Test, MainnetActors, Etches {
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({
+            isActive: true,
+            paramRules: paramRules,
+            validator: IValidator(address(0))
+        });
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -113,7 +119,11 @@ contract SetupVault is Test, MainnetActors, Etches {
         paramRules[1] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({
+            isActive: true,
+            paramRules: paramRules,
+            validator: IValidator(address(0))
+        });
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -123,7 +133,11 @@ contract SetupVault is Test, MainnetActors, Etches {
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({
+            isActive: true,
+            paramRules: paramRules,
+            validator: IValidator(address(0))
+        });
 
         vault_.setProcessorRule(weth_, funcSig, rule);
     }    

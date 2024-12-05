@@ -11,6 +11,7 @@ import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MockSTETH} from "test/unit/mocks/MockST_ETH.sol";
+import {IValidator} from "src/interface/IValidator.sol";
 
 contract VaultProcessUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -219,7 +220,8 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vm.prank(PROCESSOR_MANAGER);
         vault.setProcessorRule(MC.BUFFER, funcSig, rule);
