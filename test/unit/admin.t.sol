@@ -35,7 +35,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
-        
+
         // Deploy mock asset
         asset = new MockERC20("Mock Token", "MOCK");
     }

@@ -140,11 +140,8 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({
-            isActive: true,
-            paramRules: paramRules,
-            validator: IValidator(address(0))
-        });
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -162,11 +159,8 @@ contract SetupVault is Test, Etches, MainnetActors {
         paramRules[1] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({
-            isActive: true,
-            paramRules: paramRules,
-            validator: IValidator(address(0))
-        });
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -176,11 +170,8 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({
-            isActive: true,
-            paramRules: paramRules,
-            validator: IValidator(address(0))
-        });
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault_.setProcessorRule(weth_, funcSig, rule);
     }

@@ -220,11 +220,8 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({
-            isActive: true,
-            paramRules: paramRules,
-            validator: IValidator(address(0))
-        });
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vm.prank(PROCESSOR_MANAGER);
         vault.setProcessorRule(MC.BUFFER, funcSig, rule);

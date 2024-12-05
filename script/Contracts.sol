@@ -2,15 +2,13 @@
 pragma solidity ^0.8.24;
 
 library MainnetContracts {
-
     address public constant BNBX = 0x1bdd3Cf7F79cfB8EdbB955f20ad99211551BA275;
     address public constant SLISBNB = 0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B;
     address public constant BNBX_STAKE_MANAGER = 0x3b961e83400D51e6E1AF5c450d3C7d7b80588d28;
     address public constant SLIS_BNB_STAKE_MANAGER = 0x1adB950d8bB3dA4bE104211D5AB038628e477fE6;
     address public constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
-    
-    address public constant YNBNBk = 0x304B5845b9114182ECb4495Be4C91a273b74B509;
 
+    address public constant YNBNBk = 0x304B5845b9114182ECb4495Be4C91a273b74B509;
 
     // TODO: update to Binance Mainnet values
     address public constant CL_STETH_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
