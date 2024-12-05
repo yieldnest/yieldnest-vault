@@ -9,6 +9,7 @@ import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
+import {IValidator} from "src/interface/IValidator.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
     function setup() public returns (Vault vault, WETH9 weth) {
@@ -18,7 +19,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         Vault vaultImplementation = new Vault();
 
         // Deploy the proxy
-        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18);
+        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18, 0, true);
 
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
@@ -56,10 +57,10 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(MC.WETH, 18, true);
-        vault.addAsset(MC.BUFFER, 18, false);
-        vault.addAsset(MC.STETH, 18, true);
-        vault.addAsset(MC.YNETH, 18, true);
+        vault.addAsset(MC.WETH, true);
+        vault.addAsset(MC.BUFFER, false);
+        vault.addAsset(MC.STETH, true);
+        vault.addAsset(MC.YNETH, true);
 
         // configure processor rules
         setDepositRule(vault, MC.BUFFER, address(vault));
@@ -90,7 +91,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         Vault vaultImplementation = new Vault();
 
         // Deploy the proxy
-        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18);
+        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18, 0, true);
 
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
@@ -110,9 +111,9 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsset(MC.WETH, 18, true);
-        vault.addAsset(MC.STETH, 18, true);
-        vault.addAsset(MC.BUFFER, 18, false);
+        vault.addAsset(MC.WETH, true);
+        vault.addAsset(MC.STETH, true);
+        vault.addAsset(MC.BUFFER, false);
 
         setDepositRule(vault, MC.BUFFER, address(vault));
         setWethDepositRule(vault, MC.WETH);
@@ -139,7 +140,11 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({
+            isActive: true,
+            paramRules: paramRules,
+            validator: IValidator(address(0))
+        });
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -157,7 +162,11 @@ contract SetupVault is Test, Etches, MainnetActors {
         paramRules[1] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({
+            isActive: true,
+            paramRules: paramRules,
+            validator: IValidator(address(0))
+        });
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -167,7 +176,11 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({
+            isActive: true,
+            paramRules: paramRules,
+            validator: IValidator(address(0))
+        });
 
         vault_.setProcessorRule(weth_, funcSig, rule);
     }

@@ -12,6 +12,8 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IERC4626} from "src/Common.sol";
 import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
+import {IValidator} from "src/interface/IValidator.sol";
+
 
 contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
@@ -136,8 +138,11 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         paramRules[0] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-        
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({
+            isActive: true,
+            paramRules: paramRules,
+            validator: IValidator(address(0))
+        });
 
         vault.setProcessorRule(MC.WBNB, funcSig, rule);
     }
@@ -155,7 +160,11 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules});
+        IVault.FunctionRule memory rule = IVault.FunctionRule({
+            isActive: true,
+            paramRules: paramRules,
+            validator: IValidator(address(0))
+        });
 
         vault.setProcessorRule(MC.YNBNBk, funcSig, rule);
     }
