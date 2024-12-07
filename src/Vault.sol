@@ -16,11 +16,8 @@ contract Vault is BaseVault {
     struct FeeStorage {
         /// @notice The base withdrawal fee in basis points (1e8 = 100%)
         uint64 baseWithdrawalFee;
-        /// @notice The fraction of the buffer below which flat fees apply, in basis points (1e8 = 100%). Only used by quadratic fees
-        uint64 bufferFlatFeeFraction;
-        /// @notice The target buffer size as a fraction of total assets, in basis points (1e8 = 100%). Only used by quadratic fees
-        uint64 vaultBufferFraction;
     }
+    /// @notice The fraction of the buffer below which flat fees apply, in basis points (1e8 = 100%). Only used by quadratic fees
 
     function _getFeeStorage() internal pure returns (FeeStorage storage $) {
         assembly {
@@ -95,46 +92,10 @@ contract Vault is BaseVault {
     }
 
     /**
-     * @notice Sets the flat fee fraction applied when using the buffer
-     * @param bufferFlatFeeFraction_ The new buffer flat fee fraction in basis points (1/10000)
-     * @dev Only callable by accounts with FEE_MANAGER_ROLE
-     */
-    function setBufferFlatFeeFraction(uint64 bufferFlatFeeFraction_) external virtual onlyRole(FEE_MANAGER_ROLE) {
-        if (bufferFlatFeeFraction_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints();
-        _getFeeStorage().bufferFlatFeeFraction = bufferFlatFeeFraction_;
-    }
-
-    /**
-     * @notice Sets the maximum buffer size as a fraction of total assets
-     * @param vaultBufferFraction_ The new vault buffer fraction in basis points (1/10000)
-     * @dev Only callable by accounts with FEE_MANAGER_ROLE
-     */
-    function setVaultBufferFraction(uint64 vaultBufferFraction_) external virtual onlyRole(FEE_MANAGER_ROLE) {
-        if (vaultBufferFraction_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints();
-        _getFeeStorage().vaultBufferFraction = vaultBufferFraction_;
-    }
-
-    /**
      * @notice Returns the base withdrawal fee
      * @return uint64 The base withdrawal fee in basis points (1/10000)
      */
     function baseWithdrawalFee() external view returns (uint64) {
         return _getFeeStorage().baseWithdrawalFee;
-    }
-
-    /**
-     * @notice Returns the flat fee fraction applied when using the buffer
-     * @return uint64 The buffer flat fee fraction in basis points (1/10000)
-     */
-    function bufferFlatFeeFraction() external view returns (uint64) {
-        return _getFeeStorage().bufferFlatFeeFraction;
-    }
-
-    /**
-     * @notice Returns the maximum buffer size as a fraction of total assets
-     * @return uint64 The vault buffer fraction in basis points (1/10000)
-     */
-    function vaultBufferFraction() external view returns (uint64) {
-        return _getFeeStorage().vaultBufferFraction;
     }
 }
