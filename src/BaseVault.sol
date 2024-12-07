@@ -535,10 +535,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param active_ Whether the asset is active or not.
      */
     function addAsset(address asset_, bool active_) public virtual onlyRole(ASSET_MANAGER_ROLE) {
-        _addAsset(asset_, active_);
+        _addAsset(asset_, IERC20Metadata(asset_).decimals(), active_);
     }
 
-    function _addAsset(address asset_, bool active_) internal virtual onlyRole(ASSET_MANAGER_ROLE) {
+    function _addAsset(address asset_, uint8 decimals_, bool active_) internal virtual {
         if (asset_ == address(0)) {
             revert ZeroAddress();
         }
@@ -547,7 +547,6 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (index > 0 && assetStorage.assets[asset_].index != 0) {
             revert DuplicateAsset(asset_);
         }
-        uint8 decimals_ = IERC20Metadata(asset_).decimals();
         assetStorage.assets[asset_] = AssetParams({active: active_, index: index, decimals: decimals_});
         assetStorage.list.push(asset_);
 

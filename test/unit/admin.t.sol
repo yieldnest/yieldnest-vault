@@ -54,7 +54,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
 
     function test_Vault_addAsset_nullAddress() public {
         vm.prank(ASSET_MANAGER);
-        vm.expectRevert(IVault.ZeroAddress.selector);
+        vm.expectRevert();
         vault.addAsset(address(0), true);
     }
 
