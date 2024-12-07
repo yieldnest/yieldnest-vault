@@ -24,6 +24,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
     address public chad = address(0x3);
 
     uint256 public constant INITIAL_BALANCE = 100_000 ether;
+    uint256 public bufferRatio = 10_000_000;
 
     function setUp() public {
         SetupVault setupVault = new SetupVault();
@@ -38,17 +39,9 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
 
-        // Set buffer flat fee ratio to 80% (70% * 1e8)
-        vm.prank(ADMIN);
-        vault.setBufferFlatFeeFraction(80_000_000);
-
         // Set base withdrawal fee to 0.1% (0.1% * 1e8)
         vm.prank(ADMIN);
         vault.setBaseWithdrawalFee(100_000);
-
-        // Set vault buffer fraction to 10% (10% * 1e8)
-        vm.prank(ADMIN);
-        vault.setVaultBufferFraction(10_000_000);
     }
 
     function allocateToBuffer(uint256 amount) public {
@@ -77,7 +70,6 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.prank(alice);
         vault.deposit(assets, alice);
 
-        uint256 bufferRatio = vault.vaultBufferFraction();
         uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
         vm.prank(ADMIN);
         allocateToBuffer(maxBufferAssets);
@@ -99,7 +91,6 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.prank(alice);
         vault.deposit(assets, alice);
 
-        uint256 bufferRatio = vault.vaultBufferFraction();
         uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
         vm.prank(ADMIN);
         allocateToBuffer(maxBufferAssets);
@@ -162,7 +153,6 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.prank(alice);
         vault.deposit(assets, alice);
 
-        uint256 bufferRatio = vault.vaultBufferFraction();
         uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
         vm.prank(ADMIN);
         allocateToBuffer(maxBufferAssets);
