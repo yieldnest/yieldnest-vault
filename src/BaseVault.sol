@@ -49,6 +49,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+     * @notice Returns if the vault is counting native assets.
+     * @return bool True if the vault is counting native assets.
+     */
+    function countNativeAsset() public view virtual returns (bool) {
+        return _getVaultStorage().countNativeAsset;
+    }
+
+    /**
      * @notice Converts a given amount of assets to shares.
      * @param assets The amount of assets to convert.
      * @return shares The equivalent amount of shares.

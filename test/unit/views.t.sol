@@ -43,6 +43,11 @@ contract VaultDepositUnitTest is Test, Etches {
         assertEq(decimals, 18);
     }
 
+    function test_Vault_countNativeAsset() public view {
+        bool count = vault.countNativeAsset();
+        assertEq(count, true, "Count native asset should be true");
+    }
+
     function test_Vault_getAssets() public view {
         address[] memory assets = vault.getAssets();
 
