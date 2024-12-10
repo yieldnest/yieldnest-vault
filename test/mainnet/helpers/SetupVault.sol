@@ -4,13 +4,13 @@ pragma solidity ^0.8.24;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
 import {IVault} from "src/interface/IVault.sol";
-import {TimelockController as TLC} from "src/Common.sol";
+import {TimelockController as TLC, TransparentUpgradeableProxy as TUP} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {ynETHxVault} from "src/ynETHxVault.sol";
 import {IValidator} from "src/interface/IValidator.sol";
-
+import {BaseVaultViewer} from "src/BaseVaultViewer.sol";
 
 contract SetupVault is Test, MainnetActors, Etches {
 
@@ -154,4 +154,18 @@ contract SetupVault is Test, MainnetActors, Etches {
 
         vault_.setProcessorRule(weth_, funcSig, rule);
     }    
+
+    function deployViewer(Vault vault_) public returns (BaseVaultViewer) {
+        BaseVaultViewer implementation = new BaseVaultViewer();
+
+        bytes memory initData = abi.encodeWithSelector(
+            BaseVaultViewer.initialize.selector,
+            address(vault_)
+        );
+
+        TUP proxy = new TUP(address(implementation), ADMIN, initData);
+
+        return BaseVaultViewer(payable(address(proxy)));
+    }
+
 }

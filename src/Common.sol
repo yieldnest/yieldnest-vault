@@ -22,5 +22,6 @@ import {TimelockController} from "lib/openzeppelin-contracts/contracts/governanc
 import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC165} from "lib/openzeppelin-contracts/contracts/interfaces/IERC165.sol";
+import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 contract Common {}
