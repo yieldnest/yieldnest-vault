@@ -5,6 +5,32 @@ import {IVault} from "src/BaseVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {IERC20Metadata, Initializable, Math} from "src/Common.sol";
 
+library ERC20Viewer {
+    function symbol(IERC20Metadata token) internal view returns (string memory) {
+        try token.symbol() returns (string memory s) {
+            return s;
+        } catch {
+            return "";
+        }
+    }
+
+    function name(IERC20Metadata token) internal view returns (string memory) {
+        try token.name() returns (string memory n) {
+            return n;
+        } catch {
+            return "";
+        }
+    }
+
+    function decimals(IERC20Metadata token) internal view returns (uint8) {
+        try token.decimals() returns (uint8 d) {
+            return d;
+        } catch {
+            return 0;
+        }
+    }
+}
+
 contract BaseVaultViewer is Initializable {
     struct AssetInfo {
         address asset;
@@ -64,8 +90,8 @@ contract BaseVaultViewer is Initializable {
 
             assetsInfo[i] = AssetInfo({
                 asset: assets[i],
-                name: asset.name(),
-                symbol: asset.symbol(),
+                name: ERC20Viewer.name(asset),
+                symbol: ERC20Viewer.symbol(asset),
                 rate: rate,
                 ratioOfTotalAssets: (baseBalance > 0 && totalAssets > 0) ? baseBalance * DECIMALS / totalAssets : 0,
                 totalBalanceInUnitOfAccount: baseBalance,
