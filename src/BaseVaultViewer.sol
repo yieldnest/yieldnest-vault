@@ -80,8 +80,10 @@ contract BaseVaultViewer is Initializable {
         IVault vault = IVault(_getStorage().vault);
         uint256 totalSupply = vault.totalSupply();
         uint256 totalAssets = vault.totalAssets();
-        if (totalSupply == 0 || totalAssets == 0) return 1 ether;
-        return 1 ether * totalAssets / totalSupply;
+        uint256 decimals = vault.decimals();
+        uint256 baseAssetValue = 10 ** decimals;
+        if (totalSupply == 0 || totalAssets == 0) return baseAssetValue;
+        return Math.mulDiv(baseAssetValue, totalAssets, totalSupply);
     }
 
     /**
