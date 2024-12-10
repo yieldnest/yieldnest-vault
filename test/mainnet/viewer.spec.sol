@@ -8,7 +8,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
-import {BaseVaultViewer} from "src/BaseVaultViewer.sol";
+import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
 import {IERC20Metadata, Math} from "src/Common.sol";
 
 contract VaultMainnetViewerTest is Test, AssertUtils, MainnetActors {
