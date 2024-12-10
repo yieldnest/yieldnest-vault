@@ -25,6 +25,10 @@ contract VaultMainnetViewerTest is Test, AssertUtils, MainnetActors {
         baseVaultViewer = setupVault.deployViewer(vault);
     }
 
+    function test_Vault_Viewer_getVault() public view {
+        assertEq(baseVaultViewer.getVault(), address(vault));
+    }
+
     function test_Vault_Viewer_getRate() public view {
         uint256 totalSupply = vault.totalSupply();
         uint256 totalAssets = vault.totalAssets();

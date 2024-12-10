@@ -86,6 +86,10 @@ contract BaseVaultViewer is Initializable {
         return Math.mulDiv(baseAssetValue, totalAssets, totalSupply);
     }
 
+    function getVault() external view returns (address) {
+        return address(_getStorage().vault);
+    }
+
     /**
      * @notice Internal function to get the storage.
      * @return $ The storage.
