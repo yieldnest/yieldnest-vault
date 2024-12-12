@@ -14,6 +14,8 @@ import {IVault} from "src/interface/IVault.sol";
 import {MockERC20} from "test/unit/mocks/MockERC20.sol";
 import {IERC4626} from "src/Common.sol";
 import {Provider} from "src/module/Provider.sol";
+import {IERC20} from "src/Common.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 
 contract VaultDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -98,6 +100,87 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
         // Check that total assets increased
         assertEq(vault.totalAssets(), previewDepositAsset, "Total assets did not increase correctly");
+
+        vm.stopPrank();
+    }
+
+    function test_Vault_depositAsset_METH(uint256 depositAmount) public {
+        if (depositAmount < 10) return;
+        if (depositAmount > 100_000 ether) return;
+
+        deal(MC.METH, alice, depositAmount);
+
+        vm.startPrank(alice);
+
+        uint256 previewDepositAsset = vault.previewDepositAsset(MC.METH, depositAmount);
+
+        IERC20(MC.METH).approve(address(vault), depositAmount);
+
+        uint256 sharesMinted = vault.depositAsset(MC.METH, depositAmount, alice);
+
+        // Check that shares were minted
+        assertGt(sharesMinted, 0, "No shares were minted");
+        assertEq(sharesMinted, previewDepositAsset, "Incorrect shares minted");
+
+        // Check that the vault received the tokens
+        assertEq(IERC20(MC.METH).balanceOf(address(vault)), depositAmount, "Vault did not receive tokens");
+
+        // Check that Alice's token balance decreased
+        assertEq(IERC20(MC.METH).balanceOf(alice), 0, "Alice's balance did not decrease correctly");
+
+        // Check that Alice received the correct amount of shares
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
+
+        // Check that total assets increased
+        assertEq(vault.totalAssets(), previewDepositAsset, "Total assets did not increase correctly");
+
+        // Check that rate is correct
+        uint256 methRate = IProvider(MC.PROVIDER).getRate(MC.METH);
+
+        // Check that total assets matches rate-adjusted deposit
+        uint256 expectedTotalAssets = depositAmount * methRate / 1e18;
+        assertEq(vault.totalAssets(), expectedTotalAssets, "Total assets does not match rate-adjusted deposit");
+
+        vm.stopPrank();
+    }
+
+    function test_Vault_depositAsset_WBTC(uint256 depositAmount) public {
+        if (depositAmount < 10) return;
+        if (depositAmount > 100_000 * 1e8) return; // WBTC has 8 decimals
+
+        deal(MC.WBTC, alice, depositAmount);
+
+        vm.startPrank(alice);
+
+        uint256 previewDepositAsset = vault.previewDepositAsset(MC.WBTC, depositAmount);
+
+        IERC20(MC.WBTC).approve(address(vault), depositAmount);
+
+        uint256 sharesMinted = vault.depositAsset(MC.WBTC, depositAmount, alice);
+
+        // Check that shares were minted
+        assertGt(sharesMinted, 0, "No shares were minted");
+        assertEq(sharesMinted, previewDepositAsset, "Incorrect shares minted");
+
+        // Check that the vault received the tokens
+        assertEq(IERC20(MC.WBTC).balanceOf(address(vault)), depositAmount, "Vault did not receive tokens");
+
+        // Check that Alice's token balance decreased
+        assertEq(IERC20(MC.WBTC).balanceOf(alice), 0, "Alice's balance did not decrease correctly");
+
+        // Check that Alice received the correct amount of shares
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
+
+        // Check that total assets increased
+        assertEq(vault.totalAssets(), previewDepositAsset, "Total assets did not increase correctly");
+
+        // Check that rate is correct
+        uint256 wbtcRate = IProvider(MC.PROVIDER).getRate(MC.WBTC);
+
+        // Check that total assets matches rate-adjusted deposit
+        // Need to account for WBTC's 8 decimals vs ETH's 18 decimals
+        uint256 expectedTotalAssets = depositAmount * wbtcRate / 1e8;
+        assertEq(vault.totalAssets(), expectedTotalAssets, "Total assets does not match rate-adjusted deposit");
 
         vm.stopPrank();
     }

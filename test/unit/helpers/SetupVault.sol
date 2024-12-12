@@ -10,13 +10,15 @@ import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IValidator} from "src/interface/IValidator.sol";
+import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
     function setup() public returns (Vault vault, WETH9 weth) {
         string memory name = "YieldNest MAX";
         string memory symbol = "ynMAx";
 
-        Vault vaultImplementation = new Vault();
+        Vault vaultImplementation = new PublicViewsVault();
 
         // Deploy the proxy
         bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18, 0, true);
@@ -61,6 +63,8 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(MC.WETH, true);
         vault.addAsset(MC.BUFFER, false);
         vault.addAsset(MC.STETH, true);
+        vault.addAsset(MC.WBTC, true);
+        vault.addAsset(MC.METH, true);
 
         // configure processor rules
         setDepositRule(vault, MC.BUFFER, address(vault));
@@ -74,6 +78,11 @@ contract SetupVault is Test, Etches, MainnetActors {
         // add strategies
 
         vault.setBuffer(MC.BUFFER);
+
+        // Set WBTC rate to 20 ETH
+        MockProvider(MC.PROVIDER).setRate(MC.WBTC, 20e18);
+        // Set METH rate to 1.2 ETH
+        MockProvider(MC.PROVIDER).setRate(MC.METH, 1.2e18);
 
         // Unpause the vault
         vault.unpause();

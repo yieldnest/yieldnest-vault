@@ -9,6 +9,9 @@ import {MockCL_STETH} from "test/unit/mocks/MockCL_STETH.sol";
 import {MockYNLSDE} from "test/unit/mocks/MockYNLSDE.sol";
 import {Provider} from "src/module/Provider.sol";
 import {MockBuffer} from "test/unit/mocks/MockBuffer.sol";
+import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {MockERC20} from "test/unit/mocks/MockERC20.sol";
+import {MockERC20CustomDecimals} from "test/unit/mocks/MockERC20CustomDecimals.sol";
 
 import "lib/forge-std/src/Test.sol";
 
@@ -22,6 +25,7 @@ contract Etches is Test {
         mockMETH();
         mockOETH();
         mockCL_STETH();
+        mockWBTC();
         mockProvider();
         mockBuffer();
     }
@@ -51,13 +55,14 @@ contract Etches is Test {
     }
 
     function mockRETH() public {
-        WETH9 reth = new WETH9();
+        // WETH9 reth = new WETH9();
+        MockERC20 reth = new MockERC20("Rocket Pool ETH", "rETH");
         bytes memory code = address(reth).code;
         vm.etch(MainnetContracts.RETH, code);
     }
 
     function mockMETH() public {
-        WETH9 meth = new WETH9();
+        MockERC20 meth = new MockERC20("Mantle ETH", "mETH");
         bytes memory code = address(meth).code;
         vm.etch(MainnetContracts.METH, code);
     }
@@ -74,8 +79,14 @@ contract Etches is Test {
         vm.etch(MainnetContracts.CL_STETH_FEED, code);
     }
 
+    function mockWBTC() public {
+        MockERC20CustomDecimals wbtc = new MockERC20CustomDecimals("Wrapped Bitcoin", "WBTC", 8);
+        bytes memory code = address(wbtc).code;
+        vm.etch(MainnetContracts.WBTC, code);
+    }
+
     function mockProvider() public {
-        Provider provider = new Provider();
+        Provider provider = new MockProvider();
         bytes memory code = address(provider).code;
         vm.etch(MainnetContracts.PROVIDER, code);
     }
