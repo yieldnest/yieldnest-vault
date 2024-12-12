@@ -37,4 +37,6 @@ library MainnetContracts {
 
     address public constant SFRXETH = 0xac3E018457B222d93114458476f3E3416Abbe38F;
     address public constant FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
+
+    address public constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
 }

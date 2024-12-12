@@ -10,6 +10,7 @@ import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IValidator} from "src/interface/IValidator.sol";
+import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
     function setup() public returns (Vault vault, WETH9 weth) {
@@ -61,6 +62,8 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(MC.WETH, true);
         vault.addAsset(MC.BUFFER, false);
         vault.addAsset(MC.STETH, true);
+        vault.addAsset(MC.WBTC, true);
+        vault.addAsset(MC.METH, true);
 
         // configure processor rules
         setDepositRule(vault, MC.BUFFER, address(vault));
@@ -74,6 +77,11 @@ contract SetupVault is Test, Etches, MainnetActors {
         // add strategies
 
         vault.setBuffer(MC.BUFFER);
+
+        // Set WBTC rate to 20 ETH
+        MockProvider(MC.PROVIDER).setRate(MC.WBTC, 20e18);
+        // Set METH rate to 1.2 ETH
+        MockProvider(MC.PROVIDER).setRate(MC.METH, 1.2e18);
 
         // Unpause the vault
         vault.unpause();
