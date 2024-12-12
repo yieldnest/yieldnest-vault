@@ -13,9 +13,7 @@ import {Math} from "src/Common.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
 contract VaultViewsUnitTest is Test, Etches {
-
     using Math for uint256;
 
     Vault public vaultImplementation;
@@ -90,11 +88,13 @@ contract VaultViewsUnitTest is Test, Etches {
         assertEq(vault.buffer(), MC.BUFFER, "Buffer strategy does not match expected");
     }
 
-    function test_Vault_convertToAssetsForAsset_WETH(
+    function _testConvertToAssetsForAsset(
+        address asset,
         uint256 shares,
         uint256 depositedAssets,
-        uint256 rewards
-    ) public {
+        uint256 rewards,
+        uint256 rate
+    ) internal {
         vm.assume(shares > 0 && shares <= 100000 ether);
         vm.assume(depositedAssets > 0 && depositedAssets <= 100000 ether);
         vm.assume(rewards >= 0 && rewards <= depositedAssets);
@@ -110,30 +110,32 @@ contract VaultViewsUnitTest is Test, Etches {
         // Process accounting to update total assets
         vault.processAccounting();
 
-        uint256 totalAssets = vault.totalAssets();
-        assertGt(totalAssets, 0, "Total assets should be greater than 0");
-
-        // Test WETH conversion
-        (uint256 wethAssets, uint256 wethBaseAssets) =
-            pVault.convertToAssetsForAsset(MC.WETH, shares, Math.Rounding.Floor);
+        // Test asset conversion
+        (uint256 assetAmount, uint256 baseAssets) = pVault.convertToAssetsForAsset(asset, shares, Math.Rounding.Floor);
 
         uint256 expectedAssets = shares.mulDiv(vault.totalAssets() + 1, vault.totalSupply() + 1, Math.Rounding.Floor);
-        assertEq(wethAssets, expectedAssets, "WETH asset conversion failed");
-        assertEq(wethBaseAssets, expectedAssets, "WETH base asset conversion failed");
+
+        if (asset == MC.WETH) {
+            assertEq(assetAmount, expectedAssets, "WETH asset conversion failed");
+            assertEq(baseAssets, expectedAssets, "WETH base asset conversion failed");
+        } else {
+            uint8 assetDecimals = IERC20Metadata(asset).decimals();
+            uint8 wethDecimals = IERC20Metadata(MC.WETH).decimals();
+            assertEq(
+                assetAmount,
+                (expectedAssets * 10 ** assetDecimals) / (rate * 10 ** wethDecimals),
+                "Asset conversion failed"
+            );
+            assertEq(baseAssets, expectedAssets, "Base asset conversion failed");
+        }
     }
 
-    function test_Vault_convertToAssetsForAsset_WBTC() public view {
-        uint256 shares = 1e18;
-        
-        // Test WBTC conversion (rate set to 20 ETH in setup)
-        (uint256 wbtcAssets, uint256 wbtcBaseAssets) =
-            pVault.convertToAssetsForAsset(MC.WBTC, shares, Math.Rounding.Floor);
-        uint8 wbtcDecimals = IERC20Metadata(MC.WBTC).decimals();
-        uint8 wethDecimals = IERC20Metadata(MC.WETH).decimals();
-        assertEq(
-            wbtcAssets, (shares * 10 ** wbtcDecimals) / (20 * 10 ** wethDecimals), "WBTC asset conversion failed"
-        );
-        assertEq(wbtcBaseAssets, shares, "WBTC base asset conversion failed");
+    function test_Vault_convertToAssetsForAsset_WETH(uint256 shares, uint256 depositedAssets, uint256 rewards) public {
+        _testConvertToAssetsForAsset(MC.WETH, shares, depositedAssets, rewards, 1);
+    }
+
+    function test_Vault_convertToAssetsForAsset_WBTC(uint256 shares, uint256 depositedAssets, uint256 rewards) public {
+        _testConvertToAssetsForAsset(MC.WBTC, shares, depositedAssets, rewards, 20);
     }
 
     function test_Vault_convertToAssetsForAsset_METH() public view {
