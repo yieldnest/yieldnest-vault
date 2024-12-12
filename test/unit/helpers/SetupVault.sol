@@ -11,13 +11,14 @@ import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
     function setup() public returns (Vault vault, WETH9 weth) {
         string memory name = "YieldNest MAX";
         string memory symbol = "ynMAx";
 
-        Vault vaultImplementation = new Vault();
+        Vault vaultImplementation = new PublicViewsVault();
 
         // Deploy the proxy
         bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18, 0, true);

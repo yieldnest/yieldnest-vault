@@ -410,8 +410,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         returns (uint256, uint256)
     {
-        uint256 assets = shares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** 0, rounding);
-        uint256 baseAssets = _convertBaseToAsset(asset_, assets);
+        uint256 baseAssets = shares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** 0, rounding);
+        uint256 assets = _convertBaseToAsset(asset_, baseAssets);
         return (assets, baseAssets);
     }
 
@@ -454,7 +454,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function _convertBaseToAsset(address asset_, uint256 assets) internal view virtual returns (uint256) {
         if (asset_ == address(0)) revert ZeroAddress();
         uint256 rate = IProvider(provider()).getRate(asset_);
-        return assets.mulDiv(10 ** (_getAssetStorage().assets[asset()].decimals), rate, Math.Rounding.Floor);
+        return assets.mulDiv(10 ** (_getAssetStorage().assets[asset_].decimals), rate, Math.Rounding.Floor);
     }
 
     /**
