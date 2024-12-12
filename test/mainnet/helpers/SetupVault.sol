@@ -10,7 +10,7 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {ynETHxVault} from "src/ynETHxVault.sol";
 import {IValidator} from "src/interface/IValidator.sol";
-import {BaseVaultViewer} from "src/BaseVaultViewer.sol";
+import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
 
 contract SetupVault is Test, MainnetActors, Etches {
 
