@@ -72,6 +72,14 @@ contract BaseVaultViewer is Initializable {
      * @return assetsInfo An array of AssetInfo structs containing detailed information about each asset
      */
     function getAssets() external view returns (AssetInfo[] memory assetsInfo) {
+        return _getAssets();
+    }
+
+    function getUnderlyingAssets() external view virtual returns (AssetInfo[] memory assetsInfo) {
+        return _getAssets();
+    }
+
+    function _getAssets() internal view returns (AssetInfo[] memory assetsInfo) {
         IVault vault = IVault(_getStorage().vault);
 
         address[] memory assets = vault.getAssets();
