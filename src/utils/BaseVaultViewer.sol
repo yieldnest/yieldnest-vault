@@ -1,3 +1,4 @@
+// solhint-disable one-contract-per-file
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
@@ -83,17 +84,32 @@ contract BaseVaultViewer is Initializable {
         IVault vault = IVault(_getStorage().vault);
 
         address[] memory assets = vault.getAssets();
-        assetsInfo = new AssetInfo[](assets.length);
+        uint256[] memory balances = new uint256[](assets.length);
 
+        for (uint256 i = 0; i < assets.length; ++i) {
+            balances[i] = IERC20Metadata(assets[i]).balanceOf(address(vault));
+        }
+
+        return _getAssetsInfo(assets, balances);
+    }
+
+    function _getAssetsInfo(address[] memory assets, uint256[] memory balances)
+        internal
+        view
+        returns (AssetInfo[] memory assetsInfo)
+    {
+        IVault vault = IVault(_getStorage().vault);
         IProvider rateProvider = IProvider(vault.provider());
         uint256 totalAssets = vault.totalAssets();
+
+        assetsInfo = new AssetInfo[](assets.length);
 
         for (uint256 i = 0; i < assets.length; ++i) {
             IVault.AssetParams memory assetParams = vault.getAsset(assets[i]);
             uint256 rate = rateProvider.getRate(assets[i]);
             IERC20Metadata asset = IERC20Metadata(assets[i]);
 
-            uint256 assetBalance = asset.balanceOf(address(vault));
+            uint256 assetBalance = balances[i];
             uint256 baseBalance = Math.mulDiv(assetBalance, rate, 10 ** assetParams.decimals, Math.Rounding.Floor);
 
             assetsInfo[i] = AssetInfo({
@@ -108,6 +124,7 @@ contract BaseVaultViewer is Initializable {
                 decimals: assetParams.decimals
             });
         }
+        return assetsInfo;
     }
 
     function getRate() external view returns (uint256) {
