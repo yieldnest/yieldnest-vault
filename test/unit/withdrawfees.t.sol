@@ -127,7 +127,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_withdrawWithFees(uint256 assets, uint256 withdrawnAssets) external {
-        vm.assume(assets >= 100000 && assets <= 50_000 ether);
+        vm.assume(assets >= 100000 && assets <= 100_000 ether);
         vm.assume(withdrawnAssets <= assets);
         vm.assume(withdrawnAssets > 0);
 

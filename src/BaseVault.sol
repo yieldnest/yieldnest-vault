@@ -562,6 +562,31 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+     * @notice Updates an existing asset's parameters in the vault.
+     * @param index The index of the asset to update.
+     * @param fields The AssetUpdateFields struct containing the updated fields.
+     */
+    function updateAsset(uint256 index, AssetUpdateFields calldata fields)
+        public
+        virtual
+        onlyRole(ASSET_MANAGER_ROLE)
+    {
+        _updateAsset(index, fields);
+    }
+
+    function _updateAsset(uint256 index, AssetUpdateFields calldata fields) internal virtual {
+        AssetStorage storage assetStorage = _getAssetStorage();
+        if (index >= assetStorage.list.length) {
+            revert InvalidAsset(address(0));
+        }
+
+        address asset_ = assetStorage.list[index];
+        AssetParams storage asset = assetStorage.assets[asset_];
+        asset.active = fields.active;
+        emit UpdateAsset(index, asset_, fields);
+    }
+
+    /**
      * @notice Pauses the vault.
      */
     function pause() external virtual onlyRole(PAUSER_ROLE) {
