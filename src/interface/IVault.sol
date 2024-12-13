@@ -20,6 +20,10 @@ interface IVault is IERC4626 {
         uint8 decimals;
     }
 
+    struct AssetUpdateFields {
+        bool active;
+    }
+
     struct AssetStorage {
         mapping(address => AssetParams) assets;
         address[] list;
@@ -73,12 +77,13 @@ interface IVault is IERC4626 {
     event SetProvider(address indexed provider);
     event SetBuffer(address indexed buffer);
     event NewAsset(address indexed asset, uint256 decimals, uint256 index);
-    event SetWhitelist(address target, bytes4 funcsig);
+    event SetWhitelist(address indexed target, bytes4 funcsig);
     event ProcessSuccess(address[] targets, uint256[] values, bytes[] data);
     event Pause(bool paused);
-    event SetProcessorRule(address, bytes4, FunctionRule);
+    event SetProcessorRule(address indexed target, bytes4, FunctionRule);
     event NativeDeposit(uint256 amount);
     event ProcessAccounting(uint256 timestamp, uint256 totalAssets);
+    event UpdateAsset(uint256 indexed index, address indexed asset, AssetUpdateFields fields);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);
