@@ -11,6 +11,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {MockERC20} from "test/unit/mocks/MockERC20.sol";
+import {IAccessControl} from "src/Common.sol";
 
 contract VaultAdminUintTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -68,6 +69,47 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     function test_Vault_addAsset_unauthorized() public {
         vm.expectRevert();
         vault.addAsset(address(asset), true);
+    }
+
+    function test_Vault_updateAsset(bool initialActiveStatus, bool updateActiveStatus) public {
+        vm.startPrank(ASSET_MANAGER);
+        vault.addAsset(address(asset), initialActiveStatus);
+
+        // Get initial values
+        IVault.AssetParams memory initialParams = vault.getAsset(address(asset));
+        uint256 initialIndex = initialParams.index;
+        uint8 initialDecimals = initialParams.decimals;
+
+        IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: updateActiveStatus});
+
+        uint256 index = vault.getAsset(address(asset)).index;
+        vault.updateAsset(index, fields);
+
+        // Assert active changed but index and decimals stayed same
+        IVault.AssetParams memory finalParams = vault.getAsset(address(asset));
+        assertEq(finalParams.active, updateActiveStatus);
+        assertEq(finalParams.index, initialIndex);
+        assertEq(finalParams.decimals, initialDecimals);
+    }
+
+    function test_Vault_updateAsset_invalidIndex() public {
+        uint256 invalidIndex = vault.getAssets().length;
+        vm.startPrank(ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(IVault.InvalidAsset.selector, address(0)));
+        vault.updateAsset(invalidIndex, IVault.AssetUpdateFields({active: true}));
+        vm.stopPrank();
+    }
+
+    function test_Vault_updateAsset_unauthorized() public {
+        vm.prank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), vault.ASSET_MANAGER_ROLE()
+            )
+        );
+        vault.updateAsset(0, IVault.AssetUpdateFields({active: false}));
     }
 
     function test_Vault_setProvider() public {
