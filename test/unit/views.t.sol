@@ -10,8 +10,7 @@ import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "src/Common.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20, IERC20Metadata} from "src/Common.sol";
 
 contract VaultViewsUnitTest is Test, Etches {
     using Math for uint256;
@@ -212,23 +211,28 @@ contract VaultViewsUnitTest is Test, Etches {
         _testConvertAssetToBase(MC.METH, assets, 12e17);
     }
 
-    function test_Vault_convertBaseToAsset() public view {
-        uint256 baseAssets = 1e18;
+    function _testConvertBaseToAsset(address asset, uint256 baseAssets, uint256 rate) internal view {
+        vm.assume(baseAssets > 0 && baseAssets <= 100000 ether);
 
-        // Test WETH conversion
-        uint256 wethAssets = pVault.convertBaseToAsset(MC.WETH, baseAssets);
-        assertEq(wethAssets, baseAssets, "Base to WETH conversion failed");
+        uint256 assets = pVault.convertBaseToAsset(asset, baseAssets);
 
-        // Test WBTC conversion (rate set to 20 ETH in setup)
-        uint256 wbtcAssets = pVault.convertBaseToAsset(MC.WBTC, baseAssets);
-        uint8 wbtcDecimals = IERC20Metadata(MC.WBTC).decimals();
-        uint8 wethDecimals = IERC20Metadata(MC.WETH).decimals();
-        assertEq(
-            wbtcAssets, (baseAssets * 10 ** wbtcDecimals) / (20 * 10 ** wethDecimals), "Base to WBTC conversion failed"
-        );
+        if (asset == MC.WETH) {
+            assertEq(assets, baseAssets, "Base to WETH conversion failed");
+        } else {
+            uint8 assetDecimals = IERC20Metadata(asset).decimals();
+            assertEq(assets, (baseAssets * 10 ** assetDecimals) / (rate), "Base to asset conversion failed");
+        }
+    }
 
-        // Test METH conversion (rate set to 1.2 ETH in setup)
-        uint256 methAssets = pVault.convertBaseToAsset(MC.METH, baseAssets);
-        assertEq(methAssets, (baseAssets * 10) / 12, "Base to METH conversion failed");
+    function test_Vault_convertBaseToAsset_WETH(uint256 baseAssets) public view {
+        _testConvertBaseToAsset(MC.WETH, baseAssets, 1e18);
+    }
+
+    function test_Vault_convertBaseToAsset_WBTC(uint256 baseAssets) public view {
+        _testConvertBaseToAsset(MC.WBTC, baseAssets, 20e18);
+    }
+
+    function test_Vault_convertBaseToAsset_METH(uint256 baseAssets) public view {
+        _testConvertBaseToAsset(MC.METH, baseAssets, 12e17);
     }
 }
