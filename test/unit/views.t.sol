@@ -120,7 +120,6 @@ contract VaultViewsUnitTest is Test, Etches {
             assertEq(baseAssets, expectedAssets, "WETH base asset conversion failed");
         } else {
             uint8 assetDecimals = IERC20Metadata(asset).decimals();
-            uint8 wethDecimals = IERC20Metadata(MC.WETH).decimals();
             assertEq(
                 assetAmount,
                 (expectedAssets * 10 ** assetDecimals) / rate,
@@ -137,7 +136,7 @@ contract VaultViewsUnitTest is Test, Etches {
     function test_Vault_convertToAssetsForAsset_WBTC(uint256 shares, uint256 depositedAssets, uint256 rewards) public {
         _testConvertToAssetsForAsset(MC.WBTC, shares, depositedAssets, rewards, 20e18);
     }
-    
+
     function test_Vault_convertToAssetsForAsset_METH(uint256 shares, uint256 depositedAssets, uint256 rewards) public {
         _testConvertToAssetsForAsset(MC.METH, shares, depositedAssets, rewards, 12e17);
     }
@@ -149,6 +148,10 @@ contract VaultViewsUnitTest is Test, Etches {
         uint256 rewards,
         uint256 rate
     ) internal {
+        vm.assume(assets > 0 && assets <= 100000 ether);
+        vm.assume(depositedAssets > 0 && depositedAssets <= 100000 ether);
+        vm.assume(rewards >= 0 && rewards <= depositedAssets);
+
         // Deposit assets through user
         deal(MC.WETH, address(this), depositedAssets);
         IERC20(MC.WETH).approve(address(vault), depositedAssets);
@@ -163,36 +166,33 @@ contract VaultViewsUnitTest is Test, Etches {
         // Test asset conversion
         (uint256 shares, uint256 baseAssets) = pVault.convertToSharesForAsset(asset, assets, Math.Rounding.Floor);
 
+        uint256 expectedShares = baseAssets.mulDiv(vault.totalSupply() + 1, vault.totalAssets() + 1, Math.Rounding.Floor);
+
         if (asset == MC.WETH) {
-            assertEq(shares, assets, "WETH shares conversion failed");
+            assertEq(shares, expectedShares, "WETH shares conversion failed");
             assertEq(baseAssets, assets, "WETH base asset conversion failed");
         } else {
             uint8 assetDecimals = IERC20Metadata(asset).decimals();
-            uint8 wethDecimals = IERC20Metadata(MC.WETH).decimals();
-            assertEq(
-                shares,
-                (assets * rate * 10 ** wethDecimals) / 10 ** assetDecimals,
-                "Shares conversion failed"
-            );
+            assertEq(shares, expectedShares, "Shares conversion failed");
             assertEq(
                 baseAssets,
-                (assets * rate * 10 ** wethDecimals) / 10 ** assetDecimals,
+                (assets * rate) / 10 ** assetDecimals,
                 "Base asset conversion failed"
             );
         }
     }
 
-    // function test_Vault_convertToSharesForAsset_WETH(uint256 assets, uint256 depositedAssets, uint256 rewards) public {
-    //     _testConvertToSharesForAsset(MC.WETH, assets, depositedAssets, rewards, 1);
-    // }
+    function test_Vault_convertToSharesForAsset_WETH(uint256 assets, uint256 depositedAssets, uint256 rewards) public {
+        _testConvertToSharesForAsset(MC.WETH, assets, depositedAssets, rewards, 1e18);
+    }
 
-    // function test_Vault_convertToSharesForAsset_WBTC(uint256 assets, uint256 depositedAssets, uint256 rewards) public {
-    //     _testConvertToSharesForAsset(MC.WBTC, assets, depositedAssets, rewards, 20);
-    // }
+    function test_Vault_convertToSharesForAsset_WBTC(uint256 assets, uint256 depositedAssets, uint256 rewards) public {
+        _testConvertToSharesForAsset(MC.WBTC, assets, depositedAssets, rewards, 20e18);
+    }
 
-    // function test_Vault_convertToSharesForAsset_METH(uint256 assets, uint256 depositedAssets, uint256 rewards) public {
-    //     _testConvertToSharesForAsset(MC.METH, assets, depositedAssets, rewards, 12);
-    // }
+    function test_Vault_convertToSharesForAsset_METH(uint256 assets, uint256 depositedAssets, uint256 rewards) public {
+        _testConvertToSharesForAsset(MC.METH, assets, depositedAssets, rewards, 12e17);
+    }
 
     function test_Vault_convertAssetToBase() public view {
         uint256 assets = 1000;
