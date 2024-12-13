@@ -119,6 +119,11 @@ contract VaultViewsUnitTest is Test, Etches {
             assertEq(baseAssets, expectedAssets, "WETH base asset conversion failed");
         } else {
             uint8 assetDecimals = IERC20Metadata(asset).decimals();
+            // Example For WBTC:
+            // If expectedAssets = 100 ETH = 100e18 wei
+            // assetDecimals = 8 (WBTC decimals)
+            // rate = 20e18 (20 ETH per WBTC)
+            // Then: assetAmount = (100e18 * 1e8) / 20e18 = 5 WBTC = 500000000 satoshi
             assertEq(assetAmount, (expectedAssets * 10 ** assetDecimals) / rate, "Asset conversion failed");
             assertEq(baseAssets, expectedAssets, "Base asset conversion failed");
         }
@@ -169,6 +174,10 @@ contract VaultViewsUnitTest is Test, Etches {
             assertEq(baseAssets, assets, "WETH base asset conversion failed");
         } else {
             uint8 assetDecimals = IERC20Metadata(asset).decimals();
+            // For WBTC example:
+            // If assets = 5 WBTC = 500000000 satoshi (8 decimals)
+            // rate = 20e18 (WBTC/ETH price)
+            // Then: baseAssets = (500000000 * 20e18) / 1e8 = 100e18 ETH
             assertEq(shares, expectedShares, "Shares conversion failed");
             assertEq(baseAssets, (assets * rate) / 10 ** assetDecimals, "Base asset conversion failed");
         }
@@ -195,6 +204,10 @@ contract VaultViewsUnitTest is Test, Etches {
             assertEq(baseAssets, assets, "WETH to base conversion failed");
         } else {
             uint8 assetDecimals = IERC20Metadata(asset).decimals();
+            // For WBTC example:
+            // If assets = 5 WBTC = 500000000 satoshi (8 decimals)
+            // rate = 20e18 (WBTC/ETH price)
+            // Then: baseAssets = (500000000 * 20e18) / 1e8 = 100e18 ETH
             assertEq(baseAssets, (assets * rate) / 10 ** assetDecimals, "Asset to base conversion failed");
         }
     }
@@ -220,6 +233,11 @@ contract VaultViewsUnitTest is Test, Etches {
             assertEq(assets, baseAssets, "Base to WETH conversion failed");
         } else {
             uint8 assetDecimals = IERC20Metadata(asset).decimals();
+            // Example For WBTC:
+            // If baseAssets = 100 ETH = 100e18 wei
+            // assetDecimals = 8 (WBTC decimals)
+            // rate = 20e18 (20 ETH per WBTC)
+            // Then: assets = (100e18 * 1e8) / 20e18 = 5 WBTC = 500000000 satoshi
             assertEq(assets, (baseAssets * 10 ** assetDecimals) / (rate), "Base to asset conversion failed");
         }
     }
