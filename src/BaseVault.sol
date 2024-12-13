@@ -581,8 +581,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
 
         address asset_ = assetStorage.list[index];
-        AssetParams storage asset = assetStorage.assets[asset_];
-        asset.active = fields.active;
+        AssetParams storage assetParams = assetStorage.assets[asset_];
+        assetParams.active = fields.active;
         emit UpdateAsset(index, asset_, fields);
     }
 
