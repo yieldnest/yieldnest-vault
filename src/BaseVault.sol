@@ -621,9 +621,16 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      *      and updates the total assets denominated in the base asset.
      */
     function processAccounting() public virtual {
+        uint256 totalBaseBalance = _calculateTotalAssets();
+
+        _getVaultStorage().totalAssets = totalBaseBalance;
+        emit ProcessAccounting(block.timestamp, totalBaseBalance);
+    }
+
+    function _calculateTotalAssets() internal view virtual returns (uint256 totalBaseBalance) {
         VaultStorage storage vaultStorage = _getVaultStorage();
 
-        uint256 totalBaseBalance = vaultStorage.countNativeAsset ? address(this).balance : 0;
+        totalBaseBalance = vaultStorage.countNativeAsset ? address(this).balance : 0;
 
         AssetStorage storage assetStorage = _getAssetStorage();
         address[] memory assetList = assetStorage.list;
@@ -634,9 +641,6 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             if (balance == 0) continue;
             totalBaseBalance += _convertAssetToBase(assetList[i], balance);
         }
-
-        _getVaultStorage().totalAssets = totalBaseBalance;
-        emit ProcessAccounting(block.timestamp, totalBaseBalance);
     }
 
     /**
