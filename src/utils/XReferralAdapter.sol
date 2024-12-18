@@ -4,11 +4,6 @@ pragma solidity ^0.8.24;
 
 import {IVault} from "src/BaseVault.sol";
 
-interface IKernelStrategy {
-    function getHasAllocator() external view returns (bool hasAllocators);
-    function hasRole(bytes32 role, address account) external view returns (bool hasRole);
-}
-
 contract XReferralAdapter {
     /// @notice Role for allocator permissions
     bytes32 public constant ALLOCATOR_ROLE = keccak256("ALLOCATOR_ROLE");
@@ -29,21 +24,8 @@ contract XReferralAdapter {
     error ZeroAmount();
     error ZeroAddress();
     error SelfReferral();
-    error NotAnAllocator(address);
     error NoDirectETHDeposit();
 
-    modifier isAllocator(address _vault) {
-        try IKernelStrategy(_vault).getHasAllocator() returns (bool hasAllocator) {
-            if (hasAllocator) {
-                if (!IKernelStrategy(_vault).hasRole(ALLOCATOR_ROLE, msg.sender)) {
-                    revert NotAnAllocator(msg.sender);
-                }
-            }
-        } catch {
-            // allocator role not required
-        }
-        _;
-    }
 
     constructor() public {}
 
@@ -58,7 +40,6 @@ contract XReferralAdapter {
      */
     function depositAssetWithReferral(address _vault, address asset, uint256 amount, address referrer, address receiver)
         public
-        isAllocator(_vault)
         returns (uint256 shares)
     {
         IVault vault = IVault(_vault);
