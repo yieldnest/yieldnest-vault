@@ -75,6 +75,14 @@ interface IVault is IERC4626 {
     error DepositFailed();
     error AssetNotActive();
 
+    event DepositAsset(
+        address indexed sender,
+        address indexed receiver,
+        address indexed asset,
+        uint256 assets,
+        uint256 baseAssets,
+        uint256 shares
+    );
     event SetProvider(address indexed provider);
     event SetBuffer(address indexed buffer);
     event SetAlwaysComputeTotalAssets(bool alwaysComputeTotalAssets);

@@ -372,7 +372,12 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
         _mint(receiver, shares);
+
+        // 4626 event
         emit Deposit(caller, receiver, assets, shares);
+
+        // 4626-MAX event
+        emit DepositAsset(caller, receiver, asset_, assets, baseAssets, shares);
     }
 
     /**
