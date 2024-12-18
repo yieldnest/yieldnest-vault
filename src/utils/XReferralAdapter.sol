@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IVault} from "src/BaseVault.sol";
+import {SafeERC20, IERC20} from "src/Common.sol";
 
 contract XReferralAdapter {
     /// @notice Role for allocator permissions
@@ -30,12 +31,12 @@ contract XReferralAdapter {
      * @dev wraps the deposit for the specific strategy to emit a referal event
      * @param _vault the vault to be used
      * @param asset asset the ERC20 being deposited
-     * @param amount the amount of the asset being deposited
+     * @param assets the amount of the asset being deposited
      * @param referrer the address of the referrer
      * @param receiver the addres of the receiver
      * @return shares the shares being received
      */
-    function depositAssetWithReferral(address _vault, address asset, uint256 amount, address referrer, address receiver)
+    function depositAssetWithReferral(address _vault, address asset, uint256 assets, address referrer, address receiver)
         public
         returns (uint256 shares)
     {
@@ -44,7 +45,7 @@ contract XReferralAdapter {
         if (IVault(vault).asset() == address(0)) {
             revert InvalidVault(_vault);
         }
-        if (amount == 0) {
+        if (assets == 0) {
             revert ZeroAmount();
         }
         if (receiver == address(0)) {
@@ -57,10 +58,16 @@ contract XReferralAdapter {
             revert SelfReferral();
         }
 
-        shares = vault.depositAsset(asset, amount, receiver);
+        //transfer assets to this contract
+        SafeERC20.safeTransferFrom(IERC20(asset), msg.sender, address(this), assets);
+
+        // approve vault
+        SafeERC20.safeIncreaseAllowance(IERC20(asset), _vault, assets);
+
+        shares = vault.depositAsset(asset, assets, receiver);
 
         emit ReferralDepositProcessed(
-            address(vault), asset, msg.sender, referrer, receiver, amount, shares, block.timestamp
+            address(vault), asset, msg.sender, referrer, receiver, assets, shares, block.timestamp
         );
     }
 }
