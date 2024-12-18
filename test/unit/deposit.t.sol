@@ -390,6 +390,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         uint256 assets = 1 ether;
 
         uint256 previewShares = vault.previewDeposit(assets);
+
         vm.prank(alice);
         weth.approve(address(referallAdapter), assets);
 
