@@ -54,16 +54,23 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches {
         vault.processor(targets, values, data);
     }
 
-    function test_Vault_previewWithdraw(uint256 assets) external view {
+    function test_Vault_previewWithdraw(uint256 assets, bool alwaysComputeTotalAssets) external {
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         uint256 amount = vault.previewWithdraw(assets);
         assertEq(amount, assets);
     }
 
-    function test_Vault_withdraw_success(uint256 assets) external {
+    function test_Vault_withdraw_success(uint256 assets, bool alwaysComputeTotalAssets) external {
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         vm.prank(alice);
         uint256 depositShares = vault.deposit(assets, alice);
@@ -91,16 +98,23 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches {
         );
     }
 
-    function test_Vault_previewRedeem(uint256 shares) external view {
+    function test_Vault_previewRedeem(uint256 shares, bool alwaysComputeTotalAssets) external {
         if (shares < 2) return;
         if (shares > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         uint256 assets = vault.previewWithdraw(shares);
         assertEq(assets, shares, "Preview Assets response not shares");
     }
 
-    function test_Vault_redeem_success(uint256 amount) external {
+    function test_Vault_redeem_success(uint256 amount, bool alwaysComputeTotalAssets) external {
         if (amount < 2) return;
         if (amount > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         uint256 aliceWethBalanceBefore = weth.balanceOf(alice);
         vm.prank(alice);

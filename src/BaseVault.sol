@@ -369,11 +369,33 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
 
         VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.totalAssets += baseAssets;
+        _addTotalAssets(baseAssets);
 
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
         _mint(receiver, shares);
         emit Deposit(caller, receiver, assets, shares);
+    }
+
+    /**
+     * @notice Internal function to add to total assets.
+     * @param baseAssets The amount of base assets to add.
+     */
+    function _addTotalAssets(uint256 baseAssets) internal virtual {
+        VaultStorage storage vaultStorage = _getVaultStorage();
+        if (!vaultStorage.alwaysComputeTotalAssets) {
+            vaultStorage.totalAssets += baseAssets;
+        }
+    }
+
+    /**
+     * @notice Internal function to subtract from total assets.
+     * @param baseAssets The amount of base assets to subtract.
+     */
+    function _subTotalAssets(uint256 baseAssets) internal virtual {
+        VaultStorage storage vaultStorage = _getVaultStorage();
+        if (!vaultStorage.alwaysComputeTotalAssets) {
+            vaultStorage.totalAssets -= baseAssets;
+        }
     }
 
     /**
@@ -389,7 +411,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
     {
         VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.totalAssets -= assets;
+        _subTotalAssets(assets);
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }
@@ -600,6 +622,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     {
         _getVaultStorage().alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
         emit SetAlwaysComputeTotalAssets(alwaysComputeTotalAssets_);
+
+        if (!alwaysComputeTotalAssets_) {
+            processAccounting();
+        }
     }
 
     /**
