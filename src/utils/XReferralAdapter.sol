@@ -23,7 +23,6 @@ contract XReferralAdapter {
     error ZeroAmount();
     error ZeroAddress();
     error SelfReferral();
-    error NoDirectETHDeposit();
 
     constructor() public {}
 
