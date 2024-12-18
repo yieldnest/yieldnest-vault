@@ -16,6 +16,7 @@ import {IERC4626} from "src/Common.sol";
 import {Provider} from "src/module/Provider.sol";
 import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
+import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 
 contract VaultDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -452,5 +453,78 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         // Check that maxDeposit is no longer zero for Alice
         maxDepositAmount = vault.maxDeposit(alice);
         assertGt(maxDepositAmount, 0, "maxDeposit should not be zero when unpaused");
+    }
+
+    event ReferralDepositProcessed(
+        address vault,
+        address asset,
+        address indexed depositor,
+        address indexed referrer,
+        address indexed receiver,
+        uint256 amount,
+        uint256 shares,
+        uint256 timestamp
+    );
+
+    function test_xReferralAdapter_deposit_success() public {
+        XReferralAdapter referallAdapter = new XReferralAdapter();
+        uint256 assets = 1 ether;
+
+        uint256 previewShares = vault.previewDeposit(assets);
+
+        vm.prank(alice);
+        weth.approve(address(referallAdapter), assets);
+
+        vm.expectEmit(true, true, true, true);
+        emit ReferralDepositProcessed(
+            address(vault), address(weth), address(alice), address(this), alice, assets, previewShares, block.timestamp
+        );
+        vm.prank(alice);
+        uint256 shares =
+            referallAdapter.depositAssetWithReferral(address(vault), address(weth), assets, address(this), alice);
+        assertEq(shares, previewShares, "shares should be correct");
+    }
+
+    function test_xReferralAdapter_depost_revert_InvalidVault() public {
+        XReferralAdapter referallAdapter = new XReferralAdapter();
+        Vault emptyVault = new Vault();
+        uint256 assets = 1 ether;
+        vm.expectRevert();
+        vm.prank(alice);
+        uint256 shares =
+            referallAdapter.depositAssetWithReferral(address(emptyVault), address(weth), assets, address(this), alice);
+    }
+
+    function test_xReferralAdapter_deposit_revert_ZeroAddress() public {
+        XReferralAdapter referallAdapter = new XReferralAdapter();
+        uint256 assets = 1 ether;
+
+        vm.expectRevert(XReferralAdapter.ZeroAddress.selector);
+        vm.prank(alice);
+        referallAdapter.depositAssetWithReferral(address(vault), address(0), assets, address(this), alice);
+
+        vm.expectRevert(XReferralAdapter.ZeroAddress.selector);
+        vm.prank(alice);
+        referallAdapter.depositAssetWithReferral(address(vault), address(weth), assets, address(0), alice);
+
+        vm.expectRevert(XReferralAdapter.ZeroAddress.selector);
+        vm.prank(alice);
+        referallAdapter.depositAssetWithReferral(address(vault), address(weth), assets, address(this), address(0));
+    }
+
+    function test_xReferralAdapter_deposit_revert_ZeroAmount() public {
+        XReferralAdapter referallAdapter = new XReferralAdapter();
+
+        vm.expectRevert(XReferralAdapter.ZeroAmount.selector);
+        vm.prank(alice);
+        referallAdapter.depositAssetWithReferral(address(vault), address(weth), 0, address(this), alice);
+    }
+
+    function test_xReferralAdapter_deposit_revert_SelfReferall() public {
+        XReferralAdapter referallAdapter = new XReferralAdapter();
+
+        vm.expectRevert(XReferralAdapter.SelfReferral.selector);
+        vm.prank(alice);
+        referallAdapter.depositAssetWithReferral(address(vault), address(weth), 1 ether, alice, alice);
     }
 }
