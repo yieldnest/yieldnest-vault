@@ -628,6 +628,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+     * @notice Returns whether the vault always computes total assets.
+     * @return bool True if the vault always computes total assets.
+     */
+    function alwaysComputeTotalAssets() public view virtual returns (bool) {
+        return _getVaultStorage().alwaysComputeTotalAssets;
+    }
+
+    /**
      * @notice Pauses the vault.
      */
     function pause() external virtual onlyRole(PAUSER_ROLE) {
