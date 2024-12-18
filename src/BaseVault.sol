@@ -628,13 +628,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         AssetStorage storage assetStorage = _getAssetStorage();
         address[] memory assetList = assetStorage.list;
         uint256 assetListLength = assetList.length;
-        uint256 baseAssetUnit = 10 ** (assetStorage.assets[asset()].decimals);
 
         for (uint256 i = 0; i < assetListLength; i++) {
             uint256 balance = IERC20(assetList[i]).balanceOf(address(this));
             if (balance == 0) continue;
-            uint256 rate = IProvider(provider()).getRate(assetList[i]);
-            totalBaseBalance += balance.mulDiv(rate, baseAssetUnit, Math.Rounding.Floor);
+            totalBaseBalance += _convertAssetToBase(assetList[i], balance);
         }
 
         _getVaultStorage().totalAssets = totalBaseBalance;

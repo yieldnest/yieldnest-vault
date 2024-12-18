@@ -253,4 +253,56 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should be expectedAssets");
         assertEqThreshold(totalSupply, expectedTotalSupply, 5000, "totalSupply should be expectedSupply");
     }
+
+    function test_Vault_Accounting_processAccounting_multipleAssets(
+        uint256 wethAmount,
+        uint256 wbtcAmount,
+        uint256 methAmount
+    ) public {
+        // Bound inputs to reasonable ranges
+        wethAmount = bound(wethAmount, 1 ether, 10_000 ether);
+        wbtcAmount = bound(wbtcAmount, 1e6, 1000e8); // 0.01 to 100 WBTC
+        methAmount = bound(methAmount, 1 ether, 10_000 ether);
+
+        uint256 expectedTotalAssets;
+        uint256 expectedTotalSupply;
+        bool success;
+
+        // Initial deposit of WETH through deposit function
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(wethAmount, alice);
+        expectedTotalAssets += wethAmount;
+        expectedTotalSupply += shares;
+        vm.stopPrank();
+
+        // Direct transfer of WETH
+        deal(alice, wethAmount);
+        (success,) = MC.WETH.call{value: wethAmount}("");
+        require(success, "WETH transfer failed");
+        vm.prank(alice);
+        IERC20(MC.WETH).transfer(address(vault), wethAmount);
+        expectedTotalAssets += wethAmount;
+
+        // Direct transfer of WBTC
+        deal(MC.WBTC, alice, wbtcAmount);
+        vm.prank(alice);
+        IERC20(MC.WBTC).transfer(address(vault), wbtcAmount);
+        uint256 wbtcRate = IProvider(MC.PROVIDER).getRate(MC.WBTC);
+        expectedTotalAssets += (wbtcAmount * wbtcRate) / (10 ** 8); // WBTC has 8 decimals
+
+        // Direct transfer of METH
+        deal(MC.METH, alice, methAmount);
+        vm.prank(alice);
+        IERC20(MC.METH).transfer(address(vault), methAmount);
+        uint256 methRate = IProvider(MC.PROVIDER).getRate(MC.METH);
+        expectedTotalAssets += (methAmount * methRate) / (10 ** 18);
+
+        vault.processAccounting();
+
+        uint256 totalAssets = vault.totalAssets();
+        uint256 totalSupply = vault.totalSupply();
+
+        assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should match expected");
+        assertEqThreshold(totalSupply, expectedTotalSupply, 5000, "totalSupply should match expected");
+    }
 }

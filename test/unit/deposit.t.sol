@@ -185,6 +185,58 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         vm.stopPrank();
     }
 
+    function test_Vault_multiAssetDeposit_processAccounting(uint256 wethAmount, uint256 wbtcAmount, uint256 methAmount)
+        public
+    {
+        // Bound inputs to reasonable ranges
+        wethAmount = bound(wethAmount, 1 ether, 10_000 ether);
+        wbtcAmount = bound(wbtcAmount, 1e6, 1000e8); // 0.01 to 100 WBTC
+        methAmount = bound(methAmount, 1 ether, 10_000 ether);
+
+        // Get initial rates
+        uint256 wbtcRate = IProvider(MC.PROVIDER).getRate(MC.WBTC);
+        uint256 methRate = IProvider(MC.PROVIDER).getRate(MC.METH);
+
+        // Deal tokens to alice
+        deal(MC.WBTC, alice, wbtcAmount);
+        deal(MC.METH, alice, methAmount);
+
+        vm.startPrank(alice);
+
+        // First deposit WETH
+        uint256 wethShares = vault.deposit(wethAmount, alice);
+        assertEq(IERC20(MC.WETH).balanceOf(address(vault)), wethAmount, "Vault WETH balance incorrect");
+        assertEq(vault.balanceOf(alice), wethShares, "Alice WETH shares incorrect");
+
+        // Then deposit WBTC
+        IERC20(MC.WBTC).approve(address(vault), wbtcAmount);
+        uint256 wbtcShares = vault.depositAsset(MC.WBTC, wbtcAmount, alice);
+        assertEq(IERC20(MC.WBTC).balanceOf(address(vault)), wbtcAmount, "Vault WBTC balance incorrect");
+        assertEq(vault.balanceOf(alice), wethShares + wbtcShares, "Alice total shares incorrect after WBTC");
+
+        // Finally deposit METH
+        IERC20(MC.METH).approve(address(vault), methAmount);
+        uint256 methShares = vault.depositAsset(MC.METH, methAmount, alice);
+        assertEq(IERC20(MC.METH).balanceOf(address(vault)), methAmount, "Vault METH balance incorrect");
+        assertEq(
+            vault.balanceOf(alice), wethShares + wbtcShares + methShares, "Alice total shares incorrect after METH"
+        );
+
+        vm.stopPrank();
+
+        // Calculate expected total assets in base units (ETH)
+        uint256 expectedTotal = wethAmount // WETH is already in ETH units
+            + (wbtcAmount * wbtcRate) / 1e8 // Convert WBTC to ETH units
+            + (methAmount * methRate) / 1e18; // Convert METH to ETH units
+
+        // Assert total assets before processAccounting
+        assertEq(vault.totalAssets(), expectedTotal, "Total assets incorrect before processAccounting");
+
+        // Process accounting and verify total stays the same
+        vault.processAccounting();
+        assertEq(vault.totalAssets(), expectedTotal, "Total assets changed after processAccounting");
+    }
+
     function test_Vault_mint(uint256 mintAmount) public {
         if (mintAmount < 10) return;
         if (mintAmount > 100_000 ether) return;
