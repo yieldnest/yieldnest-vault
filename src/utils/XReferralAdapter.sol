@@ -48,6 +48,9 @@ contract XReferralAdapter {
         if (assets == 0) {
             revert ZeroAmount();
         }
+        if (asset == address(0)) {
+            revert ZeroAddress();
+        }
         if (receiver == address(0)) {
             revert ZeroAddress();
         }
