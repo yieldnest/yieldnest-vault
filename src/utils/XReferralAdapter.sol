@@ -64,8 +64,4 @@ contract XReferralAdapter {
             address(vault), asset, msg.sender, referrer, receiver, amount, shares, block.timestamp
         );
     }
-
-    receive() external payable {
-        revert NoDirectETHDeposit();
-    }
 }
