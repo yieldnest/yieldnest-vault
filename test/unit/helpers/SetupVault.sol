@@ -21,7 +21,8 @@ contract SetupVault is Test, Etches, MainnetActors {
         Vault vaultImplementation = new PublicViewsVault();
 
         // Deploy the proxy
-        bytes memory initData = abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18, 0, true);
+        bytes memory initData =
+            abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18, 0, true, true);
 
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 

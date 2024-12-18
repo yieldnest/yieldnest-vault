@@ -45,10 +45,13 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         weth.approve(address(vault), type(uint256).max);
     }
 
-    function test_Vault_deposit_success(uint256 depositAmount) public {
+    function test_Vault_deposit_success(uint256 depositAmount, bool alwaysComputeTotalAssets) public {
         // uint256 depositAmount = 100 * 10 ** 18;
         if (depositAmount < 10) return;
         if (depositAmount > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         vm.prank(alice);
         uint256 sharesMinted = vault.deposit(depositAmount, alice);
@@ -71,9 +74,12 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
     event Log(string, uint256);
 
-    function test_Vault_depositAsset_STETH(uint256 depositAmount) public {
+    function test_Vault_depositAsset_STETH(uint256 depositAmount, bool alwaysComputeTotalAssets) public {
         if (depositAmount < 10) return;
         if (depositAmount > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         deal(address(steth), alice, depositAmount);
 
@@ -104,9 +110,12 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         vm.stopPrank();
     }
 
-    function test_Vault_depositAsset_METH(uint256 depositAmount) public {
+    function test_Vault_depositAsset_METH(uint256 depositAmount, bool alwaysComputeTotalAssets) public {
         if (depositAmount < 10) return;
         if (depositAmount > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         deal(MC.METH, alice, depositAmount);
 
@@ -144,9 +153,12 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         vm.stopPrank();
     }
 
-    function test_Vault_depositAsset_WBTC(uint256 depositAmount) public {
+    function test_Vault_depositAsset_WBTC(uint256 depositAmount, bool alwaysComputeTotalAssets) public {
         if (depositAmount < 10) return;
         if (depositAmount > 100_000 * 1e8) return; // WBTC has 8 decimals
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         deal(MC.WBTC, alice, depositAmount);
 
@@ -185,13 +197,19 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         vm.stopPrank();
     }
 
-    function test_Vault_multiAssetDeposit_processAccounting(uint256 wethAmount, uint256 wbtcAmount, uint256 methAmount)
-        public
-    {
+    function test_Vault_multiAssetDeposit_processAccounting(
+        uint256 wethAmount,
+        uint256 wbtcAmount,
+        uint256 methAmount,
+        bool alwaysComputeTotalAssets
+    ) public {
         // Bound inputs to reasonable ranges
         wethAmount = bound(wethAmount, 1 ether, 10_000 ether);
         wbtcAmount = bound(wbtcAmount, 1e6, 1000e8); // 0.01 to 100 WBTC
         methAmount = bound(methAmount, 1 ether, 10_000 ether);
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         // Get initial rates
         uint256 wbtcRate = IProvider(MC.PROVIDER).getRate(MC.WBTC);
@@ -237,9 +255,12 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), expectedTotal, "Total assets changed after processAccounting");
     }
 
-    function test_Vault_mint(uint256 mintAmount) public {
+    function test_Vault_mint(uint256 mintAmount, bool alwaysComputeTotalAssets) public {
         if (mintAmount < 10) return;
         if (mintAmount > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         vm.startPrank(alice);
         uint256 sharesMinted = vault.mint(mintAmount, alice);
@@ -297,18 +318,26 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(maxMint, type(uint256).max, "Max mint does not match");
     }
 
-    function test_Vault_previewDeposit() public view {
-        uint256 assets = 1000;
-        uint256 expectedShares = 1000; // Assuming a 1:1 conversion for simplicity
+    function test_Vault_previewDeposit(uint256 assets, bool alwaysComputeTotalAssets) public {
+        if (assets < 10) return;
+        if (assets > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         uint256 shares = vault.previewDeposit(assets);
-        assertEq(shares, expectedShares, "Preview deposit does not match expected shares");
+        assertEq(shares, assets, "Preview deposit does not match expected shares");
     }
 
-    function test_Vault_previewMint() public view {
-        uint256 shares = 1000;
-        uint256 expectedAssets = 1000; // Assuming a 1:1 conversion for simplicity
+    function test_Vault_previewMint(uint256 shares, bool alwaysComputeTotalAssets) public {
+        if (shares < 10) return;
+        if (shares > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         uint256 assets = vault.previewMint(shares);
-        assertEq(assets, expectedAssets, "Preview mint does not match expected assets");
+        assertEq(assets, shares, "Preview mint does not match expected assets");
     }
 
     function test_Vault_getAsset() public view {

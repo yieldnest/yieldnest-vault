@@ -20,7 +20,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
     WETH9 public weth;
 
     address public alice = address(0x1);
-    uint256 public constant INITIAL_BALANCE = 100_000 ether;
+    uint256 public constant INITIAL_BALANCE = 1_000_000 ether;
 
     function setUp() public {
         SetupVault setupVault = new SetupVault();
@@ -53,29 +53,54 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         vault.processor(targets, values, data);
     }
 
-    function test_Vault_Accounting_convertToShares() public view {
-        uint256 assets = 1000 ether;
+    function test_Vault_Accounting_convertToShares(uint256 assets, bool alwaysComputeTotalAssets) public {
+        if (assets < 10) return;
+        if (assets > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         uint256 shares = vault.convertToShares(assets);
         assertEq(shares, vault.previewDeposit(assets), "Shares should match previewDeposit");
     }
 
-    function test_Vault_Accounting_convertToAssets() public view {
-        uint256 shares = 1000 ether;
+    function test_Vault_Accounting_convertToAssets(uint256 shares, bool alwaysComputeTotalAssets) public {
+        if (shares < 10) return;
+        if (shares > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         uint256 assets = vault.convertToAssets(shares);
         assertEq(assets, vault.previewRedeem(shares), "Assets should match previewRedeem");
     }
 
-    function test_Vault_Accounting_totalAssets_afterDeposit() public {
-        uint256 depositAmount = 1000 ether;
+    function test_Vault_Accounting_totalAssets_afterDeposit(uint256 depositAmount, bool alwaysComputeTotalAssets)
+        public
+    {
+        if (depositAmount < 10) return;
+        if (depositAmount > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
         uint256 totalAssets = vault.totalAssets();
         assertEq(totalAssets, depositAmount, "Total assets should match the deposit amount");
     }
 
-    function test_Vault_Accounting_totalAssets_afterMultipleDeposits() public {
-        uint256 depositAmount1 = 1000 ether;
-        uint256 depositAmount2 = 2000 ether;
+    function test_Vault_Accounting_totalAssets_afterMultipleDeposits(
+        uint256 depositAmount1,
+        uint256 depositAmount2,
+        bool alwaysComputeTotalAssets
+    ) public {
+        if (depositAmount1 < 10 || depositAmount2 < 10) return;
+        if (depositAmount1 > 50_000 ether || depositAmount2 > 50_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         vm.prank(alice);
         vault.deposit(depositAmount1, alice);
         vm.prank(alice);
@@ -84,9 +109,17 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         assertEq(totalAssets, depositAmount1 + depositAmount2, "Total assets should match the sum of deposit amounts");
     }
 
-    function test_Vault_Accounting_totalAssets_afterWithdraw() public {
-        uint256 depositAmount = 1000 ether;
-        uint256 withdrawAmount = 500 ether;
+    function test_Vault_Accounting_totalAssets_afterWithdraw(
+        uint256 depositAmount,
+        uint256 withdrawAmount,
+        bool alwaysComputeTotalAssets
+    ) public {
+        if (depositAmount < 10 || withdrawAmount < 10) return;
+        if (depositAmount > 100_000 ether || withdrawAmount > depositAmount) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -102,10 +135,21 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         );
     }
 
-    function test_Vault_Accounting_totalAssets_afterMultipleWithdrawals() public {
-        uint256 depositAmount = 3000 ether;
-        uint256 withdrawAmount1 = 1000 ether;
-        uint256 withdrawAmount2 = 500 ether;
+    function test_Vault_Accounting_totalAssets_afterMultipleWithdrawals(
+        uint256 depositAmount,
+        uint256 withdrawAmount1,
+        uint256 withdrawAmount2,
+        bool alwaysComputeTotalAssets
+    ) public {
+        if (depositAmount > 100_000 ether) return;
+        if (withdrawAmount1 > 100_000 ether) return;
+        if (withdrawAmount2 > 100_000 ether) return;
+        if (depositAmount < 10 || withdrawAmount1 < 10 || withdrawAmount2 < 10) return;
+        if (withdrawAmount1 + withdrawAmount2 > depositAmount) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
 
@@ -123,17 +167,32 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         );
     }
 
-    function test_Vault_Accounting_totalSupply_afterDeposit() public {
-        uint256 depositAmount = 1000 ether;
+    function test_Vault_Accounting_totalSupply_afterDeposit(uint256 depositAmount, bool alwaysComputeTotalAssets)
+        public
+    {
+        if (depositAmount < 10) return;
+        if (depositAmount > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         vm.prank(alice);
         vault.deposit(depositAmount, alice);
         uint256 totalSupply = vault.totalSupply();
         assertEq(totalSupply, depositAmount, "Total supply should match the deposit amount");
     }
 
-    function test_Vault_Accounting_totalSupply_afterMultipleDeposits() public {
-        uint256 depositAmount1 = 1000 ether;
-        uint256 depositAmount2 = 2000 ether;
+    function test_Vault_Accounting_totalSupply_afterMultipleDeposits(
+        uint256 depositAmount1,
+        uint256 depositAmount2,
+        bool alwaysComputeTotalAssets
+    ) public {
+        if (depositAmount1 < 10 || depositAmount2 < 10) return;
+        if (depositAmount1 > 100_000 ether || depositAmount2 > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         vm.prank(alice);
         vault.deposit(depositAmount1, alice);
         vm.prank(alice);
@@ -142,8 +201,15 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         assertEq(totalSupply, depositAmount1 + depositAmount2, "Total supply should match the sum of deposit amounts");
     }
 
-    function test_Vault_Accounting_totalSupply_afterWithdraw() public {
-        uint256 depositAmount = 1000 ether;
+    function test_Vault_Accounting_totalSupply_afterWithdraw(uint256 depositAmount, bool alwaysComputeTotalAssets)
+        public
+    {
+        if (depositAmount < 10) return;
+        if (depositAmount > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         uint256 bufferRatio = 5;
 
         vm.startPrank(alice);
@@ -163,8 +229,16 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         vm.stopPrank();
     }
 
-    function test_Vault_Accounting_totalSupply_afterMultipleWithdrawals() public {
-        uint256 depositAmount = 3000 ether;
+    function test_Vault_Accounting_totalSupply_afterMultipleWithdrawals(
+        uint256 depositAmount,
+        bool alwaysComputeTotalAssets
+    ) public {
+        if (depositAmount < 10) return;
+        if (depositAmount > 100_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         uint256 bufferRatio = 5;
 
         uint256 withdrawAmount1 = vault.maxWithdraw(alice) / 3;
@@ -187,17 +261,20 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         );
     }
 
-    function test_Vault_convertToAssets_multipleDepositsAndTransfers(uint256 rand) public {
+    function test_Vault_convertToAssets_multipleDepositsAndTransfers(uint256 rand, bool alwaysComputeTotalAssets)
+        public
+    {
         if (rand < 1 || rand > 10_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         uint256 depositAmountWETH = rand;
         uint256 depositAmountSTETH = rand;
 
         bool success = false;
         uint256 expectedTotalAssets = 0;
         uint256 expectedTotalSupply = 0;
-
-        console.log("expectedTotalAssets:", expectedTotalAssets);
-        console.log("expectedTotalSupply:", expectedTotalSupply);
 
         address steth = MC.STETH;
 
@@ -209,14 +286,10 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         expectedTotalSupply += shares;
         vm.stopPrank();
 
-        console.log("expectedTotalAssets:", expectedTotalAssets);
-        console.log("expectedTotalSupply:", expectedTotalSupply);
-
         // Approve and deposit STETH :
         vm.startPrank(alice);
         deal(alice, depositAmountSTETH);
         (success,) = MC.STETH.call{value: depositAmountSTETH}("");
-        require(success, "Steth transfer failed");
         uint256 aliceStEthDepositAmount = IERC20(steth).balanceOf(alice);
 
         IERC20(steth).approve(address(vault), aliceStEthDepositAmount);
@@ -224,20 +297,15 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         expectedTotalAssets += vault.previewRedeem(shares);
         expectedTotalSupply += shares;
 
-        console.log("expectedTotalAssets:", expectedTotalAssets);
-        console.log("expectedTotalSupply:", expectedTotalSupply);
-
         // Direct transfer of WETH to the vault
         deal(alice, depositAmountWETH);
         (success,) = MC.WETH.call{value: depositAmountWETH}("");
-        require(success, "Weth transfer failed");
         IERC20(MC.WETH).transfer(address(vault), depositAmountWETH);
         expectedTotalAssets += depositAmountWETH;
 
         // Direct transfer of STETH to the vault
         deal(alice, depositAmountSTETH);
         (success,) = MC.STETH.call{value: depositAmountSTETH}("");
-        require(success, "Steth transfer failed");
         aliceStEthDepositAmount = IERC20(steth).balanceOf(alice);
 
         uint256 rate = IProvider(MC.PROVIDER).getRate(MC.STETH);

@@ -45,6 +45,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The total assets.
      */
     function totalAssets() public view virtual returns (uint256) {
+        if (_getVaultStorage().alwaysComputeTotalAssets) {
+            return _computeTotalAssets();
+        }
         return _getVaultStorage().totalAssets;
     }
 
@@ -365,12 +368,33 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert AssetNotActive();
         }
 
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.totalAssets += baseAssets;
+        _addTotalAssets(baseAssets);
 
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
         _mint(receiver, shares);
         emit Deposit(caller, receiver, assets, shares);
+    }
+
+    /**
+     * @notice Internal function to add to total assets.
+     * @param baseAssets The amount of base assets to add.
+     */
+    function _addTotalAssets(uint256 baseAssets) internal virtual {
+        VaultStorage storage vaultStorage = _getVaultStorage();
+        if (!vaultStorage.alwaysComputeTotalAssets) {
+            vaultStorage.totalAssets += baseAssets;
+        }
+    }
+
+    /**
+     * @notice Internal function to subtract from total assets.
+     * @param baseAssets The amount of base assets to subtract.
+     */
+    function _subTotalAssets(uint256 baseAssets) internal virtual {
+        VaultStorage storage vaultStorage = _getVaultStorage();
+        if (!vaultStorage.alwaysComputeTotalAssets) {
+            vaultStorage.totalAssets -= baseAssets;
+        }
     }
 
     /**
@@ -386,7 +410,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
     {
         VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.totalAssets -= assets;
+        _subTotalAssets(assets);
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }
@@ -587,6 +611,23 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+     * @notice Sets whether the vault should always compute total assets.
+     * @param alwaysComputeTotalAssets_ Whether to always compute total assets.
+     */
+    function setAlwaysComputeTotalAssets(bool alwaysComputeTotalAssets_)
+        external
+        virtual
+        onlyRole(ASSET_MANAGER_ROLE)
+    {
+        _getVaultStorage().alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
+        emit SetAlwaysComputeTotalAssets(alwaysComputeTotalAssets_);
+
+        if (!alwaysComputeTotalAssets_) {
+            processAccounting();
+        }
+    }
+
+    /**
      * @notice Pauses the vault.
      */
     function pause() external virtual onlyRole(PAUSER_ROLE) {
@@ -621,9 +662,16 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      *      and updates the total assets denominated in the base asset.
      */
     function processAccounting() public virtual {
+        uint256 totalBaseBalance = _computeTotalAssets();
+
+        _getVaultStorage().totalAssets = totalBaseBalance;
+        emit ProcessAccounting(block.timestamp, totalBaseBalance);
+    }
+
+    function _computeTotalAssets() internal view virtual returns (uint256 totalBaseBalance) {
         VaultStorage storage vaultStorage = _getVaultStorage();
 
-        uint256 totalBaseBalance = vaultStorage.countNativeAsset ? address(this).balance : 0;
+        totalBaseBalance = vaultStorage.countNativeAsset ? address(this).balance : 0;
 
         AssetStorage storage assetStorage = _getAssetStorage();
         address[] memory assetList = assetStorage.list;
@@ -634,9 +682,6 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             if (balance == 0) continue;
             totalBaseBalance += _convertAssetToBase(assetList[i], balance);
         }
-
-        _getVaultStorage().totalAssets = totalBaseBalance;
-        emit ProcessAccounting(block.timestamp, totalBaseBalance);
     }
 
     /**
