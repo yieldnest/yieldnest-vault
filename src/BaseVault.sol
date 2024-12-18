@@ -45,6 +45,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The total assets.
      */
     function totalAssets() public view virtual returns (uint256) {
+        if (_getVaultStorage().alwaysComputeTotalAssets) {
+            return _computeTotalAssets();
+        }
         return _getVaultStorage().totalAssets;
     }
 
@@ -587,6 +590,19 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+     * @notice Sets whether the vault should always compute total assets.
+     * @param alwaysComputeTotalAssets_ Whether to always compute total assets.
+     */
+    function setAlwaysComputeTotalAssets(bool alwaysComputeTotalAssets_)
+        external
+        virtual
+        onlyRole(ASSET_MANAGER_ROLE)
+    {
+        _getVaultStorage().alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
+        emit SetAlwaysComputeTotalAssets(alwaysComputeTotalAssets_);
+    }
+
+    /**
      * @notice Pauses the vault.
      */
     function pause() external virtual onlyRole(PAUSER_ROLE) {
@@ -621,13 +637,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      *      and updates the total assets denominated in the base asset.
      */
     function processAccounting() public virtual {
-        uint256 totalBaseBalance = _calculateTotalAssets();
+        uint256 totalBaseBalance = _computeTotalAssets();
 
         _getVaultStorage().totalAssets = totalBaseBalance;
         emit ProcessAccounting(block.timestamp, totalBaseBalance);
     }
 
-    function _calculateTotalAssets() internal view virtual returns (uint256 totalBaseBalance) {
+    function _computeTotalAssets() internal view virtual returns (uint256 totalBaseBalance) {
         VaultStorage storage vaultStorage = _getVaultStorage();
 
         totalBaseBalance = vaultStorage.countNativeAsset ? address(this).balance : 0;
