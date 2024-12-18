@@ -12,6 +12,7 @@ interface IVault is IERC4626 {
         bool paused;
         uint8 decimals;
         bool countNativeAsset;
+        bool alwaysComputeTotalAssets;
     }
 
     struct AssetParams {
@@ -76,8 +77,8 @@ interface IVault is IERC4626 {
 
     event SetProvider(address indexed provider);
     event SetBuffer(address indexed buffer);
+    event SetAlwaysComputeTotalAssets(bool alwaysComputeTotalAssets);
     event NewAsset(address indexed asset, uint256 decimals, uint256 index);
-    event SetWhitelist(address indexed target, bytes4 funcsig);
     event ProcessSuccess(address[] targets, uint256[] values, bytes[] data);
     event Pause(bool paused);
     event SetProcessorRule(address indexed target, bytes4, FunctionRule);
