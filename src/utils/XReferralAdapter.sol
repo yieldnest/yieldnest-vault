@@ -5,15 +5,15 @@ pragma solidity ^0.8.24;
 import {IVault} from "src/BaseVault.sol";
 
 interface IKernelStrategy {
-   function getHasAllocator() external view returns (bool hasAllocators);
-   function hasRole(bytes32 role, address account)external view returns (bool hasRole);
+    function getHasAllocator() external view returns (bool hasAllocators);
+    function hasRole(bytes32 role, address account) external view returns (bool hasRole);
 }
 
 contract XReferralAdapter {
     /// @notice Role for allocator permissions
     bytes32 public constant ALLOCATOR_ROLE = keccak256("ALLOCATOR_ROLE");
 
-// only 3 indexed arguments allowed in an event
+    // only 3 indexed arguments allowed in an event
     event ReferralDepositProcessed(
         address vault,
         address asset,
@@ -33,17 +33,18 @@ contract XReferralAdapter {
     error NoDirectETHDeposit();
 
     modifier isAllocator(address _vault) {
-        try IKernelStrategy(_vault).getHasAllocator() returns(bool hasAllocator) {
-            if(hasAllocator){
-               if(!IKernelStrategy(_vault).hasRole(ALLOCATOR_ROLE, msg.sender)){
-                revert NotAnAllocator(msg.sender);
-               }
+        try IKernelStrategy(_vault).getHasAllocator() returns (bool hasAllocator) {
+            if (hasAllocator) {
+                if (!IKernelStrategy(_vault).hasRole(ALLOCATOR_ROLE, msg.sender)) {
+                    revert NotAnAllocator(msg.sender);
+                }
             }
         } catch {
             // allocator role not required
         }
         _;
     }
+
     constructor() public {}
 
     /**
