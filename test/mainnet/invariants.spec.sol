@@ -305,8 +305,6 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         if (assets < 2) return;
         if (assets > 1_000 ether) return;
 
-        uint256 assets = 1 ether;
-
         address alice = address(10);
 
         address receiver = address(125126126);
@@ -359,5 +357,4 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
     }
-
 }
