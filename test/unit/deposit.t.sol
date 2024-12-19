@@ -466,11 +466,13 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         uint256 timestamp
     );
 
-    function test_xReferralAdapter_deposit_success() public {
+    function testFuzz_xReferralAdapter_deposit_success(uint256 assets) public {
+        vm.assume(assets > 0 && assets < type(uint128).max);
         XReferralAdapter referallAdapter = new XReferralAdapter();
-        uint256 assets = 1 ether;
 
         uint256 previewShares = vault.previewDeposit(assets);
+
+        deal(address(weth), alice, assets);
 
         vm.prank(alice);
         weth.approve(address(referallAdapter), assets);
@@ -483,6 +485,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         uint256 shares =
             referallAdapter.depositAssetWithReferral(address(vault), address(weth), assets, address(this), alice);
         assertEq(shares, previewShares, "shares should be correct");
+        assertEq(vault.balanceOf(alice), shares, "alice should have the shares");
     }
 
     function test_xReferralAdapter_depost_revert_InvalidVault() public {
