@@ -2,5 +2,25 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+test = "test/unit"
+evm_version = "cancun"
+optimizer = true
+optimizer-runs = 200
+solc_version = "0.8.24"
+fs_permissions = [
+  { access = "read-write", path = "./deployments" },
+  { access = "read", path = "./" },
+]
 
-# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+[profile.mainnet]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test/mainnet"
+eth_rpc_url = "https://rpc.ankr.com/eth"
+evm_version = "cancun"
+solc_version = "0.8.24"
+fs_permissions = [
+  { access = "read-write", path = "./deployments" },
+  { access = "read", path = "./" },
+]
