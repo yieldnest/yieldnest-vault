@@ -6,8 +6,10 @@ import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
-import {IERC20} from "src/Common.sol";
+import {IERC20, TransparentUpgradeableProxy} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
+import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
+
 
 contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
@@ -296,5 +298,64 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         totalAssetsInvariant(initialAssets);
     }
 
+    
+    function test_Vault_4626Invariants_depositStETHWithReferral(
+        uint256 assets
+    ) public {
+        if (assets < 2) return;
+        if (assets > 1_000 ether) return;
+
+        address alice = address(10);
+
+        address receiver = address(125126126);
+
+        address referrer = address(1222222);
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        // Deploy referral adapter
+        address implementation = address(new XReferralAdapter());
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            implementation,
+            MC.PROXY_ADMIN,
+            ""
+        );
+        XReferralAdapter adapter = XReferralAdapter(address(proxy));
+
+        {
+            // Deal WETH to alice and convert to stETH
+            deal(alice, assets);
+            vm.startPrank(alice);
+            (bool success,) = MC.STETH.call{value: assets}("");
+            require(success, "stETH deposit failed");
+            vm.stopPrank();
+
+            vm.startPrank(alice);
+        }
+
+        // Test the convertToShares function for stETH
+        uint256 shares = vault.convertToShares(assets);
+        assertGt(shares, 0, "Shares should be greater than 0");
+
+        assertEqThreshold(vault.convertToAssets(shares), assets, 3, "Converted assets should equal the original assets");
+
+        // Approve adapter to spend stETH
+        IERC20(MC.STETH).approve(address(adapter), assets);
+
+        uint256 depositedShares = adapter.depositAssetWithReferral(address(vault), MC.STETH, assets, referrer, receiver);
+        assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
+
+        vm.stopPrank();
+
+        // Verify final balances
+        uint256 vaultStETHBalance = IERC20(MC.STETH).balanceOf(address(vault));
+        assertEqThreshold(vaultStETHBalance, assets, 3, "Vault should have received stETH");
+
+        uint256 userShares = vault.balanceOf(receiver);
+        assertEqThreshold(userShares, shares, 3, "Receiver should have received correct shares");
+        totalSupplyInvariant(initialSupply + shares);
+        totalAssetsInvariant(initialAssets + assets);
+    }
 
 }
