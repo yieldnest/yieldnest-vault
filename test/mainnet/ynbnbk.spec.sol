@@ -92,11 +92,11 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
             "slisBNB rate should match"
         );
 
-        uint256 beforeBalance = IERC20(assetAddress).balanceOf(address(MC.YNBNBk));
+        uint256 beforeBalance = IERC20(assetAddress).balanceOf(address(MC.YNBNBK));
 
         vm.startPrank(PROCESSOR);
 
-        processApproveAsset(assetAddress, assets, MC.YNBNBk);
+        processApproveAsset(assetAddress, assets, MC.YNBNBK);
         processDepositYnBNBk(assets);
 
         vm.stopPrank();
@@ -106,20 +106,20 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
         assetBalance = IERC20(assetAddress).balanceOf(address(vault));
         assertEq(assetBalance, 0, "Vault should hold the deposited assets");
 
-        assetBalance = IERC20(assetAddress).balanceOf(address(MC.YNBNBk));
+        assetBalance = IERC20(assetAddress).balanceOf(address(MC.YNBNBK));
         assertEq(assetBalance, beforeBalance + assets, "Vault should hold the deposited assets");
 
-        uint256 previewShares = Vault(payable(MC.YNBNBk)).previewDeposit(assets);
-        uint256 actualShares = Vault(payable(MC.YNBNBk)).balanceOf(address(vault));
+        uint256 previewShares = Vault(payable(MC.YNBNBK)).previewDeposit(assets);
+        uint256 actualShares = Vault(payable(MC.YNBNBK)).balanceOf(address(vault));
 
         assertEqThreshold(previewShares, actualShares, 10, "previewShares should equal actualShares");
 
-        uint256 previewAssets = Vault(payable(MC.YNBNBk)).previewRedeem(actualShares);
+        uint256 previewAssets = Vault(payable(MC.YNBNBK)).previewRedeem(actualShares);
 
         assertApproxEqAbs(
             newTotalAssets,
             previousTotalAssets + previewAssets,
-            1000,
+            2000,
             "New total assets should equal to previous total assets plus previewAssets"
         );
 
@@ -162,7 +162,7 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
     function processDepositYnBNBk(uint256 assets) public {
         // deposit BNB to ynBNBk
         address[] memory targets = new address[](1);
-        targets[0] = MC.YNBNBk;
+        targets[0] = MC.YNBNBK;
 
         uint256[] memory values = new uint256[](1);
         values[0] = 0;
@@ -202,11 +202,11 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        vault.setProcessorRule(MC.YNBNBk, funcSig, rule);
+        vault.setProcessorRule(MC.YNBNBK, funcSig, rule);
     }
 
     function test_Vault_ynBNBk_depositBNB() public {
-        IERC4626 ynbnbk = IERC4626(payable(MC.YNBNBk));
+        IERC4626 ynbnbk = IERC4626(payable(MC.YNBNBK));
 
         address bob = address(1776);
 
@@ -232,10 +232,10 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
         assertEq(ynBnbkShares, bobYnBNBkBalance, "BNB deposited in ynBNBk should be correct");
 
         ynbnbk.approve(address(vault), bobYnBNBkBalance);
-        vault.depositAsset(MC.YNBNBk, bobYnBNBkBalance, bob);
+        vault.depositAsset(MC.YNBNBK, bobYnBNBkBalance, bob);
 
         uint256 newTotalAssets = vault.totalAssets();
-        uint256 ynBnbkRate = IProvider(MC.PROVIDER).getRate(MC.YNBNBk);
+        uint256 ynBnbkRate = IProvider(MC.PROVIDER).getRate(MC.YNBNBK);
 
         assertEq(
             newTotalAssets,

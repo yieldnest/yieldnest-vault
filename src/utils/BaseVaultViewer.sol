@@ -5,50 +5,9 @@ pragma solidity ^0.8.24;
 import {IVault} from "src/BaseVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {IERC20Metadata, Initializable, Math} from "src/Common.sol";
+import {ERC20Viewer, IVaultViewer} from "src/interface/IVaultViewer.sol";
 
-library ERC20Viewer {
-    function symbol(IERC20Metadata token) internal view returns (string memory) {
-        try token.symbol() returns (string memory s) {
-            return s;
-        } catch {
-            return "";
-        }
-    }
-
-    function name(IERC20Metadata token) internal view returns (string memory) {
-        try token.name() returns (string memory n) {
-            return n;
-        } catch {
-            return "";
-        }
-    }
-
-    function decimals(IERC20Metadata token) internal view returns (uint8) {
-        try token.decimals() returns (uint8 d) {
-            return d;
-        } catch {
-            return 0;
-        }
-    }
-}
-
-contract BaseVaultViewer is Initializable {
-    struct AssetInfo {
-        address asset;
-        string name;
-        string symbol;
-        uint256 rate;
-        uint256 ratioOfTotalAssets;
-        uint256 totalBalanceInUnitOfAccount;
-        uint256 totalBalanceInAsset;
-        bool canDeposit;
-        uint8 decimals;
-    }
-
-    struct Storage {
-        IVault vault;
-    }
-
+contract BaseVaultViewer is Initializable, IVaultViewer {
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -63,8 +22,8 @@ contract BaseVaultViewer is Initializable {
         _disableInitializers();
     }
 
-    function initialize(IVault vault_) external initializer {
-        _getStorage().vault = vault_;
+    function initialize(address vault_) external initializer {
+        getViewerStorage().vault = vault_;
     }
 
     /**
@@ -81,7 +40,7 @@ contract BaseVaultViewer is Initializable {
     }
 
     function _getAssets() internal view returns (AssetInfo[] memory assetsInfo) {
-        IVault vault = IVault(_getStorage().vault);
+        IVault vault = IVault(getViewerStorage().vault);
 
         address[] memory assets = vault.getAssets();
         uint256[] memory balances = new uint256[](assets.length);
@@ -98,7 +57,7 @@ contract BaseVaultViewer is Initializable {
         view
         returns (AssetInfo[] memory assetsInfo)
     {
-        IVault vault = IVault(_getStorage().vault);
+        IVault vault = IVault(getViewerStorage().vault);
         IProvider rateProvider = IProvider(vault.provider());
         uint256 totalAssets = vault.totalAssets();
 
@@ -128,7 +87,7 @@ contract BaseVaultViewer is Initializable {
     }
 
     function getRate() external view returns (uint256) {
-        IVault vault = IVault(_getStorage().vault);
+        IVault vault = IVault(getViewerStorage().vault);
         uint256 totalSupply = vault.totalSupply();
         uint256 totalAssets = vault.totalAssets();
         uint256 decimals = vault.decimals();
@@ -138,14 +97,14 @@ contract BaseVaultViewer is Initializable {
     }
 
     function getVault() external view returns (address) {
-        return address(_getStorage().vault);
+        return address(getViewerStorage().vault);
     }
 
     /**
      * @notice Internal function to get the storage.
      * @return $ The storage.
      */
-    function _getStorage() internal pure virtual returns (Storage storage $) {
+    function getViewerStorage() internal pure virtual returns (ViewerStorage storage $) {
         assembly {
             $.slot := 0x22cdba5640455d74cb7564fb236bbbbaf66b93a0cc1bd221f1ee2a6b2d0a2427
         }
