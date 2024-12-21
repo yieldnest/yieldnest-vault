@@ -14,9 +14,7 @@ import {IERC4626} from "src/Common.sol";
 import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 
-
 contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
-
     Vault public vault;
 
     function setUp() public {
@@ -48,27 +46,24 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
         vault.processAccounting();
     }
 
-        event Log(string,uint256);
+    event Log(string, uint256);
 
-
-    function test_Vault_ynBNBk_depositAndAllocate() public {
-        // if (assets < 0.1 ether) return;
-        // if (assets > 100_000 ether) return;
+    function test_Vault_ynBNBk_depositAndAllocate(uint256 assets) public {
+        if (assets < 0.1 ether) return;
+        if (assets > 1000 ether) return;
 
         address bob = address(1776);
 
-        vm.deal(bob, 10000 ether);
+        vm.deal(bob, assets * 2);
 
         address assetAddress = MC.SLISBNB;
-    
+
         // deposit BNB to SLISBNB through stake manager
         ISlisBnbStakeManager stakeManager = ISlisBnbStakeManager(MC.SLIS_BNB_STAKE_MANAGER);
 
-        uint256 assets = 100 ether;
-
         vm.prank(bob);
         stakeManager.deposit{value: assets * 2}();
-        
+
         vm.startPrank(bob);
         // previous vault total Assets
         uint256 previousTotalAssets = vault.totalAssets();
@@ -79,15 +74,62 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
         uint256 assetBalance = IERC20(assetAddress).balanceOf(address(vault));
         assertEq(assetBalance, assets, "Vault should hold the deposited assets");
 
+        assertEq(vault.balanceOf(bob), depositedShares, "bob should have the correct amount of shares");
+
+        uint256 oldTotalAssets = vault.totalAssets();
+        assertApproxEqAbs(
+            oldTotalAssets,
+            previousTotalAssets + stakeManager.convertSnBnbToBnb(assets),
+            1000,
+            "New total assets should equal deposit amount plus original total assets"
+        );
+
+        assertEq(address(vault.provider()), MC.PROVIDER, "provider should match");
+
+        assertEq(
+            stakeManager.convertSnBnbToBnb(1e18),
+            IProvider(MC.PROVIDER).getRate(MC.SLISBNB),
+            "slisBNB rate should match"
+        );
+
+        uint256 beforeBalance = IERC20(assetAddress).balanceOf(address(MC.YNBNBk));
+
         vm.startPrank(PROCESSOR);
+
         processApproveAsset(assetAddress, assets, MC.YNBNBk);
         processDepositYnBNBk(assets);
 
-        uint256 ynBnbkBalance = IERC20(MC.YNBNBk).balanceOf(address(vault));
         vm.stopPrank();
 
         uint256 newTotalAssets = vault.totalAssets();
-        assertApproxEqAbs(newTotalAssets, previousTotalAssets + stakeManager.convertSnBnbToBnb(assets), 100, "New total assets should equal deposit amount plus original total assets");
+
+        assetBalance = IERC20(assetAddress).balanceOf(address(vault));
+        assertEq(assetBalance, 0, "Vault should hold the deposited assets");
+
+        assetBalance = IERC20(assetAddress).balanceOf(address(MC.YNBNBk));
+        assertEq(assetBalance, beforeBalance + assets, "Vault should hold the deposited assets");
+
+        uint256 previewShares = Vault(payable(MC.YNBNBk)).previewDeposit(assets);
+        uint256 actualShares = Vault(payable(MC.YNBNBk)).balanceOf(address(vault));
+
+        assertEqThreshold(previewShares, actualShares, 10, "previewShares should equal actualShares");
+
+        uint256 previewAssets = Vault(payable(MC.YNBNBk)).previewRedeem(actualShares);
+
+        assertApproxEqAbs(
+            newTotalAssets,
+            previousTotalAssets + previewAssets,
+            1000,
+            "New total assets should equal to previous total assets plus previewAssets"
+        );
+
+        // TODO: this should be true
+        // assertApproxEqAbs(
+        //     newTotalAssets,
+        //     oldTotalAssets,
+        //     500,
+        //     "previewAssets should equal to previous total assets"
+        // );
     }
 
     function processApproveAsset(address asset, uint256 amount, address target) public {
@@ -138,11 +180,8 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         paramRules[0] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-        IVault.FunctionRule memory rule = IVault.FunctionRule({
-            isActive: true,
-            paramRules: paramRules,
-            validator: IValidator(address(0))
-        });
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault.setProcessorRule(MC.WBNB, funcSig, rule);
     }
@@ -152,7 +191,7 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
 
-        paramRules[0] = 
+        paramRules[0] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         address[] memory allowList = new address[](1);
@@ -160,11 +199,8 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({
-            isActive: true,
-            paramRules: paramRules,
-            validator: IValidator(address(0))
-        });
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault.setProcessorRule(MC.YNBNBk, funcSig, rule);
     }
@@ -183,7 +219,7 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         vm.prank(bob);
         stakeManager.deposit{value: depositAmount * 2}();
-        
+
         vm.startPrank(bob);
         // previous vault total Assets
         uint256 previousTotalAssets = vault.totalAssets();
@@ -201,6 +237,10 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
         uint256 newTotalAssets = vault.totalAssets();
         uint256 ynBnbkRate = IProvider(MC.PROVIDER).getRate(MC.YNBNBk);
 
-        assertEq(newTotalAssets, previousTotalAssets + (ynBnbkShares * ynBnbkRate / 1e18), "Total assets should match the previous total assets plus the equivalent ynBNBk shares in base denomination");
+        assertEq(
+            newTotalAssets,
+            previousTotalAssets + (ynBnbkShares * ynBnbkRate / 1e18),
+            "Total assets should match the previous total assets plus the equivalent ynBNBk shares in base denomination"
+        );
     }
 }

@@ -10,11 +10,9 @@ import {MainnetActors} from "script/Actors.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 
 contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
-
     Vault public vault;
 
     function setUp() public {
-
         SetupVault setupVault = new SetupVault();
         vault = setupVault.deploy();
 
@@ -41,7 +39,6 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
     }
 
     function test_Vault_Upgrade_ERC4626_view_functions() public view {
-
         // Test the paused function
         assertFalse(vault.paused(), "Vault should not be paused");
 
@@ -56,7 +53,7 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
         // Test the convertToShares function
         uint256 amount = 1 ether;
         uint256 shares = vault.convertToShares(amount);
-        assertLe(shares,amount, "Shares should less or equal to amount deposited");
+        assertLe(shares, amount, "Shares should less or equal to amount deposited");
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
@@ -88,4 +85,3 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
         assertEq(assets[4], MC.SLISBNB, "Fifth asset should be SLISBNB");
     }
 }
-
