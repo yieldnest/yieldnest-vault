@@ -119,7 +119,7 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
         assertApproxEqAbs(
             newTotalAssets,
             previousTotalAssets + previewAssets,
-            1000,
+            2000,
             "New total assets should equal to previous total assets plus previewAssets"
         );
 

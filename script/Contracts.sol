@@ -25,11 +25,11 @@ library MainnetContracts {
     // TODO: fix the ynwbnbk and ynclisbnbk addresses
     // bnb vault
     address public constant YNBNBK = 0x304B5845b9114182ECb4495Be4C91a273b74B509;
-    address public constant YNWBNBK = address(0);
-    address public constant YNCLISBNBK = address(0);
+    address public constant YNWBNBK = address(0x0b);
+    address public constant YNCLISBNBK = address(0x0c);
 
-    address public constant PROVIDER = address(123456789); // TODO: Update with deployed Provider
-    address public constant BUFFER = address(987654321); // TODO: Update with deployed buffer
+    address public constant PROVIDER = address(0x0d); // TODO: Update with deployed Provider
+    address public constant BUFFER = address(0x0b); // TODO: Update with deployed Buffer
 
     //// UNIT TEST ONLY references ////
     address public constant WETH = WBNB;
@@ -48,11 +48,11 @@ library TestnetContracts {
     // TODO: fix the ynwbnbk and ynclisbnbk addresses
     // bnb vault
     address public constant YNBNBK = 0x7e87787C22117374Fad2E3E2E8C6159f0875F92e;
-    address public constant YNWBNBK = address(0);
-    address public constant YNCLISBNBK = address(0);
+    address public constant YNWBNBK = address(0x0b);
+    address public constant YNCLISBNBK = address(0x0c);
 
-    address public constant PROVIDER = address(123456789);
-    address public constant BUFFER = address(987654321);
+    address public constant PROVIDER = address(0x0d); // TODO: Update with deployed Provider
+    address public constant BUFFER = address(0x0b); // TODO: Update with deployed Buffer
 }
 
 contract ChapelContracts is IContracts {

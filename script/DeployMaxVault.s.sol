@@ -95,16 +95,16 @@ contract DeployMaxVault is BaseScript {
         vault.addAsset(contracts.BNBX(), true);
 
         // TODO: confirm if these values are correct
-        if (contracts.YNWBNBK() != address(0)) {
+        if (contracts.YNWBNBK() != address(0x0b)) {
             vault.addAsset(contracts.YNWBNBK(), false);
         }
         vault.addAsset(contracts.YNBNBK(), true);
-        if (contracts.YNCLISBNBK() != address(0)) {
+        if (contracts.YNCLISBNBK() != address(0x0c)) {
             vault.addAsset(contracts.YNCLISBNBK(), false);
         }
 
         // buffer or ynwbnbk
-        if (contracts.YNWBNBK() != address(0)) {
+        if (contracts.YNWBNBK() != address(0x0b)) {
             vault.setBuffer(contracts.YNWBNBK());
             setDepositRule(vault, contracts.YNWBNBK());
             setWithdrawRule(vault, contracts.YNWBNBK());
@@ -125,7 +125,7 @@ contract DeployMaxVault is BaseScript {
         setApprovalRule(vault, contracts.YNBNBK(), assets);
 
         // ynclisbnbk
-        if (contracts.YNCLISBNBK() != address(0)) {
+        if (contracts.YNCLISBNBK() != address(0x0c)) {
             setDepositRule(vault, contracts.YNCLISBNBK());
             setWithdrawRule(vault, contracts.YNCLISBNBK());
             setDepositAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());

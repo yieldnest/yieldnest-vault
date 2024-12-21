@@ -160,7 +160,6 @@ abstract contract BaseScript is Script, VaultUtils {
     }
 
     function _saveDeployment() internal virtual {
-        // minDelay
         vm.serializeString(symbol(), "symbol", symbol());
         vm.serializeAddress(symbol(), "deployer", msg.sender);
         vm.serializeAddress(symbol(), "admin", actors.ADMIN());
@@ -173,7 +172,6 @@ abstract contract BaseScript is Script, VaultUtils {
 
         vm.serializeAddress(symbol(), string.concat(symbol(), "-proxyAdmin"), ProxyUtils.getProxyAdmin(address(vault)));
         vm.serializeAddress(symbol(), string.concat(symbol(), "-proxy"), address(vault));
-        vm.serializeAddress(symbol(), string.concat(symbol(), "-implementation"), address(implementation));
 
         string memory jsonOutput =
             vm.serializeAddress(symbol(), string.concat(symbol(), "-implementation"), address(implementation));

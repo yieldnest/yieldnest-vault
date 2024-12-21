@@ -15,7 +15,7 @@ contract Provider is IProvider {
     error UnsupportedAsset(address asset);
 
     function getRate(address asset) external view override returns (uint256) {
-        if (asset == MC.BUFFER || asset == MC.YNBNBK) {
+        if (asset == MC.YNWBNBK || asset == MC.YNBNBK || asset == MC.YNCLISBNBK) {
             return IERC4626(asset).previewRedeem(1e18);
         }
 
