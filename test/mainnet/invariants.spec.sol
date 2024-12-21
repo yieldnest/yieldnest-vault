@@ -10,7 +10,6 @@ import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 
 contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
-
     Vault public vault;
 
     function setUp() public {
@@ -20,13 +19,17 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
     function totalSupplyInvariant(uint256 supply) public view {
         uint256 finalVaultTotalSupply = vault.totalSupply();
-        assertApproxEqAbs(supply, finalVaultTotalSupply, 5, "Vault totalSupply should be original totalSupply plus additional");
+        assertApproxEqAbs(
+            supply, finalVaultTotalSupply, 5, "Vault totalSupply should be original totalSupply plus additional"
+        );
     }
 
     function totalAssetsInvariant(uint256 assets) public view {
         uint256 finalVaultTotalAssets = vault.totalAssets();
-        assertApproxEqAbs(assets, finalVaultTotalAssets, 5, "Vault totalAssets should be original totalAssets plus additional");
-    }    
+        assertApproxEqAbs(
+            assets, finalVaultTotalAssets, 5, "Vault totalAssets should be original totalAssets plus additional"
+        );
+    }
 
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
@@ -166,7 +169,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         // Test the convertToAssets function
         uint256 assets = vault.convertToAssets(shares);
         assertGt(assets, 0, "Assets should be greater than 0");
-        
+
         deal(alice, assets);
 
         // Test the previewMint function
@@ -182,17 +185,14 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         uint256 mintedAssets = vault.mint(shares, alice);
         assertEq(mintedAssets, assets, "Minted assets should equal the converted assets");
         vm.stopPrank();
-        
+
         allocateToBuffer(assets);
 
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
     }
 
-    function test_Vault_4626Invariants_redeem(
-        uint256 assets
-    ) public {
-
+    function test_Vault_4626Invariants_redeem(uint256 assets) public {
         // uint256 assets = 1000 ether;
 
         if (assets < 3) return;
@@ -217,7 +217,6 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
         assertEqThreshold(depositedShares, shares, 5, "Deposited shares should equal the converted shares");
         vm.stopPrank();
-
 
         // hypothetically allocated 100% to the buffer
         allocateToBuffer(assets);
@@ -273,10 +272,12 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         // Test the previewWithdraw function
         uint256 previewedWithdrawShares = vault.previewWithdraw(assets);
-        assertEqThreshold(previewedWithdrawShares, shares, 3, "Previewed withdraw shares should equal the original shares");
-        
+        assertEqThreshold(
+            previewedWithdrawShares, shares, 3, "Previewed withdraw shares should equal the original shares"
+        );
+
         vm.startPrank(alice);
-    
+
         uint256 withdrawableAssets = vault.maxWithdraw(alice);
         assertEqThreshold(withdrawableAssets, assets, 3, "Withdrawable assets should equal the original shares");
 
@@ -290,6 +291,4 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         totalSupplyInvariant(initialSupply);
         totalAssetsInvariant(initialAssets);
     }
-
-
 }

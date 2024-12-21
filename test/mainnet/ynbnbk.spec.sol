@@ -14,9 +14,7 @@ import {IERC4626} from "src/Common.sol";
 import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 
-
 contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
-
     Vault public vault;
 
     function setUp() public {
@@ -48,7 +46,7 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
         vault.processAccounting();
     }
 
-        event Log(string,uint256);
+    event Log(string, uint256);
 
     function test_Vault_ynBNBk_depositAndAllocate(uint256 assets) public {
         if (assets < 0.1 ether) return;
@@ -88,7 +86,11 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         assertEq(address(vault.provider()), MC.PROVIDER, "provider should match");
 
-        assertEq(stakeManager.convertSnBnbToBnb(1e18), IProvider(MC.PROVIDER).getRate(MC.SLISBNB), "slisBNB rate should match");
+        assertEq(
+            stakeManager.convertSnBnbToBnb(1e18),
+            IProvider(MC.PROVIDER).getRate(MC.SLISBNB),
+            "slisBNB rate should match"
+        );
 
         uint256 beforeBalance = IERC20(assetAddress).balanceOf(address(MC.YNBNBk));
 
@@ -96,7 +98,7 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         processApproveAsset(assetAddress, assets, MC.YNBNBk);
         processDepositYnBNBk(assets);
-        
+
         vm.stopPrank();
 
         uint256 newTotalAssets = vault.totalAssets();
@@ -128,7 +130,6 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
         //     500,
         //     "previewAssets should equal to previous total assets"
         // );
-
     }
 
     function processApproveAsset(address asset, uint256 amount, address target) public {
@@ -179,11 +180,8 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         paramRules[0] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-        IVault.FunctionRule memory rule = IVault.FunctionRule({
-            isActive: true,
-            paramRules: paramRules,
-            validator: IValidator(address(0))
-        });
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault.setProcessorRule(MC.WBNB, funcSig, rule);
     }
@@ -193,7 +191,7 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
 
-        paramRules[0] = 
+        paramRules[0] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         address[] memory allowList = new address[](1);
@@ -201,11 +199,8 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({
-            isActive: true,
-            paramRules: paramRules,
-            validator: IValidator(address(0))
-        });
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault.setProcessorRule(MC.YNBNBk, funcSig, rule);
     }
@@ -224,7 +219,7 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
 
         vm.prank(bob);
         stakeManager.deposit{value: depositAmount * 2}();
-        
+
         vm.startPrank(bob);
         // previous vault total Assets
         uint256 previousTotalAssets = vault.totalAssets();
@@ -242,6 +237,10 @@ contract VaultMainnetYnBNBkTest is Test, AssertUtils, MainnetActors {
         uint256 newTotalAssets = vault.totalAssets();
         uint256 ynBnbkRate = IProvider(MC.PROVIDER).getRate(MC.YNBNBk);
 
-        assertEq(newTotalAssets, previousTotalAssets + (ynBnbkShares * ynBnbkRate / 1e18), "Total assets should match the previous total assets plus the equivalent ynBNBk shares in base denomination");
+        assertEq(
+            newTotalAssets,
+            previousTotalAssets + (ynBnbkShares * ynBnbkRate / 1e18),
+            "Total assets should match the previous total assets plus the equivalent ynBNBk shares in base denomination"
+        );
     }
 }
