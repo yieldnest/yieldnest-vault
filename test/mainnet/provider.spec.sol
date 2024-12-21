@@ -23,8 +23,8 @@ contract ProviderTest is Test, Etches {
     }
 
     function test_Provider_GetRateYNBNBk() public view {
-        uint256 expectedRate = IERC4626(MC.YNBNBk).previewRedeem(1e18);
-        uint256 rate = provider.getRate(MC.YNBNBk);
+        uint256 expectedRate = IERC4626(MC.YNBNBK).previewRedeem(1e18);
+        uint256 rate = provider.getRate(MC.YNBNBK);
         assertEq(rate, expectedRate, "Rate for YNBNBk should match the previewRedeem rate");
     }
 

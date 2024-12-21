@@ -11,7 +11,7 @@ import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeMa
     The Provider fetches state from other contracts.
 */
 
-contract Provider is IProvider {
+contract TestProvider is IProvider {
     error UnsupportedAsset(address asset);
 
     function getRate(address asset) external view override returns (uint256) {
