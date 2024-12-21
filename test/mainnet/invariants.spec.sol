@@ -74,12 +74,6 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
         // Test the previewDeposit function
-        deal(address(this), 1 ether);
-        (bool success,) = MC.WETH.call{value: 1 ether}("");
-        require(success, "Weth deposit failed");
-        IERC20(MC.WETH).approve(address(vault), 1 ether);
-        IERC20(MC.WETH).transfer(address(vault), 1 ether);
-
         uint256 previewedShares = vault.previewDeposit(assets);
         assertEqThreshold(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
 
@@ -89,7 +83,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         // Test the depositAsset function
         deal(address(this), assets);
-        (success,) = MC.WETH.call{value: assets}("");
+        (bool success,) = MC.WETH.call{value: assets}("");
         if (!success) revert("Weth deposit failed");
         IERC20(MC.WETH).approve(address(vault), assets);
 
