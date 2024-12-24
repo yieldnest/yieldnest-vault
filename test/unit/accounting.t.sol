@@ -49,7 +49,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
         data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
 
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vault.processor(targets, values, data);
     }
 

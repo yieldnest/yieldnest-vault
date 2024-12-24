@@ -128,7 +128,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_depositAssetWhilePaused() public {
-        vm.prank(ADMIN);
+        vm.prank(PAUSER);
         vault.pause();
         assertEq(vault.paused(), true);
 
@@ -138,7 +138,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_mintWhilePaused() public {
-        vm.prank(ADMIN);
+        vm.prank(PAUSER);
         vault.pause();
         assertEq(vault.paused(), true);
 
@@ -148,7 +148,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_pauseAndDeposit() public {
-        vm.prank(ADMIN);
+        vm.prank(PAUSER);
         vault.pause();
         assertEq(vault.paused(), true);
 
@@ -205,7 +205,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
     function test_Vault_maxMint_whenPaused_shouldRevert() public {
         // Pause the vault
-        vm.prank(ADMIN);
+        vm.prank(PAUSER);
         vault.pause();
 
         // Expect revert when calling maxMint while paused
@@ -214,7 +214,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
     function test_Vault_maxRedeem_whenPaused_shouldRevert() public {
         // Pause the vault
-        vm.prank(ADMIN);
+        vm.prank(PAUSER);
         vault.pause();
 
         // Expect revert when calling maxRedeem while paused

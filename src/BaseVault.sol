@@ -492,6 +492,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function _getVaultStorage() internal pure virtual returns (VaultStorage storage $) {
         assembly {
+            // keccak256("yieldnest.storage.vault")
             $.slot := 0x22cdba5640455d74cb7564fb236bbbbaf66b93a0cc1bd221f1ee2a6b2d0a2427
         }
     }
@@ -502,6 +503,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function _getAssetStorage() internal pure returns (AssetStorage storage $) {
         assembly {
+            // keccak256("yieldnest.storage.asset")
             $.slot := 0x2dd192a2474c87efcf5ffda906a4b4f8a678b0e41f9245666251cfed8041e680
         }
     }
@@ -512,6 +514,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function _getProcessorStorage() internal pure returns (ProcessorStorage storage $) {
         assembly {
+            // keccak256("yieldnest.storage.proc")
             $.slot := 0x52bb806a772c899365572e319d3d6f49ed2259348d19ab0da8abccd4bd46abb5
         }
     }

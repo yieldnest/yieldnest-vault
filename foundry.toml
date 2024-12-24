@@ -17,10 +17,31 @@ src = "src"
 out = "out"
 libs = ["lib"]
 test = "test/mainnet"
-eth_rpc_url = "https://rpc.ankr.com/bsc"
+eth_rpc_url = "https://bnb-mainnet.g.alchemy.com/v2/1FX7IZKqADVmU4ew3b7WD6NYNK5Ui0N7"
 evm_version = "cancun"
 solc_version = "0.8.24"
 fs_permissions = [
   { access = "read-write", path = "./deployments" },
   { access = "read", path = "./" },
 ]
+
+[profile.testnet]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test/mainnet"
+eth_rpc_url = "https://rpc.ankr.com/bsc_testnet_chapel"
+evm_version = "cancun"
+solc_version = "0.8.24"
+fs_permissions = [
+  { access = "read-write", path = "./deployments" },
+  { access = "read", path = "./" },
+]
+
+[rpc_endpoints]
+bnb_mainnet = "https://bnb-mainnet.g.alchemy.com/v2/1FX7IZKqADVmU4ew3b7WD6NYNK5Ui0N7"
+bnb_testnet = "https://rpc.ankr.com/bsc_testnet_chapel"
+
+[etherscan]
+bnb_mainnet = { key = "${BSCSCAN_API_KEY}", url = "https://api.bscscan.com/api/" }
+bnb_testnet = { key = "${BSCSCAN_API_KEY}", url = "https://api-testnet.bscscan.com/api/" }
