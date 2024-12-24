@@ -154,7 +154,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
 
         uint256 ownerShares = balanceOf(owner);
-        uint256 maxAssets = convertToAssets(ownerShares);
+        uint256 maxAssets = previewRedeem(ownerShares);
 
         return bufferAssets < maxAssets ? bufferAssets : maxAssets;
     }
@@ -229,6 +229,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert ExceededMaxWithdraw(owner, assets, maxAssets);
         }
         shares = previewWithdraw(assets);
+
         _withdraw(_msgSender(), receiver, owner, assets, shares);
     }
 
@@ -420,9 +421,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             _spendAllowance(owner, caller, shares);
         }
 
+        // NOTE: burn shares before withdrawing the assets
+        _burn(owner, shares);
+
         IStrategy(vaultStorage.buffer).withdraw(assets, receiver, address(this));
 
-        _burn(owner, shares);
         emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
@@ -514,7 +517,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function _getProcessorStorage() internal pure returns (ProcessorStorage storage $) {
         assembly {
-            // keccak256("yieldnest.storage.proc")
+            // keccak256("yieldnest.storage.vault")
             $.slot := 0x52bb806a772c899365572e319d3d6f49ed2259348d19ab0da8abccd4bd46abb5
         }
     }
@@ -631,7 +634,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         emit SetAlwaysComputeTotalAssets(alwaysComputeTotalAssets_);
 
         if (!alwaysComputeTotalAssets_) {
-            processAccounting();
+            _processAccounting();
         }
     }
 
@@ -677,7 +680,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @dev This function iterates through the list of assets, gets their balances and rates,
      *      and updates the total assets denominated in the base asset.
      */
-    function processAccounting() public virtual {
+    function processAccounting() public virtual nonReentrant {
+        _processAccounting();
+    }
+
+    function _processAccounting() internal virtual {
         uint256 totalBaseBalance = _computeTotalAssets();
 
         _getVaultStorage().totalAssets = totalBaseBalance;

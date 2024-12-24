@@ -74,6 +74,7 @@ interface IVault is IERC4626 {
     error BufferNotSet();
     error DepositFailed();
     error AssetNotActive();
+    error ExceedsMaxBasisPoints(uint256 value);
 
     event DepositAsset(
         address indexed sender,
@@ -93,6 +94,7 @@ interface IVault is IERC4626 {
     event NativeDeposit(uint256 amount);
     event ProcessAccounting(uint256 timestamp, uint256 totalAssets);
     event UpdateAsset(uint256 indexed index, address indexed asset, AssetUpdateFields fields);
+    event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);

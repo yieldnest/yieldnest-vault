@@ -9,7 +9,7 @@ import {Math} from "./Common.sol";
 contract Vault is BaseVault {
     using Math for uint256;
 
-    error ExceedsMaxBasisPoints();
+    string public constant VAULT_VERSION = "0.1.1";
 
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
@@ -77,10 +77,6 @@ contract Vault is BaseVault {
         return FeeMath.feeOnTotal(assets, baseWithdrawalFee_);
     }
 
-    function _bufferMaxSize(uint256 totalAssets_, uint256 bufferFraction_) internal pure returns (uint256) {
-        return totalAssets_.mulDiv(bufferFraction_, FeeMath.BASIS_POINT_SCALE, Math.Rounding.Floor);
-    }
-
     //// FEES ADMIN ////
 
     /**
@@ -89,8 +85,11 @@ contract Vault is BaseVault {
      * @dev Only callable by accounts with FEE_MANAGER_ROLE
      */
     function setBaseWithdrawalFee(uint64 baseWithdrawalFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
-        if (baseWithdrawalFee_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints();
-        _getFeeStorage().baseWithdrawalFee = baseWithdrawalFee_;
+        if (baseWithdrawalFee_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints(baseWithdrawalFee_);
+        FeeStorage storage fees = _getFeeStorage();
+        uint64 oldFee = fees.baseWithdrawalFee;
+        fees.baseWithdrawalFee = baseWithdrawalFee_;
+        emit SetBaseWithdrawalFee(oldFee, baseWithdrawalFee_);
     }
 
     /**
