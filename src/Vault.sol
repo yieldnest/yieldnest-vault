@@ -40,6 +40,18 @@ contract Vault is BaseVault {
         bool countNativeAsset_,
         bool alwaysComputeTotalAssets_
     ) external virtual initializer {
+        _initialize(admin, name, symbol, decimals_, baseWithdrawalFee_, countNativeAsset_, alwaysComputeTotalAssets_);
+    }
+
+    function _initialize(
+        address admin,
+        string memory name,
+        string memory symbol,
+        uint8 decimals_,
+        uint64 baseWithdrawalFee_,
+        bool countNativeAsset_,
+        bool alwaysComputeTotalAssets_
+    ) internal virtual {
         __ERC20_init(name, symbol);
         __AccessControl_init();
         __ReentrancyGuard_init();
