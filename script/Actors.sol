@@ -26,6 +26,8 @@ interface IActors {
     function UNPAUSER() external view returns (address);
     /// @dev multisig
     function PROCESSOR() external view returns (address);
+    /// @dev multisig
+    function UPDATER() external view returns (address);
 }
 
 contract TestnetActors is IActors {
@@ -47,6 +49,7 @@ contract TestnetActors is IActors {
     address public constant PROCESSOR_MANAGER = YnSecurityCouncil;
     address public constant PAUSER = YnSecurityCouncil;
     address public constant UNPAUSER = YnSecurityCouncil;
+    address public constant UPDATER = YnSecurityCouncil;
 }
 
 contract MainnetActors is IActors {
@@ -68,4 +71,5 @@ contract MainnetActors is IActors {
     address public constant PROCESSOR_MANAGER = YnSecurityCouncil;
     address public constant PAUSER = 0x7B4B43f00cf80AABda8F72d61b129F1e7F86fCaF;
     address public constant UNPAUSER = YnSecurityCouncil;
+    address public constant UPDATER = YnSecurityCouncil;
 }

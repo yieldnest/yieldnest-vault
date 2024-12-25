@@ -22,11 +22,10 @@ library MainnetContracts {
     address public constant BNBX_STAKE_MANAGER = 0x3b961e83400D51e6E1AF5c450d3C7d7b80588d28;
     address public constant SLIS_BNB_STAKE_MANAGER = 0x1adB950d8bB3dA4bE104211D5AB038628e477fE6;
 
-    // TODO: fix the ynwbnbk and ynclisbnbk addresses
     // bnb vault
     address public constant YNBNBK = 0x304B5845b9114182ECb4495Be4C91a273b74B509;
-    address public constant YNWBNBK = address(0x0b);
-    address public constant YNCLISBNBK = address(0x0c);
+    address public constant YNWBNBK = address(0x0b); // TODO: update with deployed address
+    address public constant YNCLISBNBK = address(0x0c); // TODO: update with deployed address
 
     address public constant PROVIDER = address(0x0d); // TODO: Update with deployed Provider
     address public constant BUFFER = address(0x0b); // TODO: Update with deployed Buffer
@@ -45,14 +44,13 @@ library TestnetContracts {
     address public constant SLISBNB = 0xCc752dC4ae72386986d011c2B485be0DAd98C744;
     address public constant BNBX = 0x6cd3f51A92d022030d6e75760200c051caA7152A;
 
-    // TODO: fix the ynwbnbk and ynclisbnbk addresses
     // bnb vault
     address public constant YNBNBK = 0x7e87787C22117374Fad2E3E2E8C6159f0875F92e;
-    address public constant YNWBNBK = 0xD56E193D4db8C39D102bdc3520EeF7210100b3cB;
-    address public constant YNCLISBNBK = address(0x0c);
+    address public constant YNWBNBK = 0xAe35b540eFC98c7866A983eaB3B88a0a47614CA1;
+    address public constant YNCLISBNBK = address(0x0c); // TODO: update with deployed address
 
     address public constant PROVIDER = address(0x0d); // TODO: Update with deployed Provider
-    address public constant BUFFER = 0xD56E193D4db8C39D102bdc3520EeF7210100b3cB;
+    address public constant BUFFER = YNWBNBK;
 }
 
 contract ChapelContracts is IContracts {

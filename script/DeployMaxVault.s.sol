@@ -5,7 +5,8 @@ import {Vault} from "src/Vault.sol";
 import {Provider, IProvider} from "src/module/Provider.sol";
 import {TestProvider} from "test/module/TestProvider.sol";
 
-import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
+import {IVaultViewer} from "src/interface/IVaultViewer.sol";
+import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 
 import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -40,13 +41,30 @@ contract DeployMaxVault is BaseScript {
 
         deploy();
 
-        BaseVaultViewer viewerImpl = new BaseVaultViewer();
-
-        _deployViewer(address(viewerImpl));
+        _deployViewer();
 
         _saveDeployment();
 
         vm.stopBroadcast();
+    }
+
+    function _deployViewer() internal {
+        MaxVaultViewer viewerImpl = new MaxVaultViewer();
+
+        viewerImplementation = IVaultViewer(payable(address(viewerImpl)));
+
+        bytes memory initData = abi.encodeWithSelector(MaxVaultViewer.initialize.selector, address(vault), msg.sender);
+
+        TransparentUpgradeableProxy proxy =
+            new TransparentUpgradeableProxy(address(viewerImplementation), actors.ADMIN(), initData);
+
+        viewer = IVaultViewer(payable(address(proxy)));
+
+        MaxVaultViewer maxVaultViewer = MaxVaultViewer(payable(address(viewer)));
+
+        maxVaultViewer.grantRole(maxVaultViewer.UPDATER_ROLE(), actors.UPDATER());
+        maxVaultViewer.grantRole(maxVaultViewer.DEFAULT_ADMIN_ROLE(), actors.ADMIN());
+        maxVaultViewer.renounceRole(maxVaultViewer.DEFAULT_ADMIN_ROLE(), msg.sender);
     }
 
     function deploy() internal {
