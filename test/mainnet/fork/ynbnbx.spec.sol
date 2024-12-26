@@ -116,6 +116,74 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         assertEq(vault.totalSupply(), totalSupplyBefore, "Total supply should remain unchanged");
     }
 
+    function testDepositAllocateToBufferAndWithdraw() public {
+        address alice = address(0xABCD);
+        uint256 depositAmount = 1 ether;
+
+        // Initial deposit
+        // Give alice some WBNB
+        deal(address(wbnb), alice, depositAmount);
+        vm.startPrank(alice);
+        wbnb.approve(address(vault), depositAmount);
+        vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        // Verify initial state
+        assertEq(vault.totalSupply(), depositAmount, "Initial total supply should match deposit");
+        assertEq(wbnb.balanceOf(address(vault)), depositAmount, "Vault should have WBNB balance");
+
+        // Create approval calldata for buffer
+        bytes memory approveCalldata = abi.encodeWithSignature(
+            "approve(address,uint256)",
+            MainnetContracts.YNWBNBK,
+            depositAmount
+        );
+
+        // Create deposit calldata for buffer
+        bytes memory depositCalldata = abi.encodeWithSignature(
+            "deposit(uint256,address)",
+            depositAmount,
+            address(vault)
+        );
+
+        // Set up arrays for processor call to deposit to buffer
+        address[] memory targets = new address[](2);
+        targets[0] = MainnetContracts.WBNB;
+        targets[1] = MainnetContracts.YNWBNBK;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = approveCalldata;
+        data[1] = depositCalldata;
+
+        // Store state before buffer allocation
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 totalSupplyBefore = vault.totalSupply();
+
+        // Process deposit to buffer
+        vm.prank(PROCESSOR);
+        vault.processor(targets, values, data);
+
+        // Verify WBNB was transferred to buffer
+        assertEq(wbnb.balanceOf(address(vault)), 0, "Vault should have 0 WBNB after buffer deposit");
+        assertEq(IERC20(MainnetContracts.YNWBNBK).balanceOf(address(vault)), depositAmount, "Vault should have received ynWBNBk tokens");
+        assertEq(vault.totalAssets(), totalAssetsBefore, "Total assets should remain unchanged");
+        assertEq(vault.totalSupply(), totalSupplyBefore, "Total supply should remain unchanged");
+
+        // Now test withdrawal
+        vm.startPrank(alice);
+        vault.redeem(vault.balanceOf(alice), alice, alice);
+        vm.stopPrank();
+
+        // Verify final state after withdrawal
+        assertEq(vault.totalSupply(), 0, "Total supply should be 0 after withdrawal");
+        assertApproxEqRel(wbnb.balanceOf(alice), depositAmount, 1e15, "Alice should have received WBNB");
+        assertEq(IERC20(MainnetContracts.YNWBNBK).balanceOf(address(vault)), depositAmount - wbnb.balanceOf(alice), "Vault's ynWBNBk balance should equal deposit minus withdrawal");
+    }
+
     function testUpgradeVaultWithTimelock() public {
         // Get proxy admin
         ProxyAdmin proxyAdmin = ProxyAdmin(getProxyAdmin(address(vault)));
