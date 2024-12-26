@@ -53,10 +53,10 @@ contract DeployMaxVault is BaseScript {
 
         viewerImplementation = IVaultViewer(payable(address(viewerImpl)));
 
-        bytes memory initData = abi.encodeWithSelector(MaxVaultViewer.initialize.selector, address(vault), msg.sender);
-
         TransparentUpgradeableProxy proxy =
-            new TransparentUpgradeableProxy(address(viewerImplementation), actors.ADMIN(), initData);
+            new TransparentUpgradeableProxy(address(viewerImplementation), actors.ADMIN(), "");
+
+        MaxVaultViewer(payable(address(proxy))).initialize(address(vault), msg.sender);
 
         viewer = IVaultViewer(payable(address(proxy)));
 
@@ -81,21 +81,12 @@ contract DeployMaxVault is BaseScript {
         bool countNativeAsset = true;
         bool alwaysComputeTotalAssets = true;
 
-        bytes memory initData = abi.encodeWithSelector(
-            Vault.initialize.selector,
-            admin,
-            name,
-            symbol_,
-            decimals,
-            baseWithdrawalFee,
-            countNativeAsset,
-            alwaysComputeTotalAssets
-        );
-
         TransparentUpgradeableProxy proxy =
-            new TransparentUpgradeableProxy(address(implementation), address(timelock), initData);
+            new TransparentUpgradeableProxy(address(implementation), address(timelock), "");
 
         vault = Vault(payable(address(proxy)));
+
+        vault.initialize(admin, name, symbol_, decimals, baseWithdrawalFee, countNativeAsset, alwaysComputeTotalAssets);
 
         configureVault();
     }
