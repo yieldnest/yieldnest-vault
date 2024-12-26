@@ -87,33 +87,74 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
             address(vault)
         );
 
-        // Set up arrays for processor call
-        address[] memory targets = new address[](2);
-        targets[0] = MainnetContracts.WBNB;
-        targets[1] = MainnetContracts.YNCLISBNBK;
+        {
+            // Set up arrays for processor call
+            address[] memory targets = new address[](2);
+            targets[0] = MainnetContracts.WBNB;
+            targets[1] = MainnetContracts.YNCLISBNBK;
 
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
+            uint256[] memory values = new uint256[](2);
+            values[0] = 0;
+            values[1] = 0;
 
-        bytes[] memory data = new bytes[](2);
-        data[0] = approveCalldata;
-        data[1] = depositCalldata;
-        // Store initial state
-        uint256 totalAssetsBefore = vault.totalAssets();
-        uint256 totalSupplyBefore = vault.totalSupply();
+            bytes[] memory data = new bytes[](2);
+            data[0] = approveCalldata;
+            data[1] = depositCalldata;
+            // Store initial state
+            uint256 totalAssetsBefore = vault.totalAssets();
+            uint256 totalSupplyBefore = vault.totalSupply();
 
-        // Process transactions through processor
-        vm.prank(PROCESSOR);
-        vault.processor(targets, values, data);
+            // Process transactions through processor
+            vm.prank(PROCESSOR);
+            vault.processor(targets, values, data);
 
-        // Verify WBNB was transferred to clisBNB
-        assertEq(wbnb.balanceOf(address(vault)), 0, "Vault should have 0 WBNB after deposit");
-        assertEq(IERC20(MainnetContracts.YNCLISBNBK).balanceOf(address(vault)), depositAmount, "Vault should have received ynClisBNBk tokens");
+            // Verify WBNB was transferred to clisBNB
+            assertEq(wbnb.balanceOf(address(vault)), 0, "Vault should have 0 WBNB after deposit");
+            assertEq(IERC20(MainnetContracts.YNCLISBNBK).balanceOf(address(vault)), depositAmount, "Vault should have received ynClisBNBk tokens");
 
-        // Verify total assets and supply remain unchanged
-        assertEq(vault.totalAssets(), totalAssetsBefore, "Total assets should remain unchanged");
-        assertEq(vault.totalSupply(), totalSupplyBefore, "Total supply should remain unchanged");
+            // Verify total assets and supply remain unchanged
+            assertEq(vault.totalAssets(), totalAssetsBefore, "Total assets should remain unchanged");
+            assertEq(vault.totalSupply(), totalSupplyBefore, "Total supply should remain unchanged");
+        }
+
+        {
+            // Define withdrawal amount
+            uint256 withdrawAmount = depositAmount / 2;
+
+            // Create withdrawal calldata to unstake half the amount
+            bytes memory withdrawCalldata = abi.encodeWithSignature(
+                "withdraw(uint256,address,address)",
+                withdrawAmount,
+                address(vault),
+                address(vault)
+            );
+
+            // Set up arrays for processor call to unstake
+            address[] memory targets = new address[](1);
+            targets[0] = MainnetContracts.YNCLISBNBK;
+
+            uint256[] memory values = new uint256[](1);
+            values[0] = 0;
+
+            bytes[] memory data = new bytes[](1);
+            data[0] = withdrawCalldata;
+
+            // Store state before unstaking
+            uint256 totalAssetsBefore = vault.totalAssets();
+            uint256 totalSupplyBefore = vault.totalSupply();
+
+            // Process unstaking through processor
+            vm.prank(PROCESSOR);
+            vault.processor(targets, values, data);
+
+            // Verify half of ynClisBNBk was unstaked back to WBNB
+            assertEq(wbnb.balanceOf(address(vault)), withdrawAmount, "Vault should have received half WBNB back");
+            assertEq(IERC20(MainnetContracts.YNCLISBNBK).balanceOf(address(vault)), withdrawAmount, "Vault should have half ynClisBNBk remaining");
+
+            // Verify total assets and supply remain unchanged
+            assertEq(vault.totalAssets(), totalAssetsBefore, "Total assets should remain unchanged");
+            assertEq(vault.totalSupply(), totalSupplyBefore, "Total supply should remain unchanged");
+        }
     }
 
     function testDepositAllocateToBufferAndWithdraw() public {
