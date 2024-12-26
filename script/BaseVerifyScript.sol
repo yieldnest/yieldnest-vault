@@ -15,30 +15,30 @@ import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
 abstract contract BaseVerifyScript is BaseScript, Test {
     function _verifyDefaultRoles() internal view virtual {
         // verify timelock roles
-        assertEq(vault.hasRole(keccak256("PROVIDER_MANAGER_ROLE"), address(timelock)), true);
-        assertEq(vault.hasRole(keccak256("ASSET_MANAGER_ROLE"), address(timelock)), true);
-        assertEq(vault.hasRole(keccak256("BUFFER_MANAGER_ROLE"), address(timelock)), true);
-        assertEq(vault.hasRole(keccak256("PROCESSOR_MANAGER_ROLE"), address(timelock)), true);
+        assertEq(vault.hasRole(vault.PROVIDER_MANAGER_ROLE(), address(timelock)), true);
+        assertEq(vault.hasRole(vault.ASSET_MANAGER_ROLE(), address(timelock)), true);
+        assertEq(vault.hasRole(vault.BUFFER_MANAGER_ROLE(), address(timelock)), true);
+        assertEq(vault.hasRole(vault.PROCESSOR_MANAGER_ROLE(), address(timelock)), true);
 
         assertEq(Ownable(ProxyUtils.getProxyAdmin(address(vault))).owner(), address(timelock));
 
         // verify actors roles
-        assertEq(vault.hasRole(keccak256("DEFAULT_ADMIN_ROLE"), actors.ADMIN()), true);
-        assertEq(vault.hasRole(keccak256("PROCESSOR_ROLE"), actors.PROCESSOR()), true);
-        assertEq(vault.hasRole(keccak256("PAUSER_ROLE"), actors.PAUSER()), true);
-        assertEq(vault.hasRole(keccak256("UNPAUSER_ROLE"), actors.UNPAUSER()), true);
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), actors.ADMIN()), true);
+        assertEq(vault.hasRole(vault.PROCESSOR_ROLE(), actors.PROCESSOR()), true);
+        assertEq(vault.hasRole(vault.PAUSER_ROLE(), actors.PAUSER()), true);
+        assertEq(vault.hasRole(vault.UNPAUSER_ROLE(), actors.UNPAUSER()), true);
     }
 
     function _verifyTemporaryRoles() internal view virtual {
-        assertEq(vault.hasRole(keccak256("PROVIDER_MANAGER_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("ASSET_MANAGER_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("BUFFER_MANAGER_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("PROCESSOR_MANAGER_ROLE"), deployer), false);
+        assertEq(vault.hasRole(vault.PROVIDER_MANAGER_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.ASSET_MANAGER_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.BUFFER_MANAGER_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.PROCESSOR_MANAGER_ROLE(), deployer), false);
 
-        assertEq(vault.hasRole(keccak256("DEFAULT_ADMIN_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("PROCESSOR_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("PAUSER_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("UNPAUSER_ROLE"), deployer), false);
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.PROCESSOR_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.PAUSER_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.UNPAUSER_ROLE(), deployer), false);
     }
 
     function _verifyViewer() internal view virtual {

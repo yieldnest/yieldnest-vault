@@ -106,40 +106,40 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
         }
 
         // set admin roles
-        vault.grantRole(keccak256("DEFAULT_ADMIN_ROLE"), actors.ADMIN());
-        vault.grantRole(keccak256("PROCESSOR_ROLE"), actors.PROCESSOR());
-        vault.grantRole(keccak256("PAUSER_ROLE"), actors.PAUSER());
-        vault.grantRole(keccak256("UNPAUSER_ROLE"), actors.UNPAUSER());
+        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), actors.ADMIN());
+        vault.grantRole(vault.PROCESSOR_ROLE(), actors.PROCESSOR());
+        vault.grantRole(vault.PAUSER_ROLE(), actors.PAUSER());
+        vault.grantRole(vault.UNPAUSER_ROLE(), actors.UNPAUSER());
 
         // set timelock roles
-        vault.grantRole(keccak256("FEE_MANAGER_ROLE"), address(timelock));
-        vault.grantRole(keccak256("PROVIDER_MANAGER_ROLE"), address(timelock));
-        vault.grantRole(keccak256("ASSET_MANAGER_ROLE"), address(timelock));
-        vault.grantRole(keccak256("BUFFER_MANAGER_ROLE"), address(timelock));
-        vault.grantRole(keccak256("PROCESSOR_MANAGER_ROLE"), address(timelock));
+        vault.grantRole(vault.FEE_MANAGER_ROLE(), address(timelock));
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), address(timelock));
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(timelock));
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), address(timelock));
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(timelock));
     }
 
     function _configureTemporaryRoles() internal virtual {
         if (address(vault) == address(0)) {
             revert InvalidSetup();
         }
-        vault.grantRole(keccak256("PROCESSOR_MANAGER_ROLE"), msg.sender);
-        vault.grantRole(keccak256("BUFFER_MANAGER_ROLE"), msg.sender);
-        vault.grantRole(keccak256("PROVIDER_MANAGER_ROLE"), msg.sender);
-        vault.grantRole(keccak256("ASSET_MANAGER_ROLE"), msg.sender);
-        vault.grantRole(keccak256("UNPAUSER_ROLE"), msg.sender);
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), msg.sender);
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), msg.sender);
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), msg.sender);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), msg.sender);
+        vault.grantRole(vault.UNPAUSER_ROLE(), msg.sender);
     }
 
     function _renounceTemporaryRoles() internal virtual {
         if (address(vault) == address(0)) {
             revert InvalidSetup();
         }
-        vault.renounceRole(keccak256("DEFAULT_ADMIN_ROLE"), msg.sender);
-        vault.renounceRole(keccak256("PROCESSOR_MANAGER_ROLE"), msg.sender);
-        vault.renounceRole(keccak256("BUFFER_MANAGER_ROLE"), msg.sender);
-        vault.renounceRole(keccak256("PROVIDER_MANAGER_ROLE"), msg.sender);
-        vault.renounceRole(keccak256("ASSET_MANAGER_ROLE"), msg.sender);
-        vault.renounceRole(keccak256("UNPAUSER_ROLE"), msg.sender);
+        vault.renounceRole(vault.DEFAULT_ADMIN_ROLE(), msg.sender);
+        vault.renounceRole(vault.PROCESSOR_MANAGER_ROLE(), msg.sender);
+        vault.renounceRole(vault.BUFFER_MANAGER_ROLE(), msg.sender);
+        vault.renounceRole(vault.PROVIDER_MANAGER_ROLE(), msg.sender);
+        vault.renounceRole(vault.ASSET_MANAGER_ROLE(), msg.sender);
+        vault.renounceRole(vault.UNPAUSER_ROLE(), msg.sender);
     }
 
     function _loadDeployment() internal virtual {
