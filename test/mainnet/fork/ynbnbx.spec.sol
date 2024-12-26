@@ -301,4 +301,26 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         assertTrue(params.active, "Asset should be active");
         assertEq(assetAtIndex, MainnetContracts.YNCLISBNBK, "Asset at index 1 should be ynClisBNBk");
     }
+
+    function testDirectDepositToStrategiesShouldRevert() public {
+        address alice = makeAddr("alice");
+        uint256 depositAmount = 1000 ether;
+
+        // Give alice some WBNB
+        deal(address(wbnb), alice, depositAmount);
+
+        vm.startPrank(alice);
+        wbnb.approve(MainnetContracts.YNWBNBK, depositAmount);
+        wbnb.approve(MainnetContracts.YNCLISBNBK, depositAmount);
+
+        // Try to deposit directly to buffer strategy (ynWBNBk)
+        vm.expectRevert();
+        IERC20(MainnetContracts.YNWBNBK).transfer(address(0), depositAmount);
+
+        // Try to deposit directly to ynClisBNBk strategy
+        vm.expectRevert(); 
+        IERC20(MainnetContracts.YNCLISBNBK).transfer(address(0), depositAmount);
+
+        vm.stopPrank();
+    }
 }
