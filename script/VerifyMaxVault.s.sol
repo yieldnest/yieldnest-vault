@@ -33,15 +33,19 @@ contract VerifyMaxVault is BaseVerifyScript {
         assertEq(assets[0], contracts.WBNB(), "assets[0] is invalid");
 
         asset = vault.getAsset(contracts.WBNB());
-        assertEq(asset.decimals, 18, "asset[1].decimals is invalid");
-        assertEq(asset.active, true, "asset[1].active is invalid");
-        assertEq(asset.index, 0, "asset[1].index is invalid");
+        assertEq(asset.decimals, 18, "asset[0].decimals is invalid");
+        assertEq(asset.active, true, "asset[0].active is invalid");
+        assertEq(asset.index, 0, "asset[0].index is invalid");
 
         if (contracts.YNWBNBK() != address(0x0b)) {
             (bool isIncluded, uint256 index) = _checkForAsset(contracts.YNWBNBK());
             assertTrue(isIncluded, "YNWBNBK is invalid");
             assertGt(index, 0, "YNWBNBK invalid index");
             assertEq(vault.buffer(), contracts.YNWBNBK(), "incorrect buffer");
+
+            asset = vault.getAsset(contracts.YNWBNBK());
+            assertEq(asset.decimals, 18, "asset[1].decimals is invalid");
+            assertEq(asset.active, false, "asset[1].active is invalid");
 
             _verifyDepositRule(vault, contracts.YNWBNBK());
             _verifyWithdrawRule(vault, contracts.YNWBNBK());
@@ -56,7 +60,7 @@ contract VerifyMaxVault is BaseVerifyScript {
 
             asset = vault.getAsset(contracts.YNCLISBNBK());
             assertEq(asset.decimals, 18, "asset[1].decimals is invalid");
-            assertEq(asset.active, true, "asset[1].active is invalid");
+            assertEq(asset.active, false, "asset[1].active is invalid");
 
             _verifyDepositRule(vault, contracts.YNCLISBNBK());
             _verifyWithdrawRule(vault, contracts.YNCLISBNBK());
