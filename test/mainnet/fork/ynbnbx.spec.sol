@@ -22,6 +22,19 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         
         vault = Vault(payable(MainnetContracts.YNBNBX));
         wbnb = IERC20(MainnetContracts.WBNB);
+
+        {
+            // Set approval rules for WBNB
+            vm.startPrank(ProxyAdmin(getProxyAdmin(address(vault))).owner());
+
+            address[] memory spenders = new address[](2);
+            spenders[0] = MainnetContracts.YNCLISBNBK;
+            spenders[1] = MainnetContracts.YNWBNBK;
+
+            setApprovalRule(vault, MainnetContracts.WBNB, spenders);
+
+            vm.stopPrank();
+        }
     }
 
     function testDepositAndStake() public {
@@ -58,21 +71,6 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
 
         // Check that vault has WBNB balance
         assertEq(wbnb.balanceOf(address(vault)), depositAmount, "Vault should have WBNB balance");
-
-
-
-        {
-            // Set approval rules for WBNB
-            vm.startPrank(ProxyAdmin(getProxyAdmin(address(vault))).owner());
-
-            address[] memory spenders = new address[](2);
-            spenders[0] = MainnetContracts.YNCLISBNBK;
-            spenders[1] = MainnetContracts.YNWBNBK;
-
-            setApprovalRule(vault, MainnetContracts.WBNB, spenders);
-
-            vm.stopPrank();
-        }
 
 
         // Create approval calldata
