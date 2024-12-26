@@ -37,7 +37,7 @@ contract VerifyMaxVault is BaseVerifyScript {
         assertEq(asset.active, true, "asset[0].active is invalid");
         assertEq(asset.index, 0, "asset[0].index is invalid");
 
-        if (contracts.YNWBNBK() != address(0x0b)) {
+        if (contracts.YNWBNBK() == address(0x0b)) {
             revert("YNWBNBK not set");
         }
 
