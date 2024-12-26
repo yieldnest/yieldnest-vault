@@ -22,6 +22,9 @@ library MainnetContracts {
     address public constant BNBX_STAKE_MANAGER = 0x3b961e83400D51e6E1AF5c450d3C7d7b80588d28;
     address public constant SLIS_BNB_STAKE_MANAGER = 0x1adB950d8bB3dA4bE104211D5AB038628e477fE6;
 
+    // max vault
+    address public constant YNBNBX = 0x41f92836F8D7a5866991686aA60e1F7c28216Ed4;
+
     // bnb vault
     address public constant YNBNBK = 0x304B5845b9114182ECb4495Be4C91a273b74B509;
     address public constant YNWBNBK = 0xA0f29c1eF5c43fD213A6cd788F72c9aBBC27e04D;
