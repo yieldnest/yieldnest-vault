@@ -30,6 +30,18 @@ contract DeployMaxVault is BaseScript {
         }
     }
 
+    function _verifySetup() public view override {
+        super._verifySetup();
+
+        if (contracts.YNWBNBK() == address(0x0b)) {
+            revert InvalidSetup();
+        }
+        if (block.chainid == 56 && contracts.YNCLISBNBK() == address(0x0c)) {
+            // YNCLISBNBK is required only on bsc mainnet
+            revert InvalidSetup();
+        }
+    }
+
     function run() public {
         vm.startBroadcast();
 
@@ -149,15 +161,14 @@ contract DeployMaxVault is BaseScript {
             setWithdrawAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
         }
 
-        if (contracts.YNWBNBK() != address(0x0b) && contracts.YNCLISBNBK() != address(0x0c)) {
+        // approval rules
+        if (block.chainid == 56) {
             address[] memory underlyingVaults = new address[](2);
             underlyingVaults[0] = contracts.YNWBNBK();
             underlyingVaults[1] = contracts.YNCLISBNBK();
             setApprovalRule(vault, contracts.WBNB(), underlyingVaults);
-        } else if (contracts.YNWBNBK() != address(0x0b)) {
+        } else if (block.chainid == 97) {
             setApprovalRule(vault, contracts.WBNB(), contracts.YNWBNBK());
-        } else if (contracts.YNCLISBNBK() != address(0x0c)) {
-            setApprovalRule(vault, contracts.WBNB(), contracts.YNCLISBNBK());
         }
 
         // wbnb

@@ -64,15 +64,13 @@ contract VerifyMaxVault is BaseVerifyScript {
             _verifyWithdrawAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
         }
 
-        if (contracts.YNWBNBK() != address(0x0b) && contracts.YNCLISBNBK() != address(0x0c)) {
+        if (block.chainid == 56) {
             address[] memory underlyingVaults = new address[](2);
             underlyingVaults[0] = contracts.YNWBNBK();
             underlyingVaults[1] = contracts.YNCLISBNBK();
             _verifyApprovalRule(vault, contracts.WBNB(), underlyingVaults);
-        } else if (contracts.YNWBNBK() != address(0x0b)) {
+        } else if (block.chainid == 97) {
             _verifyApprovalRule(vault, contracts.WBNB(), contracts.YNWBNBK());
-        } else if (contracts.YNCLISBNBK() != address(0x0c)) {
-            _verifyApprovalRule(vault, contracts.WBNB(), contracts.YNCLISBNBK());
         }
 
         _verifyWethWithdrawRule(vault, contracts.WBNB());
