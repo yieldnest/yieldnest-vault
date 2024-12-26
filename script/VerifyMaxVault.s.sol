@@ -38,6 +38,10 @@ contract VerifyMaxVault is BaseVerifyScript {
         assertEq(asset.index, 0, "asset[0].index is invalid");
 
         if (contracts.YNWBNBK() != address(0x0b)) {
+            revert("YNWBNBK not set");
+        }
+
+        {
             (bool isIncluded, uint256 index) = _checkForAsset(contracts.YNWBNBK());
             assertTrue(isIncluded, "YNWBNBK is invalid");
             assertGt(index, 0, "YNWBNBK invalid index");
@@ -53,14 +57,18 @@ contract VerifyMaxVault is BaseVerifyScript {
             _verifyWithdrawAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
         }
 
+        if (block.chainid == 56 && contracts.YNCLISBNBK() == address(0x0c)) {
+            revert("YNCLISBNBK not set");
+        }
+
         if (contracts.YNCLISBNBK() != address(0x0c)) {
             (bool isIncluded, uint256 index) = _checkForAsset(contracts.YNCLISBNBK());
             assertTrue(isIncluded, "YNCLISBNBK is invalid");
             assertGt(index, 0, "YNCLISBNBK invalid index");
 
             asset = vault.getAsset(contracts.YNCLISBNBK());
-            assertEq(asset.decimals, 18, "asset[1].decimals is invalid");
-            assertEq(asset.active, false, "asset[1].active is invalid");
+            assertEq(asset.decimals, 18, "asset[2].decimals is invalid");
+            assertEq(asset.active, false, "asset[2].active is invalid");
 
             _verifyDepositRule(vault, contracts.YNCLISBNBK());
             _verifyWithdrawRule(vault, contracts.YNCLISBNBK());
