@@ -72,7 +72,7 @@ contract DeployMaxVault is BaseScript {
 
         address admin = msg.sender;
 
-        string memory name = "YieldNest BNB Max";
+        string memory name = "ynBNB MAX";
         string memory symbol_ = "ynBNBx";
         uint8 decimals = 18;
 

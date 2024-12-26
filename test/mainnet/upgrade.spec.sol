@@ -26,7 +26,7 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
 
     function test_Vault_Upgrade_ERC20_view_functions() public view {
         // Test the name function
-        assertEq(vault.name(), "ynBNB MAX", "Vault name should be 'YieldNest BNB MAX'");
+        assertEq(vault.name(), "ynBNB MAX", "Vault name should be 'ynBNB MAX'");
 
         // Test the symbol function
         assertEq(vault.symbol(), "ynBNBx", "Vault symbol should be 'ynBNBx'");

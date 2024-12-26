@@ -20,7 +20,7 @@ contract VerifyMaxVault is BaseVerifyScript {
     function verify() public view {
         assertNotEq(address(vault), address(0), "vault is not set");
 
-        assertEq(vault.name(), "YieldNest BNB Max", "name is invalid");
+        assertEq(vault.name(), "ynBNB MAX", "name is invalid");
         assertEq(vault.symbol(), "ynBNBx", "symbol is invalid");
         assertEq(vault.decimals(), 18, "decimals is invalid");
         assertEq(vault.provider(), address(rateProvider), "provider is invalid");
