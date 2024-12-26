@@ -20,13 +20,28 @@ abstract contract BaseVerifyScript is BaseScript, Test {
         assertEq(vault.hasRole(vault.BUFFER_MANAGER_ROLE(), address(timelock)), true);
         assertEq(vault.hasRole(vault.PROCESSOR_MANAGER_ROLE(), address(timelock)), true);
 
-        assertEq(Ownable(ProxyUtils.getProxyAdmin(address(vault))).owner(), address(timelock));
-
         // verify actors roles
         assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), actors.ADMIN()), true);
         assertEq(vault.hasRole(vault.PROCESSOR_ROLE(), actors.PROCESSOR()), true);
         assertEq(vault.hasRole(vault.PAUSER_ROLE(), actors.PAUSER()), true);
         assertEq(vault.hasRole(vault.UNPAUSER_ROLE(), actors.UNPAUSER()), true);
+
+        // verify proxy roles
+        assertEq(ProxyUtils.getProxyAdmin(address(vault)), vaultProxyAdmin);
+        assertEq(Ownable(ProxyUtils.getProxyAdmin(address(vault))).owner(), address(timelock));
+
+        // verify viewer roles
+        assertEq(ProxyUtils.getProxyAdmin(address(viewer)), viewerProxyAdmin);
+        assertEq(Ownable(ProxyUtils.getProxyAdmin(address(viewer))).owner(), actors.ADMIN());
+
+        // verify timelock roles
+        assertEq(vault.hasRole(vault.FEE_MANAGER_ROLE(), address(timelock)), true);
+        assertEq(timelock.getMinDelay(), minDelay);
+        assertEq(timelock.hasRole(timelock.PROPOSER_ROLE(), actors.PROPOSER_1()), true);
+        assertEq(timelock.hasRole(timelock.PROPOSER_ROLE(), actors.PROPOSER_2()), true);
+        assertEq(timelock.hasRole(timelock.EXECUTOR_ROLE(), actors.EXECUTOR_1()), true);
+        assertEq(timelock.hasRole(timelock.EXECUTOR_ROLE(), actors.EXECUTOR_2()), true);
+        assertEq(timelock.hasRole(timelock.DEFAULT_ADMIN_ROLE(), actors.ADMIN()), true);
     }
 
     function _verifyTemporaryRoles() internal view virtual {

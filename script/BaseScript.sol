@@ -32,8 +32,11 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
     IProvider public rateProvider;
     Vault public vault;
     Vault public implementation;
+    address public vaultProxyAdmin;
+
     IVaultViewer public viewer;
     IVaultViewer public viewerImplementation;
+    address public viewerProxyAdmin;
 
     error UnsupportedChain();
     error InvalidSetup();
@@ -84,6 +87,8 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
             new TransparentUpgradeableProxy(address(viewerImplementation), actors.ADMIN(), initData);
 
         viewer = IVaultViewer(payable(address(proxy)));
+
+        viewerProxyAdmin = getProxyAdmin(address(viewer));
     }
 
     function _deployTimelockController() internal virtual {
@@ -153,9 +158,12 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
         rateProvider = IProvider(payable(address(vm.parseJsonAddress(jsonInput, ".rateProvider"))));
         viewer = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-proxy"))));
         viewerImplementation = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-implementation"))));
+        viewerProxyAdmin = address(vm.parseJsonAddress(jsonInput, ".viewer-proxyAdmin"));
+
         vault = Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxy")))));
         implementation =
             Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-implementation")))));
+        vaultProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxyAdmin")));
     }
 
     function _deploymentFilePath() internal view virtual returns (string memory) {
