@@ -126,7 +126,6 @@ contract DeployMaxVault is BaseScript {
             setWithdrawRule(vault, contracts.YNWBNBK());
             setDepositAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
             setWithdrawAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
-            setApprovalRule(vault, contracts.YNWBNBK(), contracts.WBNB());
         }
 
         // ynbnbk
@@ -139,7 +138,7 @@ contract DeployMaxVault is BaseScript {
             assets[2] = contracts.BNBX();
             setDepositAssetRule(vault, contracts.YNBNBK(), assets);
             setWithdrawAssetRule(vault, contracts.YNBNBK(), assets);
-            setApprovalRule(vault, contracts.YNBNBK(), assets);
+            // TODO: fix approval rule for ynbnbk
         }
 
         // ynclisbnbk
@@ -148,7 +147,17 @@ contract DeployMaxVault is BaseScript {
             setWithdrawRule(vault, contracts.YNCLISBNBK());
             setDepositAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
             setWithdrawAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
-            setApprovalRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
+        }
+
+        if (contracts.YNWBNBK() != address(0x0b) && contracts.YNCLISBNBK() != address(0x0c)) {
+            address[] memory underlyingVaults = new address[](2);
+            underlyingVaults[0] = contracts.YNWBNBK();
+            underlyingVaults[1] = contracts.YNCLISBNBK();
+            setApprovalRule(vault, contracts.WBNB(), underlyingVaults);
+        } else if (contracts.YNWBNBK() != address(0x0b)) {
+            setApprovalRule(vault, contracts.WBNB(), contracts.YNWBNBK());
+        } else if (contracts.YNCLISBNBK() != address(0x0c)) {
+            setApprovalRule(vault, contracts.WBNB(), contracts.YNCLISBNBK());
         }
 
         // wbnb

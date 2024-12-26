@@ -47,7 +47,6 @@ contract VerifyMaxVault is BaseVerifyScript {
             _verifyWithdrawRule(vault, contracts.YNWBNBK());
             _verifyDepositAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
             _verifyWithdrawAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
-            _verifyApprovalRule(vault, contracts.YNWBNBK(), contracts.WBNB());
         }
 
         if (contracts.YNCLISBNBK() != address(0x0c)) {
@@ -63,7 +62,17 @@ contract VerifyMaxVault is BaseVerifyScript {
             _verifyWithdrawRule(vault, contracts.YNCLISBNBK());
             _verifyDepositAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
             _verifyWithdrawAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
-            _verifyApprovalRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
+        }
+
+        if (contracts.YNWBNBK() != address(0x0b) && contracts.YNCLISBNBK() != address(0x0c)) {
+            address[] memory underlyingVaults = new address[](2);
+            underlyingVaults[0] = contracts.YNWBNBK();
+            underlyingVaults[1] = contracts.YNCLISBNBK();
+            _verifyApprovalRule(vault, contracts.WBNB(), underlyingVaults);
+        } else if (contracts.YNWBNBK() != address(0x0b)) {
+            _verifyApprovalRule(vault, contracts.WBNB(), contracts.YNWBNBK());
+        } else if (contracts.YNCLISBNBK() != address(0x0c)) {
+            _verifyApprovalRule(vault, contracts.WBNB(), contracts.YNCLISBNBK());
         }
 
         _verifyWethWithdrawRule(vault, contracts.WBNB());
