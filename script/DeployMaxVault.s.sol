@@ -107,25 +107,17 @@ contract DeployMaxVault is BaseScript {
         _configureDefaultRoles();
         _configureTemporaryRoles();
 
-        bool isEnabledYnBNBk = false;
-
         // set provider
         vault.setProvider(address(rateProvider));
 
         // add assets
         vault.addAsset(contracts.WBNB(), true);
-        if (isEnabledYnBNBk) {
-            vault.addAsset(contracts.SLISBNB(), true);
-            vault.addAsset(contracts.BNBX(), true);
-        }
 
         // TODO: confirm if these values are correct
         if (contracts.YNWBNBK() != address(0x0b)) {
             vault.addAsset(contracts.YNWBNBK(), false);
         }
-        if (isEnabledYnBNBk) {
-            vault.addAsset(contracts.YNBNBK(), true);
-        }
+
         if (contracts.YNCLISBNBK() != address(0x0c)) {
             vault.addAsset(contracts.YNCLISBNBK(), false);
         }
@@ -138,19 +130,6 @@ contract DeployMaxVault is BaseScript {
             setWithdrawRule(vault, contracts.YNWBNBK());
             setDepositAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
             setWithdrawAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
-        }
-
-        // ynbnbk
-        if (isEnabledYnBNBk) {
-            setDepositRule(vault, contracts.YNBNBK());
-            setWithdrawRule(vault, contracts.YNBNBK());
-            address[] memory assets = new address[](3);
-            assets[0] = contracts.WBNB();
-            assets[1] = contracts.SLISBNB();
-            assets[2] = contracts.BNBX();
-            setDepositAssetRule(vault, contracts.YNBNBK(), assets);
-            setWithdrawAssetRule(vault, contracts.YNBNBK(), assets);
-            // TODO: fix approval rule for ynbnbk
         }
 
         // ynclisbnbk
