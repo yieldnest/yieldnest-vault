@@ -12,6 +12,7 @@ import {ProxyAdmin} from "src/Common.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
 import {VaultUtils} from "script/VaultUtils.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 
 contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
@@ -273,5 +274,31 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         vm.stopPrank();
         // Verify upgrade was successful
         assertEq(getImplementation(address(vault)), address(newImplementation), "Implementation address should match new implementation");
+    }
+
+    function testAddRoleAndActivateAsset() public {
+        // Grant ASSET_MANAGER_ROLE to alice
+        bytes32 ASSET_MANAGER_ROLE = keccak256("ASSET_MANAGER_ROLE");
+        address alice = makeAddr("alice");
+        
+        // Grant role directly since it doesn't use timelock
+        vm.startPrank(ADMIN);
+        vault.grantRole(ASSET_MANAGER_ROLE, alice);
+        vm.stopPrank();
+
+        // Verify role was granted
+        assertTrue(vault.hasRole(ASSET_MANAGER_ROLE, alice), "Alice should have asset manager role");
+
+        vm.startPrank(alice);
+        vault.updateAsset(1, IVault.AssetUpdateFields({active: true}));
+        vm.stopPrank();
+
+        // Get asset at index 1
+        address assetAtIndex = vault.getAssets()[1];
+        
+        // Get asset params and verify active status
+        IVault.AssetParams memory params = vault.getAsset(assetAtIndex);
+        assertTrue(params.active, "Asset should be active");
+        assertEq(assetAtIndex, MainnetContracts.YNCLISBNBK, "Asset at index 1 should be ynClisBNBk");
     }
 }
