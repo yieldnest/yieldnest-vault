@@ -11,34 +11,115 @@ import {ProxyUtils} from "script/ProxyUtils.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
 
 import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 abstract contract BaseVerifyScript is BaseScript, Test {
     function _verifyDefaultRoles() internal view virtual {
         // verify timelock roles
-        assertEq(vault.hasRole(keccak256("PROVIDER_MANAGER_ROLE"), address(timelock)), true);
-        assertEq(vault.hasRole(keccak256("ASSET_MANAGER_ROLE"), address(timelock)), true);
-        assertEq(vault.hasRole(keccak256("BUFFER_MANAGER_ROLE"), address(timelock)), true);
-        assertEq(vault.hasRole(keccak256("PROCESSOR_MANAGER_ROLE"), address(timelock)), true);
+        console.log("Timelock:", address(timelock));
+        {
+            bool hasProviderRole = vault.hasRole(vault.PROVIDER_MANAGER_ROLE(), address(timelock));
+            console.log(hasProviderRole ? "\u2705" : "\u274C", "Timelock has PROVIDER_MANAGER_ROLE");
+            assertEq(hasProviderRole, true);
 
-        assertEq(Ownable(ProxyUtils.getProxyAdmin(address(vault))).owner(), address(timelock));
+            bool hasAssetRole = vault.hasRole(vault.ASSET_MANAGER_ROLE(), address(timelock));
+            console.log(hasAssetRole ? "\u2705" : "\u274C", "Timelock has ASSET_MANAGER_ROLE");
+            assertEq(hasAssetRole, true);
+
+            bool hasBufferRole = vault.hasRole(vault.BUFFER_MANAGER_ROLE(), address(timelock));
+            console.log(hasBufferRole ? "\u2705" : "\u274C", "Timelock has BUFFER_MANAGER_ROLE");
+            assertEq(hasBufferRole, true);
+
+            bool hasProcessorRole = vault.hasRole(vault.PROCESSOR_MANAGER_ROLE(), address(timelock));
+            console.log(hasProcessorRole ? "\u2705" : "\u274C", "Timelock has PROCESSOR_MANAGER_ROLE");
+            assertEq(hasProcessorRole, true);
+
+            bool hasFeeRole = vault.hasRole(vault.FEE_MANAGER_ROLE(), address(timelock));
+            console.log(hasFeeRole ? "\u2705" : "\u274C", "Timelock has FEE_MANAGER_ROLE");
+            assertEq(hasFeeRole, true);
+        }
 
         // verify actors roles
-        assertEq(vault.hasRole(keccak256("DEFAULT_ADMIN_ROLE"), actors.ADMIN()), true);
-        assertEq(vault.hasRole(keccak256("PROCESSOR_ROLE"), actors.PROCESSOR()), true);
-        assertEq(vault.hasRole(keccak256("PAUSER_ROLE"), actors.PAUSER()), true);
-        assertEq(vault.hasRole(keccak256("UNPAUSER_ROLE"), actors.UNPAUSER()), true);
+        {
+            bool hasAdminRole = vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), actors.ADMIN());
+            console.log(hasAdminRole ? "\u2705" : "\u274C", "Admin has DEFAULT_ADMIN_ROLE:", actors.ADMIN());
+            assertEq(hasAdminRole, true);
+
+            bool hasProcessorRole = vault.hasRole(vault.PROCESSOR_ROLE(), actors.PROCESSOR());
+            console.log(hasProcessorRole ? "\u2705" : "\u274C", "Processor has PROCESSOR_ROLE:", actors.PROCESSOR());
+            assertEq(hasProcessorRole, true);
+
+            bool hasPauserRole = vault.hasRole(vault.PAUSER_ROLE(), actors.PAUSER());
+            console.log(hasPauserRole ? "\u2705" : "\u274C", "Pauser has PAUSER_ROLE:", actors.PAUSER());
+            assertEq(hasPauserRole, true);
+
+            bool hasUnpauserRole = vault.hasRole(vault.UNPAUSER_ROLE(), actors.UNPAUSER());
+            console.log(hasUnpauserRole ? "\u2705" : "\u274C", "Unpauser has UNPAUSER_ROLE:", actors.UNPAUSER());
+            assertEq(hasUnpauserRole, true);
+        }
+
+        {
+            // verify proxy roles
+            bool hasVaultProxyAdmin = ProxyUtils.getProxyAdmin(address(vault)) == vaultProxyAdmin;
+            console.log(hasVaultProxyAdmin ? "\u2705" : "\u274C", "Vault proxy admin is correct:", vaultProxyAdmin);
+            assertEq(ProxyUtils.getProxyAdmin(address(vault)), vaultProxyAdmin);
+
+            bool hasTimelockOwner = Ownable(ProxyUtils.getProxyAdmin(address(vault))).owner() == address(timelock);
+            console.log(
+                hasTimelockOwner ? "\u2705" : "\u274C", "Vault proxy admin owner is timelock:", address(timelock)
+            );
+            assertEq(Ownable(ProxyUtils.getProxyAdmin(address(vault))).owner(), address(timelock));
+        }
+
+        {
+            // verify viewer roles
+            bool hasViewerProxyAdmin = ProxyUtils.getProxyAdmin(address(viewer)) == viewerProxyAdmin;
+            console.log(hasViewerProxyAdmin ? "\u2705" : "\u274C", "Viewer proxy admin is correct:", viewerProxyAdmin);
+            assertEq(ProxyUtils.getProxyAdmin(address(viewer)), viewerProxyAdmin);
+
+            bool hasAdminOwner = Ownable(ProxyUtils.getProxyAdmin(address(viewer))).owner() == actors.ADMIN();
+            console.log(hasAdminOwner ? "\u2705" : "\u274C", "Viewer proxy admin owner is admin:", actors.ADMIN());
+            assertEq(Ownable(ProxyUtils.getProxyAdmin(address(viewer))).owner(), actors.ADMIN());
+        }
+
+        {
+            // verify timelock roles
+            bool hasMinDelay = timelock.getMinDelay() == minDelay;
+            console.log(hasMinDelay ? "\u2705" : "\u274C", "Timelock min delay is correct:", minDelay);
+            assertEq(timelock.getMinDelay(), minDelay);
+
+            bool hasProposer1 = timelock.hasRole(timelock.PROPOSER_ROLE(), actors.PROPOSER_1());
+            console.log(hasProposer1 ? "\u2705" : "\u274C", "Proposer 1 has PROPOSER_ROLE:", actors.PROPOSER_1());
+            assertEq(hasProposer1, true);
+
+            bool hasProposer2 = timelock.hasRole(timelock.PROPOSER_ROLE(), actors.PROPOSER_2());
+            console.log(hasProposer2 ? "\u2705" : "\u274C", "Proposer 2 has PROPOSER_ROLE:", actors.PROPOSER_2());
+            assertEq(hasProposer2, true);
+
+            bool hasExecutor1 = timelock.hasRole(timelock.EXECUTOR_ROLE(), actors.EXECUTOR_1());
+            console.log(hasExecutor1 ? "\u2705" : "\u274C", "Executor 1 has EXECUTOR_ROLE:", actors.EXECUTOR_1());
+            assertEq(hasExecutor1, true);
+
+            bool hasExecutor2 = timelock.hasRole(timelock.EXECUTOR_ROLE(), actors.EXECUTOR_2());
+            console.log(hasExecutor2 ? "\u2705" : "\u274C", "Executor 2 has EXECUTOR_ROLE:", actors.EXECUTOR_2());
+            assertEq(hasExecutor2, true);
+
+            bool hasAdmin = timelock.hasRole(timelock.DEFAULT_ADMIN_ROLE(), actors.ADMIN());
+            console.log(hasAdmin ? "\u2705" : "\u274C", "Admin has DEFAULT_ADMIN_ROLE:", actors.ADMIN());
+            assertEq(hasAdmin, true);
+        }
     }
 
     function _verifyTemporaryRoles() internal view virtual {
-        assertEq(vault.hasRole(keccak256("PROVIDER_MANAGER_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("ASSET_MANAGER_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("BUFFER_MANAGER_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("PROCESSOR_MANAGER_ROLE"), deployer), false);
+        assertEq(vault.hasRole(vault.PROVIDER_MANAGER_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.ASSET_MANAGER_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.BUFFER_MANAGER_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.PROCESSOR_MANAGER_ROLE(), deployer), false);
 
-        assertEq(vault.hasRole(keccak256("DEFAULT_ADMIN_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("PROCESSOR_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("PAUSER_ROLE"), deployer), false);
-        assertEq(vault.hasRole(keccak256("UNPAUSER_ROLE"), deployer), false);
+        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.PROCESSOR_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.PAUSER_ROLE(), deployer), false);
+        assertEq(vault.hasRole(vault.UNPAUSER_ROLE(), deployer), false);
     }
 
     function _verifyViewer() internal view virtual {

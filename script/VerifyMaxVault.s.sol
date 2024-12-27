@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IVault} from "src/BaseVault.sol";
 import {BaseVerifyScript} from "script/BaseVerifyScript.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script VerifyMaxVault
 contract VerifyMaxVault is BaseVerifyScript {
@@ -33,39 +34,64 @@ contract VerifyMaxVault is BaseVerifyScript {
         assertEq(assets[0], contracts.WBNB(), "assets[0] is invalid");
 
         asset = vault.getAsset(contracts.WBNB());
-        assertEq(asset.decimals, 18, "asset[1].decimals is invalid");
-        assertEq(asset.active, true, "asset[1].active is invalid");
-        assertEq(asset.index, 0, "asset[1].index is invalid");
+        assertEq(asset.decimals, 18, "asset[0].decimals is invalid");
+        assertEq(asset.active, true, "asset[0].active is invalid");
+        assertEq(asset.index, 0, "asset[0].index is invalid");
 
-        if (contracts.YNWBNBK() != address(0x0b)) {
+        if (contracts.YNWBNBK() == address(0x0b)) {
+            revert("YNWBNBK not set");
+        }
+
+        {
+            console.log("Verifying YNWBNBK.");
             (bool isIncluded, uint256 index) = _checkForAsset(contracts.YNWBNBK());
             assertTrue(isIncluded, "YNWBNBK is invalid");
             assertGt(index, 0, "YNWBNBK invalid index");
             assertEq(vault.buffer(), contracts.YNWBNBK(), "incorrect buffer");
 
+            asset = vault.getAsset(contracts.YNWBNBK());
+            assertEq(asset.decimals, 18, "asset[1].decimals is invalid");
+            assertEq(asset.active, false, "asset[1].active is invalid");
+
             _verifyDepositRule(vault, contracts.YNWBNBK());
             _verifyWithdrawRule(vault, contracts.YNWBNBK());
             _verifyDepositAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
             _verifyWithdrawAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
-            _verifyApprovalRule(vault, contracts.YNWBNBK(), contracts.WBNB());
+        }
+
+        if (block.chainid == 56 && contracts.YNCLISBNBK() == address(0x0c)) {
+            revert("YNCLISBNBK not set");
         }
 
         if (contracts.YNCLISBNBK() != address(0x0c)) {
+            console.log("Verifying YNCLISBNBK.");
+
             (bool isIncluded, uint256 index) = _checkForAsset(contracts.YNCLISBNBK());
             assertTrue(isIncluded, "YNCLISBNBK is invalid");
             assertGt(index, 0, "YNCLISBNBK invalid index");
 
             asset = vault.getAsset(contracts.YNCLISBNBK());
-            assertEq(asset.decimals, 18, "asset[1].decimals is invalid");
-            assertEq(asset.active, true, "asset[1].active is invalid");
+            assertEq(asset.decimals, 18, "asset[2].decimals is invalid");
+            assertEq(asset.active, false, "asset[2].active is invalid");
 
             _verifyDepositRule(vault, contracts.YNCLISBNBK());
             _verifyWithdrawRule(vault, contracts.YNCLISBNBK());
             _verifyDepositAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
             _verifyWithdrawAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
-            _verifyApprovalRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
         }
 
+        if (block.chainid == 56) {
+            console.log("Verifying approval rules for mainnet - WBNB approvals to YNWBNBK and YNCLISBNBK.");
+            address[] memory underlyingVaults = new address[](2);
+            underlyingVaults[0] = contracts.YNWBNBK();
+            underlyingVaults[1] = contracts.YNCLISBNBK();
+            _verifyApprovalRule(vault, contracts.WBNB(), underlyingVaults);
+        } else if (block.chainid == 97) {
+            console.log("Verifying approval rules for testnet - WBNB approvals to YNWBNBK.");
+            _verifyApprovalRule(vault, contracts.WBNB(), contracts.YNWBNBK());
+        }
+
+        console.log("Verifying WBNB deposit and withdraw rules.");
         _verifyWethWithdrawRule(vault, contracts.WBNB());
         _verifyWethDepositRule(vault, contracts.WBNB());
 

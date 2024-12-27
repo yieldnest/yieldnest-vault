@@ -30,6 +30,18 @@ contract DeployMaxVault is BaseScript {
         }
     }
 
+    function _verifySetup() public view override {
+        super._verifySetup();
+
+        if (contracts.YNWBNBK() == address(0x0b)) {
+            revert InvalidSetup();
+        }
+        if (block.chainid == 56 && contracts.YNCLISBNBK() == address(0x0c)) {
+            // YNCLISBNBK is required only on bsc mainnet
+            revert InvalidSetup();
+        }
+    }
+
     function run() public {
         vm.startBroadcast();
 
@@ -95,25 +107,17 @@ contract DeployMaxVault is BaseScript {
         _configureDefaultRoles();
         _configureTemporaryRoles();
 
-        bool isEnabledYnBNBk = false;
-
         // set provider
         vault.setProvider(address(rateProvider));
 
         // add assets
         vault.addAsset(contracts.WBNB(), true);
-        if (isEnabledYnBNBk) {
-            vault.addAsset(contracts.SLISBNB(), true);
-            vault.addAsset(contracts.BNBX(), true);
-        }
 
         // TODO: confirm if these values are correct
         if (contracts.YNWBNBK() != address(0x0b)) {
             vault.addAsset(contracts.YNWBNBK(), false);
         }
-        if (isEnabledYnBNBk) {
-            vault.addAsset(contracts.YNBNBK(), true);
-        }
+
         if (contracts.YNCLISBNBK() != address(0x0c)) {
             vault.addAsset(contracts.YNCLISBNBK(), false);
         }
@@ -126,20 +130,6 @@ contract DeployMaxVault is BaseScript {
             setWithdrawRule(vault, contracts.YNWBNBK());
             setDepositAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
             setWithdrawAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
-            setApprovalRule(vault, contracts.YNWBNBK(), contracts.WBNB());
-        }
-
-        // ynbnbk
-        if (isEnabledYnBNBk) {
-            setDepositRule(vault, contracts.YNBNBK());
-            setWithdrawRule(vault, contracts.YNBNBK());
-            address[] memory assets = new address[](3);
-            assets[0] = contracts.WBNB();
-            assets[1] = contracts.SLISBNB();
-            assets[2] = contracts.BNBX();
-            setDepositAssetRule(vault, contracts.YNBNBK(), assets);
-            setWithdrawAssetRule(vault, contracts.YNBNBK(), assets);
-            setApprovalRule(vault, contracts.YNBNBK(), assets);
         }
 
         // ynclisbnbk
@@ -148,7 +138,16 @@ contract DeployMaxVault is BaseScript {
             setWithdrawRule(vault, contracts.YNCLISBNBK());
             setDepositAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
             setWithdrawAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
-            setApprovalRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
+        }
+
+        // approval rules
+        if (block.chainid == 56) {
+            address[] memory underlyingVaults = new address[](2);
+            underlyingVaults[0] = contracts.YNWBNBK();
+            underlyingVaults[1] = contracts.YNCLISBNBK();
+            setApprovalRule(vault, contracts.WBNB(), underlyingVaults);
+        } else if (block.chainid == 97) {
+            setApprovalRule(vault, contracts.WBNB(), contracts.YNWBNBK());
         }
 
         // wbnb

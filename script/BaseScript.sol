@@ -32,8 +32,11 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
     IProvider public rateProvider;
     Vault public vault;
     Vault public implementation;
+    address public vaultProxyAdmin;
+
     IVaultViewer public viewer;
     IVaultViewer public viewerImplementation;
+    address public viewerProxyAdmin;
 
     error UnsupportedChain();
     error InvalidSetup();
@@ -84,6 +87,8 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
             new TransparentUpgradeableProxy(address(viewerImplementation), actors.ADMIN(), initData);
 
         viewer = IVaultViewer(payable(address(proxy)));
+
+        viewerProxyAdmin = getProxyAdmin(address(viewer));
     }
 
     function _deployTimelockController() internal virtual {
@@ -106,40 +111,40 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
         }
 
         // set admin roles
-        vault.grantRole(keccak256("DEFAULT_ADMIN_ROLE"), actors.ADMIN());
-        vault.grantRole(keccak256("PROCESSOR_ROLE"), actors.PROCESSOR());
-        vault.grantRole(keccak256("PAUSER_ROLE"), actors.PAUSER());
-        vault.grantRole(keccak256("UNPAUSER_ROLE"), actors.UNPAUSER());
+        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), actors.ADMIN());
+        vault.grantRole(vault.PROCESSOR_ROLE(), actors.PROCESSOR());
+        vault.grantRole(vault.PAUSER_ROLE(), actors.PAUSER());
+        vault.grantRole(vault.UNPAUSER_ROLE(), actors.UNPAUSER());
 
         // set timelock roles
-        vault.grantRole(keccak256("FEE_MANAGER_ROLE"), address(timelock));
-        vault.grantRole(keccak256("PROVIDER_MANAGER_ROLE"), address(timelock));
-        vault.grantRole(keccak256("ASSET_MANAGER_ROLE"), address(timelock));
-        vault.grantRole(keccak256("BUFFER_MANAGER_ROLE"), address(timelock));
-        vault.grantRole(keccak256("PROCESSOR_MANAGER_ROLE"), address(timelock));
+        vault.grantRole(vault.FEE_MANAGER_ROLE(), address(timelock));
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), address(timelock));
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(timelock));
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), address(timelock));
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(timelock));
     }
 
     function _configureTemporaryRoles() internal virtual {
         if (address(vault) == address(0)) {
             revert InvalidSetup();
         }
-        vault.grantRole(keccak256("PROCESSOR_MANAGER_ROLE"), msg.sender);
-        vault.grantRole(keccak256("BUFFER_MANAGER_ROLE"), msg.sender);
-        vault.grantRole(keccak256("PROVIDER_MANAGER_ROLE"), msg.sender);
-        vault.grantRole(keccak256("ASSET_MANAGER_ROLE"), msg.sender);
-        vault.grantRole(keccak256("UNPAUSER_ROLE"), msg.sender);
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), msg.sender);
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), msg.sender);
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), msg.sender);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), msg.sender);
+        vault.grantRole(vault.UNPAUSER_ROLE(), msg.sender);
     }
 
     function _renounceTemporaryRoles() internal virtual {
         if (address(vault) == address(0)) {
             revert InvalidSetup();
         }
-        vault.renounceRole(keccak256("DEFAULT_ADMIN_ROLE"), msg.sender);
-        vault.renounceRole(keccak256("PROCESSOR_MANAGER_ROLE"), msg.sender);
-        vault.renounceRole(keccak256("BUFFER_MANAGER_ROLE"), msg.sender);
-        vault.renounceRole(keccak256("PROVIDER_MANAGER_ROLE"), msg.sender);
-        vault.renounceRole(keccak256("ASSET_MANAGER_ROLE"), msg.sender);
-        vault.renounceRole(keccak256("UNPAUSER_ROLE"), msg.sender);
+        vault.renounceRole(vault.DEFAULT_ADMIN_ROLE(), msg.sender);
+        vault.renounceRole(vault.PROCESSOR_MANAGER_ROLE(), msg.sender);
+        vault.renounceRole(vault.BUFFER_MANAGER_ROLE(), msg.sender);
+        vault.renounceRole(vault.PROVIDER_MANAGER_ROLE(), msg.sender);
+        vault.renounceRole(vault.ASSET_MANAGER_ROLE(), msg.sender);
+        vault.renounceRole(vault.UNPAUSER_ROLE(), msg.sender);
     }
 
     function _loadDeployment() internal virtual {
@@ -153,9 +158,12 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
         rateProvider = IProvider(payable(address(vm.parseJsonAddress(jsonInput, ".rateProvider"))));
         viewer = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-proxy"))));
         viewerImplementation = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-implementation"))));
+        viewerProxyAdmin = address(vm.parseJsonAddress(jsonInput, ".viewer-proxyAdmin"));
+
         vault = Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxy")))));
         implementation =
             Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-implementation")))));
+        vaultProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxyAdmin")));
     }
 
     function _deploymentFilePath() internal view virtual returns (string memory) {
