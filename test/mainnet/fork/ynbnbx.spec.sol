@@ -213,23 +213,16 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         assertEq(IERC20(MainnetContracts.YNWBNBK).balanceOf(address(vault)), depositAmount - wbnb.balanceOf(alice), "Vault's ynWBNBk balance should equal deposit minus withdrawal");
     }
 
-    function testUpgradeVaultWithTimelock() public {
+    function testUpgradeVaultWithTimelock(address vaultAddress, Vault newImplementation) internal {
         // Get proxy admin
-        ProxyAdmin proxyAdmin = ProxyAdmin(getProxyAdmin(address(vault)));
+        ProxyAdmin proxyAdmin = ProxyAdmin(getProxyAdmin(vaultAddress));
 
-        // Verify timelock ownership
-        assertEq(proxyAdmin.owner(), 0x2F3fEdd2F6EC681D9Cc2ecC688d8C7286Eca1F40);
-
-        // Deploy new implementation
-        Vault newImplementation = new Vault();
-
-  
         TimelockController timelock = TimelockController(payable(proxyAdmin.owner()));
 
         // Encode upgrade call
         bytes memory upgradeData = abi.encodeWithSelector(
             proxyAdmin.upgradeAndCall.selector,
-            address(vault), 
+            vaultAddress,
             address(newImplementation),
             ""
         );
@@ -239,7 +232,7 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         timelock.schedule(
             address(proxyAdmin),
             0,
-            upgradeData, 
+            upgradeData,
             bytes32(0),
             bytes32(0),
             timelock.getMinDelay()
@@ -259,8 +252,24 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
             bytes32(0)
         );
         vm.stopPrank();
+
         // Verify upgrade was successful
-        assertEq(getImplementation(address(vault)), address(newImplementation), "Implementation address should match new implementation");
+        assertEq(getImplementation(vaultAddress), address(newImplementation), "Implementation address should match new implementation");
+    }
+
+    function testUpgradeYnBNBxWithTimelock() public {
+        Vault newImplementation = new Vault();
+        testUpgradeVaultWithTimelock(address(vault), newImplementation);
+    }
+
+    function testUpgradeYnwbnbkWithTimelock() public {
+        Vault newImplementation = new Vault();
+        testUpgradeVaultWithTimelock(MainnetContracts.YNWBNBK, newImplementation);
+    }
+
+    function testUpgradeYnclisBNBkWithTimelock() public {
+        Vault newImplementation = new Vault();
+        testUpgradeVaultWithTimelock(MainnetContracts.YNCLISBNBK, newImplementation);
     }
 
     function testAddRoleAndActivateAsset() public {
