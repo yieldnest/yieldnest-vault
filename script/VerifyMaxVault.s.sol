@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {IVault} from "src/BaseVault.sol";
 import {BaseVerifyScript} from "script/BaseVerifyScript.sol";
 import {console} from "lib/forge-std/src/console.sol";
+import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script VerifyMaxVault
 contract VerifyMaxVault is BaseVerifyScript {
@@ -99,7 +100,12 @@ contract VerifyMaxVault is BaseVerifyScript {
 
         _verifyDefaultRoles();
         _verifyTemporaryRoles();
+
+        console.log("Verifying viewer.");
         _verifyViewer();
+        assertTrue(
+            MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WBNB()), "WBNB is not an underlying asset"
+        );
     }
 
     function _checkForAsset(address asset) internal view returns (bool isIncluded, uint256 index) {
