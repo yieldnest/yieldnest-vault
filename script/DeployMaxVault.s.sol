@@ -76,7 +76,14 @@ contract DeployMaxVault is BaseScript {
 
         maxVaultViewer.grantRole(maxVaultViewer.UPDATER_ROLE(), actors.UPDATER());
         maxVaultViewer.grantRole(maxVaultViewer.DEFAULT_ADMIN_ROLE(), actors.ADMIN());
+
+        maxVaultViewer.grantRole(maxVaultViewer.UPDATER_ROLE(), msg.sender);
+        address[] memory underlyingAssets = new address[](1);
+        underlyingAssets[0] = contracts.WBNB();
+        maxVaultViewer.addUnderlyingAssets(underlyingAssets);
+
         maxVaultViewer.renounceRole(maxVaultViewer.DEFAULT_ADMIN_ROLE(), msg.sender);
+        maxVaultViewer.renounceRole(maxVaultViewer.UPDATER_ROLE(), msg.sender);
     }
 
     function deploy() internal {

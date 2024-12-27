@@ -55,10 +55,12 @@ contract TestnetActors is IActors {
 contract MainnetActors is IActors {
     // solhint-disable-next-line const-name-snakecase
     address public constant YnSecurityCouncil = 0x721688652DEa9Cabec70BD99411EAEAB9485d436;
+    address public constant YNProcessor = 0x258d7614d9c608D191A8a103f95B7Df066a19bbF;
+    address public constant YnDev = 0x7B4B43f00cf80AABda8F72d61b129F1e7F86fCaF;
 
     address public constant ADMIN = YnSecurityCouncil;
     address public constant UNAUTHORIZED = address(0);
-    address public constant PROCESSOR = 0x258d7614d9c608D191A8a103f95B7Df066a19bbF;
+    address public constant PROCESSOR = YNProcessor;
     address public constant EXECUTOR_1 = YnSecurityCouncil;
     address public constant PROPOSER_1 = YnSecurityCouncil;
     address public constant EXECUTOR_2 = YnSecurityCouncil;
@@ -69,7 +71,7 @@ contract MainnetActors is IActors {
     address public constant BUFFER_MANAGER = YnSecurityCouncil;
     address public constant ASSET_MANAGER = YnSecurityCouncil;
     address public constant PROCESSOR_MANAGER = YnSecurityCouncil;
-    address public constant PAUSER = 0x7B4B43f00cf80AABda8F72d61b129F1e7F86fCaF;
+    address public constant PAUSER = YnDev;
     address public constant UNPAUSER = YnSecurityCouncil;
-    address public constant UPDATER = YnSecurityCouncil;
+    address public constant UPDATER = YnDev;
 }
