@@ -24,11 +24,11 @@ library MainnetContracts {
 
     // bnb vault
     address public constant YNBNBK = 0x304B5845b9114182ECb4495Be4C91a273b74B509;
-    address public constant YNWBNBK = address(0x0b); // TODO: update with deployed address
-    address public constant YNCLISBNBK = address(0x0c); // TODO: update with deployed address
+    address public constant YNWBNBK = 0x6EC6b7F106674d6D82b7b24446C7ebaf349d59A1;
+    address public constant YNCLISBNBK = 0x03276919F8b6eE37BA8EE4ee68a1c5f48b667834;
 
     address public constant PROVIDER = address(0x0d); // TODO: Update with deployed Provider
-    address public constant BUFFER = address(0x0b); // TODO: Update with deployed Buffer
+    address public constant BUFFER = 0x6EC6b7F106674d6D82b7b24446C7ebaf349d59A1;
 
     //// UNIT TEST ONLY references ////
     address public constant WETH = WBNB;
