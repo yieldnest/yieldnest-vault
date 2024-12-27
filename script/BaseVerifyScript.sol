@@ -33,10 +33,6 @@ abstract contract BaseVerifyScript is BaseScript, Test {
             bool hasProcessorRole = vault.hasRole(vault.PROCESSOR_MANAGER_ROLE(), address(timelock));
             console.log(hasProcessorRole ? "\u2705" : "\u274C", "Timelock has PROCESSOR_MANAGER_ROLE");
             assertEq(hasProcessorRole, true);
-
-            bool hasFeeRole = vault.hasRole(vault.FEE_MANAGER_ROLE(), address(timelock));
-            console.log(hasFeeRole ? "\u2705" : "\u274C", "Timelock has FEE_MANAGER_ROLE");
-            assertEq(hasFeeRole, true);
         }
 
         // verify actors roles
@@ -56,6 +52,10 @@ abstract contract BaseVerifyScript is BaseScript, Test {
             bool hasUnpauserRole = vault.hasRole(vault.UNPAUSER_ROLE(), actors.UNPAUSER());
             console.log(hasUnpauserRole ? "\u2705" : "\u274C", "Unpauser has UNPAUSER_ROLE:", actors.UNPAUSER());
             assertEq(hasUnpauserRole, true);
+
+            bool hasFeeRole = vault.hasRole(vault.FEE_MANAGER_ROLE(), actors.FEE_MANAGER());
+            console.log(hasFeeRole ? "\u2705" : "\u274C", "Fee Manager has FEE_MANAGER_ROLE:", actors.FEE_MANAGER());
+            assertEq(hasFeeRole, true);
         }
 
         {

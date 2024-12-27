@@ -11,8 +11,6 @@ interface IActors {
     function EXECUTOR_2() external view returns (address);
 
     /// @dev timelock
-    function FEE_MANAGER() external view returns (address);
-    /// @dev timelock
     function PROVIDER_MANAGER() external view returns (address);
     /// @dev timelock
     function BUFFER_MANAGER() external view returns (address);
@@ -28,6 +26,8 @@ interface IActors {
     function PROCESSOR() external view returns (address);
     /// @dev multisig
     function UPDATER() external view returns (address);
+    /// @dev multisig
+    function FEE_MANAGER() external view returns (address);
 }
 
 contract TestnetActors is IActors {
