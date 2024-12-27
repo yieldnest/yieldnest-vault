@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IVault} from "src/BaseVault.sol";
 import {BaseVerifyScript} from "script/BaseVerifyScript.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script VerifyMaxVault
 contract VerifyMaxVault is BaseVerifyScript {
@@ -42,6 +43,7 @@ contract VerifyMaxVault is BaseVerifyScript {
         }
 
         {
+            console.log("Verifying YNWBNBK.");
             (bool isIncluded, uint256 index) = _checkForAsset(contracts.YNWBNBK());
             assertTrue(isIncluded, "YNWBNBK is invalid");
             assertGt(index, 0, "YNWBNBK invalid index");
@@ -62,6 +64,8 @@ contract VerifyMaxVault is BaseVerifyScript {
         }
 
         if (contracts.YNCLISBNBK() != address(0x0c)) {
+            console.log("Verifying YNCLISBNBK.");
+
             (bool isIncluded, uint256 index) = _checkForAsset(contracts.YNCLISBNBK());
             assertTrue(isIncluded, "YNCLISBNBK is invalid");
             assertGt(index, 0, "YNCLISBNBK invalid index");
@@ -77,14 +81,17 @@ contract VerifyMaxVault is BaseVerifyScript {
         }
 
         if (block.chainid == 56) {
+            console.log("Verifying approval rules for mainnet - WBNB approvals to YNWBNBK and YNCLISBNBK.");
             address[] memory underlyingVaults = new address[](2);
             underlyingVaults[0] = contracts.YNWBNBK();
             underlyingVaults[1] = contracts.YNCLISBNBK();
             _verifyApprovalRule(vault, contracts.WBNB(), underlyingVaults);
         } else if (block.chainid == 97) {
+            console.log("Verifying approval rules for testnet - WBNB approvals to YNWBNBK.");
             _verifyApprovalRule(vault, contracts.WBNB(), contracts.YNWBNBK());
         }
 
+        console.log("Verifying WBNB deposit and withdraw rules.");
         _verifyWethWithdrawRule(vault, contracts.WBNB());
         _verifyWethDepositRule(vault, contracts.WBNB());
 
