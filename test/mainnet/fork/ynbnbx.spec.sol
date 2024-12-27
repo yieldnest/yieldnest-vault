@@ -227,6 +227,8 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
             ""
         );
 
+        uint256 delay = 86400;
+
         // Schedule upgrade
         vm.startPrank(ADMIN);
         timelock.schedule(
@@ -235,12 +237,12 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
             upgradeData,
             bytes32(0),
             bytes32(0),
-            timelock.getMinDelay()
+            delay
         );
         vm.stopPrank();
 
         // Wait for timelock delay
-        vm.warp(block.timestamp + timelock.getMinDelay());
+        vm.warp(block.timestamp + delay);
 
         // Execute upgrade
         vm.startPrank(ADMIN);
