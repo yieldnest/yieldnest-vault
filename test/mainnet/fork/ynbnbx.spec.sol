@@ -13,6 +13,8 @@ import {ProxyUtils} from "script/ProxyUtils.sol";
 import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
 import {VaultUtils} from "script/VaultUtils.sol";
 import {IVault} from "src/interface/IVault.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+
 
 
 contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
@@ -369,5 +371,159 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         IERC20(MainnetContracts.YNCLISBNBK).transfer(address(0), depositAmount);
 
         vm.stopPrank();
+    }
+
+    function testDonateToVault() public {
+        address alice = makeAddr("alice");
+        uint256 depositAmount = 100 ether;
+        uint256 donationAmount = 10 ether;
+
+        // Give alice some WBNB
+        deal(address(wbnb), alice, depositAmount);
+
+        vm.startPrank(alice);
+
+        // Approve and deposit WBNB
+        wbnb.approve(address(vault), depositAmount);
+        vault.deposit(depositAmount, alice);
+
+        vm.stopPrank();
+
+        // Record balances before donation
+        uint256 vaultAssetsBefore = vault.totalAssets();
+        uint256 vaultSharesBefore = vault.totalSupply();
+        uint256 aliceSharesBefore = vault.balanceOf(alice);
+
+
+        // Create bob and give him BNB
+        address bob = makeAddr("bob");
+        vm.deal(bob, donationAmount);
+
+        // Switch to bob to donate
+        vm.startPrank(bob);
+
+        // Donate native BNB to vault
+        (bool success,) = address(vault).call{value: donationAmount}("");
+        require(success, "BNB donation failed");
+
+        vm.stopPrank();
+
+        // Verify donation increased total assets but not shares
+        assertEq(vault.totalAssets(), vaultAssetsBefore + donationAmount, "Total assets should increase by donation");
+        assertEq(vault.totalSupply(), vaultSharesBefore, "Total supply should remain unchanged");
+        assertEq(vault.balanceOf(alice), aliceSharesBefore, "Alice's shares should remain unchanged");
+
+        // Verify rate increased due to donation
+        uint256 newRate = vault.convertToAssets(1e18);
+        uint256 expectedRate = ((vaultAssetsBefore + donationAmount) * 1e18) / vaultSharesBefore;
+        assertApproxEqAbs(newRate, expectedRate, 1, "New rate should reflect donation");
+    }
+
+    function testDonateToBuffer() public {
+        address alice = makeAddr("alice");
+        uint256 depositAmount = 100 ether;
+        uint256 bufferAmount = depositAmount / 10; // 10% to buffer
+        uint256 investAmount = depositAmount / 5;
+        uint256 donationAmount = 1 ether;
+
+        // Give alice some WBNB
+        deal(address(wbnb), alice, depositAmount);
+
+        vm.startPrank(alice);
+
+        // Approve and deposit WBNB
+        wbnb.approve(address(vault), depositAmount);
+        vault.deposit(depositAmount, alice);
+
+        vm.stopPrank();
+
+        { 
+            // Store initial state
+            uint256 totalAssetsBefore = vault.totalAssets();
+            uint256 totalSupplyBefore = vault.totalSupply();
+
+            _processorDepositToERC4626(MainnetContracts.YNWBNBK, bufferAmount);
+
+            // Verify total assets unchanged
+            assertEq(vault.totalAssets(), totalAssetsBefore, "Total assets should remain unchanged");
+            // Verify total supply unchanged
+            assertEq(vault.totalSupply(), totalSupplyBefore, "Total supply should remain unchanged");
+        }
+
+        {
+            // Store initial state
+            uint256 totalAssetsBefore = vault.totalAssets();
+            uint256 totalSupplyBefore = vault.totalSupply();
+
+            _processorDepositToERC4626(MainnetContracts.YNCLISBNBK, investAmount);
+
+            // Verify total assets unchanged
+            assertEq(vault.totalAssets(), totalAssetsBefore, "Total assets should remain unchanged");
+            // Verify total supply unchanged 
+            assertEq(vault.totalSupply(), totalSupplyBefore, "Total supply should remain unchanged");
+        }
+
+        // Record state before donation
+        uint256 bufferBefore = IERC4626(vault.buffer()).totalAssets();
+        uint256 vaultAssetsBefore = vault.totalAssets();
+        uint256 vaultSharesBefore = vault.totalSupply();
+
+        // Create bob and give him BNB for donation
+        address bob = makeAddr("bob");
+        vm.deal(bob, donationAmount);
+
+        // Bob donates directly to buffer
+        vm.startPrank(bob);
+        (bool success,) = address(vault.buffer()).call{value: donationAmount}("");
+        require(success, "BNB donation failed");
+        vm.stopPrank();
+
+        // Verify buffer increased by donation
+        assertEq(IERC4626(vault.buffer()).totalAssets(), bufferBefore + donationAmount, "Buffer should increase by donation");
+        
+        // Verify total assets increased but shares unchanged
+        assertApproxEqAbs(vault.totalAssets(), vaultAssetsBefore + donationAmount, 10, "Total assets should increase");
+        assertEq(vault.totalSupply(), vaultSharesBefore, "Total supply should remain unchanged");
+
+        // Verify rate increased due to donation
+        uint256 newRate = vault.convertToAssets(1e18);
+        uint256 expectedRate = ((vaultAssetsBefore + donationAmount) * 1e18) / vaultSharesBefore;
+        assertApproxEqAbs(newRate, expectedRate, 1, "New rate should reflect donation");
+    }
+
+    function _processorDepositToERC4626(
+        address erc4626Token,
+        uint256 depositAmount
+    ) public {
+        // Create approval calldata for the ERC4626 token
+        bytes memory approveCalldata = abi.encodeWithSignature(
+            "approve(address,uint256)",
+            erc4626Token,
+            depositAmount
+        );
+
+        // Create deposit calldata
+        bytes memory depositCalldata = abi.encodeWithSignature(
+            "deposit(uint256,address)",
+            depositAmount,
+            address(vault)
+        );
+
+        // Set up arrays for processor call
+        address[] memory targets = new address[](2);
+        targets[0] = IERC4626(erc4626Token).asset();
+        targets[1] = erc4626Token;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = approveCalldata;
+        data[1] = depositCalldata;
+
+        // Process transactions through processor
+        vm.prank(PROCESSOR);
+        vault.processor(targets, values, data);
     }
 }
