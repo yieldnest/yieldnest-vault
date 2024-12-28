@@ -14,6 +14,8 @@ import {TimelockController} from "lib/openzeppelin-contracts/contracts/governanc
 import {VaultUtils} from "script/VaultUtils.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import {Vault} from "src/Vault.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 
 
 
@@ -439,6 +441,82 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         uint256 newRate = vault.convertToAssets(1e18);
         uint256 expectedRate = ((vaultAssetsBefore + donationAmount) * 1e18) / vaultSharesBefore;
         assertApproxEqAbs(newRate, expectedRate, 1, "New rate should reflect donation");
+    }
+
+    function testDonateToBufferAndWithdraw() public {
+        address alice = address(0xABCD);
+        uint256 depositAmount = 1 ether;
+
+
+        // Initial deposit from alice
+        deal(address(wbnb), alice, depositAmount);
+        vm.startPrank(alice);
+        wbnb.approve(address(vault), depositAmount);
+        vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        // Store initial state
+        uint256 initialTotalAssets = vault.totalAssets();
+        uint256 initialTotalSupply = vault.totalSupply();
+        uint256 initialAliceShares = vault.balanceOf(alice);
+
+
+        // Bob donates directly to buffer
+        Vault buffer = Vault(payable(vault.buffer()));
+
+
+        {
+            // Create charlie and grant ALLOCATOR_ROLE on buffer
+            address charlie = makeAddr("charlie");
+
+            vm.prank(ADMIN);
+            buffer.grantRole(keccak256("ALLOCATOR_ROLE"), charlie);
+
+            // Charlie deposits WBNB to buffer
+            uint256 charlieAmount = 1 ether;
+            // Give charlie some native BNB
+            vm.deal(charlie, charlieAmount);
+
+            vm.startPrank(charlie);
+            deal(address(wbnb), charlie, charlieAmount);
+            wbnb.approve(address(buffer), charlieAmount);
+            buffer.deposit(charlieAmount, charlie);
+            vm.stopPrank();
+        }
+
+        uint256 bufferTotalAssetsBefore = buffer.totalAssets();
+
+        uint256 donationAmount = 200_000_000 ether;   
+        {
+
+            // Create bob and give him BNB for donation
+            address bob = makeAddr("bob");
+            vm.deal(bob, donationAmount);
+            vm.startPrank(bob);
+            (bool success,) = address(buffer).call{value: donationAmount}("");
+            require(success, "BNB donation failed");
+            vm.stopPrank();
+        }
+
+        // Get YNWBNBk vault and print totals
+        Vault ynwbnbk = Vault(payable(MainnetContracts.YNWBNBK));
+        console.log("YNWBNBk totalAssets:", ynwbnbk.totalAssets());
+        console.log("YNWBNBk totalSupply:", ynwbnbk.totalSupply());
+
+        // Get rate from provider for YNWBNBk
+        uint256 rate = IProvider(vault.provider()).getRate(MainnetContracts.YNWBNBK);
+        console.log("YNWBNBk rate:", rate);
+
+        // Verify buffer total assets increased by donation
+        assertEq(buffer.totalAssets(), bufferTotalAssetsBefore + donationAmount, "Buffer total assets should increase by donation amount");
+
+        // Process deposit to buffer
+        _processorDepositToERC4626(MainnetContracts.YNWBNBK, depositAmount);
+
+        // assets do not increase by donation since vault allocated to vault before
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e9, "Total assets should not increase by donation");
+        assertEq(vault.totalSupply(), initialTotalSupply, "Total supply should remain unchanged");
+        
     }
 
     function _processorDepositToERC4626(
