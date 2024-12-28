@@ -1,6 +1,6 @@
 ## YieldNest Max Vault
 
-The Max Vault serves as the deposit vault vault to manage Ethereum-based tokenized DeFi and Restaking strategies. It adheres to the ERC4626 standard, offering a robust and flexible vault for deposits, withdrawals, and asset management. It extends the 4626 interfaces by allows for multiple assets to be added for deposit and allocation to strategies.
+The Max Vault serves as the deposit vault to manage Ethereum-based tokenized DeFi and Restaking strategies. It adheres to the ERC4626 standard, offering a robust and flexible vault for deposits, withdrawals, and asset management. It extends the 4626 interfaces by allowing multiple assets to be added for deposit and allocation to strategies.
 
 ### Docs
 
