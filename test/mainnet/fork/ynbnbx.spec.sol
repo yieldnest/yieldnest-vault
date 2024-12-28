@@ -65,40 +65,12 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         assertEq(wbnb.balanceOf(address(vault)), vaultWBNBBefore + depositAmount, "Vault WBNB balance should increase by deposit");
 
 
-        // Create approval calldata
-        bytes memory approveCalldata = abi.encodeWithSignature(
-            "approve(address,uint256)",
-            MainnetContracts.YNCLISBNBK,
-            depositAmount
-        );
-
-        // Create deposit calldata
-        bytes memory depositCalldata = abi.encodeWithSignature(
-            "deposit(uint256,address)",
-            depositAmount,
-            address(vault)
-        );
-
         {
-            // Set up arrays for processor call
-            address[] memory targets = new address[](2);
-            targets[0] = MainnetContracts.WBNB;
-            targets[1] = MainnetContracts.YNCLISBNBK;
-
-            uint256[] memory values = new uint256[](2);
-            values[0] = 0;
-            values[1] = 0;
-
-            bytes[] memory data = new bytes[](2);
-            data[0] = approveCalldata;
-            data[1] = depositCalldata;
             // Store initial state
             uint256 totalAssetsBefore = vault.totalAssets();
             uint256 totalSupplyBefore = vault.totalSupply();
 
-            // Process transactions through processor
-            vm.prank(PROCESSOR);
-            vault.processor(targets, values, data);
+            _processorDepositToERC4626(MainnetContracts.YNCLISBNBK, depositAmount);
 
             // Verify WBNB was transferred to clisBNB
             assertEq(wbnb.balanceOf(address(vault)), vaultWBNBBefore, "Vault should have vaultWBNBBefore WBNB after deposit");
@@ -169,40 +141,12 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
             assertEq(wbnb.balanceOf(address(vault)), initialWBNBBalance + depositAmount, "Vault should have WBNB balance");
         }
 
-        // Create approval calldata for buffer
-        bytes memory approveCalldata = abi.encodeWithSignature(
-            "approve(address,uint256)",
-            MainnetContracts.YNWBNBK,
-            depositAmount
-        );
-
-        // Create deposit calldata for buffer
-        bytes memory depositCalldata = abi.encodeWithSignature(
-            "deposit(uint256,address)",
-            depositAmount,
-            address(vault)
-        );
-
-        // Set up arrays for processor call to deposit to buffer
-        address[] memory targets = new address[](2);
-        targets[0] = MainnetContracts.WBNB;
-        targets[1] = MainnetContracts.YNWBNBK;
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = approveCalldata;
-        data[1] = depositCalldata;
-
         // Store state before buffer allocation
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 totalSupplyBefore = vault.totalSupply();
 
         // Process deposit to buffer
-        vm.prank(PROCESSOR);
-        vault.processor(targets, values, data);
+        _processorDepositToERC4626(MainnetContracts.YNWBNBK, depositAmount);
 
         // Verify WBNB was transferred to buffer
         assertEq(wbnb.balanceOf(address(vault)), initialWBNBBalance, "Vault should have initial WBNB balance after buffer deposit");
