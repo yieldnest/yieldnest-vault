@@ -22,13 +22,16 @@ library MainnetContracts {
     address public constant BNBX_STAKE_MANAGER = 0x3b961e83400D51e6E1AF5c450d3C7d7b80588d28;
     address public constant SLIS_BNB_STAKE_MANAGER = 0x1adB950d8bB3dA4bE104211D5AB038628e477fE6;
 
+    // max vault
+    address public constant YNBNBX = 0x32C830f5c34122C6afB8aE87ABA541B7900a2C5F;
+
     // bnb vault
     address public constant YNBNBK = 0x304B5845b9114182ECb4495Be4C91a273b74B509;
-    address public constant YNWBNBK = address(0x0b); // TODO: update with deployed address
-    address public constant YNCLISBNBK = address(0x0c); // TODO: update with deployed address
+    address public constant YNWBNBK = 0x6EC6b7F106674d6D82b7b24446C7ebaf349d59A1;
+    address public constant YNCLISBNBK = 0x03276919F8b6eE37BA8EE4ee68a1c5f48b667834;
 
     address public constant PROVIDER = address(0x0d); // TODO: Update with deployed Provider
-    address public constant BUFFER = address(0x0b); // TODO: Update with deployed Buffer
+    address public constant BUFFER = 0x6EC6b7F106674d6D82b7b24446C7ebaf349d59A1;
 
     //// UNIT TEST ONLY references ////
     address public constant WETH = WBNB;
