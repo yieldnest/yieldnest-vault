@@ -40,6 +40,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         vm.stopPrank();
 
         setup.setApprovalRule(vault, MC.WETH, address(mockBuffer));
+        setup.setDepositRule(vault, address(mockBuffer), address(vault));
 
         // Remove DEFAULT_ADMIN_ROLE from setup contract
         vm.startPrank(ADMIN);
@@ -61,7 +62,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
         targets[0] = MC.WETH;
-        targets[1] = MC.BUFFER;
+        targets[1] = vault.buffer();
 
         uint256[] memory values = new uint256[](2);
         values[0] = 0;
@@ -89,24 +90,19 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         uint256 initialSupply = vault.totalSupply();
 
         // Test the decimals function
-        uint8 decimals = vault.decimals();
-        assertEq(decimals, 18, "Decimals should be 18");
+        assertEq(vault.decimals(), 18, "Decimals should be 18");
 
         // Test the asset function
-        address assetAddress = vault.asset();
-        assertEq(assetAddress, MC.WETH, "Asset address should be WETH");
+        assertEq(vault.asset(), MC.WETH, "Asset address should be WETH");
 
         // Test the totalAssets function
-        uint256 totalAssets = vault.totalAssets();
-        assertGt(totalAssets, 0, "Total assets should be greater than 0");
+        assertGt(vault.totalAssets(), 0, "Total assets should be greater than 0");
 
         // Test the convertToShares function
         uint256 shares = vault.convertToShares(assets);
         assertGt(shares, 0, "Shares should be greater than 0");
 
-        // Test the convertToAssets function
-        uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        assertEqThreshold(vault.convertToAssets(shares), assets, 3, "Converted assets should equal the original assets");
 
         // Test the previewDeposit function
         deal(address(this), 1 ether);
@@ -122,21 +118,23 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         uint256 previewedAssets = vault.previewMint(shares);
         assertEqThreshold(previewedAssets, assets, 3, "Previewed assets should equal the original assets");
 
-        // Test the depositAsset function
-        deal(address(this), assets);
-        (success,) = MC.WETH.call{value: assets}("");
-        if (!success) revert("Weth deposit failed");
-        IERC20(MC.WETH).approve(address(vault), assets);
+        {
+            // Test the depositAsset function
+            deal(address(this), assets);
+            (success,) = MC.WETH.call{value: assets}("");
+            if (!success) revert("Weth deposit failed");
+            IERC20(MC.WETH).approve(address(vault), assets);
 
-        address receiver = address(this);
-        uint256 depositedShares = vault.deposit(assets, receiver);
-        assertEq(depositedShares, shares, "Deposited shares should equal the converted shares");
+            address receiver = address(this);
+            uint256 depositedShares = vault.deposit(assets, receiver);
+            assertEq(depositedShares, shares, "Deposited shares should equal the converted shares");
+        }
 
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
 
         uint256 bufferAmount = 10 ether;
         // allocate to buffer
-        allocateToBuffer(bufferAmount);
+        allocateToBuffer(bufferAmount); 
     }
 }

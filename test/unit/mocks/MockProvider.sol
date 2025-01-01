@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Provider} from "src/module/Provider.sol";
+import {IERC4626} from "src/Common.sol";
 
 contract MockProvider is Provider {
     mapping(address => uint256) private _mockRates;
