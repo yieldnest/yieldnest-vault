@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IProvider, IStETH, IMETH, IsfrxETH, IRETH, IswETH, IFrxEthWethDualOracle} from "src/interface/IProvider.sol";
+import {
+    IProvider,
+    IStETH,
+    IMETH,
+    IsfrxETH,
+    IRETH,
+    IswETH,
+    IFrxEthWethDualOracle,
+    IynLSDe
+} from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 
@@ -21,8 +30,13 @@ contract Provider is IProvider {
             return 1e18;
         }
 
-        if (asset == MC.BUFFER || asset == MC.YNETH || asset == MC.YNLSDE || asset == MC.WOETH) {
-            return IERC4626(asset).previewRedeem(1e18);
+        if (asset == MC.BUFFER || asset == MC.YNETH || asset == MC.WOETH) {
+            return IERC4626(asset).convertToAssets(1e18);
+        }
+
+        if (asset == MC.YNLSDE) {
+            // ynLSDe does not expose convertToAssets, use previewRedeem instead
+            return IynLSDe(asset).previewRedeem(1e18);
         }
 
         if (asset == MC.WSTETH) {

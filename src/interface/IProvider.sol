@@ -32,3 +32,8 @@ interface IsfrxETH {
 interface IFrxEthWethDualOracle {
     function getCurveEmaEthPerFrxEth() external view returns (uint256);
 }
+
+interface IynLSDe {
+    function convertToAssets(address asset, uint256 shares) external view returns (uint256);
+    function previewRedeem(uint256 shares) external view returns (uint256);
+}
