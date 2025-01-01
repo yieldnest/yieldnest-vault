@@ -6,7 +6,7 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IERC4626} from "src/Common.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
-import {IStETH, IMETH, IOETH, IRETH, IswETH} from "src/interface/IProvider.sol";
+import {IStETH, IMETH, IOETH, IRETH, IswETH, IynLSDe} from "src/interface/IProvider.sol";
 
 contract ProviderTest is Test, Etches {
     Provider public provider;
@@ -28,21 +28,21 @@ contract ProviderTest is Test, Etches {
     }
 
     function test_Provider_GetRateYNETH() public view {
-        uint256 expectedRate = IERC4626(MC.YNETH).previewRedeem(1e18);
+        uint256 expectedRate = IERC4626(MC.YNETH).convertToAssets(1e18);
         uint256 rate = provider.getRate(MC.YNETH);
-        assertEq(rate, expectedRate, "Rate for YNETH should match the previewRedeem rate");
+        assertEq(rate, expectedRate, "Rate for YNETH should match the convertToAssets rate");
     }
 
     function test_Provider_GetRateYNLSDE() public view {
-        uint256 expectedRate = IERC4626(MC.YNLSDE).previewRedeem(1e18);
+        uint256 expectedRate = IynLSDe(MC.YNLSDE).previewRedeem(1e18);
         uint256 rate = provider.getRate(MC.YNLSDE);
-        assertEq(rate, expectedRate, "Rate for YNLSDE should match the previewRedeem rate");
+        assertEq(rate, expectedRate, "Rate for YNLSDE should match the convertToAssets rate");
     }
 
     function test_Provider_GetRateBUFFER() public view {
-        uint256 expectedRate = IERC4626(MC.BUFFER).previewRedeem(1e18);
+        uint256 expectedRate = IERC4626(MC.BUFFER).convertToAssets(1e18);
         uint256 rate = provider.getRate(MC.BUFFER);
-        assertEq(rate, expectedRate, "Rate for BUFFER should match the previewRedeem rate");
+        assertEq(rate, expectedRate, "Rate for BUFFER should match the convertToAssets rate");
     }
 
     function test_Provider_GetRateWSTETH() public view {
