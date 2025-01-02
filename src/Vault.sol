@@ -9,7 +9,7 @@ import {Math} from "./Common.sol";
 contract Vault is BaseVault {
     using Math for uint256;
 
-    string public constant VAULT_VERSION = "0.1.1";
+    string public constant VAULT_VERSION = "0.1.2";
 
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 

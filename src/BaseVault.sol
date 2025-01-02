@@ -585,8 +585,15 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (asset_ == address(0)) {
             revert ZeroAddress();
         }
+
         AssetStorage storage assetStorage = _getAssetStorage();
         uint256 index = assetStorage.list.length;
+
+        if (index == 0 && _getVaultStorage().countNativeAsset && decimals_ != 18) {
+            // if native asset is counted the primary asset should match the decimals count.
+            revert InvalidNativeAssetDecimals(decimals_);
+        }
+
         if (index > 0 && assetStorage.assets[asset_].index != 0) {
             revert DuplicateAsset(asset_);
         }
@@ -694,6 +701,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function _computeTotalAssets() internal view virtual returns (uint256 totalBaseBalance) {
         VaultStorage storage vaultStorage = _getVaultStorage();
 
+        // Assumes native asset has same decimals as asset() (the base asset)
         totalBaseBalance = vaultStorage.countNativeAsset ? address(this).balance : 0;
 
         AssetStorage storage assetStorage = _getAssetStorage();

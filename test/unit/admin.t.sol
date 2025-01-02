@@ -12,6 +12,7 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {MockERC20} from "test/unit/mocks/MockERC20.sol";
 import {IAccessControl} from "src/Common.sol";
+import {MockERC20CustomDecimals} from "test/unit/mocks/MockERC20CustomDecimals.sol";
 
 contract VaultAdminUintTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -143,5 +144,39 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vm.prank(UNPAUSER);
         vm.expectRevert();
         vault.unpause();
+    }
+
+    function test_Vault_addAsset_firstAssetWithDifferentDecimals() public {
+        // Deploy implementation and proxy
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(implementation),
+            address(this),
+            abi.encodeWithSelector(
+                Vault.initialize.selector,
+                address(this),
+                "Test Vault",
+                "TV",
+                18,
+                0, // baseWithdrawalFee
+                true, // countNativeAsset
+                false // alwaysComputeTotalAssets
+            )
+        );
+        Vault newVault = Vault(payable(address(proxy)));
+
+        // Create mock asset with 6 decimals
+        MockERC20CustomDecimals sixDecimalAsset = new MockERC20CustomDecimals("Test", "TST", 6);
+
+        // Grant asset manager role
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+
+        vm.startPrank(ASSET_MANAGER);
+
+        // Should revert when trying to add 6 decimal asset as first asset
+        vm.expectRevert(abi.encodeWithSelector(IVault.InvalidNativeAssetDecimals.selector, 6));
+        newVault.addAsset(address(sixDecimalAsset), true);
+
+        vm.stopPrank();
     }
 }
