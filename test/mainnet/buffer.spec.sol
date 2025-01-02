@@ -11,6 +11,7 @@ import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 
 
 contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
@@ -47,6 +48,9 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         vault.revokeRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
         vault.revokeRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
         vm.stopPrank();
+
+        // Configure mock provider to use ERC4626 rate for buffer
+        MockProvider(MC.PROVIDER).addERC4626(address(mockBuffer));
     }
 
     function totalSupplyInvariant(uint256 supply) public view {
@@ -136,5 +140,8 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         uint256 bufferAmount = 10 ether;
         // allocate to buffer
         allocateToBuffer(bufferAmount); 
+
+        totalSupplyInvariant(initialSupply + shares);
+        totalAssetsInvariant(initialAssets + assets);
     }
 }
