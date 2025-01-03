@@ -39,4 +39,6 @@ library MainnetContracts {
     address public constant FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
 
     address public constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+
+    address public constant TOKEMAK_AUTOETH = 0x0A2b94F6871c1D7A32Fe58E1ab5e6deA2f114E56;
 }
