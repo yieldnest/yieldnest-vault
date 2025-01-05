@@ -40,5 +40,10 @@ library MainnetContracts {
 
     address public constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
 
+}
+
+library MainnetStrategyContracts {
     address public constant TOKEMAK_AUTOETH = 0x0A2b94F6871c1D7A32Fe58E1ab5e6deA2f114E56;
+
+    address public constant GAUNTLET_WETH_PRIME = 0x2371e134e3455e0593363cBF89d3b6cf53740618;
 }

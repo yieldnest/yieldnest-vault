@@ -3,8 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
-import {MainnetContracts as MC} from "script/Contracts.sol";
-import {MainnetStrategyContracts as MSC} from "script/Contracts.sol";
+import {MainnetContracts as MC, MainnetStrategyContracts as MSC } from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
 import {IVault} from "src/interface/IVault.sol";
@@ -23,7 +22,7 @@ interface IynETH {
     function approve(address spender, uint256 amount) external returns (uint256);
 }
 
-contract VaultMainnetTokemakTest is Test, AssertUtils, MainnetActors {
+contract VaultLendingStrategiesTest is Test, AssertUtils, MainnetActors {
 
     Vault public vault;
 
@@ -38,7 +37,7 @@ contract VaultMainnetTokemakTest is Test, AssertUtils, MainnetActors {
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
         vm.stopPrank();
 
-        configureTokemakActions(setup, vault);
+        configureLendingStrategiesActions(setup, vault);
 
         // Remove DEFAULT_ADMIN_ROLE from setup contract
         vm.startPrank(ADMIN);
@@ -46,7 +45,7 @@ contract VaultMainnetTokemakTest is Test, AssertUtils, MainnetActors {
         vault.revokeRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
         vm.stopPrank();
     }
-    function configureTokemakActions(SetupVault setup, Vault _vault) internal {
+    function configureLendingStrategiesActions(SetupVault setup, Vault _vault) internal {
 
         // vm.startPrank(ADMIN);
 
@@ -105,62 +104,72 @@ contract VaultMainnetTokemakTest is Test, AssertUtils, MainnetActors {
         // vm.stopPrank();
     }
 
-    function test_TokemakAutoEthDepositWithdraw() public {
+    function test_MorphoVaultDepositWithdraw() public {
+        
         // Get initial WETH balance
         uint256 initialBalance = IERC20(MC.WETH).balanceOf(address(this));
 
         // Deposit amount
         uint256 depositAmount = 1e18; // 1 WETH
 
-        address ALICE = address(0x1234);
+        address BOB = address(0x5678);
 
-
-        // Give Alice 10000 WETH
-        uint256 aliceInitialBalance = 10000e18;
+        // Give Bob 10000 WETH
+        uint256 bobInitialBalance = 10000e18;
 
         {
-            deal(ALICE, aliceInitialBalance);
-            vm.startPrank(ALICE);
-            (bool success,) = MC.WETH.call{value: aliceInitialBalance}("");
+            deal(BOB, bobInitialBalance);
+            vm.startPrank(BOB);
+            (bool success,) = MC.WETH.call{value: bobInitialBalance}("");
             require(success, "ETH to WETH failed");
             vm.stopPrank();
         }
 
+        vm.startPrank(BOB);
 
-        vm.startPrank(ALICE);
-  
+        // Set targetVault to the appropriate vault address
+        address targetVault = MSC.GAUNTLET_WETH_PRIME;
 
-        // Approve WETH to tokemak autoETH
-        IERC20(MC.WETH).approve(MSC.TOKEMAK_AUTOETH, depositAmount);
+        // Approve WETH to the target vault
+        IERC20(MC.WETH).approve(targetVault, depositAmount);
 
-        // Deposit WETH to tokemak autoETH
-        uint256 shares = IERC4626(MSC.TOKEMAK_AUTOETH).deposit(depositAmount, ALICE);
+        // Deposit WETH to the target vault
+        uint256 shares = IERC4626(targetVault).deposit(depositAmount, BOB);
         assertGt(shares, 0, "Should receive shares for deposit");
 
         // Check WETH was transferred
-        uint256 aliceBalanceAfterDeposit = IERC20(MC.WETH).balanceOf(ALICE);
+        uint256 bobBalanceAfterDeposit = IERC20(MC.WETH).balanceOf(BOB);
         assertEq(
-            aliceBalanceAfterDeposit,
-            aliceInitialBalance - depositAmount,
-            "WETH should be transferred from Alice"
+            bobBalanceAfterDeposit,
+            bobInitialBalance - depositAmount,
+            "WETH should be transferred from Bob"
         );
 
         // Log deposit details
         console.log("Deposit amount: %d WETH", depositAmount / 1e18);
         console.log("Shares received: %d", shares);
-        console.log("WETH balance after deposit: %d", aliceBalanceAfterDeposit / 1e18);
+        console.log("WETH balance after deposit: %d", bobBalanceAfterDeposit / 1e18);
 
-        // // Withdraw full amount
-        // IERC4626(MC.TOKEMAK_AUTOETH).withdraw(depositAmount, ALICE, ALICE);
+        // Assert the value of redeeming the shares using convertToAssets is roughly equal to deposit amount
+        uint256 redeemableAssets = IERC4626(targetVault).convertToAssets(shares);
+        assertApproxEqAbs(
+            redeemableAssets,
+            depositAmount,
+            1,
+            "Redeemable assets should be approximately equal to the deposit amount"
+        );
 
-        // // Verify WETH balance is restored
-        // uint256 aliceBalanceAfterWithdraw = IERC20(MC.WETH).balanceOf(ALICE);
-        // assertEq(
-        //     aliceBalanceAfterWithdraw,
-        //     aliceInitialBalance,
-        //     "Should receive original WETH amount back"
-        // );
+        // Redeem full shares amount
+        IERC4626(targetVault).redeem(shares, BOB, BOB);
 
+        // Verify WETH balance is restored
+        uint256 bobBalanceAfterWithdraw = IERC20(MC.WETH).balanceOf(BOB);
+        assertApproxEqAbs(
+            bobBalanceAfterWithdraw,
+            bobInitialBalance,
+            1,
+            "Should receive original WETH amount back"
+        );
         vm.stopPrank();
     }
 }
