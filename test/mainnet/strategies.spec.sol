@@ -22,7 +22,7 @@ interface IynETH {
     function approve(address spender, uint256 amount) external returns (uint256);
 }
 
-contract VaultLendingStrategiesTest is Test, AssertUtils, MainnetActors {
+contract VaultStrategiesTest is Test, AssertUtils, MainnetActors {
 
     Vault public vault;
 
