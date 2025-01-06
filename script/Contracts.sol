@@ -46,4 +46,6 @@ library MainnetStrategyContracts {
     address public constant TOKEMAK_AUTOETH = 0x0A2b94F6871c1D7A32Fe58E1ab5e6deA2f114E56;
 
     address public constant GAUNTLET_WETH_PRIME = 0x2371e134e3455e0593363cBF89d3b6cf53740618;
+
+    address public constant LOOP_LPETH = 0xa684EAf215ad323452e2B2bF6F817d4aa5C116ab;
 }

@@ -172,4 +172,78 @@ contract VaultStrategiesTest is Test, AssertUtils, MainnetActors {
         );
         vm.stopPrank();
     }
+
+
+    function test_LoopLpEthDepositWithdraw() public {
+        // Get initial WETH balance
+        uint256 initialBalance = IERC20(MC.WETH).balanceOf(address(this));
+
+        // Deposit amount
+        uint256 depositAmount = 1e18; // 1 WETH
+
+        address CHARLIE = address(0x5678);
+
+        // Give Charlie 10000 WETH
+        uint256 charlieInitialBalance = 10000e18;
+
+        {
+            deal(CHARLIE, charlieInitialBalance);
+            vm.startPrank(CHARLIE);
+            (bool success,) = MC.WETH.call{value: charlieInitialBalance}("");
+            require(success, "ETH to WETH failed");
+            vm.stopPrank();
+        }
+
+        vm.startPrank(CHARLIE);
+
+        // Set targetVault to the appropriate vault address
+        address targetVault = MSC.LOOP_LPETH;
+
+        // Approve WETH to the target vault
+        IERC20(MC.WETH).approve(targetVault, depositAmount);
+
+        // Deposit WETH to the target vault
+        uint256 shares = IERC4626(targetVault).deposit(depositAmount, CHARLIE);
+        assertGt(shares, 0, "Should receive shares for deposit");
+
+        // Check WETH was transferred
+        uint256 charlieBalanceAfterDeposit = IERC20(MC.WETH).balanceOf(CHARLIE);
+        assertEq(
+            charlieBalanceAfterDeposit,
+            charlieInitialBalance - depositAmount,
+            "WETH should be transferred from Charlie"
+        );
+
+        // Log deposit details
+        console.log("Deposit amount: %d WETH", depositAmount / 1e18);
+        console.log("Shares received: %d", shares);
+        console.log("WETH balance after deposit: %d", charlieBalanceAfterDeposit / 1e18);
+
+        // Assert balance of LPETH for CHARLIE is equal to shares
+        assertEq(IERC20(targetVault).balanceOf(CHARLIE), shares, "LPETH balance should be equal to shares");
+
+
+        // NOTE: convertToAssets != previewRedeem. why?
+        // Assert the value of redeeming the shares using convertToAssets is roughly equal to deposit amount
+        // uint256 redeemableAssets = IERC4626(targetVault).convertToAssets(shares);
+        // assertApproxEqAbs(
+        //     redeemableAssets,
+        //     depositAmount,
+        //     1,
+        //     "Redeemable assets should be approximately equal to the deposit amount"
+        // );
+
+        // Redeem full shares amount
+        IERC4626(targetVault).redeem(shares, CHARLIE, CHARLIE);
+
+        // Verify WETH balance is restored
+        uint256 charlieBalanceAfterWithdraw = IERC20(MC.WETH).balanceOf(CHARLIE);
+        assertApproxEqAbs(
+            charlieBalanceAfterWithdraw,
+            charlieInitialBalance,
+            1,
+            "Should receive original WETH amount back"
+        );
+        vm.stopPrank();
+    }
 }
