@@ -6,7 +6,6 @@ import {Vault} from "src/Vault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {MainnetContracts} from "script/Contracts.sol";
-import {console} from "lib/forge-std/src/console.sol";
 import {Vault} from "src/Vault.sol";
 import {ProxyAdmin} from "src/Common.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
@@ -371,7 +370,7 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         assertApproxEqAbs(newRate, expectedRate, 1, "New rate should reflect donation");
     }
 
-    function testDonateToBuffer() public {
+    function testDonateToBufferWithoutWithdrawal() public {
         address alice = makeAddr("alice");
         uint256 depositAmount = 100 ether;
         uint256 bufferAmount = depositAmount / 10; // 10% to buffer
@@ -420,6 +419,14 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         uint256 vaultAssetsBefore = vault.totalAssets();
         uint256 vaultSharesBefore = vault.totalSupply();
 
+        // Record buffer shares in vault before donation
+        uint256 bufferSharesBefore = IERC4626(vault.buffer()).balanceOf(address(vault));
+        uint256 bufferTotalSupplyBefore = IERC4626(vault.buffer()).totalSupply();
+        
+        {
+            uint256 bufferRate = IERC4626(vault.buffer()).convertToAssets(1e18);
+        }
+
         // Create bob and give him BNB for donation
         address bob = makeAddr("bob");
         vm.deal(bob, donationAmount);
@@ -432,15 +439,24 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
 
         // Verify buffer increased by donation
         assertEq(IERC4626(vault.buffer()).totalAssets(), bufferBefore + donationAmount, "Buffer should increase by donation");
+        // Get rate from provider for YNWBNBk
+        uint256 rate = IProvider(vault.provider()).getRate(MainnetContracts.YNWBNBK);
         
         // Verify total assets increased but shares unchanged
-        assertApproxEqAbs(vault.totalAssets(), vaultAssetsBefore + donationAmount, 10, "Total assets should increase");
-        assertEq(vault.totalSupply(), vaultSharesBefore, "Total supply should remain unchanged");
+        {
+            uint256 bufferRate = IERC4626(vault.buffer()).convertToAssets(1e18);
+            uint256 vaultShareProportion = (donationAmount * bufferSharesBefore) /  bufferTotalSupplyBefore;
+            
+            assertApproxEqAbs(vault.totalAssets(), vaultAssetsBefore + vaultShareProportion, 10, "Total assets should increase proportionally to the shares held by the vault");
+            assertEq(vault.totalSupply(), vaultSharesBefore, "Total supply should remain unchanged");
 
-        // Verify rate increased due to donation
-        uint256 newRate = vault.convertToAssets(1e18);
-        uint256 expectedRate = ((vaultAssetsBefore + donationAmount) * 1e18) / vaultSharesBefore;
-        assertApproxEqAbs(newRate, expectedRate, 1, "New rate should reflect donation");
+            // Verify rate increased due to donation
+            uint256 newRate = vault.convertToAssets(1e18);
+            uint256 expectedRate = ((vaultAssetsBefore + vaultShareProportion) * 1e18) / vaultSharesBefore;
+            assertApproxEqAbs(newRate, expectedRate, 1, "New rate should reflect donation");
+        }
+
+
     }
 
     function testDonateToBufferAndWithdraw() public {
@@ -500,12 +516,6 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
 
         // Get YNWBNBk vault and print totals
         Vault ynwbnbk = Vault(payable(MainnetContracts.YNWBNBK));
-        console.log("YNWBNBk totalAssets:", ynwbnbk.totalAssets());
-        console.log("YNWBNBk totalSupply:", ynwbnbk.totalSupply());
-
-        // Get rate from provider for YNWBNBk
-        uint256 rate = IProvider(vault.provider()).getRate(MainnetContracts.YNWBNBK);
-        console.log("YNWBNBk rate:", rate);
 
         // Verify buffer total assets increased by donation
         assertEq(buffer.totalAssets(), bufferTotalAssetsBefore + donationAmount, "Buffer total assets should increase by donation amount");
