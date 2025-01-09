@@ -13,4 +13,8 @@ contract MockSlisBnbStakeManager is ISlisBnbStakeManager {
     }
 
     function deposit() external payable {}
+
+    function getUserWithdrawalRequests(address) external pure returns (WithdrawalRequest[] memory) {
+        revert("getUserWithdrawalRequests not supported");
+    }
 }
