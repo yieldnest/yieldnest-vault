@@ -79,5 +79,5 @@ contract MainnetActors is IActors {
     address public constant PAUSER = YnDev;
     address public constant UNPAUSER = YnSecurityCouncil;
     address public constant UPDATER = YnDev;
-    address public constant BOOTSTRAPPER = YnDev;
+    address public constant BOOTSTRAPPER = YnBootstrapper;
 }
