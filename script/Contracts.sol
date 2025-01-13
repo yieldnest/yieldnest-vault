@@ -32,7 +32,7 @@ library MainnetContracts {
     address public constant YNBNBK = 0x304B5845b9114182ECb4495Be4C91a273b74B509;
     address public constant YNWBNBK = 0x6EC6b7F106674d6D82b7b24446C7ebaf349d59A1;
     address public constant YNCLISBNBK = 0x03276919F8b6eE37BA8EE4ee68a1c5f48b667834;
-    address public constant YNASBNBK = address(0x0a); // TODO: Update with deployed address
+    address public constant YNASBNBK = 0x504A89a3Ed6A51D17D4f936E58476c779EE7315b;
 
     address public constant PROVIDER = address(0x0d); // TODO: Update with deployed Provider
     address public constant BUFFER = 0x6EC6b7F106674d6D82b7b24446C7ebaf349d59A1;
