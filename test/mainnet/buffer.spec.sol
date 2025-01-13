@@ -121,13 +121,6 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         assertEqThreshold(vault.convertToAssets(shares), assets, 3, "Converted assets should equal the original assets");
 
-        // // Test the previewDeposit function
-        // deal(address(this), 1 ether);
-        // (bool success,) = MC.WETH.call{value: 1 ether}("");
-        // require(success, "Weth deposit failed");
-        // IERC20(MC.WETH).approve(address(vault), 1 ether);
-        // IERC20(MC.WETH).transfer(address(vault), 1 ether);
-
         uint256 previewedShares = vault.previewDeposit(assets);
         assertEqThreshold(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
 
@@ -163,5 +156,42 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
+    }
+
+    function testDonationToBuffer_withoutBufferAllocation() public {
+        uint256 assets = 1 ether;
+        uint256 bufferAmount = 0.5 ether;
+        
+        // Initial state
+        uint256 initialSupply = vault.totalSupply();
+        uint256 initialAssets = vault.totalAssets();
+
+        // Make initial deposit
+        deal(address(this), assets);
+        (bool success,) = MC.WETH.call{value: assets}("");
+        if (!success) revert("Weth deposit failed");
+        IERC20(MC.WETH).approve(address(vault), assets);
+        uint256 shares =vault.deposit(assets, address(this));
+
+        // Process accounting
+        vault.processAccounting();
+
+        totalSupplyInvariant(initialSupply + shares);
+        totalAssetsInvariant(initialAssets + assets);
+
+        // Donate directly to buffer
+        deal(address(this), 1 ether);
+        (success,) = MC.WETH.call{value: 1 ether}("");
+        if (!success) revert("Weth deposit failed");
+        IERC20(MC.WETH).transfer(vault.buffer(), 1 ether);
+
+        // Allocate to buffer
+        allocateToBuffer(bufferAmount);
+
+
+        totalSupplyInvariant(initialSupply + shares);
+        // assets go down because of buffer donation
+        totalAssetsInvariant(initialAssets + (assets  - bufferAmount));
+
     }
 }
