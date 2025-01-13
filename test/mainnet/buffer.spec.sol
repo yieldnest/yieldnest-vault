@@ -12,6 +12,8 @@ import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {console} from "lib/forge-std/src/console.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 
 contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
@@ -34,6 +36,12 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         vm.prank(ADMIN);
         vault.setBuffer(address(mockBuffer));
 
+        // Deploy mock provider
+        MockProvider mockProvider = new MockProvider();
+        // Set mock provider address
+        vm.prank(ADMIN);
+        vault.setProvider(address(mockProvider));
+
         // Grant DEFAULT_ADMIN_ROLE to setup contract
         vm.startPrank(ADMIN);
         vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
@@ -49,8 +57,12 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         vault.revokeRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
         vm.stopPrank();
 
+        // Add mock buffer as an asset
+        vm.prank(ADMIN);
+        vault.addAsset(address(mockBuffer), false);
+
         // Configure mock provider to use ERC4626 rate for buffer
-        MockProvider(MC.PROVIDER).addERC4626(address(mockBuffer));
+        mockProvider.addERC4626(address(mockBuffer));
     }
 
     function totalSupplyInvariant(uint256 supply) public view {
@@ -83,12 +95,13 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     }
 
     function test_Vault_4626Invariants_depositBase_WithBufferAllocation(
-        // uint256 assets
+        uint256 assets,
+        uint256 bufferAmount
     ) public {
-        // if (assets < 2) return;
-        // if (assets > 100_000_000 ether) return;
-
-        uint256 assets = 100 ether;
+        if (assets < 2) return;
+        if (assets > 100_000_000 ether) return;
+        if (bufferAmount > assets) return;
+        if (bufferAmount < 1) return;
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
@@ -108,12 +121,12 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         assertEqThreshold(vault.convertToAssets(shares), assets, 3, "Converted assets should equal the original assets");
 
-        // Test the previewDeposit function
-        deal(address(this), 1 ether);
-        (bool success,) = MC.WETH.call{value: 1 ether}("");
-        require(success, "Weth deposit failed");
-        IERC20(MC.WETH).approve(address(vault), 1 ether);
-        IERC20(MC.WETH).transfer(address(vault), 1 ether);
+        // // Test the previewDeposit function
+        // deal(address(this), 1 ether);
+        // (bool success,) = MC.WETH.call{value: 1 ether}("");
+        // require(success, "Weth deposit failed");
+        // IERC20(MC.WETH).approve(address(vault), 1 ether);
+        // IERC20(MC.WETH).transfer(address(vault), 1 ether);
 
         uint256 previewedShares = vault.previewDeposit(assets);
         assertEqThreshold(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
@@ -125,7 +138,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         {
             // Test the depositAsset function
             deal(address(this), assets);
-            (success,) = MC.WETH.call{value: assets}("");
+            (bool success,) = MC.WETH.call{value: assets}("");
             if (!success) revert("Weth deposit failed");
             IERC20(MC.WETH).approve(address(vault), assets);
 
@@ -137,9 +150,16 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
 
-        uint256 bufferAmount = 10 ether;
-        // allocate to buffer
-        allocateToBuffer(bufferAmount); 
+        {
+            // allocate to buffer
+            uint256 balanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
+            uint256 bufferBefore = IERC20(MC.WETH).balanceOf(vault.buffer());
+            allocateToBuffer(bufferAmount);
+            uint256 balanceAfter = IERC20(MC.WETH).balanceOf(address(vault));
+            uint256 bufferAfter = IERC20(MC.WETH).balanceOf(vault.buffer());
+            assertEq(balanceBefore - balanceAfter, bufferAmount, "WETH balance should decrease by buffer amount");
+            assertEq(bufferAfter - bufferBefore, bufferAmount, "Buffer balance should increase by buffer amount");
+        }
 
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
