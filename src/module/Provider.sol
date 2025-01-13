@@ -6,6 +6,7 @@ import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IBNBXStakeManagerV2} from "src/interface/external/stader/IBNBXStakeManagerV2.sol";
 import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
+import {IAsBnbMinter} from "src/interface/external/astherus/IAsBnbMinter.sol";
 
 /*
     The Provider fetches state from other contracts.
@@ -15,7 +16,7 @@ contract Provider is IProvider {
     error UnsupportedAsset(address asset);
 
     function getRate(address asset) external view override returns (uint256) {
-        if (asset == MC.YNWBNBK || asset == MC.YNBNBK || asset == MC.YNCLISBNBK) {
+        if (asset == MC.YNWBNBK || asset == MC.YNBNBK || asset == MC.YNCLISBNBK || asset == MC.YNASBNBK) {
             return IERC4626(asset).convertToAssets(1e18);
         }
 
@@ -29,6 +30,12 @@ contract Provider is IProvider {
 
         if (asset == MC.SLISBNB) {
             return ISlisBnbStakeManager(MC.SLIS_BNB_STAKE_MANAGER).convertSnBnbToBnb(1e18);
+        }
+
+        if (asset == MC.ASBNB) {
+            return ISlisBnbStakeManager(MC.SLIS_BNB_STAKE_MANAGER).convertSnBnbToBnb(
+                IAsBnbMinter(MC.AS_BNB_MINTER).convertToTokens(1e18)
+            );
         }
 
         revert UnsupportedAsset(asset);
