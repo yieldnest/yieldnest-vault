@@ -5,24 +5,20 @@ import {BaseVault} from "src/BaseVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 import {Math} from "./Common.sol";
+import {VaultStorageLib} from "src/libraries/VaultStorageLib.sol";
 
 contract Vault is BaseVault {
+    using VaultStorageLib for VaultStorageLib.FeeStorage;
     using Math for uint256;
 
     string public constant VAULT_VERSION = "0.1.2";
 
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
-    struct FeeStorage {
-        /// @notice The base withdrawal fee in basis points (1e8 = 100%)
-        uint64 baseWithdrawalFee;
-    }
     /// @notice The fraction of the buffer below which flat fees apply, in basis points (1e8 = 100%). Only used by quadratic fees
 
-    function _getFeeStorage() internal pure returns (FeeStorage storage $) {
-        assembly {
-            $.slot := 0xde924653ae91bd33356774e603163bd5862c93462f31acccae5f965be6e6599b
-        }
+    function _getFeeStorage() internal pure returns (VaultStorageLib.FeeStorage storage) {
+        return VaultStorageLib.getFeeStorage();
     }
 
     /**
@@ -57,20 +53,20 @@ contract Vault is BaseVault {
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
-        VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.paused = true;
         vaultStorage.decimals = decimals_;
         vaultStorage.countNativeAsset = countNativeAsset_;
         vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
 
-        FeeStorage storage fees = _getFeeStorage();
+        VaultStorageLib.FeeStorage storage fees = _getFeeStorage();
         fees.baseWithdrawalFee = baseWithdrawalFee_;
     }
 
     //// FEES ////
 
     function _feeOnRaw(uint256 assets) public view override returns (uint256) {
-        FeeStorage storage fees = _getFeeStorage();
+        VaultStorageLib.FeeStorage storage fees = _getFeeStorage();
         uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;
         if (baseWithdrawalFee_ == 0) {
             return 0;
@@ -81,7 +77,7 @@ contract Vault is BaseVault {
     /// @dev Calculates the fee part of an amount `assets` that already includes fees.
     /// Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
     function _feeOnTotal(uint256 assets) public view override returns (uint256) {
-        FeeStorage storage fees = _getFeeStorage();
+        VaultStorageLib.FeeStorage storage fees = _getFeeStorage();
         uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;
         if (baseWithdrawalFee_ == 0) {
             return 0;
@@ -98,7 +94,7 @@ contract Vault is BaseVault {
      */
     function setBaseWithdrawalFee(uint64 baseWithdrawalFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
         if (baseWithdrawalFee_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints(baseWithdrawalFee_);
-        FeeStorage storage fees = _getFeeStorage();
+        VaultStorageLib.FeeStorage storage fees = _getFeeStorage();
         uint64 oldFee = fees.baseWithdrawalFee;
         fees.baseWithdrawalFee = baseWithdrawalFee_;
         emit SetBaseWithdrawalFee(oldFee, baseWithdrawalFee_);

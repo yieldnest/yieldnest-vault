@@ -5,15 +5,15 @@ import {IERC4626} from "src/Common.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 
 interface IVault is IERC4626 {
-    struct VaultStorage {
-        uint256 totalAssets;
-        address provider;
-        address buffer;
-        bool paused;
-        uint8 decimals;
-        bool countNativeAsset;
-        bool alwaysComputeTotalAssets;
-    }
+    //     struct VaultStorage {
+    //         uint256 totalAssets;
+    //         address provider;
+    //         address buffer;
+    //         bool paused;
+    //         uint8 decimals;
+    //         bool countNativeAsset;
+    //         bool alwaysComputeTotalAssets;
+    //     }
 
     struct AssetParams {
         uint256 index;
@@ -25,10 +25,10 @@ interface IVault is IERC4626 {
         bool active;
     }
 
-    struct AssetStorage {
-        mapping(address => AssetParams) assets;
-        address[] list;
-    }
+    // struct AssetStorage {
+    //     mapping(address => AssetParams) assets;
+    //     address[] list;
+    // }
 
     enum ParamType {
         UINT256,
@@ -47,11 +47,11 @@ interface IVault is IERC4626 {
         IValidator validator;
     }
 
-    struct ProcessorStorage {
-        uint256 lastProcessed;
-        uint256 lastAccounting;
-        mapping(address => mapping(bytes4 => FunctionRule)) rules;
-    }
+    // struct ProcessorStorage {
+    //     uint256 lastProcessed;
+    //     uint256 lastAccounting;
+    //     mapping(address => mapping(bytes4 => FunctionRule)) rules;
+    // }
 
     error Paused();
     error Unpaused();
