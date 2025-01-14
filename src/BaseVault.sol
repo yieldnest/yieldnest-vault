@@ -13,6 +13,8 @@ import {
     SafeERC20
 } from "./Common.sol";
 
+import {VaultStorageLib} from "src/libraries/VaultStorageLib.sol";
+
 import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 import {IProvider} from "src/interface/IProvider.sol";
@@ -22,6 +24,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     using SafeERC20 for IERC20;
     using Address for address;
     using Math for uint256;
+    using VaultStorageLib for VaultStorageLib.VaultStorage;
+    using VaultStorageLib for VaultStorageLib.AssetStorage;
+    using VaultStorageLib for VaultStorageLib.ProcessorStorage;
 
     /**
      * @notice Returns the address of the underlying asset.
@@ -386,7 +391,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param baseAssets The amount of base assets to add.
      */
     function _addTotalAssets(uint256 baseAssets) internal virtual {
-        VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
         if (!vaultStorage.alwaysComputeTotalAssets) {
             vaultStorage.totalAssets += baseAssets;
         }
@@ -397,7 +402,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param baseAssets The amount of base assets to subtract.
      */
     function _subTotalAssets(uint256 baseAssets) internal virtual {
-        VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
         if (!vaultStorage.alwaysComputeTotalAssets) {
             vaultStorage.totalAssets -= baseAssets;
         }
@@ -415,7 +420,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         internal
         virtual
     {
-        VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
         _subTotalAssets(assets);
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
@@ -491,35 +496,26 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Internal function to get the vault storage.
-     * @return $ The vault storage.
+     * @return The vault storage.
      */
-    function _getVaultStorage() internal pure virtual returns (VaultStorage storage $) {
-        assembly {
-            // keccak256("yieldnest.storage.vault")
-            $.slot := 0x22cdba5640455d74cb7564fb236bbbbaf66b93a0cc1bd221f1ee2a6b2d0a2427
-        }
+    function _getVaultStorage() internal pure virtual returns (VaultStorageLib.VaultStorage storage) {
+        return VaultStorageLib.getVaultStorage();
     }
 
     /**
      * @notice Internal function to get the asset storage.
-     * @return $ The asset storage.
+     * @return The asset storage.
      */
-    function _getAssetStorage() internal pure returns (AssetStorage storage $) {
-        assembly {
-            // keccak256("yieldnest.storage.asset")
-            $.slot := 0x2dd192a2474c87efcf5ffda906a4b4f8a678b0e41f9245666251cfed8041e680
-        }
+    function _getAssetStorage() internal pure returns (VaultStorageLib.AssetStorage storage) {
+        return VaultStorageLib.getAssetStorage();
     }
 
     /**
      * @notice Internal function to get the processor storage.
-     * @return $ The processor storage.
+     * @return The processor storage.
      */
-    function _getProcessorStorage() internal pure returns (ProcessorStorage storage $) {
-        assembly {
-            // keccak256("yieldnest.storage.vault")
-            $.slot := 0x52bb806a772c899365572e319d3d6f49ed2259348d19ab0da8abccd4bd46abb5
-        }
+    function _getProcessorStorage() internal pure returns (VaultStorageLib.ProcessorStorage storage) {
+        return VaultStorageLib.getProcessorStorage();
     }
 
     //// ADMIN ////
@@ -586,7 +582,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert ZeroAddress();
         }
 
-        AssetStorage storage assetStorage = _getAssetStorage();
+        VaultStorageLib.AssetStorage storage assetStorage = _getAssetStorage();
         uint256 index = assetStorage.list.length;
 
         if (index == 0 && _getVaultStorage().countNativeAsset && decimals_ != 18) {
@@ -617,7 +613,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _updateAsset(uint256 index, AssetUpdateFields calldata fields) internal virtual {
-        AssetStorage storage assetStorage = _getAssetStorage();
+        VaultStorageLib.AssetStorage storage assetStorage = _getAssetStorage();
         if (index >= assetStorage.list.length) {
             revert InvalidAsset(address(0));
         }
@@ -661,7 +657,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert Paused();
         }
 
-        VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.paused = true;
         emit Pause(true);
     }
@@ -674,7 +670,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert Unpaused();
         }
 
-        VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
         if (provider() == address(0)) {
             revert ProviderNotSet();
         }
@@ -699,12 +695,12 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _computeTotalAssets() internal view virtual returns (uint256 totalBaseBalance) {
-        VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
 
         // Assumes native asset has same decimals as asset() (the base asset)
         totalBaseBalance = vaultStorage.countNativeAsset ? address(this).balance : 0;
 
-        AssetStorage storage assetStorage = _getAssetStorage();
+        VaultStorageLib.AssetStorage storage assetStorage = _getAssetStorage();
         address[] memory assetList = assetStorage.list;
         uint256 assetListLength = assetList.length;
 

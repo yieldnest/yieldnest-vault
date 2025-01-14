@@ -3,8 +3,11 @@ pragma solidity ^0.8.24;
 
 import {SafeERC20, IERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
+import {VaultStorageLib} from "src/libraries/VaultStorageLib.sol";
 
 contract Strategy is BaseVault {
+    using VaultStorageLib for VaultStorageLib.VaultStorage;
+
     /**
      * @notice Initializes the Strategy Vault.
      * @param admin The address of the admin.
@@ -21,7 +24,7 @@ contract Strategy is BaseVault {
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
-        VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.paused = true;
         vaultStorage.decimals = decimals_;
     }
@@ -76,7 +79,7 @@ contract Strategy is BaseVault {
         uint256 shares,
         uint256 baseAssets
     ) internal override {
-        VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.totalAssets += baseAssets;
 
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
@@ -99,7 +102,7 @@ contract Strategy is BaseVault {
         internal
         override
     {
-        VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.totalAssets -= assets;
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
