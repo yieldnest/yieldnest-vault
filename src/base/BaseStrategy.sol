@@ -332,9 +332,9 @@ abstract contract BaseStrategy is BaseVault {
 
     /**
      * @notice Retrieves the strategy storage structure.
-     * @return $ The strategy storage structure.
+     * @return The strategy storage structure.
      */
-    function _getBaseStrategyStorage() internal pure virtual returns (StrategyLib.BaseStrategyStorage storage $) {
+    function _getBaseStrategyStorage() internal pure virtual returns (StrategyLib.BaseStrategyStorage storage) {
         return StrategyLib.getBaseStrategyStorage();
     }
 

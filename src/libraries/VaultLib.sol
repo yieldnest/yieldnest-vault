@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IVault} from "src/interface/IVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
-import {Math} from "src/Common.sol";
+import {Math, IERC20} from "src/Common.sol";
 
 library VaultLib {
     using Math for uint256;
@@ -178,5 +178,22 @@ library VaultLib {
 
         getVaultStorage().buffer = buffer_;
         emit IVault.SetBuffer(buffer_);
+    }
+
+    function computeTotalAssets() public view returns (uint256 totalBaseBalance) {
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+
+        // Assumes native asset has same decimals as asset() (the base asset)
+        totalBaseBalance = vaultStorage.countNativeAsset ? address(this).balance : 0;
+
+        IVault.AssetStorage storage assetStorage = getAssetStorage();
+        address[] memory assetList = assetStorage.list;
+        uint256 assetListLength = assetList.length;
+
+        for (uint256 i = 0; i < assetListLength; i++) {
+            uint256 balance = IERC20(assetList[i]).balanceOf(address(this));
+            if (balance == 0) continue;
+            totalBaseBalance += convertAssetToBase(assetList[i], balance);
+        }
     }
 }

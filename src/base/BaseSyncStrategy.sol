@@ -102,9 +102,9 @@ abstract contract BaseSyncStrategy is BaseStrategy {
 
     /**
      * @notice Retrieves the strategy storage structure.
-     * @return $ The strategy storage structure.
+     * @return The strategy storage structure.
      */
-    function _getSyncStrategyStorage() internal pure virtual returns (StrategyLib.SyncStrategyStorage storage $) {
+    function _getSyncStrategyStorage() internal pure virtual returns (StrategyLib.SyncStrategyStorage storage) {
         return StrategyLib.getSyncStrategyStorage();
     }
 

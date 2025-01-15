@@ -629,20 +629,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _computeTotalAssets() internal view virtual returns (uint256 totalBaseBalance) {
-        VaultStorage storage vaultStorage = _getVaultStorage();
-
-        // Assumes native asset has same decimals as asset() (the base asset)
-        totalBaseBalance = vaultStorage.countNativeAsset ? address(this).balance : 0;
-
-        AssetStorage storage assetStorage = _getAssetStorage();
-        address[] memory assetList = assetStorage.list;
-        uint256 assetListLength = assetList.length;
-
-        for (uint256 i = 0; i < assetListLength; i++) {
-            uint256 balance = IERC20(assetList[i]).balanceOf(address(this));
-            if (balance == 0) continue;
-            totalBaseBalance += _convertAssetToBase(assetList[i], balance);
-        }
+        totalBaseBalance = VaultLib.computeTotalAssets();
     }
 
     /**
