@@ -24,9 +24,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     using SafeERC20 for IERC20;
     using Address for address;
     using Math for uint256;
-    using VaultStorageLib for VaultStorageLib.VaultStorage;
-    using VaultStorageLib for VaultStorageLib.AssetStorage;
-    using VaultStorageLib for VaultStorageLib.ProcessorStorage;
+    using VaultStorageLib for VaultStorage;
+    using VaultStorageLib for AssetStorage;
+    using VaultStorageLib for ProcessorStorage;
 
     /**
      * @notice Returns the address of the underlying asset.
@@ -414,7 +414,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         internal
         virtual
     {
-        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorage storage vaultStorage = _getVaultStorage();
         _subTotalAssets(assets);
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
@@ -484,7 +484,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @notice Internal function to get the vault storage.
      * @return The vault storage.
      */
-    function _getVaultStorage() internal pure virtual returns (VaultStorageLib.VaultStorage storage) {
+    function _getVaultStorage() internal pure virtual returns (VaultStorage storage) {
         return VaultStorageLib.getVaultStorage();
     }
 
@@ -492,7 +492,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @notice Internal function to get the asset storage.
      * @return The asset storage.
      */
-    function _getAssetStorage() internal pure returns (VaultStorageLib.AssetStorage storage) {
+    function _getAssetStorage() internal pure returns (AssetStorage storage) {
         return VaultStorageLib.getAssetStorage();
     }
 
@@ -500,7 +500,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @notice Internal function to get the processor storage.
      * @return The processor storage.
      */
-    function _getProcessorStorage() internal pure returns (VaultStorageLib.ProcessorStorage storage) {
+    function _getProcessorStorage() internal pure returns (ProcessorStorage storage) {
         return VaultStorageLib.getProcessorStorage();
     }
 
@@ -550,7 +550,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param active_ Whether the asset is active or not.
      */
     function addAsset(address asset_, bool active_) public virtual onlyRole(ASSET_MANAGER_ROLE) {
-        return _addAsset(asset_, active_);
+        _addAsset(asset_, active_);
     }
 
     function _addAsset(address asset_, bool active_) internal virtual {
@@ -607,7 +607,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert Paused();
         }
 
-        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.paused = true;
         emit Pause(true);
     }
@@ -620,7 +620,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert Unpaused();
         }
 
-        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorage storage vaultStorage = _getVaultStorage();
         if (provider() == address(0)) {
             revert ProviderNotSet();
         }
@@ -645,12 +645,12 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _computeTotalAssets() internal view virtual returns (uint256 totalBaseBalance) {
-        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorage storage vaultStorage = _getVaultStorage();
 
         // Assumes native asset has same decimals as asset() (the base asset)
         totalBaseBalance = vaultStorage.countNativeAsset ? address(this).balance : 0;
 
-        VaultStorageLib.AssetStorage storage assetStorage = _getAssetStorage();
+        AssetStorage storage assetStorage = _getAssetStorage();
         address[] memory assetList = assetStorage.list;
         uint256 assetListLength = assetList.length;
 

@@ -9,35 +9,35 @@ library VaultStorageLib {
     using Math for uint256;
     // Storage structs remain the same
 
-    struct VaultStorage {
-        bool paused;
-        bool countNativeAsset;
-        bool alwaysComputeTotalAssets;
-        uint8 decimals;
-        uint256 totalAssets;
-        address provider;
-        address buffer;
-    }
+    // struct VaultStorage {
+    //     bool paused;
+    //     bool countNativeAsset;
+    //     bool alwaysComputeTotalAssets;
+    //     uint8 decimals;
+    //     uint256 totalAssets;
+    //     address provider;
+    //     address buffer;
+    // }
 
-    struct AssetStorage {
-        mapping(address => IVault.AssetParams) assets;
-        address[] list;
-    }
+    // struct AssetStorage {
+    //     mapping(address => IVault.AssetParams) assets;
+    //     address[] list;
+    // }
 
-    struct ProcessorStorage {
-        mapping(address => mapping(bytes4 => IVault.FunctionRule)) rules;
-    }
+    // struct ProcessorStorage {
+    //     mapping(address => mapping(bytes4 => IVault.FunctionRule)) rules;
+    // }
 
-    struct FeeStorage {
-        /// @notice The base withdrawal fee in basis points (1e8 = 100%)
-        uint64 baseWithdrawalFee;
-    }
+    // struct FeeStorage {
+    //     /// @notice The base withdrawal fee in basis points (1e8 = 100%)
+    //     uint64 baseWithdrawalFee;
+    // }
 
     /**
      * @notice Internal function to get the vault storage.
      * @return $ The vault storage.
      */
-    function getVaultStorage() public pure returns (VaultStorage storage $) {
+    function getVaultStorage() public pure returns (IVault.VaultStorage storage $) {
         assembly {
             // keccak256("yieldnest.storage.vault")
             $.slot := 0x22cdba5640455d74cb7564fb236bbbbaf66b93a0cc1bd221f1ee2a6b2d0a2427
@@ -48,7 +48,7 @@ library VaultStorageLib {
      * @notice Internal function to get the asset storage.
      * @return $ The asset storage.
      */
-    function getAssetStorage() public pure returns (AssetStorage storage $) {
+    function getAssetStorage() public pure returns (IVault.AssetStorage storage $) {
         assembly {
             // keccak256("yieldnest.storage.asset")
             $.slot := 0x2dd192a2474c87efcf5ffda906a4b4f8a678b0e41f9245666251cfed8041e680
@@ -59,14 +59,14 @@ library VaultStorageLib {
      * @return $ The processor storage.
      */
 
-    function getProcessorStorage() public pure returns (ProcessorStorage storage $) {
+    function getProcessorStorage() public pure returns (IVault.ProcessorStorage storage $) {
         assembly {
             // keccak256("yieldnest.storage.vault")
             $.slot := 0x52bb806a772c899365572e319d3d6f49ed2259348d19ab0da8abccd4bd46abb5
         }
     }
 
-    function getFeeStorage() public pure returns (FeeStorage storage $) {
+    function getFeeStorage() public pure returns (IVault.FeeStorage storage $) {
         assembly {
             $.slot := 0xde924653ae91bd33356774e603163bd5862c93462f31acccae5f965be6e6599b
         }
@@ -77,7 +77,7 @@ library VaultStorageLib {
             revert IVault.ZeroAddress();
         }
 
-        AssetStorage storage assetStorage = getAssetStorage();
+        IVault.AssetStorage storage assetStorage = getAssetStorage();
         uint256 index = assetStorage.list.length;
 
         if (index == 0 && getVaultStorage().countNativeAsset && decimals_ != 18) {
@@ -107,14 +107,14 @@ library VaultStorageLib {
     }
 
     function addTotalAssets(uint256 baseAssets) public {
-        VaultStorageLib.VaultStorage storage vaultStorage = getVaultStorage();
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
         if (!vaultStorage.alwaysComputeTotalAssets) {
             vaultStorage.totalAssets += baseAssets;
         }
     }
 
     function subTotalAssets(uint256 baseAssets) public {
-        VaultStorageLib.VaultStorage storage vaultStorage = getVaultStorage();
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
         if (!vaultStorage.alwaysComputeTotalAssets) {
             vaultStorage.totalAssets -= baseAssets;
         }
@@ -152,7 +152,7 @@ library VaultStorageLib {
     }
 
     function updateAsset(uint256 index, IVault.AssetUpdateFields calldata fields) public {
-        VaultStorageLib.AssetStorage storage assetStorage = getAssetStorage();
+        IVault.AssetStorage storage assetStorage = getAssetStorage();
         if (index >= assetStorage.list.length) {
             revert IVault.InvalidAsset(address(0));
         }

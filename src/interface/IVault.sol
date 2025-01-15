@@ -32,6 +32,30 @@ interface IVault is IERC4626 {
         IValidator validator;
     }
 
+    struct VaultStorage {
+        bool paused;
+        bool countNativeAsset;
+        bool alwaysComputeTotalAssets;
+        uint8 decimals;
+        uint256 totalAssets;
+        address provider;
+        address buffer;
+    }
+
+    struct AssetStorage {
+        mapping(address => AssetParams) assets;
+        address[] list;
+    }
+
+    struct ProcessorStorage {
+        mapping(address => mapping(bytes4 => FunctionRule)) rules;
+    }
+
+    struct FeeStorage {
+        /// @notice The base withdrawal fee in basis points (1e8 = 100%)
+        uint64 baseWithdrawalFee;
+    }
+
     error Paused();
     error Unpaused();
     error ZeroAddress();

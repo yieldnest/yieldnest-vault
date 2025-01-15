@@ -6,7 +6,7 @@ import {BaseVault} from "src/BaseVault.sol";
 import {VaultStorageLib} from "src/libraries/VaultStorageLib.sol";
 
 contract Strategy is BaseVault {
-    using VaultStorageLib for VaultStorageLib.VaultStorage;
+    using VaultStorageLib for VaultStorage;
 
     /**
      * @notice Initializes the Strategy Vault.
@@ -24,7 +24,7 @@ contract Strategy is BaseVault {
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
-        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.paused = true;
         vaultStorage.decimals = decimals_;
     }
@@ -79,7 +79,7 @@ contract Strategy is BaseVault {
         uint256 shares,
         uint256 baseAssets
     ) internal override {
-        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.totalAssets += baseAssets;
 
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
@@ -102,7 +102,7 @@ contract Strategy is BaseVault {
         internal
         override
     {
-        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
+        VaultStorage storage vaultStorage = _getVaultStorage();
         vaultStorage.totalAssets -= assets;
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
