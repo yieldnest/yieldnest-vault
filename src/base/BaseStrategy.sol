@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20, Math, SafeERC20} from "src/Common.sol";
-import {Vault} from "src/Vault.sol";
+import {BaseVault} from "src/BaseVault.sol";
 
 /**
  * @title BaseStrategy
@@ -10,7 +10,7 @@ import {Vault} from "src/Vault.sol";
  * @notice This contract is a base strategy for any underlying protocol.
  * vault.
  */
-abstract contract BaseStrategy is Vault {
+abstract contract BaseStrategy is BaseVault {
     /// @notice Role for allocator permissions
     bytes32 public constant ALLOCATOR_ROLE = keccak256("ALLOCATOR_ROLE");
 

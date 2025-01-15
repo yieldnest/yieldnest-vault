@@ -6,8 +6,6 @@ import {IValidator} from "src/interface/IValidator.sol";
 import {VaultStorageLib} from "src/libraries/VaultStorageLib.sol";
 
 library Guard {
-    using VaultStorageLib for IVault.ProcessorStorage;
-
     function validateCall(address target, uint256 value, bytes calldata data) internal view {
         bytes4 funcSig = bytes4(data[:4]);
 

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IERC20, Math, SafeERC20} from "src/Common.sol";
 import {BaseStrategy} from "src/base/BaseStrategy.sol";
 
 /**

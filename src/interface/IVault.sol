@@ -5,6 +5,16 @@ import {IERC4626} from "src/Common.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 
 interface IVault is IERC4626 {
+    struct VaultStorage {
+        uint256 totalAssets;
+        address provider;
+        address buffer;
+        bool paused;
+        uint8 decimals;
+        bool countNativeAsset;
+        bool alwaysComputeTotalAssets;
+    }
+
     struct AssetParams {
         uint256 index;
         bool active;
@@ -13,6 +23,16 @@ interface IVault is IERC4626 {
 
     struct AssetUpdateFields {
         bool active;
+    }
+
+    struct AssetStorage {
+        mapping(address => AssetParams) assets;
+        address[] list;
+    }
+
+    struct FeeStorage {
+        /// @notice The base withdrawal fee in basis points (1e8 = 100%)
+        uint64 baseWithdrawalFee;
     }
 
     enum ParamType {
@@ -32,28 +52,10 @@ interface IVault is IERC4626 {
         IValidator validator;
     }
 
-    struct VaultStorage {
-        bool paused;
-        bool countNativeAsset;
-        bool alwaysComputeTotalAssets;
-        uint8 decimals;
-        uint256 totalAssets;
-        address provider;
-        address buffer;
-    }
-
-    struct AssetStorage {
-        mapping(address => AssetParams) assets;
-        address[] list;
-    }
-
     struct ProcessorStorage {
+        // uint256 lastProcessed;
+        // uint256 lastAccounting;
         mapping(address => mapping(bytes4 => FunctionRule)) rules;
-    }
-
-    struct FeeStorage {
-        /// @notice The base withdrawal fee in basis points (1e8 = 100%)
-        uint64 baseWithdrawalFee;
     }
 
     error Paused();

@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {BaseVault} from "src/BaseVault.sol";
 import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
 import {MainnetContracts} from "script/Contracts.sol";
-import {IERC20} from "src/Common.sol";
-import {SafeERC20} from "src/Common.sol";
 
 import {BaseAsyncWithdrawStrategy} from "src/base/BaseAsyncWithdrawStrategy.sol";
 
@@ -35,5 +32,13 @@ contract Withdrawer is BaseAsyncWithdrawStrategy {
         }
 
         return (withdrawalValue, _convertAssetToBase(asset_, withdrawalValue));
+    }
+
+    function _feeOnRaw(uint256) public pure override returns (uint256) {
+        return 0;
+    }
+
+    function _feeOnTotal(uint256) public pure override returns (uint256) {
+        return 0;
     }
 }
