@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {IVault} from "src/interface/IVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {Math, IERC20} from "src/Common.sol";
+import {Guard} from "src/module/Guard.sol";
 
 library VaultLib {
     using Math for uint256;
@@ -195,5 +196,24 @@ library VaultLib {
             if (balance == 0) continue;
             totalBaseBalance += convertAssetToBase(assetList[i], balance);
         }
+    }
+
+    function processor(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
+        public
+        returns (bytes[] memory returnData)
+    {
+        uint256 targetsLength = targets.length;
+        returnData = new bytes[](targetsLength);
+
+        for (uint256 i = 0; i < targetsLength; i++) {
+            Guard.validateCall(targets[i], values[i], data[i]);
+
+            (bool success, bytes memory returnData_) = targets[i].call{value: values[i]}(data[i]);
+            if (!success) {
+                revert IVault.ProcessFailed(data[i], returnData_);
+            }
+            returnData[i] = returnData_;
+        }
+        emit IVault.ProcessSuccess(targets, values, returnData);
     }
 }
