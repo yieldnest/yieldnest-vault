@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IVault} from "src/interface/IVault.sol";
 import {IValidator} from "src/interface/IValidator.sol";
-import {VaultStorageLib} from "src/libraries/VaultStorageLib.sol";
+import {VaultLib} from "src/libraries/VaultLib.sol";
 
 library Guard {
     function validateCall(address target, uint256 value, bytes calldata data) internal view {
@@ -42,7 +42,7 @@ library Guard {
     }
 
     function _getProcessorStorage() internal pure returns (IVault.ProcessorStorage storage $) {
-        return VaultStorageLib.getProcessorStorage();
+        return VaultLib.getProcessorStorage();
     }
 
     error RuleNotActive(address, bytes4);

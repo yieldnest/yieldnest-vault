@@ -5,7 +5,7 @@ import {IVault} from "src/interface/IVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {Math} from "src/Common.sol";
 
-library VaultStorageLib {
+library VaultLib {
     using Math for uint256;
 
     /**

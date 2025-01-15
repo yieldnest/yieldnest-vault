@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {BaseVault} from "src/BaseVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
-import {VaultStorageLib} from "src/libraries/VaultStorageLib.sol";
+import {VaultLib} from "src/libraries/VaultLib.sol";
 
 contract Vault is BaseVault {
     string public constant VAULT_VERSION = "0.1.2";
@@ -14,7 +14,7 @@ contract Vault is BaseVault {
     /// Only used by quadratic fees
 
     function _getFeeStorage() internal pure returns (FeeStorage storage) {
-        return VaultStorageLib.getFeeStorage();
+        return VaultLib.getFeeStorage();
     }
 
     /**

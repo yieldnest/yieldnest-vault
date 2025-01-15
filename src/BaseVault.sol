@@ -12,7 +12,7 @@ import {
     SafeERC20
 } from "src/Common.sol";
 
-import {VaultStorageLib} from "src/libraries/VaultStorageLib.sol";
+import {VaultLib} from "src/libraries/VaultLib.sol";
 
 import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
@@ -382,7 +382,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param baseAssets The amount of base assets to add.
      */
     function _addTotalAssets(uint256 baseAssets) internal virtual {
-        VaultStorageLib.addTotalAssets(baseAssets);
+        VaultLib.addTotalAssets(baseAssets);
     }
 
     /**
@@ -390,7 +390,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param baseAssets The amount of base assets to subtract.
      */
     function _subTotalAssets(uint256 baseAssets) internal virtual {
-        VaultStorageLib.subTotalAssets(baseAssets);
+        VaultLib.subTotalAssets(baseAssets);
     }
 
     /**
@@ -432,7 +432,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         returns (uint256, uint256)
     {
-        return VaultStorageLib.convertToAssets(provider(), asset_, shares, totalAssets(), totalSupply(), rounding);
+        return VaultLib.convertToAssets(provider(), asset_, shares, totalAssets(), totalSupply(), rounding);
     }
 
     /**
@@ -448,7 +448,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         returns (uint256, uint256)
     {
-        return VaultStorageLib.convertToShares(provider(), asset_, assets, totalAssets(), totalSupply(), rounding);
+        return VaultLib.convertToShares(provider(), asset_, assets, totalAssets(), totalSupply(), rounding);
     }
 
     /**
@@ -458,7 +458,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The equivalent amount in base denomination.
      */
     function _convertAssetToBase(address asset_, uint256 assets) internal view virtual returns (uint256) {
-        return VaultStorageLib.convertAssetToBase(provider(), asset_, assets);
+        return VaultLib.convertAssetToBase(provider(), asset_, assets);
     }
 
     /**
@@ -468,7 +468,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The equivalent amount of assets.
      */
     function _convertBaseToAsset(address asset_, uint256 assets) internal view virtual returns (uint256) {
-        return VaultStorageLib.convertBaseToAsset(provider(), asset_, assets);
+        return VaultLib.convertBaseToAsset(provider(), asset_, assets);
     }
 
     /**
@@ -476,7 +476,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return The vault storage.
      */
     function _getVaultStorage() internal pure virtual returns (VaultStorage storage) {
-        return VaultStorageLib.getVaultStorage();
+        return VaultLib.getVaultStorage();
     }
 
     /**
@@ -484,7 +484,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return The asset storage.
      */
     function _getAssetStorage() internal pure returns (AssetStorage storage) {
-        return VaultStorageLib.getAssetStorage();
+        return VaultLib.getAssetStorage();
     }
 
     /**
@@ -492,7 +492,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return The processor storage.
      */
     function _getProcessorStorage() internal pure returns (ProcessorStorage storage) {
-        return VaultStorageLib.getProcessorStorage();
+        return VaultLib.getProcessorStorage();
     }
 
     //// ADMIN ////
@@ -510,7 +510,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param provider_ The address of the provider.
      */
     function setProvider(address provider_) external virtual onlyRole(PROVIDER_MANAGER_ROLE) {
-        VaultStorageLib.setProvider(provider_);
+        VaultLib.setProvider(provider_);
     }
 
     /**
@@ -518,7 +518,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param buffer_ The address of the buffer strategy.
      */
     function setBuffer(address buffer_) external virtual onlyRole(BUFFER_MANAGER_ROLE) {
-        VaultStorageLib.setBuffer(buffer_);
+        VaultLib.setBuffer(buffer_);
     }
 
     /**
@@ -532,7 +532,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         onlyRole(PROCESSOR_MANAGER_ROLE)
     {
-        VaultStorageLib.setProcessorRule(target, functionSig, rule);
+        VaultLib.setProcessorRule(target, functionSig, rule);
     }
 
     /**
@@ -545,7 +545,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _addAsset(address asset_, uint8 decimals_, bool active_) internal virtual {
-        VaultStorageLib.addAsset(asset_, decimals_, active_);
+        VaultLib.addAsset(asset_, decimals_, active_);
     }
 
     /**
@@ -562,7 +562,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _updateAsset(uint256 index, AssetUpdateFields calldata fields) internal virtual {
-        VaultStorageLib.updateAsset(index, fields);
+        VaultLib.updateAsset(index, fields);
     }
 
     /**
