@@ -74,7 +74,15 @@ contract XReferralAdapter is ReentrancyGuardUpgradeable {
         shares = vault.depositAsset(asset, assets, receiver);
 
         emit ReferralDepositProcessed(
-            address(vault), asset, msg.sender, referrer, receiver, assets, shares, block.timestamp
+            address(vault),
+            asset,
+            msg.sender,
+            referrer,
+            receiver,
+            assets,
+            shares,
+            // solhint-disable-next-line not-rely-on-time
+            block.timestamp
         );
     }
 }

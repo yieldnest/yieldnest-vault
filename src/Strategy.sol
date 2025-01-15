@@ -6,8 +6,6 @@ import {BaseVault} from "src/BaseVault.sol";
 import {VaultStorageLib} from "src/libraries/VaultStorageLib.sol";
 
 contract Strategy is BaseVault {
-    using VaultStorageLib for VaultStorage;
-
     /**
      * @notice Initializes the Strategy Vault.
      * @param admin The address of the admin.

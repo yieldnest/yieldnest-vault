@@ -2,6 +2,9 @@
 echo "ERC20:"
 # keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.ERC20")) - 1)) & ~bytes32(uint256(0xff))
 
+echo "fee:"
+cast keccak "yieldnest.storage.fees"
+
 echo "vault:"
 cast keccak "yieldnest.storage.vault"
 

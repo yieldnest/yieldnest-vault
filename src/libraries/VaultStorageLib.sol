@@ -68,6 +68,7 @@ library VaultStorageLib {
 
     function getFeeStorage() public pure returns (IVault.FeeStorage storage $) {
         assembly {
+            // keccak256("yieldnest.storage.fees")
             $.slot := 0xde924653ae91bd33356774e603163bd5862c93462f31acccae5f965be6e6599b
         }
     }

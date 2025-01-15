@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {
     AccessControlUpgradeable,
-    Address,
     ERC20PermitUpgradeable,
     ERC20Upgradeable,
     IERC20,
@@ -11,23 +10,15 @@ import {
     Math,
     ReentrancyGuardUpgradeable,
     SafeERC20
-} from "./Common.sol";
+} from "src/Common.sol";
 
 import {VaultStorageLib} from "src/libraries/VaultStorageLib.sol";
 
 import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
-import {IProvider} from "src/interface/IProvider.sol";
 import {Guard} from "src/module/Guard.sol";
 
 abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
-    using SafeERC20 for IERC20;
-    using Address for address;
-    using Math for uint256;
-    using VaultStorageLib for VaultStorage;
-    using VaultStorageLib for AssetStorage;
-    using VaultStorageLib for ProcessorStorage;
-
     /**
      * @notice Returns the address of the underlying asset.
      * @return address The address of the asset.
@@ -641,6 +632,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         uint256 totalBaseBalance = _computeTotalAssets();
 
         _getVaultStorage().totalAssets = totalBaseBalance;
+        // solhint-disable-next-line not-rely-on-time
         emit ProcessAccounting(block.timestamp, totalBaseBalance);
     }
 
