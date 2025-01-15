@@ -391,10 +391,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param baseAssets The amount of base assets to add.
      */
     function _addTotalAssets(uint256 baseAssets) internal virtual {
-        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
-        if (!vaultStorage.alwaysComputeTotalAssets) {
-            vaultStorage.totalAssets += baseAssets;
-        }
+        VaultStorageLib.addTotalAssets(baseAssets);
     }
 
     /**
@@ -402,10 +399,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param baseAssets The amount of base assets to subtract.
      */
     function _subTotalAssets(uint256 baseAssets) internal virtual {
-        VaultStorageLib.VaultStorage storage vaultStorage = _getVaultStorage();
-        if (!vaultStorage.alwaysComputeTotalAssets) {
-            vaultStorage.totalAssets -= baseAssets;
-        }
+        VaultStorageLib.subTotalAssets(baseAssets);
     }
 
     /**
@@ -447,9 +441,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         returns (uint256, uint256)
     {
-        uint256 baseAssets = shares.mulDiv(totalAssets() + 1, totalSupply() + 10 ** 0, rounding);
-        uint256 assets = _convertBaseToAsset(asset_, baseAssets);
-        return (assets, baseAssets);
+        return VaultStorageLib.convertToAssets(provider(), asset_, shares, totalAssets(), totalSupply(), rounding);
     }
 
     /**
@@ -465,9 +457,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         returns (uint256, uint256)
     {
-        uint256 baseAssets = _convertAssetToBase(asset_, assets);
-        uint256 shares = baseAssets.mulDiv(totalSupply() + 10 ** 0, totalAssets() + 1, rounding);
-        return (shares, baseAssets);
+        return VaultStorageLib.convertToShares(provider(), asset_, assets, totalAssets(), totalSupply(), rounding);
     }
 
     /**
@@ -477,9 +467,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The equivalent amount in base denomination.
      */
     function _convertAssetToBase(address asset_, uint256 assets) internal view virtual returns (uint256) {
-        if (asset_ == address(0)) revert ZeroAddress();
-        uint256 rate = IProvider(provider()).getRate(asset_);
-        return assets.mulDiv(rate, 10 ** (_getAssetStorage().assets[asset_].decimals), Math.Rounding.Floor);
+        return VaultStorageLib.convertAssetToBase(provider(), asset_, assets);
     }
 
     /**
@@ -489,9 +477,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The equivalent amount of assets.
      */
     function _convertBaseToAsset(address asset_, uint256 assets) internal view virtual returns (uint256) {
-        if (asset_ == address(0)) revert ZeroAddress();
-        uint256 rate = IProvider(provider()).getRate(asset_);
-        return assets.mulDiv(10 ** (_getAssetStorage().assets[asset_].decimals), rate, Math.Rounding.Floor);
+        return VaultStorageLib.convertBaseToAsset(provider(), asset_, assets);
     }
 
     /**
@@ -533,11 +519,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param provider_ The address of the provider.
      */
     function setProvider(address provider_) external virtual onlyRole(PROVIDER_MANAGER_ROLE) {
-        if (provider_ == address(0)) {
-            revert ZeroAddress();
-        }
-        _getVaultStorage().provider = provider_;
-        emit SetProvider(provider_);
+        VaultStorageLib.setProvider(provider_);
     }
 
     /**
@@ -545,12 +527,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param buffer_ The address of the buffer strategy.
      */
     function setBuffer(address buffer_) external virtual onlyRole(BUFFER_MANAGER_ROLE) {
-        if (buffer_ == address(0)) {
-            revert ZeroAddress();
-        }
-
-        _getVaultStorage().buffer = buffer_;
-        emit SetBuffer(buffer_);
+        VaultStorageLib.setBuffer(buffer_);
     }
 
     /**
@@ -564,8 +541,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         onlyRole(PROCESSOR_MANAGER_ROLE)
     {
-        _getProcessorStorage().rules[target][functionSig] = rule;
-        emit SetProcessorRule(target, functionSig, rule);
+        VaultStorageLib.setProcessorRule(target, functionSig, rule);
     }
 
     /**
@@ -574,29 +550,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param active_ Whether the asset is active or not.
      */
     function addAsset(address asset_, bool active_) public virtual onlyRole(ASSET_MANAGER_ROLE) {
-        _addAsset(asset_, IERC20Metadata(asset_).decimals(), active_);
-    }
-
-    function _addAsset(address asset_, uint8 decimals_, bool active_) internal virtual {
-        if (asset_ == address(0)) {
-            revert ZeroAddress();
-        }
-
-        VaultStorageLib.AssetStorage storage assetStorage = _getAssetStorage();
-        uint256 index = assetStorage.list.length;
-
-        if (index == 0 && _getVaultStorage().countNativeAsset && decimals_ != 18) {
-            // if native asset is counted the primary asset should match the decimals count.
-            revert InvalidNativeAssetDecimals(decimals_);
-        }
-
-        if (index > 0 && assetStorage.assets[asset_].index != 0) {
-            revert DuplicateAsset(asset_);
-        }
-        assetStorage.assets[asset_] = AssetParams({active: active_, index: index, decimals: decimals_});
-        assetStorage.list.push(asset_);
-
-        emit NewAsset(asset_, decimals_, index);
+        VaultStorageLib.addAsset(asset_, IERC20Metadata(asset_).decimals(), active_);
     }
 
     /**
@@ -613,15 +567,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _updateAsset(uint256 index, AssetUpdateFields calldata fields) internal virtual {
-        VaultStorageLib.AssetStorage storage assetStorage = _getAssetStorage();
-        if (index >= assetStorage.list.length) {
-            revert InvalidAsset(address(0));
-        }
-
-        address asset_ = assetStorage.list[index];
-        AssetParams storage assetParams = assetStorage.assets[asset_];
-        assetParams.active = fields.active;
-        emit UpdateAsset(index, asset_, fields);
+        VaultStorageLib.updateAsset(index, fields);
     }
 
     /**
