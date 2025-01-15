@@ -550,6 +550,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param active_ Whether the asset is active or not.
      */
     function addAsset(address asset_, bool active_) public virtual onlyRole(ASSET_MANAGER_ROLE) {
+        return _addAsset(asset_, active_);
+    }
+
+    function _addAsset(address asset_, bool active_) internal virtual {
         VaultStorageLib.addAsset(asset_, IERC20Metadata(asset_).decimals(), active_);
     }
 
