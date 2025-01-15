@@ -8,6 +8,8 @@ import {TestnetActors, IActors, MainnetActors} from "script/Actors.sol";
 import {BscContracts, ChapelContracts, IContracts} from "script/Contracts.sol";
 import {VaultUtils} from "script/VaultUtils.sol";
 
+import {VaultLib} from "src/libraries/VaultLib.sol";
+
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
 import {Vault} from "src/Vault.sol";
@@ -111,40 +113,40 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
         }
 
         // set admin roles
-        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), actors.ADMIN());
-        vault.grantRole(vault.PROCESSOR_ROLE(), actors.PROCESSOR());
-        vault.grantRole(vault.PAUSER_ROLE(), actors.PAUSER());
-        vault.grantRole(vault.UNPAUSER_ROLE(), actors.UNPAUSER());
-        vault.grantRole(vault.FEE_MANAGER_ROLE(), actors.ADMIN());
+        vault.grantRole(VaultLib.DEFAULT_ADMIN_ROLE, actors.ADMIN());
+        vault.grantRole(VaultLib.PROCESSOR_ROLE, actors.PROCESSOR());
+        vault.grantRole(VaultLib.PAUSER_ROLE, actors.PAUSER());
+        vault.grantRole(VaultLib.UNPAUSER_ROLE, actors.UNPAUSER());
+        vault.grantRole(VaultLib.FEE_MANAGER_ROLE, actors.ADMIN());
 
         // set timelock roles
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), address(timelock));
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(timelock));
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), address(timelock));
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(timelock));
+        vault.grantRole(VaultLib.PROVIDER_MANAGER_ROLE, address(timelock));
+        vault.grantRole(VaultLib.ASSET_MANAGER_ROLE, address(timelock));
+        vault.grantRole(VaultLib.BUFFER_MANAGER_ROLE, address(timelock));
+        vault.grantRole(VaultLib.PROCESSOR_MANAGER_ROLE, address(timelock));
     }
 
     function _configureTemporaryRoles() internal virtual {
         if (address(vault) == address(0)) {
             revert InvalidSetup();
         }
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), msg.sender);
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), msg.sender);
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), msg.sender);
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), msg.sender);
-        vault.grantRole(vault.UNPAUSER_ROLE(), msg.sender);
+        vault.grantRole(VaultLib.PROCESSOR_MANAGER_ROLE, msg.sender);
+        vault.grantRole(VaultLib.BUFFER_MANAGER_ROLE, msg.sender);
+        vault.grantRole(VaultLib.PROVIDER_MANAGER_ROLE, msg.sender);
+        vault.grantRole(VaultLib.ASSET_MANAGER_ROLE, msg.sender);
+        vault.grantRole(VaultLib.UNPAUSER_ROLE, msg.sender);
     }
 
     function _renounceTemporaryRoles() internal virtual {
         if (address(vault) == address(0)) {
             revert InvalidSetup();
         }
-        vault.renounceRole(vault.DEFAULT_ADMIN_ROLE(), msg.sender);
-        vault.renounceRole(vault.PROCESSOR_MANAGER_ROLE(), msg.sender);
-        vault.renounceRole(vault.BUFFER_MANAGER_ROLE(), msg.sender);
-        vault.renounceRole(vault.PROVIDER_MANAGER_ROLE(), msg.sender);
-        vault.renounceRole(vault.ASSET_MANAGER_ROLE(), msg.sender);
-        vault.renounceRole(vault.UNPAUSER_ROLE(), msg.sender);
+        vault.renounceRole(VaultLib.DEFAULT_ADMIN_ROLE, msg.sender);
+        vault.renounceRole(VaultLib.PROCESSOR_MANAGER_ROLE, msg.sender);
+        vault.renounceRole(VaultLib.BUFFER_MANAGER_ROLE, msg.sender);
+        vault.renounceRole(VaultLib.PROVIDER_MANAGER_ROLE, msg.sender);
+        vault.renounceRole(VaultLib.ASSET_MANAGER_ROLE, msg.sender);
+        vault.renounceRole(VaultLib.UNPAUSER_ROLE, msg.sender);
     }
 
     function _loadDeployment() internal virtual {

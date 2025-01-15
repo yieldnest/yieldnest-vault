@@ -497,19 +497,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     //// ADMIN ////
 
-    bytes32 public constant PROCESSOR_ROLE = keccak256("PROCESSOR_ROLE");
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
-    bytes32 public constant PROVIDER_MANAGER_ROLE = keccak256("PROVIDER_MANAGER_ROLE");
-    bytes32 public constant BUFFER_MANAGER_ROLE = keccak256("BUFFER_MANAGER_ROLE");
-    bytes32 public constant ASSET_MANAGER_ROLE = keccak256("ASSET_MANAGER_ROLE");
-    bytes32 public constant PROCESSOR_MANAGER_ROLE = keccak256("PROCESSOR_MANAGER_ROLE");
-
     /**
      * @notice Sets the provider.
      * @param provider_ The address of the provider.
      */
-    function setProvider(address provider_) external virtual onlyRole(PROVIDER_MANAGER_ROLE) {
+    function setProvider(address provider_) external virtual onlyRole(VaultLib.PROVIDER_MANAGER_ROLE) {
         VaultLib.setProvider(provider_);
     }
 
@@ -517,7 +509,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @notice Sets the buffer strategy.
      * @param buffer_ The address of the buffer strategy.
      */
-    function setBuffer(address buffer_) external virtual onlyRole(BUFFER_MANAGER_ROLE) {
+    function setBuffer(address buffer_) external virtual onlyRole(VaultLib.BUFFER_MANAGER_ROLE) {
         VaultLib.setBuffer(buffer_);
     }
 
@@ -530,7 +522,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function setProcessorRule(address target, bytes4 functionSig, FunctionRule calldata rule)
         public
         virtual
-        onlyRole(PROCESSOR_MANAGER_ROLE)
+        onlyRole(VaultLib.PROCESSOR_MANAGER_ROLE)
     {
         VaultLib.setProcessorRule(target, functionSig, rule);
     }
@@ -540,7 +532,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param asset_ The address of the asset.
      * @param active_ Whether the asset is active or not.
      */
-    function addAsset(address asset_, bool active_) public virtual onlyRole(ASSET_MANAGER_ROLE) {
+    function addAsset(address asset_, bool active_) public virtual onlyRole(VaultLib.ASSET_MANAGER_ROLE) {
         _addAsset(asset_, IERC20Metadata(asset_).decimals(), active_);
     }
 
@@ -556,7 +548,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function updateAsset(uint256 index, AssetUpdateFields calldata fields)
         public
         virtual
-        onlyRole(ASSET_MANAGER_ROLE)
+        onlyRole(VaultLib.ASSET_MANAGER_ROLE)
     {
         _updateAsset(index, fields);
     }
@@ -572,7 +564,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function setAlwaysComputeTotalAssets(bool alwaysComputeTotalAssets_)
         external
         virtual
-        onlyRole(ASSET_MANAGER_ROLE)
+        onlyRole(VaultLib.ASSET_MANAGER_ROLE)
     {
         _getVaultStorage().alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
         emit SetAlwaysComputeTotalAssets(alwaysComputeTotalAssets_);
@@ -593,7 +585,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     /**
      * @notice Pauses the vault.
      */
-    function pause() external virtual onlyRole(PAUSER_ROLE) {
+    function pause() external virtual onlyRole(VaultLib.PAUSER_ROLE) {
         if (paused()) {
             revert Paused();
         }
@@ -606,7 +598,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     /**
      * @notice Unpauses the vault.
      */
-    function unpause() external virtual onlyRole(UNPAUSER_ROLE) {
+    function unpause() external virtual onlyRole(VaultLib.UNPAUSER_ROLE) {
         if (!paused()) {
             revert Unpaused();
         }
@@ -663,7 +655,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function processor(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
         external
         virtual
-        onlyRole(PROCESSOR_ROLE)
+        onlyRole(VaultLib.PROCESSOR_ROLE)
         returns (bytes[] memory returnData)
     {
         uint256 targetsLength = targets.length;

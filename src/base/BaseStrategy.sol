@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {IERC20, Math, SafeERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
 
+import {VaultLib} from "src/libraries/VaultLib.sol";
+
 /**
  * @title BaseStrategy
  * @author Yieldnest
@@ -367,7 +369,7 @@ abstract contract BaseStrategy is BaseVault {
     function addAssetWithDecimals(address asset_, uint8 decimals_, bool active_)
         public
         virtual
-        onlyRole(ASSET_MANAGER_ROLE)
+        onlyRole(VaultLib.ASSET_MANAGER_ROLE)
     {
         _addAsset(asset_, decimals_, active_);
     }

@@ -8,8 +8,6 @@ import {VaultLib} from "src/libraries/VaultLib.sol";
 contract Vault is BaseVault {
     string public constant VAULT_VERSION = "0.1.2";
 
-    bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
-
     /// @notice The fraction of the buffer below which flat fees apply, in basis points (1e8 = 100%).
     /// Only used by quadratic fees
 
@@ -88,7 +86,7 @@ contract Vault is BaseVault {
      * @param baseWithdrawalFee_ The new base withdrawal fee in basis points (1/10000)
      * @dev Only callable by accounts with FEE_MANAGER_ROLE
      */
-    function setBaseWithdrawalFee(uint64 baseWithdrawalFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+    function setBaseWithdrawalFee(uint64 baseWithdrawalFee_) external virtual onlyRole(VaultLib.FEE_MANAGER_ROLE) {
         if (baseWithdrawalFee_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints(baseWithdrawalFee_);
         FeeStorage storage fees = _getFeeStorage();
         uint64 oldFee = fees.baseWithdrawalFee;

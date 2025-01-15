@@ -8,6 +8,8 @@ import {IValidator} from "src/interface/IVault.sol";
 import {BaseScript} from "script/BaseScript.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 
+import {VaultLib} from "src/libraries/VaultLib.sol";
+
 import {Test} from "lib/forge-std/src/Test.sol";
 
 import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
@@ -18,42 +20,42 @@ abstract contract BaseVerifyScript is BaseScript, Test {
         // verify timelock roles
         console.log("Timelock:", address(timelock));
         {
-            bool hasProviderRole = vault.hasRole(vault.PROVIDER_MANAGER_ROLE(), address(timelock));
+            bool hasProviderRole = vault.hasRole(VaultLib.PROVIDER_MANAGER_ROLE, address(timelock));
             console.log(hasProviderRole ? "\u2705" : "\u274C", "Timelock has PROVIDER_MANAGER_ROLE");
             assertEq(hasProviderRole, true);
 
-            bool hasAssetRole = vault.hasRole(vault.ASSET_MANAGER_ROLE(), address(timelock));
+            bool hasAssetRole = vault.hasRole(VaultLib.ASSET_MANAGER_ROLE, address(timelock));
             console.log(hasAssetRole ? "\u2705" : "\u274C", "Timelock has ASSET_MANAGER_ROLE");
             assertEq(hasAssetRole, true);
 
-            bool hasBufferRole = vault.hasRole(vault.BUFFER_MANAGER_ROLE(), address(timelock));
+            bool hasBufferRole = vault.hasRole(VaultLib.BUFFER_MANAGER_ROLE, address(timelock));
             console.log(hasBufferRole ? "\u2705" : "\u274C", "Timelock has BUFFER_MANAGER_ROLE");
             assertEq(hasBufferRole, true);
 
-            bool hasProcessorRole = vault.hasRole(vault.PROCESSOR_MANAGER_ROLE(), address(timelock));
+            bool hasProcessorRole = vault.hasRole(VaultLib.PROCESSOR_MANAGER_ROLE, address(timelock));
             console.log(hasProcessorRole ? "\u2705" : "\u274C", "Timelock has PROCESSOR_MANAGER_ROLE");
             assertEq(hasProcessorRole, true);
         }
 
         // verify actors roles
         {
-            bool hasAdminRole = vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), actors.ADMIN());
+            bool hasAdminRole = vault.hasRole(VaultLib.DEFAULT_ADMIN_ROLE, actors.ADMIN());
             console.log(hasAdminRole ? "\u2705" : "\u274C", "Admin has DEFAULT_ADMIN_ROLE:", actors.ADMIN());
             assertEq(hasAdminRole, true);
 
-            bool hasProcessorRole = vault.hasRole(vault.PROCESSOR_ROLE(), actors.PROCESSOR());
+            bool hasProcessorRole = vault.hasRole(VaultLib.PROCESSOR_ROLE, actors.PROCESSOR());
             console.log(hasProcessorRole ? "\u2705" : "\u274C", "Processor has PROCESSOR_ROLE:", actors.PROCESSOR());
             assertEq(hasProcessorRole, true);
 
-            bool hasPauserRole = vault.hasRole(vault.PAUSER_ROLE(), actors.PAUSER());
+            bool hasPauserRole = vault.hasRole(VaultLib.PAUSER_ROLE, actors.PAUSER());
             console.log(hasPauserRole ? "\u2705" : "\u274C", "Pauser has PAUSER_ROLE:", actors.PAUSER());
             assertEq(hasPauserRole, true);
 
-            bool hasUnpauserRole = vault.hasRole(vault.UNPAUSER_ROLE(), actors.UNPAUSER());
+            bool hasUnpauserRole = vault.hasRole(VaultLib.UNPAUSER_ROLE, actors.UNPAUSER());
             console.log(hasUnpauserRole ? "\u2705" : "\u274C", "Unpauser has UNPAUSER_ROLE:", actors.UNPAUSER());
             assertEq(hasUnpauserRole, true);
 
-            bool hasFeeRole = vault.hasRole(vault.FEE_MANAGER_ROLE(), actors.FEE_MANAGER());
+            bool hasFeeRole = vault.hasRole(VaultLib.FEE_MANAGER_ROLE, actors.FEE_MANAGER());
             console.log(hasFeeRole ? "\u2705" : "\u274C", "Fee Manager has FEE_MANAGER_ROLE:", actors.FEE_MANAGER());
             assertEq(hasFeeRole, true);
         }
@@ -111,15 +113,15 @@ abstract contract BaseVerifyScript is BaseScript, Test {
     }
 
     function _verifyTemporaryRoles() internal view virtual {
-        assertEq(vault.hasRole(vault.PROVIDER_MANAGER_ROLE(), deployer), false);
-        assertEq(vault.hasRole(vault.ASSET_MANAGER_ROLE(), deployer), false);
-        assertEq(vault.hasRole(vault.BUFFER_MANAGER_ROLE(), deployer), false);
-        assertEq(vault.hasRole(vault.PROCESSOR_MANAGER_ROLE(), deployer), false);
+        assertEq(vault.hasRole(VaultLib.PROVIDER_MANAGER_ROLE, deployer), false);
+        assertEq(vault.hasRole(VaultLib.ASSET_MANAGER_ROLE, deployer), false);
+        assertEq(vault.hasRole(VaultLib.BUFFER_MANAGER_ROLE, deployer), false);
+        assertEq(vault.hasRole(VaultLib.PROCESSOR_MANAGER_ROLE, deployer), false);
 
-        assertEq(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), deployer), false);
-        assertEq(vault.hasRole(vault.PROCESSOR_ROLE(), deployer), false);
-        assertEq(vault.hasRole(vault.PAUSER_ROLE(), deployer), false);
-        assertEq(vault.hasRole(vault.UNPAUSER_ROLE(), deployer), false);
+        assertEq(vault.hasRole(VaultLib.DEFAULT_ADMIN_ROLE, deployer), false);
+        assertEq(vault.hasRole(VaultLib.PROCESSOR_ROLE, deployer), false);
+        assertEq(vault.hasRole(VaultLib.PAUSER_ROLE, deployer), false);
+        assertEq(vault.hasRole(VaultLib.UNPAUSER_ROLE, deployer), false);
     }
 
     function _verifyViewer() internal view virtual {

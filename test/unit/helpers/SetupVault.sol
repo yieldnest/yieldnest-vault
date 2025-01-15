@@ -11,6 +11,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {VaultUtils} from "script/VaultUtils.sol";
+import {VaultLib} from "src/libraries/VaultLib.sol";
 
 contract SetupVault is Test, Etches, MainnetActors, VaultUtils {
     function setup() public returns (Vault vault, WETH9 weth) {
@@ -43,13 +44,13 @@ contract SetupVault is Test, Etches, MainnetActors, VaultUtils {
 
         vm.startPrank(ADMIN);
 
-        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
-        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
-        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+        vault.grantRole(VaultLib.PROCESSOR_ROLE, PROCESSOR);
+        vault.grantRole(VaultLib.PROVIDER_MANAGER_ROLE, PROVIDER_MANAGER);
+        vault.grantRole(VaultLib.BUFFER_MANAGER_ROLE, BUFFER_MANAGER);
+        vault.grantRole(VaultLib.ASSET_MANAGER_ROLE, ASSET_MANAGER);
+        vault.grantRole(VaultLib.PROCESSOR_MANAGER_ROLE, PROCESSOR_MANAGER);
+        vault.grantRole(VaultLib.PAUSER_ROLE, PAUSER);
+        vault.grantRole(VaultLib.UNPAUSER_ROLE, UNPAUSER);
 
         // test cannot unpause vault withtout buffer
         vm.expectRevert();
@@ -102,13 +103,13 @@ contract SetupVault is Test, Etches, MainnetActors, VaultUtils {
 
         vm.startPrank(ADMIN);
 
-        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
-        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
-        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+        vault.grantRole(VaultLib.PROCESSOR_ROLE, PROCESSOR);
+        vault.grantRole(VaultLib.PROVIDER_MANAGER_ROLE, PROVIDER_MANAGER);
+        vault.grantRole(VaultLib.BUFFER_MANAGER_ROLE, BUFFER_MANAGER);
+        vault.grantRole(VaultLib.ASSET_MANAGER_ROLE, ASSET_MANAGER);
+        vault.grantRole(VaultLib.PROCESSOR_MANAGER_ROLE, PROCESSOR_MANAGER);
+        vault.grantRole(VaultLib.PAUSER_ROLE, PAUSER);
+        vault.grantRole(VaultLib.UNPAUSER_ROLE, UNPAUSER);
 
         vault.setProvider(MC.PROVIDER);
 
