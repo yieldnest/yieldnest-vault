@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {SafeERC20, IERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
-import {VaultStorageLib} from "src/libraries/VaultStorageLib.sol";
 
 contract Strategy is BaseVault {
     /**

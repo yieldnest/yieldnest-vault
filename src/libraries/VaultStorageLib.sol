@@ -7,31 +7,6 @@ import {Math} from "src/Common.sol";
 
 library VaultStorageLib {
     using Math for uint256;
-    // Storage structs remain the same
-
-    // struct VaultStorage {
-    //     bool paused;
-    //     bool countNativeAsset;
-    //     bool alwaysComputeTotalAssets;
-    //     uint8 decimals;
-    //     uint256 totalAssets;
-    //     address provider;
-    //     address buffer;
-    // }
-
-    // struct AssetStorage {
-    //     mapping(address => IVault.AssetParams) assets;
-    //     address[] list;
-    // }
-
-    // struct ProcessorStorage {
-    //     mapping(address => mapping(bytes4 => IVault.FunctionRule)) rules;
-    // }
-
-    // struct FeeStorage {
-    //     /// @notice The base withdrawal fee in basis points (1e8 = 100%)
-    //     uint64 baseWithdrawalFee;
-    // }
 
     /**
      * @notice Internal function to get the vault storage.
