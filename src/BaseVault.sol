@@ -432,7 +432,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         returns (uint256, uint256)
     {
-        return VaultLib.convertToAssets(provider(), asset_, shares, totalAssets(), totalSupply(), rounding);
+        return VaultLib.convertToAssets(asset_, shares, rounding);
     }
 
     /**
@@ -448,7 +448,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         returns (uint256, uint256)
     {
-        return VaultLib.convertToShares(provider(), asset_, assets, totalAssets(), totalSupply(), rounding);
+        return VaultLib.convertToShares(asset_, assets, rounding);
     }
 
     /**
@@ -458,7 +458,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The equivalent amount in base denomination.
      */
     function _convertAssetToBase(address asset_, uint256 assets) internal view virtual returns (uint256) {
-        return VaultLib.convertAssetToBase(provider(), asset_, assets);
+        return VaultLib.convertAssetToBase(asset_, assets);
     }
 
     /**
@@ -468,7 +468,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The equivalent amount of assets.
      */
     function _convertBaseToAsset(address asset_, uint256 assets) internal view virtual returns (uint256) {
-        return VaultLib.convertBaseToAsset(provider(), asset_, assets);
+        return VaultLib.convertBaseToAsset(asset_, assets);
     }
 
     /**

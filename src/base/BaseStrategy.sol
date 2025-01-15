@@ -5,6 +5,7 @@ import {IERC20, Math, SafeERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
 
 import {VaultLib} from "src/libraries/VaultLib.sol";
+import {StrategyLib} from "src/libraries/StrategyLib.sol";
 
 /**
  * @title BaseStrategy
@@ -15,12 +16,6 @@ import {VaultLib} from "src/libraries/VaultLib.sol";
 abstract contract BaseStrategy is BaseVault {
     string public constant STRATEGY_VERSION = "0.1.0";
 
-    /// @notice Role for allocator permissions
-    bytes32 public constant ALLOCATOR_ROLE = keccak256("ALLOCATOR_ROLE");
-
-    /// @notice Role for allocator manager permissions
-    bytes32 public constant ALLOCATOR_MANAGER_ROLE = keccak256("ALLOCATOR_MANAGER_ROLE");
-
     /// @notice Emitted when an asset is withdrawn
     event WithdrawAsset(
         address indexed sender,
@@ -30,11 +25,6 @@ abstract contract BaseStrategy is BaseVault {
         uint256 assets,
         uint256 shares
     );
-
-    /// @notice Storage structure for strategy-specific parameters
-    struct BaseStrategyStorage {
-        bool hasAllocators;
-    }
 
     /// @notice Emitted when the hasAllocator flag is set
     event SetHasAllocator(bool hasAllocator);
@@ -344,19 +334,16 @@ abstract contract BaseStrategy is BaseVault {
      * @notice Retrieves the strategy storage structure.
      * @return $ The strategy storage structure.
      */
-    function _getBaseStrategyStorage() internal pure virtual returns (BaseStrategyStorage storage $) {
-        assembly {
-            // keccak256("yieldnest.storage.strategy.base")
-            $.slot := 0x5cfdf694cb3bdee9e4b3d9c4b43849916bf3f018805254a1c0e500548c668500
-        }
+    function _getBaseStrategyStorage() internal pure virtual returns (StrategyLib.BaseStrategyStorage storage $) {
+        return StrategyLib.getBaseStrategyStorage();
     }
 
     /**
      * @notice Sets whether the strategy has allocators.
      * @param hasAllocators_ The new value for the hasAllocator flag.
      */
-    function setHasAllocator(bool hasAllocators_) external onlyRole(ALLOCATOR_MANAGER_ROLE) {
-        BaseStrategyStorage storage strategyStorage = _getBaseStrategyStorage();
+    function setHasAllocator(bool hasAllocators_) external onlyRole(StrategyLib.ALLOCATOR_MANAGER_ROLE) {
+        StrategyLib.BaseStrategyStorage storage strategyStorage = _getBaseStrategyStorage();
         strategyStorage.hasAllocators = hasAllocators_;
 
         emit SetHasAllocator(hasAllocators_);
@@ -380,8 +367,8 @@ abstract contract BaseStrategy is BaseVault {
      * @notice Modifier to restrict access to allocator roles.
      */
     modifier onlyAllocator() {
-        if (_getBaseStrategyStorage().hasAllocators && !hasRole(ALLOCATOR_ROLE, msg.sender)) {
-            revert AccessControlUnauthorizedAccount(msg.sender, ALLOCATOR_ROLE);
+        if (_getBaseStrategyStorage().hasAllocators && !hasRole(StrategyLib.ALLOCATOR_ROLE, msg.sender)) {
+            revert AccessControlUnauthorizedAccount(msg.sender, StrategyLib.ALLOCATOR_ROLE);
         }
         _;
     }

@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
-import {MainnetContracts} from "script/Contracts.sol";
-
 import {BaseAsyncWithdrawStrategy} from "src/base/BaseAsyncWithdrawStrategy.sol";
+
+import {AsyncWithdrawLib} from "src/libraries/AsyncWithdrawLib.sol";
 
 contract Withdrawer is BaseAsyncWithdrawStrategy {
     /**
@@ -18,20 +17,7 @@ contract Withdrawer is BaseAsyncWithdrawStrategy {
         override
         returns (uint256 assets, uint256 baseAssets)
     {
-        if (asset_ != MainnetContracts.SLISBNB) {
-            return (0, 0);
-        }
-
-        // Get total value of pending withdrawals from stake manager
-        ISlisBnbStakeManager.WithdrawalRequest[] memory requests =
-            ISlisBnbStakeManager(MainnetContracts.SLIS_BNB_STAKE_MANAGER).getUserWithdrawalRequests(address(this));
-
-        uint256 withdrawalValue;
-        for (uint256 j; j < requests.length; j++) {
-            withdrawalValue += requests[j].amountInSnBnb;
-        }
-
-        return (withdrawalValue, _convertAssetToBase(asset_, withdrawalValue));
+        return AsyncWithdrawLib.asyncWithdrawBalance(asset_);
     }
 
     function _feeOnRaw(uint256) public pure override returns (uint256) {

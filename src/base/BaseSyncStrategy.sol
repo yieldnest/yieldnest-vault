@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {IERC20, SafeERC20} from "src/Common.sol";
 import {BaseStrategy} from "src/base/BaseStrategy.sol";
 
+import {StrategyLib} from "src/libraries/StrategyLib.sol";
+
 /**
  * @title BaseSyncStrategy
  * @author Yieldnest
@@ -11,15 +13,6 @@ import {BaseStrategy} from "src/base/BaseStrategy.sol";
  * vault.
  */
 abstract contract BaseSyncStrategy is BaseStrategy {
-    /// @notice Role for deposit manager permissions
-    bytes32 public constant DEPOSIT_MANAGER_ROLE = keccak256("DEPOSIT_MANAGER_ROLE");
-
-    /// @notice Storage structure for strategy-specific parameters
-    struct SyncStrategyStorage {
-        bool syncDeposit;
-        bool syncWithdraw;
-    }
-
     /// @notice Emitted when the sync deposit flag is set
     event SetSyncDeposit(bool syncDeposit);
 
@@ -111,19 +104,16 @@ abstract contract BaseSyncStrategy is BaseStrategy {
      * @notice Retrieves the strategy storage structure.
      * @return $ The strategy storage structure.
      */
-    function _getSyncStrategyStorage() internal pure virtual returns (SyncStrategyStorage storage $) {
-        assembly {
-            // keccak256("yieldnest.storage.strategy.sync")
-            $.slot := 0x023d1cf75a0b8417c3b567b13742795389a9b4d09bd3ca14ffeda95bbf3e6f7a
-        }
+    function _getSyncStrategyStorage() internal pure virtual returns (StrategyLib.SyncStrategyStorage storage $) {
+        return StrategyLib.getSyncStrategyStorage();
     }
 
     /**
      * @notice Sets the sync deposit flag.
      * @param syncDeposit The new value for the sync deposit flag.
      */
-    function setSyncDeposit(bool syncDeposit) external onlyRole(DEPOSIT_MANAGER_ROLE) {
-        SyncStrategyStorage storage strategyStorage = _getSyncStrategyStorage();
+    function setSyncDeposit(bool syncDeposit) external onlyRole(StrategyLib.DEPOSIT_MANAGER_ROLE) {
+        StrategyLib.SyncStrategyStorage storage strategyStorage = _getSyncStrategyStorage();
         strategyStorage.syncDeposit = syncDeposit;
 
         emit SetSyncDeposit(syncDeposit);
@@ -133,8 +123,8 @@ abstract contract BaseSyncStrategy is BaseStrategy {
      * @notice Sets the sync withdraw flag.
      * @param syncWithdraw The new value for the sync withdraw flag.
      */
-    function setSyncWithdraw(bool syncWithdraw) external onlyRole(DEPOSIT_MANAGER_ROLE) {
-        SyncStrategyStorage storage strategyStorage = _getSyncStrategyStorage();
+    function setSyncWithdraw(bool syncWithdraw) external onlyRole(StrategyLib.DEPOSIT_MANAGER_ROLE) {
+        StrategyLib.SyncStrategyStorage storage strategyStorage = _getSyncStrategyStorage();
         strategyStorage.syncWithdraw = syncWithdraw;
 
         emit SetSyncWithdraw(syncWithdraw);

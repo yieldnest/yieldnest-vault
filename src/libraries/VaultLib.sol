@@ -18,6 +18,22 @@ library VaultLib {
     bytes32 public constant PROCESSOR_MANAGER_ROLE = keccak256("PROCESSOR_MANAGER_ROLE");
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
+    /// @custom:storage-location erc7201:openzeppelin.storage.ERC20
+    struct ERC20Storage {
+        mapping(address account => uint256) balances;
+        mapping(address account => mapping(address spender => uint256)) allowances;
+        uint256 totalSupply;
+        string name;
+        string symbol;
+    }
+
+    function getERC20Storage() public pure returns (ERC20Storage storage $) {
+        assembly {
+            // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.ERC20")) - 1)) & ~bytes32(uint256(0xff))
+            $.slot := 0x52c63247e1f47db19d5ce0460030c497f067ca4cebf71ba98eeadabe20bace00
+        }
+    }
+
     /**
      * @notice Internal function to get the vault storage.
      * @return $ The vault storage.
@@ -80,15 +96,15 @@ library VaultLib {
         emit IVault.NewAsset(asset_, decimals_, index);
     }
 
-    function convertAssetToBase(address provider, address asset_, uint256 assets) public view returns (uint256) {
+    function convertAssetToBase(address asset_, uint256 assets) public view returns (uint256) {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
-        uint256 rate = IProvider(provider).getRate(asset_);
+        uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
         return assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals), Math.Rounding.Floor);
     }
 
-    function convertBaseToAsset(address provider, address asset_, uint256 assets) public view returns (uint256) {
+    function convertBaseToAsset(address asset_, uint256 assets) public view returns (uint256) {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
-        uint256 rate = IProvider(provider).getRate(asset_);
+        uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
         return assets.mulDiv(10 ** (getAssetStorage().assets[asset_].decimals), rate, Math.Rounding.Floor);
     }
 
@@ -106,28 +122,26 @@ library VaultLib {
         }
     }
 
-    function convertToAssets(
-        address provider,
-        address asset_,
-        uint256 shares,
-        uint256 totalAssets,
-        uint256 totalSupply,
-        Math.Rounding rounding
-    ) public view returns (uint256, uint256) {
+    function convertToAssets(address asset_, uint256 shares, Math.Rounding rounding)
+        public
+        view
+        returns (uint256, uint256)
+    {
+        uint256 totalAssets = getVaultStorage().totalAssets;
+        uint256 totalSupply = getERC20Storage().totalSupply;
         uint256 baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 10 ** 0, rounding);
-        uint256 assets = convertBaseToAsset(provider, asset_, baseAssets);
+        uint256 assets = convertBaseToAsset(asset_, baseAssets);
         return (assets, baseAssets);
     }
 
-    function convertToShares(
-        address provider,
-        address asset_,
-        uint256 assets,
-        uint256 totalAssets,
-        uint256 totalSupply,
-        Math.Rounding rounding
-    ) public view returns (uint256, uint256) {
-        uint256 baseAssets = convertAssetToBase(provider, asset_, assets);
+    function convertToShares(address asset_, uint256 assets, Math.Rounding rounding)
+        public
+        view
+        returns (uint256, uint256)
+    {
+        uint256 totalAssets = getVaultStorage().totalAssets;
+        uint256 totalSupply = getERC20Storage().totalSupply;
+        uint256 baseAssets = convertAssetToBase(asset_, assets);
         uint256 shares = baseAssets.mulDiv(totalSupply + 10 ** 0, totalAssets + 1, rounding);
         return (shares, baseAssets);
     }
