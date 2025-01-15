@@ -13,6 +13,8 @@ import {VaultLib} from "src/libraries/VaultLib.sol";
  * vault.
  */
 abstract contract BaseStrategy is BaseVault {
+    string public constant STRATEGY_VERSION = "0.1.0";
+
     /// @notice Role for allocator permissions
     bytes32 public constant ALLOCATOR_ROLE = keccak256("ALLOCATOR_ROLE");
 
