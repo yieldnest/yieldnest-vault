@@ -16,7 +16,6 @@ import {VaultLib} from "src/libraries/VaultLib.sol";
 
 import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
-import {Guard} from "src/module/Guard.sol";
 
 abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     /**
