@@ -45,7 +45,6 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
         vault.grantRole(vault.ALLOCATOR_MANAGER_ROLE(), ALLOCATOR_MANAGER);
-        vault.grantRole(vault.ALLOCATOR_ROLE(), MC.YNETHX);
 
         // test cannot unpause vault withtout buffer
         vm.expectRevert();
