@@ -30,6 +30,11 @@ interface IVault is IERC4626 {
         address[] list;
     }
 
+    struct FeeStorage {
+        /// @notice The base withdrawal fee in basis points (1e8 = 100%)
+        uint64 baseWithdrawalFee;
+    }
+
     enum ParamType {
         UINT256,
         ADDRESS
