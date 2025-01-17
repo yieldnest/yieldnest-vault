@@ -18,6 +18,10 @@ library VaultLib {
         string symbol;
     }
 
+    /**
+     * @notice Internal function to get the ERC20 storage.
+     * @return $ The ERC20 storage.
+     */
     function getERC20Storage() public pure returns (ERC20Storage storage $) {
         assembly {
             // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.ERC20")) - 1)) & ~bytes32(uint256(0xff))
@@ -46,11 +50,11 @@ library VaultLib {
             $.slot := 0x2dd192a2474c87efcf5ffda906a4b4f8a678b0e41f9245666251cfed8041e680
         }
     }
+
     /**
      * @notice Internal function to get the processor storage.
      * @return $ The processor storage.
      */
-
     function getProcessorStorage() public pure returns (IVault.ProcessorStorage storage $) {
         assembly {
             // keccak256("yieldnest.storage.vault")
@@ -58,6 +62,10 @@ library VaultLib {
         }
     }
 
+    /**
+     * @notice Internal function to get the fee storage.
+     * @return $ The fee storage.
+     */
     function getFeeStorage() public pure returns (IVault.FeeStorage storage $) {
         assembly {
             // keccak256("yieldnest.storage.fees")
@@ -118,9 +126,9 @@ library VaultLib {
         view
         returns (uint256, uint256)
     {
-        uint256 totalAssets = getVaultStorage().totalAssets;
+        uint256 totalAssets = IVault(address(this)).totalAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
-        uint256 baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 10 ** 0, rounding);
+        uint256 baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
         uint256 assets = convertBaseToAsset(asset_, baseAssets);
         return (assets, baseAssets);
     }
@@ -130,10 +138,10 @@ library VaultLib {
         view
         returns (uint256, uint256)
     {
-        uint256 totalAssets = getVaultStorage().totalAssets;
+        uint256 totalAssets = IVault(address(this)).totalAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
         uint256 baseAssets = convertAssetToBase(asset_, assets);
-        uint256 shares = baseAssets.mulDiv(totalSupply + 10 ** 0, totalAssets + 1, rounding);
+        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
         return (shares, baseAssets);
     }
 
