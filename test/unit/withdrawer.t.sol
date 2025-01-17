@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {WithdrawerStrategy} from "src/withdraws/WithdrawerStrategy.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {TransparentUpgradeableProxy, IERC20} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
@@ -11,10 +11,10 @@ import {SetupWithdrawer} from "test/unit/helpers/SetupWithdrawer.sol";
 import {MainnetActors} from "script/Actors.sol";
 
 contract WithdrawerUnitTest is Test, MainnetActors, Etches {
-    WithdrawerStrategy public vaultImplementation;
+    Withdrawer public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
-    WithdrawerStrategy public vault;
+    Withdrawer public vault;
     WETH9 public weth;
 
     address public alice = address(0x1);

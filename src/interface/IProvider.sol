@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 interface IProvider {
     function getRate(address asset) external view returns (uint256);
-    function asyncWithdrawBalance(address asset, address owner) external view returns (uint256);
 }
 
 interface IStETH {

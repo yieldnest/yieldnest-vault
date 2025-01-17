@@ -69,29 +69,4 @@ contract Provider is IProvider {
 
         revert UnsupportedAsset(asset);
     }
-
-    function asyncWithdrawBalance(address asset, address owner) external view returns (uint256) {
-        if (asset == MC.WETH) {
-            return 0;
-        }
-
-        if (asset == MC.BUFFER) {
-            return 0;
-        }
-
-        if (asset == MC.STETH) {
-            return 0;
-        }
-
-        if (asset == MC.WBTC) {
-            return 0;
-        }
-
-        if (asset == MC.METH) {
-            return 0;
-        }
-
-        // TODO: handle other assets here
-        revert UnsupportedAsset(asset);
-    }
 }

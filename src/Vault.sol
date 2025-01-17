@@ -6,7 +6,7 @@ import {FeeMath} from "src/module/FeeMath.sol";
 import {VaultLib} from "src/library/VaultLib.sol";
 
 contract Vault is BaseVault {
-    string public constant VAULT_VERSION = "0.1.2";
+    string public constant VAULT_VERSION = "0.2.0";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
     /// @notice The fraction of the buffer below which flat fees apply, in basis points (1e8 = 100%).

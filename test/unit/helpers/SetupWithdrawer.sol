@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "lib/forge-std/src/Test.sol";
-import {WithdrawerStrategy} from "src/withdraws/WithdrawerStrategy.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
@@ -13,25 +13,25 @@ import {IValidator} from "src/interface/IValidator.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 
 contract SetupWithdrawer is Test, Etches, MainnetActors {
-    function setup() public returns (WithdrawerStrategy vault, WETH9 weth) {
+    function setup() public returns (Withdrawer vault, WETH9 weth) {
         string memory name = "YieldNest Withdrawer";
         string memory symbol = "ynWithdrawer";
 
-        WithdrawerStrategy vaultImplementation = new WithdrawerStrategy();
+        Withdrawer vaultImplementation = new Withdrawer();
 
         // Deploy the proxy
         bytes memory initData =
-            abi.encodeWithSelector(WithdrawerStrategy.initialize.selector, ADMIN, name, symbol, 18, true, true);
+            abi.encodeWithSelector(Withdrawer.initialize.selector, ADMIN, name, symbol, 18, true, true);
 
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
-        vault = WithdrawerStrategy(payable(address(vaultProxy)));
+        vault = Withdrawer(payable(address(vaultProxy)));
         weth = WETH9(payable(MC.WETH));
 
         configureLocal(vault);
     }
 
-    function configureLocal(WithdrawerStrategy vault) internal {
+    function configureLocal(Withdrawer vault) internal {
         // etch to mock the mainnet contracts
         mockAll();
 

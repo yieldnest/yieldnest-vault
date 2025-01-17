@@ -3,13 +3,15 @@ pragma solidity ^0.8.24;
 
 import {VaultLib} from "src/library/VaultLib.sol";
 import {IVault} from "src/interface/IVault.sol";
-import {IProvider} from "src/interface/IProvider.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 
 library AsyncWithdrawLib {
+    error UnsupportedAsset(address asset);
     /**
      * @notice Internal function to compute the total assets. Must handle the assets that are in queue for withdrawal.
      * @dev This function should return the amount in base denomination.
      */
+
     function computeTotalAssets() public view returns (uint256 totalBaseBalance) {
         totalBaseBalance = VaultLib.computeTotalAssets();
 
@@ -32,7 +34,32 @@ library AsyncWithdrawLib {
      * @dev This function should return the amount in base denomination.
      */
     function asyncWithdrawBalance(address asset_) public view returns (uint256 assets, uint256 baseAssets) {
-        assets = IProvider(VaultLib.getVaultStorage().provider).asyncWithdrawBalance(asset_, address(this));
+        assets = getAssets(asset_);
         baseAssets = VaultLib.convertAssetToBase(asset_, assets);
+    }
+
+    function getAssets(address asset) public pure returns (uint256 assets) {
+        if (asset == MC.WETH) {
+            return 0;
+        }
+
+        if (asset == MC.BUFFER) {
+            return 0;
+        }
+
+        if (asset == MC.STETH) {
+            return 0;
+        }
+
+        if (asset == MC.WBTC) {
+            return 0;
+        }
+
+        if (asset == MC.METH) {
+            return 0;
+        }
+
+        // TODO: handle other assets here
+        revert UnsupportedAsset(asset);
     }
 }
