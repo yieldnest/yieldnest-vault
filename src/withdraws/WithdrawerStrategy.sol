@@ -5,7 +5,7 @@ import {BaseStrategy} from "src/BaseStrategy.sol";
 
 import {AsyncWithdrawLib} from "src/library/AsyncWithdrawLib.sol";
 
-contract Withdrawer is BaseStrategy {
+contract WithdrawerStrategy is BaseStrategy {
     function initialize(
         address admin,
         string memory name,

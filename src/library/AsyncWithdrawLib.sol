@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {MainnetContracts} from "script/Contracts.sol";
-
-import {VaultLib, IVault} from "src/library/VaultLib.sol";
+import {VaultLib} from "src/library/VaultLib.sol";
+import {IVault} from "src/interface/IVault.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 
 library AsyncWithdrawLib {
     /**
@@ -32,7 +32,7 @@ library AsyncWithdrawLib {
      * @dev This function should return the amount in base denomination.
      */
     function asyncWithdrawBalance(address asset_) public view returns (uint256 assets, uint256 baseAssets) {
-        // TODO: handle ynETH and ynLSDe withdrawal queue
-        return (0, 0);
+        assets = IProvider(VaultLib.getVaultStorage().provider).asyncWithdrawBalance(asset_, address(this));
+        baseAssets = VaultLib.convertAssetToBase(asset_, assets);
     }
 }
