@@ -44,5 +44,6 @@ interface IBaseStrategy {
     function redeemAsset(address asset_, uint256 shares, address receiver, address owner)
         external
         returns (uint256 assets);
-    function addAssetWithDecimals(address asset_, uint8 decimals_, bool active_) external;
+    function addAsset(address asset_, uint8 decimals_, bool depositable_, bool withdrawable_) external;
+    function addAsset(address asset_, bool depositable_, bool withdrawable_) external;
 }

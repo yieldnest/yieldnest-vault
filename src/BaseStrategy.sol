@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IERC20, Math, SafeERC20} from "src/Common.sol";
+import {IERC20Metadata as IERC20, Math, SafeERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
 import {IBaseStrategy} from "src/interface/IBaseStrategy.sol";
 
@@ -52,6 +52,15 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      * @param withdrawable_ The new value for the withdrawable flag.
      */
     function setAssetWithdrawable(address asset_, bool withdrawable_) external onlyRole(ASSET_MANAGER_ROLE) {
+        _setAssetWithdrawable(asset_, withdrawable_);
+    }
+
+    /**
+     * @notice Internal function to set whether the asset is withdrawable.
+     * @param asset_ The address of the asset.
+     * @param withdrawable_ The new value for the withdrawable flag.
+     */
+    function _setAssetWithdrawable(address asset_, bool withdrawable_) internal {
         BaseStrategyStorage storage strategyStorage = _getBaseStrategyStorage();
         strategyStorage.isAssetWithdrawable[asset_] = withdrawable_;
 
@@ -376,14 +385,31 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      * @notice Adds a new asset to the vault.
      * @param asset_ The address of the asset.
      * @param decimals_ The decimals of the asset.
-     * @param active_ Whether the asset is active.
+     * @param depositable_ Whether the asset is depositable.
+     * @param withdrawable_ Whether the asset is withdrawable.
      */
-    function addAssetWithDecimals(address asset_, uint8 decimals_, bool active_)
+    function addAsset(address asset_, uint8 decimals_, bool depositable_, bool withdrawable_)
         public
         virtual
         onlyRole(ASSET_MANAGER_ROLE)
     {
-        _addAsset(asset_, decimals_, active_);
+        _addAsset(asset_, decimals_, depositable_);
+        _setAssetWithdrawable(asset_, withdrawable_);
+    }
+
+    /**
+     * @notice Adds a new asset to the vault.
+     * @param asset_ The address of the asset.
+     * @param depositable_ Whether the asset is depositable.
+     * @param withdrawable_ Whether the asset is withdrawable.
+     */
+    function addAsset(address asset_, bool depositable_, bool withdrawable_)
+        external
+        virtual
+        onlyRole(ASSET_MANAGER_ROLE)
+    {
+        _addAsset(asset_, IERC20(asset_).decimals(), depositable_);
+        _setAssetWithdrawable(asset_, withdrawable_);
     }
 
     /**
