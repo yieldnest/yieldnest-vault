@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 interface IBaseStrategy {
     struct BaseStrategyStorage {
         bool hasAllocators;
+        mapping(address => bool) isAssetWithdrawable;
     }
 
     struct SyncStrategyStorage {
@@ -21,10 +22,16 @@ interface IBaseStrategy {
     );
 
     event SetHasAllocator(bool hasAllocator);
+    event SetAssetWithdrawable(address asset, bool isWithdrawable);
+
+    error AssetNotWithdrawable();
 
     /// ADMIN
     function getHasAllocator() external view returns (bool hasAllocators);
     function setHasAllocator(bool hasAllocators_) external;
+
+    function getAssetWithdrawable(address asset) external view returns (bool isWithdrawable);
+    function setAssetWithdrawable(address asset, bool isWithdrawable) external;
 
     function maxWithdrawAsset(address asset_, address owner) external view returns (uint256 maxAssets);
     function maxRedeemAsset(address asset_, address owner) external view returns (uint256 maxShares);

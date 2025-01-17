@@ -38,6 +38,27 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
     }
 
     /**
+     * @notice Returns whether the asset is withdrawable.
+     * @param asset_ The address of the asset.
+     * @return True if the asset is withdrawable, otherwise false.
+     */
+    function getAssetWithdrawable(address asset_) external view returns (bool) {
+        return _getBaseStrategyStorage().isAssetWithdrawable[asset_];
+    }
+
+    /**
+     * @notice Sets whether the asset is withdrawable.
+     * @param asset_ The address of the asset.
+     * @param withdrawable_ The new value for the withdrawable flag.
+     */
+    function setAssetWithdrawable(address asset_, bool withdrawable_) external onlyRole(ASSET_MANAGER_ROLE) {
+        BaseStrategyStorage storage strategyStorage = _getBaseStrategyStorage();
+        strategyStorage.isAssetWithdrawable[asset_] = withdrawable_;
+
+        emit SetAssetWithdrawable(asset_, withdrawable_);
+    }
+
+    /**
      * @notice Modifier to restrict access to allocator roles.
      */
     modifier onlyAllocator() {
@@ -245,8 +266,8 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
         uint256 assets,
         uint256 shares
     ) internal virtual onlyAllocator {
-        if (!_getAssetStorage().assets[asset_].active) {
-            revert AssetNotActive();
+        if (!_getBaseStrategyStorage().isAssetWithdrawable[asset_]) {
+            revert AssetNotWithdrawable();
         }
 
         _subTotalAssets(_convertAssetToBase(asset_, assets));
