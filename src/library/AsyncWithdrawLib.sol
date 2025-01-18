@@ -5,6 +5,7 @@ import {VaultLib} from "src/library/VaultLib.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IWithdrawalQueueManager} from "lib/yieldnest-protocol/src/interfaces/IWithdrawalQueueManager.sol";
+
 library AsyncWithdrawLib {
     error UnsupportedAsset(address asset);
     /**
@@ -28,7 +29,7 @@ library AsyncWithdrawLib {
         }
     }
 
-        /**
+    /**
      * @notice Retrieves the strategy storage struct.
      * @return $ The strategy storage struct.
      */
@@ -44,7 +45,11 @@ library AsyncWithdrawLib {
      * @param asset_ The address of the asset.
      * @dev This function should return the amount in base denomination.
      */
-    function asyncWithdrawBalance(address asset_, address owner) public view returns (uint256 assets, uint256 baseAssets) {
+    function asyncWithdrawBalance(address asset_, address owner)
+        public
+        view
+        returns (uint256 assets, uint256 baseAssets)
+    {
         assets = getAssets(asset_, owner);
         baseAssets = VaultLib.convertAssetToBase(asset_, assets);
     }
