@@ -57,7 +57,8 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         vault.addAsset(MC.STETH, 18, true, true);
         vault.addAsset(MC.WBTC, true, true);
         vault.addAsset(MC.METH, true, true);
-
+        Withdrawer(payable(address(vault))).addAsyncAsset(MC.YNLSDE, MC.YNLSDE_WM, true, true);
+        Withdrawer(payable(address(vault))).addAsyncAsset(MC.YNETH, MC.YNETH_WM, true, true);
         // configure processor rules
 
         // TODO: add rules for withdraws
