@@ -12,9 +12,10 @@ contract Withdrawer is BaseStrategy {
         string memory symbol,
         uint8 decimals_,
         bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_
+        bool alwaysComputeTotalAssets_,
+        address withdrawalQueueManager
     ) external virtual initializer {
-        _initialize(admin, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
+        _initialize(admin, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_, withdrawalQueueManager);
     }
 
     function _initialize(
@@ -23,7 +24,8 @@ contract Withdrawer is BaseStrategy {
         string memory symbol,
         uint8 decimals_,
         bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_
+        bool alwaysComputeTotalAssets_,
+        address withdrawalQueueManager
     ) internal virtual {
         __ERC20_init(name, symbol);
         __AccessControl_init();
@@ -35,6 +37,9 @@ contract Withdrawer is BaseStrategy {
         vaultStorage.decimals = decimals_;
         vaultStorage.countNativeAsset = countNativeAsset_;
         vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
+
+        BaseStrategyStorage storage baseStrategyStorage = _getBaseStrategyStorage();
+        baseStrategyStorage.withdrawalQueueManager = withdrawalQueueManager;
     }
 
     function _computeTotalAssets() internal view virtual override returns (uint256 totalBaseBalance) {
@@ -49,7 +54,7 @@ contract Withdrawer is BaseStrategy {
         return 0;
     }
 
-    function asyncWithdrawBalance(address asset, address /*owner*/ ) external view returns (uint256, uint256) {
-        return AsyncWithdrawLib.asyncWithdrawBalance(asset);
+    function asyncWithdrawBalance(address asset, address owner ) external view returns (uint256, uint256) {
+        return AsyncWithdrawLib.asyncWithdrawBalance(asset, owner);
     }
 }

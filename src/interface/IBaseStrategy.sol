@@ -5,6 +5,7 @@ interface IBaseStrategy {
     struct BaseStrategyStorage {
         bool hasAllocators;
         mapping(address => bool) isAssetWithdrawable;
+        address withdrawalQueueManager;
     }
 
     struct SyncStrategyStorage {
