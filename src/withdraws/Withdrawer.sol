@@ -12,11 +12,15 @@ contract Withdrawer is BaseStrategy {
         string memory symbol,
         uint8 decimals_,
         bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_,
-        address withdrawalQueueManager
+        bool alwaysComputeTotalAssets_
     ) external virtual initializer {
         _initialize(
-            admin, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_, withdrawalQueueManager
+            admin,
+            name,
+            symbol,
+            decimals_,
+            countNativeAsset_,
+            alwaysComputeTotalAssets_
         );
     }
 
@@ -26,8 +30,7 @@ contract Withdrawer is BaseStrategy {
         string memory symbol,
         uint8 decimals_,
         bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_,
-        address withdrawalQueueManager
+        bool alwaysComputeTotalAssets_
     ) internal virtual {
         __ERC20_init(name, symbol);
         __AccessControl_init();
@@ -39,9 +42,6 @@ contract Withdrawer is BaseStrategy {
         vaultStorage.decimals = decimals_;
         vaultStorage.countNativeAsset = countNativeAsset_;
         vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
-
-        BaseStrategyStorage storage baseStrategyStorage = _getBaseStrategyStorage();
-        baseStrategyStorage.withdrawalQueueManager = withdrawalQueueManager;
     }
 
     function _computeTotalAssets() internal view virtual override returns (uint256 totalBaseBalance) {
@@ -58,5 +58,13 @@ contract Withdrawer is BaseStrategy {
 
     function asyncWithdrawBalance(address asset, address owner) external view returns (uint256, uint256) {
         return AsyncWithdrawLib.asyncWithdrawBalance(asset, owner);
+    }
+
+    function addAsyncAsset(address asset, address withdrawalQueueManager) external onlyRole(ASSET_MANAGER_ROLE) {
+        AsyncWithdrawLib.addAsyncAsset(asset, withdrawalQueueManager);
+    }
+
+    function _getWithdrawerStorage() internal view returns (AsyncWithdrawLib.WithdrawerStorage storage) {
+        return AsyncWithdrawLib.getWithdrawerStorage();
     }
 }
