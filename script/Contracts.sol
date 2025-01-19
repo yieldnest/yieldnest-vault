@@ -26,6 +26,8 @@ library MainnetContracts {
     address public constant PROVIDER = address(123456789); // TODO: Update with deployed Provider
     address public constant BUFFER = address(987654321); // TODO: Update with deployed buffer
 
+    address public constant WSTETH_WQ = 0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1;
+
     address public constant YNLSDE_WQM = 0x8Face3283E20b19d98a7a132274B69C1304D60b4;
     address public constant YNLSDE_RAV = 0x73bC33999C34a5126CA19dC900F22690C288D55e;
 

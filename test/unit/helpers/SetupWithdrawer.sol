@@ -45,7 +45,7 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
         vault.grantRole(vault.ALLOCATOR_MANAGER_ROLE(), ALLOCATOR_MANAGER);
 
-        // test cannot unpause vault without buffer
+        // test cannot unpause vault withtout buffer
         vm.expectRevert();
         vault.unpause();
 
@@ -57,8 +57,7 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         vault.addAsset(MC.STETH, 18, true, true);
         vault.addAsset(MC.WBTC, true, true);
         vault.addAsset(MC.METH, true, true);
-        // vault.addAsyncAsset(MC.YNLSDE, MC.YNLSDE_WM, true, true);
-        // vault.addAsyncAsset(MC.YNETH, MC.YNETH_WM, true, true);
+
         // configure processor rules
 
         // TODO: add rules for withdraws

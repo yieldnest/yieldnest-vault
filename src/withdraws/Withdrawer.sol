@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
-import {IERC20Metadata} from "src/Common.sol";
 import {AsyncWithdrawLib} from "src/library/AsyncWithdrawLib.sol";
 
 contract Withdrawer is BaseStrategy {

@@ -5,6 +5,7 @@ import {VaultLib} from "src/library/VaultLib.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
+import {IWithdrawalQueue} from "src/interface/external/lido/IWithdrawalQueue.sol";
 
 library AsyncWithdrawLib {
     error UnsupportedAsset(address asset);
@@ -55,6 +56,18 @@ library AsyncWithdrawLib {
     }
 
     function getQueuedAssets(address asset, address owner) public view returns (uint256 assets) {
+        // TODO: support WOETH
+
+        if (asset == MC.WSTETH) {
+            IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WQ);
+            uint256[] memory requestIds = queue.getWithdrawalRequests(owner);
+            IWithdrawalQueue.WithdrawalRequestStatus[] memory statuses = queue.getWithdrawalStatus(requestIds);
+            for (uint256 i = 0; i < statuses.length; i++) {
+                assets += statuses[i].amountOfShares;
+            }
+            return assets;
+        }
+
         if (asset == MC.YNETH) {
             return getAssetsQueuedForWithdrawal(MC.YNETH_WQM, owner);
         }
