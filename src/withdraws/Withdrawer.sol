@@ -14,14 +14,7 @@ contract Withdrawer is BaseStrategy {
         bool countNativeAsset_,
         bool alwaysComputeTotalAssets_
     ) external virtual initializer {
-        _initialize(
-            admin,
-            name,
-            symbol,
-            decimals_,
-            countNativeAsset_,
-            alwaysComputeTotalAssets_
-        );
+        _initialize(admin, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
     }
 
     function _initialize(
@@ -56,8 +49,8 @@ contract Withdrawer is BaseStrategy {
         return 0;
     }
 
-    function asyncWithdrawBalance(address asset, address owner) external view returns (uint256, uint256) {
-        return AsyncWithdrawLib.asyncWithdrawBalance(asset, owner);
+    function asyncWithdrawBalance(address asset, address /*owner*/ ) external view returns (uint256, uint256) {
+        return AsyncWithdrawLib.asyncWithdrawBalance(asset, address(this));
     }
 
     /**
@@ -84,5 +77,4 @@ contract Withdrawer is BaseStrategy {
     function _getWithdrawerStorage() internal view returns (AsyncWithdrawLib.WithdrawerStorage storage) {
         return AsyncWithdrawLib.getWithdrawerStorage();
     }
-
 }

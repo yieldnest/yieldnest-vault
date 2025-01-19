@@ -12,7 +12,6 @@ library AsyncWithdrawLib {
 
     struct WithdrawerStorage {
         mapping(address => address) withdrawalQueueManagers;
-        mapping(address => uint256[]) userWithdrawalQueueIds;
     }
 
     error UnsupportedAsset(address asset);
@@ -106,17 +105,29 @@ library AsyncWithdrawLib {
 
         // TODO: handle other assets here
         if (asset == MC.YNLSDE) {
-            uint256 rate = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNLSDE]).redemptionAssetsVault().redemptionRate();
-            uint256 fee = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNLSDE]).withdrawalFee();
-            return rate - fee;
-
+            (uint256[] memory indices, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
+            IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNLSDE])
+                .withdrawalRequestsForOwner(owner);
+            for (uint256 i = 0; i < indices.length; i++) {
+                if (!requests[i].processed) {
+                    assets +=
+                        (requests[i].amount * requests[i].redemptionRateAtRequestTime) - requests[i].feeAtRequestTime;
+                }
+            }
+        }
         if (asset == MC.YNETH) {
-            uint256 rate = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNETH]).redemptionAssetsVault().redemptionRate();
-            uint256 fee = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNETH]).withdrawalFee();
-            return rate - fee;
+            (uint256[] memory indices, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
+            IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNETH]).withdrawalRequestsForOwner(
+                owner
+            );
+            for (uint256 i = 0; i < indices.length; i++) {
+                if (!requests[i].processed) {
+                    assets +=
+                        (requests[i].amount * requests[i].redemptionRateAtRequestTime) - requests[i].feeAtRequestTime;
+                }
+            }
         }
 
         revert UnsupportedAsset(asset);
     }
-
 }

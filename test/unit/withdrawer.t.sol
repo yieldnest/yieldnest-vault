@@ -45,7 +45,6 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
         // TODO: ETCH WITHDRAWAL QUEUE MANAGERS
-
     }
 
     function test_Vault_previewWithdraw(uint256 assets, bool alwaysComputeTotalAssets) external {

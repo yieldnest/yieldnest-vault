@@ -65,7 +65,7 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
 
         // Set WBTC rate to 20 ETH
         MockProvider(MC.PROVIDER).setRate(MC.WBTC, 20e18);
-        // Set METH rate to 1.2 ETH 
+        // Set METH rate to 1.2 ETH
         MockProvider(MC.PROVIDER).setRate(MC.METH, 1.2e18);
 
         // Unpause the vault
