@@ -52,45 +52,4 @@ contract Withdrawer is BaseStrategy {
     function asyncWithdrawBalance(address asset) external view returns (uint256, uint256) {
         return AsyncWithdrawLib.asyncWithdrawBalance(asset, address(this));
     }
-
-    /**
-     * @notice Adds a new Async asset to the vault.
-     * @param asset_ The address of the asset.
-     * @param withdrawalQueueManager The address of the withdrawal queue manager.
-     * @param depositable_ Whether the asset is depositable.
-     * @param withdrawable_ Whether the asset is withdrawable.
-     */
-    function addAsyncAsset(address asset_, address withdrawalQueueManager, bool depositable_, bool withdrawable_)
-        external
-        virtual
-        onlyRole(ASSET_MANAGER_ROLE)
-    {
-        _addAsset(asset_, IERC20Metadata(asset_).decimals(), depositable_);
-        _setAssetWithdrawable(asset_, withdrawable_);
-        _setWithdrawalQueueManager(asset_, withdrawalQueueManager);
-    }
-
-    function setWithdrawalQueueManager(address asset_, address withdrawalQueueManager)
-        external
-        virtual
-        onlyRole(ASSET_MANAGER_ROLE)
-    {
-        _setWithdrawalQueueManager(asset_, withdrawalQueueManager);
-    }
-
-    function _setWithdrawalQueueManager(address asset_, address withdrawalQueueManager) internal {
-        AsyncWithdrawLib.setWithdrawalQueueManager(asset_, withdrawalQueueManager);
-    }
-
-    function getWithdrawalQueueManager(address asset_) external view returns (address) {
-        return AsyncWithdrawLib.getWithdrawalQueueManager(asset_);
-    }
-
-    function isAsyncAsset(address asset_) public view returns (bool) {
-        return AsyncWithdrawLib.isAsyncAsset(asset_);
-    }
-
-    function _getWithdrawerStorage() internal pure returns (AsyncWithdrawLib.WithdrawerStorage storage) {
-        return AsyncWithdrawLib.getWithdrawerStorage();
-    }
 }
