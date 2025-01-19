@@ -4,11 +4,10 @@ pragma solidity ^0.8.24;
 import {VaultLib} from "src/library/VaultLib.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {IBaseStrategy} from "src/interface/IBaseStrategy.sol";
 import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
 
 library AsyncWithdrawLib {
-    event AsyncAssetAdded(address asset, address withdrawalQueueManager);
+    event SetWithdrawalQueueManager(address asset, address withdrawalQueueManager);
 
     struct WithdrawerStorage {
         mapping(address => address) withdrawalQueueManagers;
@@ -40,9 +39,9 @@ library AsyncWithdrawLib {
         return getWithdrawerStorage().withdrawalQueueManagers[asset];
     }
 
-    function addAsyncAsset(address asset, address withdrawalQueueManager) public {
+    function setWithdrawalQueueManager(address asset, address withdrawalQueueManager) public {
         getWithdrawerStorage().withdrawalQueueManagers[asset] = withdrawalQueueManager;
-        emit AsyncAssetAdded(asset, withdrawalQueueManager);
+        emit SetWithdrawalQueueManager(asset, withdrawalQueueManager);
     }
 
     function isAsyncAsset(address asset) public view returns (bool) {
@@ -70,28 +69,12 @@ library AsyncWithdrawLib {
         view
         returns (uint256 assets, uint256 baseAssets)
     {
-        assets = getAssets(asset_, owner);
+        assets = getQueuedAssets(asset_, owner);
         baseAssets = VaultLib.convertAssetToBase(asset_, assets);
     }
 
-    function getAssets(address asset, address owner) public view returns (uint256 assets) {
-        if (asset == MC.WETH) {
-            return 0;
-        }
-
-        if (asset == MC.BUFFER) {
-            return 0;
-        }
-
-        if (asset == MC.STETH) {
-            return 0;
-        }
-
-        if (asset == MC.WBTC) {
-            return 0;
-        }
-
-        if (asset == MC.METH) {
+    function getQueuedAssets(address asset, address owner) public view returns (uint256 assets) {
+        if (!isAsyncAsset(asset)) {
             return 0;
         }
 

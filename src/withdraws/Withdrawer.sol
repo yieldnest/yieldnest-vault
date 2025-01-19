@@ -67,7 +67,23 @@ contract Withdrawer is BaseStrategy {
     {
         _addAsset(asset_, IERC20Metadata(asset_).decimals(), depositable_);
         _setAssetWithdrawable(asset_, withdrawable_);
-        AsyncWithdrawLib.addAsyncAsset(asset_, withdrawalQueueManager);
+        _setWithdrawalQueueManager(asset_, withdrawalQueueManager);
+    }
+
+    function setWithdrawalQueueManager(address asset_, address withdrawalQueueManager)
+        external
+        virtual
+        onlyRole(ASSET_MANAGER_ROLE)
+    {
+        _setWithdrawalQueueManager(asset_, withdrawalQueueManager);
+    }
+
+    function _setWithdrawalQueueManager(address asset_, address withdrawalQueueManager) internal {
+        AsyncWithdrawLib.setWithdrawalQueueManager(asset_, withdrawalQueueManager);
+    }
+
+    function getWithdrawalQueueManager(address asset_) external view returns (address) {
+        return AsyncWithdrawLib.getWithdrawalQueueManager(asset_);
     }
 
     function isAsyncAsset(address asset_) public view returns (bool) {
