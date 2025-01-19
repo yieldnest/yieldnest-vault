@@ -5,11 +5,7 @@ import {VaultLib} from "src/library/VaultLib.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IBaseStrategy} from "src/interface/IBaseStrategy.sol";
-
-interface IWithdrawalQueueManager {
-    function getWithdrawableBalance(address owner) external view returns (uint256);
-    function calculateWithdrawalFee(uint256 amount) external view returns (uint256);
-}
+import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
 
 library AsyncWithdrawLib {
     event AsyncAssetAdded(address asset, address withdrawalQueueManager);
@@ -98,19 +94,11 @@ library AsyncWithdrawLib {
 
         // TODO: handle other assets here
         if (asset == MC.YNLSDE) {
-            uint256 balance = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNLSDE])
-                .getWithdrawableBalance(owner);
-            uint256 fee = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNLSDE])
-                .calculateWithdrawalFee(balance);
-            return balance - fee;
+            return IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNLSDE]).redemptionAssetsVault().redemptionRate();
         }
 
         if (asset == MC.YNETH) {
-            uint256 balance = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNETH])
-                .getWithdrawableBalance(owner);
-            uint256 fee = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNETH])
-                .calculateWithdrawalFee(balance);
-            return balance - fee;
+            return IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNETH]).redemptionAssetsVault().redemptionRate();
         }
 
         revert UnsupportedAsset(asset);

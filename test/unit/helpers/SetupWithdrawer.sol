@@ -45,7 +45,7 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
         vault.grantRole(vault.ALLOCATOR_MANAGER_ROLE(), ALLOCATOR_MANAGER);
 
-        // test cannot unpause vault withtout buffer
+        // test cannot unpause vault without buffer
         vm.expectRevert();
         vault.unpause();
 
@@ -57,15 +57,15 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         vault.addAsset(MC.STETH, 18, true, true);
         vault.addAsset(MC.WBTC, true, true);
         vault.addAsset(MC.METH, true, true);
-        Withdrawer(payable(address(vault))).addAsyncAsset(MC.YNLSDE, MC.YNLSDE_WM, true, true);
-        Withdrawer(payable(address(vault))).addAsyncAsset(MC.YNETH, MC.YNETH_WM, true, true);
+        // vault.addAsyncAsset(MC.YNLSDE, MC.YNLSDE_WM, true, true);
+        // vault.addAsyncAsset(MC.YNETH, MC.YNETH_WM, true, true);
         // configure processor rules
 
         // TODO: add rules for withdraws
 
         // Set WBTC rate to 20 ETH
         MockProvider(MC.PROVIDER).setRate(MC.WBTC, 20e18);
-        // Set METH rate to 1.2 ETH
+        // Set METH rate to 1.2 ETH 
         MockProvider(MC.PROVIDER).setRate(MC.METH, 1.2e18);
 
         // Unpause the vault
