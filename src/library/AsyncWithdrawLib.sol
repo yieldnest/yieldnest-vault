@@ -11,8 +11,8 @@ library AsyncWithdrawLib {
     event AsyncAssetAdded(address asset, address withdrawalQueueManager);
 
     struct WithdrawerStorage {
-        address withdrawalQueueManager;
         mapping(address => address) withdrawalQueueManagers;
+        mapping(address => uint256[]) userWithdrawalQueueIds;
     }
 
     error UnsupportedAsset(address asset);
@@ -41,9 +41,17 @@ library AsyncWithdrawLib {
         return getWithdrawerStorage().withdrawalQueueManagers[asset];
     }
 
+    function getUserWithdrawalQueueIds(address owner) public view returns (uint256[] memory) {
+        return getWithdrawerStorage().userWithdrawalQueueIds[owner];
+    }
+
     function addAsyncAsset(address asset, address withdrawalQueueManager) public {
         getWithdrawerStorage().withdrawalQueueManagers[asset] = withdrawalQueueManager;
         emit AsyncAssetAdded(asset, withdrawalQueueManager);
+    }
+
+    function isAsyncAsset(address asset) public view returns (bool) {
+        return getWithdrawerStorage().withdrawalQueueManagers[asset] != address(0);
     }
 
     /**
@@ -55,6 +63,10 @@ library AsyncWithdrawLib {
             // keccak256("yieldnest.storage.withdrawer")
             $.slot := 0x4d9d8592a06949b5317dec0d2ac80ab3d5da773e7c912c33d931056d30e36843
         }
+    }
+
+    function getUserWithdrawalQueueIds(address owner) public view returns (uint256[] memory) {
+        return getWithdrawerStorage().userWithdrawalQueueIds[owner];
     }
 
     /**
@@ -94,13 +106,17 @@ library AsyncWithdrawLib {
 
         // TODO: handle other assets here
         if (asset == MC.YNLSDE) {
-            return IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNLSDE]).redemptionAssetsVault().redemptionRate();
-        }
+            uint256 rate = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNLSDE]).redemptionAssetsVault().redemptionRate();
+            uint256 fee = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNLSDE]).withdrawalFee();
+            return rate - fee;
 
         if (asset == MC.YNETH) {
-            return IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNETH]).redemptionAssetsVault().redemptionRate();
+            uint256 rate = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNETH]).redemptionAssetsVault().redemptionRate();
+            uint256 fee = IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNETH]).withdrawalFee();
+            return rate - fee;
         }
 
         revert UnsupportedAsset(asset);
     }
+
 }

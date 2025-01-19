@@ -77,6 +77,10 @@ contract Withdrawer is BaseStrategy {
         AsyncWithdrawLib.addAsyncAsset(asset_, withdrawalQueueManager);
     }
 
+    function isAsyncAsset(address asset_) public view returns (bool) {
+        return AsyncWithdrawLib.isAsyncAsset(asset_);
+    }
+
     function _getWithdrawerStorage() internal view returns (AsyncWithdrawLib.WithdrawerStorage storage) {
         return AsyncWithdrawLib.getWithdrawerStorage();
     }
