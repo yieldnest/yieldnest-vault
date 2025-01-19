@@ -40,10 +40,6 @@ library AsyncWithdrawLib {
         return getWithdrawerStorage().withdrawalQueueManagers[asset];
     }
 
-    function getUserWithdrawalQueueIds(address owner) public view returns (uint256[] memory) {
-        return getWithdrawerStorage().userWithdrawalQueueIds[owner];
-    }
-
     function addAsyncAsset(address asset, address withdrawalQueueManager) public {
         getWithdrawerStorage().withdrawalQueueManagers[asset] = withdrawalQueueManager;
         emit AsyncAssetAdded(asset, withdrawalQueueManager);
@@ -62,10 +58,6 @@ library AsyncWithdrawLib {
             // keccak256("yieldnest.storage.withdrawer")
             $.slot := 0x4d9d8592a06949b5317dec0d2ac80ab3d5da773e7c912c33d931056d30e36843
         }
-    }
-
-    function getUserWithdrawalQueueIds(address owner) public view returns (uint256[] memory) {
-        return getWithdrawerStorage().userWithdrawalQueueIds[owner];
     }
 
     /**
@@ -106,26 +98,30 @@ library AsyncWithdrawLib {
         // TODO: handle other assets here
         if (asset == MC.YNLSDE) {
             (uint256[] memory indices, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
-            IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNLSDE])
-                .withdrawalRequestsForOwner(owner);
+                IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNLSDE)).withdrawalRequestsForOwner(owner);
             for (uint256 i = 0; i < indices.length; i++) {
                 if (!requests[i].processed) {
-                    assets +=
-                        (requests[i].amount * requests[i].redemptionRateAtRequestTime) - requests[i].feeAtRequestTime;
+                    assets += (requests[i].amount * requests[i].redemptionRateAtRequestTime) / 1e18
+                        - IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNLSDE)).calculateFee(
+                            requests[i].amount, requests[i].feeAtRequestTime
+                        );
                 }
             }
+            return assets;
         }
+
         if (asset == MC.YNETH) {
             (uint256[] memory indices, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
-            IWithdrawalQueueManager(getWithdrawerStorage().withdrawalQueueManagers[MC.YNETH]).withdrawalRequestsForOwner(
-                owner
-            );
+                IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNETH)).withdrawalRequestsForOwner(owner);
             for (uint256 i = 0; i < indices.length; i++) {
                 if (!requests[i].processed) {
-                    assets +=
-                        (requests[i].amount * requests[i].redemptionRateAtRequestTime) - requests[i].feeAtRequestTime;
+                    assets += (requests[i].amount * requests[i].redemptionRateAtRequestTime) / 1e18
+                        - IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNETH)).calculateFee(
+                            requests[i].amount, requests[i].feeAtRequestTime
+                        );
                 }
             }
+            return assets;
         }
 
         revert UnsupportedAsset(asset);

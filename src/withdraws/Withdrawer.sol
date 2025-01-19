@@ -49,7 +49,7 @@ contract Withdrawer is BaseStrategy {
         return 0;
     }
 
-    function asyncWithdrawBalance(address asset, address /*owner*/ ) external view returns (uint256, uint256) {
+    function asyncWithdrawBalance(address asset) external view returns (uint256, uint256) {
         return AsyncWithdrawLib.asyncWithdrawBalance(asset, address(this));
     }
 
@@ -74,7 +74,7 @@ contract Withdrawer is BaseStrategy {
         return AsyncWithdrawLib.isAsyncAsset(asset_);
     }
 
-    function _getWithdrawerStorage() internal view returns (AsyncWithdrawLib.WithdrawerStorage storage) {
+    function _getWithdrawerStorage() internal pure returns (AsyncWithdrawLib.WithdrawerStorage storage) {
         return AsyncWithdrawLib.getWithdrawerStorage();
     }
 }
