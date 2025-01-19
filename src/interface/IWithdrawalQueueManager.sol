@@ -23,13 +23,17 @@ interface IWithdrawalQueueManager {
         address receiver;
     }
 
+    function REQUEST_FINALIZER_ROLE() external view returns (bytes32);
+    function withdrawalFee() external view returns (uint256);
     function requestWithdrawal(uint256 amount) external returns (uint256);
     function requestWithdrawal(uint256 amount, bytes calldata data) external returns (uint256);
     function claimWithdrawal(WithdrawalClaim memory claim) external;
+    function claimWithdrawal(uint256 tokenId, address receiver) external;
     function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex) external returns (uint256);
     function withdrawalRequestsForOwner(address owner)
         external
         view
         returns (uint256[] memory, WithdrawalRequest[] memory);
     function calculateFee(uint256 amount, uint256 requestWithdrawalFee) external pure returns (uint256);
+    function withdrawalRequest(uint256 tokenId) external view returns (WithdrawalRequest memory request);
 }

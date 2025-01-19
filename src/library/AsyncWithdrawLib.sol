@@ -79,29 +79,13 @@ library AsyncWithdrawLib {
         }
 
         // TODO: handle other assets here
-        if (asset == MC.YNLSDE) {
-            (uint256[] memory indices, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
-                IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNLSDE)).withdrawalRequestsForOwner(owner);
-            for (uint256 i = 0; i < indices.length; i++) {
+        if (asset == MC.YNLSDE || asset == MC.YNETH) {
+            IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(getWithdrawalQueueManager(asset));
+            (, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
+                queueManager.withdrawalRequestsForOwner(owner);
+            for (uint256 i = 0; i < requests.length; i++) {
                 if (!requests[i].processed) {
-                    assets += (requests[i].amount * requests[i].redemptionRateAtRequestTime) / 1e18
-                        - IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNLSDE)).calculateFee(
-                            requests[i].amount, requests[i].feeAtRequestTime
-                        );
-                }
-            }
-            return assets;
-        }
-
-        if (asset == MC.YNETH) {
-            (uint256[] memory indices, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
-                IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNETH)).withdrawalRequestsForOwner(owner);
-            for (uint256 i = 0; i < indices.length; i++) {
-                if (!requests[i].processed) {
-                    assets += (requests[i].amount * requests[i].redemptionRateAtRequestTime) / 1e18
-                        - IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNETH)).calculateFee(
-                            requests[i].amount, requests[i].feeAtRequestTime
-                        );
+                    assets += requests[i].amount;
                 }
             }
             return assets;
