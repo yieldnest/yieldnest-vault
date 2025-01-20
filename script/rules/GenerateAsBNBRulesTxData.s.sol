@@ -7,6 +7,7 @@ import {IVault} from "src/interface/IVault.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {RulesUtils} from "./RulesUtils.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 contract GenerateAsBNBRulesTxData is RulesUtils, Script {
     function run() external {
@@ -49,22 +50,22 @@ contract GenerateAsBNBRulesTxData is RulesUtils, Script {
             }
         }
 
-        console2.log("\n=== Deposit Asset Rule Calldata ===");
+        console2.log("\n=== YNASBNBK depositAsset(address,uint256,address) Rule Calldata ===");
         console2.logBytes(depositAssetCalldata);
 
-        console2.log("\n=== Deposit Rule Calldata ===");
+        console2.log("\n=== YNASBNBK deposit(uint256,address) Rule Calldata ===");
         console2.logBytes(depositCalldata);
 
-        console2.log("\n=== YNASBNBK Asset Approval Rule Calldatas ===");
+        console2.log("\n=== YNASBNBK approve(address,uint256) Rules for SLISBNB/ASBNB/WBNB ===");
         for (uint256 i = 0; i < assetApprovalRulesForYnasbnbk.length; i++) {
-            console2.log("Asset", i + 1);
+            console2.log("Asset:", assets[i], "Name:", IERC20Metadata(assets[i]).name());
             console2.logBytes(assetApprovalRulesForYnasbnbk[i]);
         }
 
-        console2.log("\n=== SLISBNB Deposit Rule Calldata ===");
+        console2.log("\n=== SLISBNB Stake Manager deposit() Rule Calldata ===");
         console2.logBytes(slisDepositCalldata);
 
-        console2.log("\n=== Asthereus Mint Rule Calldata ===");
+        console2.log("\n=== ASBNB Minter mintAsBnb(uint256) Rule Calldata ===");
         console2.logBytes(astherusMintCalldata);
     }
 }
