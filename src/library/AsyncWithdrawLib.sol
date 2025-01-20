@@ -59,7 +59,7 @@ library AsyncWithdrawLib {
         // TODO: support WOETH
 
         if (asset == MC.WSTETH) {
-            IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WQ);
+            IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
             uint256[] memory requestIds = queue.getWithdrawalRequests(owner);
             IWithdrawalQueue.WithdrawalRequestStatus[] memory statuses = queue.getWithdrawalStatus(requestIds);
             for (uint256 i = 0; i < statuses.length; i++) {
@@ -69,11 +69,11 @@ library AsyncWithdrawLib {
         }
 
         if (asset == MC.YNETH) {
-            return getAssetsQueuedForWithdrawal(MC.YNETH_WQM, owner);
+            return getAssetsQueuedForWithdrawal(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, owner);
         }
 
         if (asset == MC.YNLSDE) {
-            return getAssetsQueuedForWithdrawal(MC.YNLSDE_WQM, owner);
+            return getAssetsQueuedForWithdrawal(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, owner);
         }
 
         return 0;
