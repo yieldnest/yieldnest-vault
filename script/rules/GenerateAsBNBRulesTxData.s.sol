@@ -8,11 +8,10 @@ import {IValidator} from "src/interface/IValidator.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {RulesUtils} from "./RulesUtils.sol";
 
-contract GenerateRulesTxData is RulesUtils, Script {
+contract GenerateAsBNBRulesTxData is RulesUtils, Script {
     function run() external {
         console2.log("\nChain ID:", block.chainid);
 
-        // Replace these with actual addresses
         address vault = MC.YNBNBX;
         address slisBnbStakeManager = MC.SLIS_BNB_STAKE_MANAGER;
         address slisBnb = MC.SLISBNB;
