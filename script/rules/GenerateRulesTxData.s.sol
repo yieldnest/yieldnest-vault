@@ -19,12 +19,6 @@ contract GenerateRulesTxData is RulesUtils, Script {
         address asBnbMinter = MC.AS_BNB_MINTER;
 
         bytes memory slisDepositCalldata = generateSlisDepositRuleCalldata(slisBnbStakeManager);
-        bytes memory slisBnbApprovalCalldata;
-        {
-            address[] memory newSpenders = new address[](1);
-            newSpenders[0] = asBnbMinter;
-            slisBnbApprovalCalldata = generateApprovalRuleCalldataAppendToExistingSpenders(vault, slisBnb, newSpenders);
-        }
         bytes memory astherusMintCalldata = generateAstherusMintRuleCalldata(asBnbMinter);
 
         address[] memory assets = new address[](3);
@@ -39,32 +33,39 @@ contract GenerateRulesTxData is RulesUtils, Script {
         bytes memory depositCalldata = generateDepositRuleCalldata(MC.YNASBNBK, vault);
 
         // Generate approval rules for each asset
+
         bytes[] memory assetApprovalRulesForYnasbnbk = new bytes[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {
-            address[] memory spenders = new address[](1);
-            spenders[0] = MC.YNASBNBK;
-            assetApprovalRulesForYnasbnbk[i] = generateApprovalRuleCalldataAppendToExistingSpenders(vault, assets[i], spenders);
+            if (assets[i] == slisBnb) {
+                address[] memory spenders = new address[](2);
+                spenders[0] = MC.YNASBNBK;
+                spenders[1] = asBnbMinter;
+                assetApprovalRulesForYnasbnbk[i] =
+                    generateApprovalRuleCalldataAppendToExistingSpenders(vault, slisBnb, spenders);
+            } else {
+                address[] memory spenders = new address[](1);
+                spenders[0] = MC.YNASBNBK;
+                assetApprovalRulesForYnasbnbk[i] =
+                    generateApprovalRuleCalldataAppendToExistingSpenders(vault, assets[i], spenders);
+            }
         }
 
-        console2.log("\nDeposit Asset Rule Calldata:");
+        console2.log("\n=== Deposit Asset Rule Calldata ===");
         console2.logBytes(depositAssetCalldata);
 
-        console2.log("\nDeposit Rule Calldata:");
+        console2.log("\n=== Deposit Rule Calldata ===");
         console2.logBytes(depositCalldata);
 
-        console2.log("\nAsset Approval Rule Calldatas:");
+        console2.log("\n=== YNASBNBK Asset Approval Rule Calldatas ===");
         for (uint256 i = 0; i < assetApprovalRulesForYnasbnbk.length; i++) {
+            console2.log("Asset", i + 1);
             console2.logBytes(assetApprovalRulesForYnasbnbk[i]);
         }
 
-        console2.log("SLISBNB Deposit Rule Calldata:");
+        console2.log("\n=== SLISBNB Deposit Rule Calldata ===");
         console2.logBytes(slisDepositCalldata);
 
-        console2.log("\n SLISBNB Approval Rule Calldata:");
-        console2.logBytes(slisBnbApprovalCalldata);
-
-        console2.log("\nAsthereus Mint Rule Calldata:");
+        console2.log("\n=== Asthereus Mint Rule Calldata ===");
         console2.logBytes(astherusMintCalldata);
-
     }
 }
