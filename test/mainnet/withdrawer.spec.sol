@@ -15,6 +15,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 
 import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
+import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
 
 interface IAssetRegistry {
     function getAssets() external view returns (address[] memory);
@@ -27,7 +28,7 @@ interface IRedemptionAssetsVault {
     function deposit(uint256 amount, address asset) external;
 }
 
-contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
+contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUtils {
     using Math for uint256;
 
     Withdrawer public vault;
@@ -39,37 +40,18 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
     address internal constant CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
     bytes32 internal constant QUEUE_POSITION = keccak256("lido.WithdrawalQueue.queue");
 
-    function _getWithdrawalRequestFromQueue(uint256 requestId)
-        internal
-        returns (IWithdrawalQueue.WithdrawalRequest memory request)
-    {
-        Vm vm = Vm(CHEATCODE_ADDRESS);
-
-        bytes32 slot = vm.getMappingSlotAt(address(MC.WSTETH_WITHDRAWAL_QUEUE), QUEUE_POSITION, requestId);
-        uint256 requestSlot = uint256(slot);
-
-        request = IWithdrawalQueue.WithdrawalRequest({
-            cumulativeStETH: uint128(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot)))),
-            cumulativeShares: uint128(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 1)))),
-            owner: address(uint160(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 2))))),
-            timestamp: uint40(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 3)))),
-            claimed: vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 4)) != bytes32(0),
-            reportTimestamp: uint40(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 5))))
-        });
-    }
-
     function setUp() public {
         SetupWithdrawer setup = new SetupWithdrawer();
         vault = setup.setup();
 
-        // setup some default balances for the vault
+        // NOTE: setup some default balances for the vault
         deal(MC.WETH, address(vault), INITIAL_BALANCE);
         deal(MC.WSTETH, address(vault), INITIAL_BALANCE);
         deal(MC.WOETH, address(vault), INITIAL_BALANCE);
         deal(MC.YNETH, address(vault), INITIAL_BALANCE);
         deal(MC.YNLSDE, address(vault), INITIAL_BALANCE);
 
-        // setup some default balances for withdrawal queue managers
+        // NOTE: setup some default balances for withdrawal queue managers
         deal(MC.YNETH_REDEMPTION_ASSETS_VAULT, INITIAL_BALANCE * 100);
         deal(MC.WSTETH_WITHDRAWAL_QUEUE, INITIAL_BALANCE * 100);
 
@@ -80,7 +62,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
             IRedemptionAssetsVault(MC.YNLSDE_REDEMPTION_ASSETS_VAULT).deposit(INITIAL_BALANCE * 100, assets[i]);
         }
 
-        // assert that the vault has some available assets
+        // NOTE: donate some assets to the queue managers / redemption assets vaults
         assertGt(
             MC.WSTETH_WITHDRAWAL_QUEUE.balance,
             INITIAL_BALANCE,
@@ -97,10 +79,29 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
             "ynETH redemption vault should have some available assets"
         );
 
-        // grant finalizer role to the admin
+        // NOTE: grant finalizer role to the admin
         vm.startPrank(ADMIN);
         _grantFinalizerRole(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
         _grantFinalizerRole(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
+        vm.stopPrank();
+
+        // NOTE: setup processor rules for the withdrawer
+        vm.startPrank(ADMIN);
+        setApprovalRule(vault, MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+        setRequestWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+        setClaimWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+
+        setApprovalRule(vault, MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+        setRequestWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+        setClaimWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+
+        setApprovalRule(vault, MC.WSTETH, MC.WSTETH_WITHDRAWAL_QUEUE);
+        setRequestWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
+        setClaimWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
+        vm.stopPrank();
+
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.PROCESSOR_ROLE(), address(this));
         vm.stopPrank();
     }
 
@@ -133,63 +134,11 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
         assertEq(vault.totalAssets(), totalAssets, "Total assets should match");
     }
 
-    function _requestWithdrawal(address asset_, address queueManager_, uint256 amount)
-        internal
-        returns (uint256 tokenId)
-    {
-        IERC20 asset = IERC20(asset_);
-        IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
-
-        uint256 assets = vault.asyncWithdrawBalance(asset_);
-        assertEq(assets, 0, "Queued assets should be zero");
-        uint256 totalAssets = vault.totalAssets();
-
-        // TODO: replace with processor
-        vm.startPrank(address(vault));
-        asset.approve(address(queueManager), amount);
-        tokenId = queueManager.requestWithdrawal(amount);
-        vm.stopPrank();
-
-        IWithdrawalQueueManager.WithdrawalRequest memory request = queueManager.withdrawalRequest(tokenId);
-
-        assertEq(request.amount, amount, "Amount should match");
-
-        assets = vault.asyncWithdrawBalance(asset_);
-
-        uint256 amountInBase = _convertAssetToBase(asset_, amount);
-
-        assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
-        assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
-    }
-
     function test_Vault_RequestWithdrawal_YNETH(uint256 amount) public {
         vm.assume(amount > 1000);
         vm.assume(amount < INITIAL_BALANCE / 2);
 
         _requestWithdrawal(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, amount);
-    }
-
-    function _claimWithdrawal(address asset_, address queueManager_, uint256 tokenId) internal {
-        IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
-        uint256 totalAssets = vault.totalAssets();
-
-        vm.startPrank(ADMIN);
-        queueManager.finalizeRequestsUpToIndex(tokenId + 1);
-        vm.stopPrank();
-
-        // TODO: replace with processor
-        vm.startPrank(address(vault));
-        queueManager.claimWithdrawal(tokenId, address(vault));
-        vm.stopPrank();
-
-        IWithdrawalQueueManager.WithdrawalRequest memory request = queueManager.withdrawalRequest(tokenId);
-
-        uint256 withdrawalFee = queueManager.withdrawalFee();
-        uint256 amountInBase = _convertAssetToBase(asset_, request.amount);
-
-        uint256 expectedFee = queueManager.calculateFee(amountInBase, withdrawalFee);
-
-        assertApproxEqRel(vault.totalAssets(), totalAssets - expectedFee, 1e15, "Total assets should match");
     }
 
     function test_Vault_ClaimWithdrawal_YNETH(uint256 amount) public {
@@ -198,14 +147,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
 
         uint256 tokenId = _requestWithdrawal(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, amount);
 
-        uint256 assets = vault.asyncWithdrawBalance(MC.YNETH);
-        uint256 amountInBase = _convertAssetToBase(MC.YNETH, amount);
-        assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
-
         _claimWithdrawal(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, tokenId);
-
-        assets = vault.asyncWithdrawBalance(MC.YNETH);
-        assertEq(assets, 0, "Queued assets should match");
     }
 
     function test_Vault_RequestWithdrawal_YNLSDE(uint256 amount) public {
@@ -221,48 +163,14 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
 
         uint256 tokenId = _requestWithdrawal(MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, amount);
 
-        uint256 assets = vault.asyncWithdrawBalance(MC.YNLSDE);
-        uint256 amountInBase = _convertAssetToBase(MC.YNLSDE, amount);
-        assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
-
-        uint256 rateFromProvider = provider.getRate(MC.YNLSDE);
-        uint256 redemptionRate = IRedemptionAssetsVault(MC.YNLSDE_REDEMPTION_ASSETS_VAULT).redemptionRate();
-
-        assertEq(rateFromProvider, redemptionRate, "Rate from provider should match");
-
         _claimWithdrawal(MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, tokenId);
-
-        assets = vault.asyncWithdrawBalance(MC.YNLSDE);
-        assertEq(assets, 0, "Queued assets should match");
     }
 
     function test_Vault_RequestWithdrawal_WSTETH(uint256 amount) public {
         vm.assume(amount > 1000);
         vm.assume(amount < INITIAL_BALANCE / 2);
 
-        address asset_ = MC.WSTETH;
-
-        IERC20 asset = IERC20(asset_);
-        IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
-
-        uint256 assets = vault.asyncWithdrawBalance(asset_);
-        assertEq(assets, 0, "Queued assets should be zero");
-        uint256 totalAssets = vault.totalAssets();
-
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = amount;
-
-        // TODO: replace with processor
-        vm.startPrank(address(vault));
-        asset.approve(address(queue), amount);
-        queue.requestWithdrawalsWstETH(amounts, address(vault));
-        vm.stopPrank();
-
-        assets = vault.asyncWithdrawBalance(asset_);
-        uint256 amountInBase = _convertAssetToBase(asset_, amount);
-
-        assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
-        assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
+        _requestWithdrawalWstETH(MC.WSTETH, amount);
     }
 
     function test_Vault_ClaimWithdrawal_WSTETH(uint256 amount) public {
@@ -271,34 +179,51 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
 
         address asset_ = MC.WSTETH;
 
-        IERC20 asset = IERC20(asset_);
-        IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
+        uint256 tokenId = _requestWithdrawalWstETH(asset_, amount);
 
+        _claimWithdrawalWstETH(asset_, tokenId);
+    }
+
+    function _requestWithdrawalWstETH(address asset_, uint256 amount) internal returns (uint256 tokenId) {
         uint256 assets = vault.asyncWithdrawBalance(asset_);
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = vault.totalAssets();
 
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = amount;
+        tokenId = processRequestWithdrawalWstETH(vault, MC.WSTETH_WITHDRAWAL_QUEUE, asset_, amount);
 
-        // TODO: replace with processor
-        vm.startPrank(address(vault));
-        asset.approve(address(queue), amount);
-        uint256[] memory tokenIds = queue.requestWithdrawalsWstETH(amounts, address(vault));
-        vm.stopPrank();
+        IWithdrawalQueue.WithdrawalRequestStatus memory status = _getWithdrawalRequestStatusFromQueue(tokenId);
 
-        uint256 tokenId = tokenIds[0];
+        assertApproxEqRel(status.amountOfShares, amount, 1e15, "Amount should match");
 
         assets = vault.asyncWithdrawBalance(asset_);
         uint256 amountInBase = _convertAssetToBase(asset_, amount);
 
         assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
         assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
+    }
 
+    function _getWithdrawalRequestStatusFromQueue(uint256 tokenId)
+        internal view
+        returns (IWithdrawalQueue.WithdrawalRequestStatus memory)
+    {
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+
+        IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
         IWithdrawalQueue.WithdrawalRequestStatus[] memory statuses = queue.getWithdrawalStatus(tokenIds);
-        assertEq(statuses.length, 1, "Statuses length should match");
 
-        uint256 shareRate = statuses[0].amountOfStETH * 1e27 / statuses[0].amountOfShares;
+        return statuses[0];
+    }
+
+    function _claimWithdrawalWstETH(address asset_, uint256 tokenId) internal {
+        IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
+        uint256 totalAssets = vault.totalAssets();
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+
+        IWithdrawalQueue.WithdrawalRequestStatus memory status = _getWithdrawalRequestStatusFromQueue(tokenId);
+        uint256 shareRate = status.amountOfStETH * 1e27 / status.amountOfShares;
 
         uint256 lastFinalizedIndex = queue.getLastFinalizedRequestId();
         IWithdrawalQueue.WithdrawalRequest memory request = _getWithdrawalRequestFromQueue(tokenId);
@@ -311,11 +236,76 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
         queue.finalize{value: amountOfEth}(tokenId, shareRate);
         vm.stopPrank();
 
-        // TODO: replace with processor
-        vm.startPrank(address(vault));
-        queue.claimWithdrawal(tokenId);
-        vm.stopPrank();
+        processClaimWithdrawalWstETH(vault, MC.WSTETH_WITHDRAWAL_QUEUE, tokenId);
 
         assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
+
+        uint256 assets = vault.asyncWithdrawBalance(asset_);
+        assertEq(assets, 0, "Queued assets should match");
+    }
+
+    function _requestWithdrawal(address asset_, address queueManager_, uint256 amount)
+        internal
+        returns (uint256 tokenId)
+    {
+        IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
+
+        uint256 assets = vault.asyncWithdrawBalance(asset_);
+        assertEq(assets, 0, "Queued assets should be zero");
+        uint256 totalAssets = vault.totalAssets();
+
+        tokenId = processRequestWithdrawal(vault, queueManager_, asset_, amount);
+
+        IWithdrawalQueueManager.WithdrawalRequest memory request = queueManager.withdrawalRequest(tokenId);
+
+        assertEq(request.amount, amount, "Amount should match");
+
+        assets = vault.asyncWithdrawBalance(asset_);
+        uint256 amountInBase = _convertAssetToBase(asset_, amount);
+
+        assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
+        assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
+    }
+
+    function _claimWithdrawal(address asset_, address queueManager_, uint256 tokenId) internal {
+        IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
+        uint256 totalAssets = vault.totalAssets();
+
+        vm.startPrank(ADMIN);
+        queueManager.finalizeRequestsUpToIndex(tokenId + 1);
+        vm.stopPrank();
+
+        processClaimWithdrawal(vault, queueManager_, tokenId);
+
+        IWithdrawalQueueManager.WithdrawalRequest memory request = queueManager.withdrawalRequest(tokenId);
+
+        uint256 withdrawalFee = queueManager.withdrawalFee();
+        uint256 amountInBase = _convertAssetToBase(asset_, request.amount);
+
+        uint256 expectedFee = queueManager.calculateFee(amountInBase, withdrawalFee);
+
+        assertApproxEqRel(vault.totalAssets(), totalAssets - expectedFee, 1e15, "Total assets should match");
+
+        uint256 assets = vault.asyncWithdrawBalance(asset_);
+        assertEq(assets, 0, "Queued assets should match");
+    }
+
+    function _getWithdrawalRequestFromQueue(uint256 requestId)
+        internal
+        returns (IWithdrawalQueue.WithdrawalRequest memory request)
+    {
+        Vm vm = Vm(CHEATCODE_ADDRESS);
+
+        bytes32 slot = vm.getMappingSlotAt(address(MC.WSTETH_WITHDRAWAL_QUEUE), QUEUE_POSITION, requestId);
+        uint256 requestSlot = uint256(slot);
+
+        request = IWithdrawalQueue.WithdrawalRequest({
+            cumulativeStETH: uint128(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot)))),
+            cumulativeShares: uint128(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 1)))),
+            owner: address(uint160(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 2))))),
+            timestamp: uint40(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 3)))),
+            claimed: vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 4)) != bytes32(0),
+            reportTimestamp: uint40(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 5))))
+        });
     }
 }
