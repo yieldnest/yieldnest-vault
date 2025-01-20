@@ -25,5 +25,4 @@ contract Etches is Test, MainnetActors {
         bytes memory code = address(buffer).code;
         vm.etch(MC.BUFFER, code);
     }
-    
 }

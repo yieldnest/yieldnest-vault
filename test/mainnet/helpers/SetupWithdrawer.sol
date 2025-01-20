@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
@@ -17,7 +18,7 @@ import {IWithdrawalQueueManager, IRedemptionAssetsVault} from "src/interface/IWi
 contract SetupWithdrawer is Test, Etches, MainnetActors {
     IWithdrawalQueueManager public withdrawalQueueManagerLsde;
     IWithdrawalQueueManager public withdrawalQueueManagerYneth;
-    function setup() public returns (Withdrawer vault, WETH9 weth) {
+    function setup() public returns (Withdrawer vault) {
         string memory name = "YieldNest Withdrawer";
         string memory symbol = "ynWithdrawer";
 
@@ -30,10 +31,9 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
         vault = Withdrawer(payable(address(vaultProxy)));
-        weth = WETH9(payable(MC.WETH));
-
-        withdrawalQueueManagerLsde = IWithdrawalQueueManager(payable(address(MC.YNLSDE_WM)));
-        withdrawalQueueManagerYneth = IWithdrawalQueueManager(payable(address(MC.YNETH_WM)));
+   
+        withdrawalQueueManagerLsde = IWithdrawalQueueManager(payable(address(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER)));
+        withdrawalQueueManagerYneth = IWithdrawalQueueManager(payable(address(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER)));
         configureWithdrawer(vault);
     }
 
@@ -57,28 +57,33 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
-        vault.addAsyncAsset(MC.YNLSDE, MC.YNLSDE_WM, true, true);
-        vault.addAsyncAsset(MC.YNETH, MC.YNETH_WM, true, true);
+        vault.addAsset(MC.WETH, true, true);
+        vault.addAsset(MC.STETH, true, true);
+        vault.addAsset(MC.WSTETH, true, true);
+        vault.addAsset(MC.METH, true, true);
+        vault.addAsset(MC.RETH, true, true);
+        vault.addAsset(MC.WOETH, true, true);
+        vault.addAsset(MC.SWELL, true, true);
+        vault.addAsset(MC.SFRXETH, true, true);
+        vault.addAsset(MC.YNLSDE, true, true);
+        vault.addAsset(MC.YNETH, true, true);
         // configure processor rules
 
         //donate to redemtion asset vault
-        address redemptionAssetsVaultLsde = address(withdrawalQueueManagerLsde.redemptionAssetsVault());
-        address redemptionAssetsVaultYneth = address(withdrawalQueueManagerYneth.redemptionAssetsVault());
-
-        deal(MC.YNLSDE, redemptionAssetsVaultLsde, 100 ether);
-        deal(MC.YNETH, redemptionAssetsVaultYneth, 100 ether);
+        deal(MC.YNLSDE, MC.YNLSDE_REDEMPTION_ASSETS_VAULT, 100 ether);
+        deal(MC.YNETH, MC.YNETH_REDEMPTION_ASSETS_VAULT, 100 ether);
         // TODO: add rules for withdraws
-        addApprovalRule(vault, MC.YNLSDE, MC.YNLSDE_WM);
-        addApprovalRule(vault, MC.YNETH, MC.YNETH_WM);
+        addApprovalRule(vault, MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+        addApprovalRule(vault, MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
 
-        addAsyncWithdrawRule(vault, MC.YNLSDE_WM);
-        addAsyncWithdrawRule(vault, MC.YNETH_WM);
+        addAsyncWithdrawRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+        addAsyncWithdrawRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
 
-        addClaimWithdrawalRule(vault, MC.YNLSDE_WM, ADMIN);
-        addClaimWithdrawalRule(vault, MC.YNETH_WM, ADMIN);
+        addClaimWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
+        addClaimWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
 
-        addClaimWithdrawalsRule(vault, MC.YNLSDE_WM, ADMIN);
-        addClaimWithdrawalsRule(vault, MC.YNETH_WM, ADMIN);
+        addClaimWithdrawalsRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
+        addClaimWithdrawalsRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
 
         // Unpause the vault
         vault.unpause();

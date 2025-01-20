@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
-import {IERC20Metadata} from "src/Common.sol";
 import {AsyncWithdrawLib} from "src/library/AsyncWithdrawLib.sol";
 
 contract Withdrawer is BaseStrategy {
@@ -49,32 +48,7 @@ contract Withdrawer is BaseStrategy {
         return 0;
     }
 
-    function asyncWithdrawBalance(address asset) external view returns (uint256, uint256) {
+    function asyncWithdrawBalance(address asset) external view returns (uint256) {
         return AsyncWithdrawLib.asyncWithdrawBalance(asset, address(this));
-    }
-
-    /**
-     * @notice Adds a new Async asset to the vault.
-     * @param asset_ The address of the asset.
-     * @param withdrawalQueueManager The address of the withdrawal queue manager.
-     * @param depositable_ Whether the asset is depositable.
-     * @param withdrawable_ Whether the asset is withdrawable.
-     */
-    function addAsyncAsset(address asset_, address withdrawalQueueManager, bool depositable_, bool withdrawable_)
-        external
-        virtual
-        onlyRole(ASSET_MANAGER_ROLE)
-    {
-        _addAsset(asset_, IERC20Metadata(asset_).decimals(), depositable_);
-        _setAssetWithdrawable(asset_, withdrawable_);
-        AsyncWithdrawLib.addAsyncAsset(asset_, withdrawalQueueManager);
-    }
-
-    function isAsyncAsset(address asset_) public view returns (bool) {
-        return AsyncWithdrawLib.isAsyncAsset(asset_);
-    }
-
-    function _getWithdrawerStorage() internal pure returns (AsyncWithdrawLib.WithdrawerStorage storage) {
-        return AsyncWithdrawLib.getWithdrawerStorage();
     }
 }

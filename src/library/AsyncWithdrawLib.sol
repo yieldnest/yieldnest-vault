@@ -4,16 +4,10 @@ pragma solidity ^0.8.24;
 import {VaultLib} from "src/library/VaultLib.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {IBaseStrategy} from "src/interface/IBaseStrategy.sol";
 import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
+import {IWithdrawalQueue} from "src/interface/external/lido/IWithdrawalQueue.sol";
 
 library AsyncWithdrawLib {
-    event AsyncAssetAdded(address asset, address withdrawalQueueManager);
-
-    struct WithdrawerStorage {
-        mapping(address => address) withdrawalQueueManagers;
-    }
-
     error UnsupportedAsset(address asset);
     /**
      * @notice Internal function to compute the total assets. Must handle the assets that are in queue for withdrawal.
@@ -31,32 +25,8 @@ library AsyncWithdrawLib {
         uint256 assetListLength = assetList.length;
 
         for (uint256 i = 0; i < assetListLength; i++) {
-            (, uint256 balanceInBase) = asyncWithdrawBalance(assetList[i], address(this));
+            uint256 balanceInBase = asyncWithdrawBalance(assetList[i], address(this));
             totalBaseBalance += balanceInBase;
-        }
-    }
-
-    function getWithdrawalQueueManager(address asset) public view returns (address) {
-        return getWithdrawerStorage().withdrawalQueueManagers[asset];
-    }
-
-    function addAsyncAsset(address asset, address withdrawalQueueManager) public {
-        getWithdrawerStorage().withdrawalQueueManagers[asset] = withdrawalQueueManager;
-        emit AsyncAssetAdded(asset, withdrawalQueueManager);
-    }
-
-    function isAsyncAsset(address asset) public view returns (bool) {
-        return getWithdrawerStorage().withdrawalQueueManagers[asset] != address(0);
-    }
-
-    /**
-     * @notice Retrieves the strategy storage struct.
-     * @return $ The strategy storage struct.
-     */
-    function getWithdrawerStorage() public pure returns (WithdrawerStorage storage $) {
-        assembly {
-            // keccak256("yieldnest.storage.withdrawer")
-            $.slot := 0x4d9d8592a06949b5317dec0d2ac80ab3d5da773e7c912c33d931056d30e36843
         }
     }
 
@@ -65,65 +35,48 @@ library AsyncWithdrawLib {
      * @param asset_ The address of the asset.
      * @dev This function should return the amount in base denomination.
      */
-    function asyncWithdrawBalance(address asset_, address owner)
-        public
-        view
-        returns (uint256 assets, uint256 baseAssets)
-    {
-        assets = getAssets(asset_, owner);
-        baseAssets = VaultLib.convertAssetToBase(asset_, assets);
+    function asyncWithdrawBalance(address asset_, address owner) public view returns (uint256 baseAssets) {
+        baseAssets = _getQueuedAssetsInBase(asset_, owner);
     }
 
-    function getAssets(address asset, address owner) public view returns (uint256 assets) {
-        if (asset == MC.WETH) {
-            return 0;
-        }
-
-        if (asset == MC.BUFFER) {
-            return 0;
-        }
-
-        if (asset == MC.STETH) {
-            return 0;
-        }
-
-        if (asset == MC.WBTC) {
-            return 0;
-        }
-
-        if (asset == MC.METH) {
-            return 0;
-        }
-
-        // TODO: handle other assets here
-        if (asset == MC.YNLSDE) {
-            (uint256[] memory indices, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
-                IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNLSDE)).withdrawalRequestsForOwner(owner);
-            for (uint256 i = 0; i < indices.length; i++) {
-                if (!requests[i].processed) {
-                    assets += (requests[i].amount * requests[i].redemptionRateAtRequestTime) / 1e18
-                        - IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNLSDE)).calculateFee(
-                            requests[i].amount, requests[i].feeAtRequestTime
-                        );
-                }
+    function _getAssetsQueuedForWithdrawal(address queueManager_, address owner)
+        private
+        view
+        returns (uint256 baseAssets)
+    {
+        IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
+        (, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) = queueManager.withdrawalRequestsForOwner(owner);
+        for (uint256 i = 0; i < requests.length; i++) {
+            if (!requests[i].processed) {
+                // NOTE: needs to be fixed - assumes no slashing for now, as in reality eigenlayer slashing is not active yet
+                // also we do not account for the fees here
+                baseAssets += requests[i].amount * requests[i].redemptionRateAtRequestTime / 1e18;
             }
-            return assets;
+        }
+        return baseAssets;
+    }
+
+    function _getQueuedAssetsInBase(address asset, address owner) private view returns (uint256 baseAssets) {
+        // TODO: support WOETH
+
+        if (asset == MC.WSTETH) {
+            IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
+            uint256[] memory requestIds = queue.getWithdrawalRequests(owner);
+            IWithdrawalQueue.WithdrawalRequestStatus[] memory statuses = queue.getWithdrawalStatus(requestIds);
+            for (uint256 i = 0; i < statuses.length; i++) {
+                baseAssets += statuses[i].amountOfStETH;
+            }
+            return baseAssets;
         }
 
         if (asset == MC.YNETH) {
-            (uint256[] memory indices, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
-                IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNETH)).withdrawalRequestsForOwner(owner);
-            for (uint256 i = 0; i < indices.length; i++) {
-                if (!requests[i].processed) {
-                    assets += (requests[i].amount * requests[i].redemptionRateAtRequestTime) / 1e18
-                        - IWithdrawalQueueManager(getWithdrawalQueueManager(MC.YNETH)).calculateFee(
-                            requests[i].amount, requests[i].feeAtRequestTime
-                        );
-                }
-            }
-            return assets;
+            return _getAssetsQueuedForWithdrawal(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, owner);
         }
 
-        revert UnsupportedAsset(asset);
+        if (asset == MC.YNLSDE) {
+            return _getAssetsQueuedForWithdrawal(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, owner);
+        }
+
+        return 0;
     }
 }

@@ -9,11 +9,6 @@ import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupWithdrawer} from "test/unit/helpers/SetupWithdrawer.sol";
 import {MainnetActors} from "script/Actors.sol";
-// import {WithdrawalQueueManager} from "lib/yieldnest-protocol/src/WithdrawalQueueManager.sol";
-
-interface IWithdrawalQueueManager {
-    function getWithdrawableBalance(address owner) external view returns (uint256);
-}
 
 contract WithdrawerUnitTest is Test, MainnetActors, Etches {
     Withdrawer public vaultImplementation;
@@ -44,7 +39,6 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
-        // TODO: ETCH WITHDRAWAL QUEUE MANAGERS
     }
 
     function test_Vault_previewWithdraw(uint256 assets, bool alwaysComputeTotalAssets) external {
