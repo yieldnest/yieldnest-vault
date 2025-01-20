@@ -140,7 +140,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
         IERC20 asset = IERC20(asset_);
         IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
 
-        (uint256 assets,) = vault.asyncWithdrawBalance(asset_);
+        uint256 assets = vault.asyncWithdrawBalance(asset_);
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = vault.totalAssets();
 
@@ -154,9 +154,11 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
 
         assertEq(request.amount, amount, "Amount should match");
 
-        (assets,) = vault.asyncWithdrawBalance(asset_);
+        assets = vault.asyncWithdrawBalance(asset_);
 
-        assertApproxEqRel(assets, amount, 1e15, "Queued assets should match");
+        uint256 amountInBase = _convertAssetToBase(asset_, amount);
+
+        assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
         assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
     }
 
@@ -196,12 +198,13 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
 
         uint256 tokenId = _requestWithdrawal(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, amount);
 
-        (uint256 assets,) = vault.asyncWithdrawBalance(MC.YNETH);
-        assertApproxEqRel(assets, amount, 1e15, "Queued assets should match");
+        uint256 assets = vault.asyncWithdrawBalance(MC.YNETH);
+        uint256 amountInBase = _convertAssetToBase(MC.YNETH, amount);
+        assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
 
         _claimWithdrawal(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, tokenId);
 
-        (assets,) = vault.asyncWithdrawBalance(MC.YNETH);
+        assets = vault.asyncWithdrawBalance(MC.YNETH);
         assertEq(assets, 0, "Queued assets should match");
     }
 
@@ -218,8 +221,9 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
 
         uint256 tokenId = _requestWithdrawal(MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, amount);
 
-        (uint256 assets,) = vault.asyncWithdrawBalance(MC.YNLSDE);
-        assertApproxEqRel(assets, amount, 1e15, "Queued assets should match");
+        uint256 assets = vault.asyncWithdrawBalance(MC.YNLSDE);
+        uint256 amountInBase = _convertAssetToBase(MC.YNLSDE, amount);
+        assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
 
         uint256 rateFromProvider = provider.getRate(MC.YNLSDE);
         uint256 redemptionRate = IRedemptionAssetsVault(MC.YNLSDE_REDEMPTION_ASSETS_VAULT).redemptionRate();
@@ -228,7 +232,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
 
         _claimWithdrawal(MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, tokenId);
 
-        (assets,) = vault.asyncWithdrawBalance(MC.YNLSDE);
+        assets = vault.asyncWithdrawBalance(MC.YNLSDE);
         assertEq(assets, 0, "Queued assets should match");
     }
 
@@ -241,7 +245,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
         IERC20 asset = IERC20(asset_);
         IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
 
-        (uint256 assets,) = vault.asyncWithdrawBalance(asset_);
+        uint256 assets = vault.asyncWithdrawBalance(asset_);
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = vault.totalAssets();
 
@@ -254,9 +258,10 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
         queue.requestWithdrawalsWstETH(amounts, address(vault));
         vm.stopPrank();
 
-        (assets,) = vault.asyncWithdrawBalance(asset_);
+        assets = vault.asyncWithdrawBalance(asset_);
+        uint256 amountInBase = _convertAssetToBase(asset_, amount);
 
-        assertApproxEqRel(assets, amount, 1e15, "Queued assets should match");
+        assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
         assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
     }
 
@@ -269,7 +274,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
         IERC20 asset = IERC20(asset_);
         IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
 
-        (uint256 assets,) = vault.asyncWithdrawBalance(asset_);
+        uint256 assets = vault.asyncWithdrawBalance(asset_);
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = vault.totalAssets();
 
@@ -284,9 +289,10 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
 
         uint256 tokenId = tokenIds[0];
 
-        (assets,) = vault.asyncWithdrawBalance(asset_);
+        assets = vault.asyncWithdrawBalance(asset_);
+        uint256 amountInBase = _convertAssetToBase(asset_, amount);
 
-        assertApproxEqRel(assets, amount, 1e15, "Queued assets should match");
+        assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
         assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
 
         IWithdrawalQueue.WithdrawalRequestStatus[] memory statuses = queue.getWithdrawalStatus(tokenIds);

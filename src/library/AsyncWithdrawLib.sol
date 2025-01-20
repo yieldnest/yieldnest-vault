@@ -25,7 +25,7 @@ library AsyncWithdrawLib {
         uint256 assetListLength = assetList.length;
 
         for (uint256 i = 0; i < assetListLength; i++) {
-            (, uint256 balanceInBase) = asyncWithdrawBalance(assetList[i], address(this));
+            uint256 balanceInBase = asyncWithdrawBalance(assetList[i], address(this));
             totalBaseBalance += balanceInBase;
         }
     }
@@ -35,27 +35,28 @@ library AsyncWithdrawLib {
      * @param asset_ The address of the asset.
      * @dev This function should return the amount in base denomination.
      */
-    function asyncWithdrawBalance(address asset_, address owner)
-        public
-        view
-        returns (uint256 assets, uint256 baseAssets)
-    {
-        assets = getQueuedAssets(asset_, owner);
-        baseAssets = VaultLib.convertAssetToBase(asset_, assets);
+    function asyncWithdrawBalance(address asset_, address owner) public view returns (uint256 baseAssets) {
+        baseAssets = _getQueuedAssetsInBase(asset_, owner);
     }
 
-    function getAssetsQueuedForWithdrawal(address queueManager_, address owner) public view returns (uint256 assets) {
+    function _getAssetsQueuedForWithdrawal(address queueManager_, address owner)
+        private
+        view
+        returns (uint256 baseAssets)
+    {
         IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
         (, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) = queueManager.withdrawalRequestsForOwner(owner);
         for (uint256 i = 0; i < requests.length; i++) {
             if (!requests[i].processed) {
-                assets += requests[i].amount;
+                // NOTE: needs to be fixed - assumes no slashing for now, as in reality eigenlayer slashing is not active yet
+                // also we do not account for the fees here
+                baseAssets += requests[i].amount * requests[i].redemptionRateAtRequestTime / 1e18;
             }
         }
-        return assets;
+        return baseAssets;
     }
 
-    function getQueuedAssets(address asset, address owner) public view returns (uint256 assets) {
+    function _getQueuedAssetsInBase(address asset, address owner) private view returns (uint256 baseAssets) {
         // TODO: support WOETH
 
         if (asset == MC.WSTETH) {
@@ -63,17 +64,17 @@ library AsyncWithdrawLib {
             uint256[] memory requestIds = queue.getWithdrawalRequests(owner);
             IWithdrawalQueue.WithdrawalRequestStatus[] memory statuses = queue.getWithdrawalStatus(requestIds);
             for (uint256 i = 0; i < statuses.length; i++) {
-                assets += statuses[i].amountOfShares;
+                baseAssets += statuses[i].amountOfStETH;
             }
-            return assets;
+            return baseAssets;
         }
 
         if (asset == MC.YNETH) {
-            return getAssetsQueuedForWithdrawal(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, owner);
+            return _getAssetsQueuedForWithdrawal(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, owner);
         }
 
         if (asset == MC.YNLSDE) {
-            return getAssetsQueuedForWithdrawal(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, owner);
+            return _getAssetsQueuedForWithdrawal(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, owner);
         }
 
         return 0;

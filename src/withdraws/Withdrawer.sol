@@ -48,7 +48,7 @@ contract Withdrawer is BaseStrategy {
         return 0;
     }
 
-    function asyncWithdrawBalance(address asset) external view returns (uint256, uint256) {
+    function asyncWithdrawBalance(address asset) external view returns (uint256) {
         return AsyncWithdrawLib.asyncWithdrawBalance(asset, address(this));
     }
 }
