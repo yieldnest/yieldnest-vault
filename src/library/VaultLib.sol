@@ -133,6 +133,18 @@ library VaultLib {
         return (assets, baseAssets);
     }
 
+    function convertToAssets(address asset_, uint256 shares, Math.Rounding rounding, bool readTotalAssets)
+        public
+        view
+        returns (uint256, uint256)
+    {
+        uint256 totalAssets = readTotalAssets ? getVaultStorage().totalAssets : IVault(address(this)).totalAssets();
+        uint256 totalSupply = getERC20Storage().totalSupply;
+        uint256 baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
+        uint256 assets = convertBaseToAsset(asset_, baseAssets);
+        return (assets, baseAssets);
+    }
+
     function convertToShares(address asset_, uint256 assets, Math.Rounding rounding)
         public
         view
@@ -144,6 +156,19 @@ library VaultLib {
         uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
         return (shares, baseAssets);
     }
+
+    function convertToShares(address asset_, uint256 assets, Math.Rounding rounding, bool readTotalAssets)
+        public
+        view
+        returns (uint256, uint256)
+    {
+        uint256 totalAssets = readTotalAssets ? getVaultStorage().totalAssets : IVault(address(this)).totalAssets();
+        uint256 totalSupply = getERC20Storage().totalSupply;
+        uint256 baseAssets = convertAssetToBase(asset_, assets);
+        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
+        return (shares, baseAssets);
+    }
+
 
     function setProcessorRule(address target, bytes4 functionSig, IVault.FunctionRule calldata rule) public {
         getProcessorStorage().rules[target][functionSig] = rule;

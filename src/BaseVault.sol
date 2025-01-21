@@ -110,6 +110,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         return assets - _feeOnTotal(assets);
     }
 
+        function previewRedeem(uint256 shares, bool readAssets) public view virtual returns (uint256 assets) {
+        (assets,) = _convertToAssets(asset(), shares, Math.Rounding.Floor, readAssets);
+        return assets - _feeOnTotal(assets);
+    }
+
     /**
      * @notice Returns the maximum amount of assets that can be deposited by a given owner.
      * @return uint256 The maximum amount of assets.
@@ -247,7 +252,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (shares > maxShares) {
             revert ExceededMaxRedeem(owner, shares, maxShares);
         }
-        assets = previewRedeem(shares);
+        assets = previewRedeem(shares, true);
         _withdraw(_msgSender(), receiver, owner, assets, shares);
     }
 
@@ -433,6 +438,15 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         return VaultLib.convertToAssets(asset_, shares, rounding);
     }
 
+    function _convertToAssets(address asset_, uint256 shares, Math.Rounding rounding, bool readTotalAssets)
+        internal
+        view
+        virtual
+        returns (uint256, uint256)
+    {
+        return VaultLib.convertToAssets(asset_, shares, rounding, readTotalAssets);
+    }
+
     /**
      * @notice Internal function to convert assets to shares.
      * @param asset_ The address of the asset.
@@ -447,6 +461,15 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         returns (uint256, uint256)
     {
         return VaultLib.convertToShares(asset_, assets, rounding);
+    }
+
+    function _convertToShares(address asset_, uint256 assets, Math.Rounding rounding, bool readTotalAssets)
+        internal
+        view
+        virtual
+        returns (uint256, uint256)
+    {
+        return VaultLib.convertToShares(asset_, assets, rounding, readTotalAssets);
     }
 
     /**

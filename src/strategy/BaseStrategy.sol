@@ -185,6 +185,17 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
         (shares,) = _convertToShares(asset_, assets + fee, Math.Rounding.Ceil);
     }
 
+        /**
+     * @notice Previews the amount of shares that would be received for a given amount of assets.
+     * @param asset_ The address of the asset.
+     * @param assets The amount of assets to deposit.
+     * @return shares The equivalent amount of shares.
+     */
+    function previewWithdrawAsset(address asset_, uint256 assets, bool readTotalAssets) public view virtual returns (uint256 shares) {
+        uint256 fee = _feeOnRaw(assets);
+        (shares,) = _convertToShares(asset_, assets + fee, Math.Rounding.Ceil, readTotalAssets);
+    }
+
     /**
      * @notice Withdraws a given amount of assets and burns the equivalent amount of shares from the owner.
      * @param assets The amount of assets to withdraw.
@@ -238,7 +249,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
         if (assets > maxAssets) {
             revert ExceededMaxWithdraw(owner, assets, maxAssets);
         }
-        shares = previewWithdrawAsset(asset_, assets);
+        shares = previewWithdrawAsset(asset_, assets, true);
         _withdrawAsset(asset_, _msgSender(), receiver, owner, assets, shares);
     }
 

@@ -16,7 +16,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
-
+import {console} from "lib/forge-std/src/console.sol";
 interface IAssetRegistry {
     function getAssets() external view returns (address[] memory);
 }
@@ -137,7 +137,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
     function test_Vault_RequestWithdrawal_YNETH(uint256 amount) public {
         vm.assume(amount > 1000);
         vm.assume(amount < INITIAL_BALANCE / 2);
-
+        
         _requestWithdrawal(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, amount);
     }
 
@@ -151,10 +151,13 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
     }
 
     function test_Vault_RequestWithdrawal_YNLSDE(uint256 amount) public {
-        vm.assume(amount > 1000);
-        vm.assume(amount < INITIAL_BALANCE / 2);
-
+        // vm.assume(amount > 1000);
+        // vm.assume(amount < INITIAL_BALANCE / 2);
+        amount = bound(amount, 1000, INITIAL_BALANCE / 2);
+        uint256 gasBefore = gasleft();
         _requestWithdrawal(MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, amount);
+        uint256 gasAfter = gasleft();
+        console.log("Gas used withdrawal:", gasBefore - gasAfter);
     }
 
     function test_Vault_ClaimWithdrawal_YNLSDE(uint256 amount) public {
