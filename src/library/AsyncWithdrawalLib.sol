@@ -26,8 +26,7 @@ library AsyncWithdrawalLib {
         uint256 assetListLength = assetList.length;
 
         for (uint256 i = 0; i < assetListLength; i++) {
-            uint256 balanceInBase = asyncWithdrawalBalance(assetList[i], address(this));
-            totalBaseBalance += balanceInBase;
+            totalBaseBalance += asyncWithdrawalBalance(assetList[i]);
         }
     }
 
@@ -36,17 +35,14 @@ library AsyncWithdrawalLib {
      * @param asset_ The address of the asset.
      * @dev This function should return the amount in base denomination.
      */
-    function asyncWithdrawalBalance(address asset_, address owner) public view returns (uint256 baseAssets) {
-        baseAssets = _asyncWithdrawalBalance(asset_, owner);
+    function asyncWithdrawalBalance(address asset_) public view returns (uint256 baseAssets) {
+        baseAssets = _asyncWithdrawalBalance(asset_);
     }
 
-    function _asyncWithdrawalBalanceYN(address queueManager_, address owner)
-        private
-        view
-        returns (uint256 baseAssets)
-    {
+    function _asyncWithdrawalBalanceYNAsset(address queueManager_) private view returns (uint256 baseAssets) {
         IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
-        (, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) = queueManager.withdrawalRequestsForOwner(owner);
+        (, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
+            queueManager.withdrawalRequestsForOwner(address(this));
         for (uint256 i = 0; i < requests.length; i++) {
             if (!requests[i].processed) {
                 // NOTE: needs to be fixed - assumes no slashing for now, as in reality eigenlayer slashing is not active yet
@@ -57,15 +53,14 @@ library AsyncWithdrawalLib {
         return baseAssets;
     }
 
-    function _asyncWithdrawalBalance(address asset, address owner) private view returns (uint256 baseAssets) {
-        // TODO: support WOETH
+    function _asyncWithdrawalBalance(address asset) private view returns (uint256 baseAssets) {
         if (asset == MC.WOETH) {
             return OriginWithdrawalLib._asyncWithdrawalBalanceWOETH();
         }
 
         if (asset == MC.WSTETH) {
             IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
-            uint256[] memory requestIds = queue.getWithdrawalRequests(owner);
+            uint256[] memory requestIds = queue.getWithdrawalRequests(address(this));
             IWithdrawalQueue.WithdrawalRequestStatus[] memory statuses = queue.getWithdrawalStatus(requestIds);
             for (uint256 i = 0; i < statuses.length; i++) {
                 baseAssets += statuses[i].amountOfStETH;
@@ -74,11 +69,11 @@ library AsyncWithdrawalLib {
         }
 
         if (asset == MC.YNETH) {
-            return _asyncWithdrawalBalanceYN(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, owner);
+            return _asyncWithdrawalBalanceYNAsset(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
         }
 
         if (asset == MC.YNLSDE) {
-            return _asyncWithdrawalBalanceYN(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, owner);
+            return _asyncWithdrawalBalanceYNAsset(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
         }
 
         return 0;

@@ -50,7 +50,7 @@ contract Withdrawer is BaseStrategy {
     }
 
     function asyncWithdrawalBalance(address asset) external view returns (uint256) {
-        return AsyncWithdrawalLib.asyncWithdrawalBalance(asset, address(this));
+        return AsyncWithdrawalLib.asyncWithdrawalBalance(asset);
     }
 
     function getWOETHRequestIds() external view returns (uint256[] memory) {
