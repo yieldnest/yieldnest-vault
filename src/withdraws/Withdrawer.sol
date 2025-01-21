@@ -57,11 +57,15 @@ contract Withdrawer is BaseStrategy {
         return OriginWithdrawalLib.getWOETHRequestIds();
     }
 
-    function requestWithdrawalWOETH(uint256 amount) public {
-        OriginWithdrawalLib.requestWithdrawalWOETH(amount);
+    function requestWithdrawalWOETH(uint256 amount) public onlyRole(PROCESSOR_ROLE) returns (uint256) {
+        return OriginWithdrawalLib.requestWithdrawalWOETH(amount);
     }
 
-    function claimWithdrawalsWOETH(uint256[] calldata requestIds) public {
-        OriginWithdrawalLib.claimWithdrawalsWOETH(requestIds);
+    function claimWithdrawalsWOETH(uint256[] calldata requestIds)
+        public
+        onlyRole(PROCESSOR_ROLE)
+        returns (uint256[] memory amounts, uint256 totalAmount)
+    {
+        return OriginWithdrawalLib.claimWithdrawalsWOETH(requestIds);
     }
 }

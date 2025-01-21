@@ -49,25 +49,27 @@ library OriginWithdrawalLib {
         return getOriginWithdrawalStorage().requestIds;
     }
 
-    function requestWithdrawalWOETH(uint256 amount) public {
+    function requestWithdrawalWOETH(uint256 amount) public returns (uint256 requestId) {
         IERC4626 woeth = IERC4626(MC.WOETH);
         IERC20 oeth = IERC20(MC.OETH);
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
 
         uint256 amountInOETH = woeth.redeem(amount, address(this), address(this));
         oeth.approve(address(oethVault), amountInOETH);
-        (uint256 requestId,) = oethVault.requestWithdrawal(amountInOETH);
+        (requestId,) = oethVault.requestWithdrawal(amountInOETH);
 
-        getOriginWithdrawalStorage().requestIds.push(requestId);
         _addRequestId(requestId);
 
         emit WOETHWithdrawalRequested(amount, requestId);
     }
 
-    function claimWithdrawalsWOETH(uint256[] calldata requestIds) public {
+    function claimWithdrawalsWOETH(uint256[] calldata requestIds)
+        public
+        returns (uint256[] memory amounts, uint256 totalAmount)
+    {
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
 
-        (, uint256 totalAmount) = oethVault.claimWithdrawals(requestIds);
+        (amounts, totalAmount) = oethVault.claimWithdrawals(requestIds);
 
         _removeRequestIds(requestIds);
         emit WOETHWithdrawalsClaimed(totalAmount, requestIds);

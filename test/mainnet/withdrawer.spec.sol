@@ -16,6 +16,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
+import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 
 contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUtils {
     using Math for uint256;
@@ -142,21 +143,92 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         vm.assume(amount > 1000);
         vm.assume(amount < INITIAL_BALANCE / 2);
 
-        _requestWithdrawalWstETH(MC.WSTETH, amount);
+        _requestWithdrawalWstETH(amount);
     }
 
     function test_Vault_ClaimWithdrawal_WSTETH(uint256 amount) public {
         vm.assume(amount > 1000);
         vm.assume(amount < INITIAL_BALANCE / 2);
 
-        address asset_ = MC.WSTETH;
+        uint256 tokenId = _requestWithdrawalWstETH(amount);
 
-        uint256 tokenId = _requestWithdrawalWstETH(asset_, amount);
-
-        _claimWithdrawalWstETH(asset_, tokenId);
+        _claimWithdrawalWstETH(tokenId);
     }
 
-    function _requestWithdrawalWstETH(address asset_, uint256 amount) internal returns (uint256 tokenId) {
+    function test_Vault_RequestWithdrawal_WOETH(uint256 amount) public {
+        vm.assume(amount > 1000);
+        vm.assume(amount < INITIAL_BALANCE / 2);
+
+        _requestWithdrawalWOETH(amount);
+    }
+
+    function test_Vault_ClaimWithdrawal_WOETH(uint256 amount) public {
+        vm.assume(amount > 1000);
+        vm.assume(amount < INITIAL_BALANCE / 2);
+
+        uint256 tokenId = _requestWithdrawalWOETH(amount);
+
+        _claimWithdrawalWOETH(tokenId);
+    }
+
+    function _requestWithdrawalWOETH(uint256 amount) internal returns (uint256 tokenId) {
+        address asset_ = MC.WOETH;
+        IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
+
+        uint256 assets = vault.asyncWithdrawalBalance(asset_);
+        assertEq(assets, 0, "Queued assets should be zero");
+        uint256 totalAssets = vault.totalAssets();
+
+        tokenId = vault.requestWithdrawalWOETH(amount);
+
+        IOETHVault.WithdrawalRequest memory request = oethVault.withdrawalRequests(tokenId);
+
+        uint256 amountInBase = _convertAssetToBase(asset_, amount);
+        assertApproxEqRel(request.amount, amountInBase, 1e15, "Amount should match");
+
+        assets = vault.asyncWithdrawalBalance(asset_);
+        assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
+        assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
+
+        uint256[] memory requestIds = vault.getWOETHRequestIds();
+        assertEq(requestIds.length, 1, "Request ids should match");
+        assertEq(requestIds[0], tokenId, "Request ids should match");
+    }
+
+    function _claimWithdrawalWOETH(uint256 tokenId) internal {
+        address asset_ = MC.WOETH;
+        IERC20 weth = IERC20(MC.WETH);
+        IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
+        uint256 totalAssets = vault.totalAssets();
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
+
+        IOETHVault.WithdrawalQueueMetadata memory queue = oethVault.withdrawalQueueMetadata();
+        uint256 outstandingWithdrawals = queue.queued - queue.claimed;
+        deal(MC.WETH, MC.OETH_VAULT, outstandingWithdrawals + INITIAL_BALANCE);
+
+        assertEq(weth.balanceOf(MC.OETH_VAULT), INITIAL_BALANCE + outstandingWithdrawals, "WETH balance should match");
+
+        // solhint-disable-next-line not-rely-on-time
+        uint256 timestamp = block.timestamp;
+        vm.warp(timestamp + oethVault.CLAIM_DELAY() + 10 minutes);
+
+        vault.claimWithdrawalsWOETH(tokenIds);
+
+        assertApproxEqRel(vault.totalAssets(), totalAssets, 2e15, "Total assets should match");
+
+        uint256 assets = vault.asyncWithdrawalBalance(asset_);
+        assertEq(assets, 0, "Queued assets should match");
+
+        uint256[] memory requestIds = vault.getWOETHRequestIds();
+        assertEq(requestIds.length, 0, "Request ids should match");
+
+        vm.warp(timestamp);
+    }
+
+    function _requestWithdrawalWstETH(uint256 amount) internal returns (uint256 tokenId) {
+        address asset_ = MC.WSTETH;
         uint256 assets = vault.asyncWithdrawalBalance(asset_);
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = vault.totalAssets();
@@ -188,7 +260,8 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         return statuses[0];
     }
 
-    function _claimWithdrawalWstETH(address asset_, uint256 tokenId) internal {
+    function _claimWithdrawalWstETH(uint256 tokenId) internal {
+        address asset_ = MC.WSTETH;
         IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
         uint256 totalAssets = vault.totalAssets();
 
