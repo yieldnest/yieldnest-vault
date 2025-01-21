@@ -171,6 +171,13 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         _claimWithdrawalWOETH(tokenId);
     }
 
+    function test_Vault_RequestWithdrawal_OETH(uint256 amount) public {
+        vm.assume(amount > 1000);
+        vm.assume(amount < INITIAL_BALANCE / 2);
+
+        _requestWithdrawalOETH(amount);
+    }
+
     function _requestWithdrawalWOETH(uint256 amount) internal returns (uint256 tokenId) {
         address asset_ = MC.WOETH;
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
@@ -193,6 +200,15 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         uint256[] memory requestIds = vault.getWOETHRequestIds();
         assertEq(requestIds.length, 1, "Request ids should match");
         assertEq(requestIds[0], tokenId, "Request ids should match");
+    }
+
+    function _requestWithdrawalOETH(uint256 amount) internal {
+        address asset_ = MC.OETH;
+        IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
+
+        uint256 assets = vault.asyncWithdrawalBalance(asset_);
+        assertEq(assets, 0, "Queued assets should be zero");
+        uint256 totalAssets = vault.totalAssets();
     }
 
     function _claimWithdrawalWOETH(uint256 tokenId) internal {

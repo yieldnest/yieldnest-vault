@@ -56,20 +56,17 @@ library OriginWithdrawalLib {
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
 
         uint256 amountInOETH = woeth.redeem(amount, address(this), address(this));
-        oeth.approve(address(oethVault), amountInOETH);
-        (requestId,) = oethVault.requestWithdrawal(amountInOETH);
-
-        _addRequestId(requestId);
-
+        requestId = requestWithdrawalOETH(amountInOETH);
         emit WOETHWithdrawalRequested(amount, requestId);
     }
 
     function requestWithdrawalOETH(uint256 amount) public returns (uint256 requestId) {
-        IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
         IERC20 oeth = IERC20(MC.OETH);
+        IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
 
         oeth.approve(address(oethVault), amount);
         (requestId,) = oethVault.requestWithdrawal(amount);
+
         _addRequestId(requestId);
         emit OETHWithdrawalRequested(amount, requestId);
     }

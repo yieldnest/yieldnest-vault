@@ -48,6 +48,8 @@ library AsyncWithdrawalLib {
                 // NOTE: needs to be fixed - assumes no slashing for now, as in reality eigenlayer slashing is not active yet
                 // also we do not account for the fees here
                 baseAssets += requests[i].amount * requests[i].redemptionRateAtRequestTime / 1e18;
+                // subtract fee
+                baseAssets -= queueManager.calculateFee(requests[i].amount, requests[i].feeAtRequestTime);
             }
         }
         return baseAssets;
