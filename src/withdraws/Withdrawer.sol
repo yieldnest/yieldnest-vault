@@ -2,7 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
-import {AsyncWithdrawLib} from "src/library/AsyncWithdrawLib.sol";
+import {AsyncWithdrawalLib} from "src/library/AsyncWithdrawalLib.sol";
+import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
 
 contract Withdrawer is BaseStrategy {
     function initialize(
@@ -37,7 +38,7 @@ contract Withdrawer is BaseStrategy {
     }
 
     function _computeTotalAssets() internal view virtual override returns (uint256 totalBaseBalance) {
-        return AsyncWithdrawLib.computeTotalAssets();
+        return AsyncWithdrawalLib.computeTotalAssets();
     }
 
     function _feeOnRaw(uint256) public pure override returns (uint256) {
@@ -48,7 +49,19 @@ contract Withdrawer is BaseStrategy {
         return 0;
     }
 
-    function asyncWithdrawBalance(address asset) external view returns (uint256) {
-        return AsyncWithdrawLib.asyncWithdrawBalance(asset, address(this));
+    function asyncWithdrawalBalance(address asset) external view returns (uint256) {
+        return AsyncWithdrawalLib.asyncWithdrawalBalance(asset, address(this));
+    }
+
+    function getWOETHRequestIds() external view returns (uint256[] memory) {
+        return OriginWithdrawalLib.getWOETHRequestIds();
+    }
+
+    function requestWithdrawalWOETH(uint256 amount) public {
+        OriginWithdrawalLib.requestWithdrawalWOETH(amount);
+    }
+
+    function claimWithdrawalsWOETH(uint256[] calldata requestIds) public {
+        OriginWithdrawalLib.claimWithdrawalsWOETH(requestIds);
     }
 }

@@ -157,7 +157,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
     }
 
     function _requestWithdrawalWstETH(address asset_, uint256 amount) internal returns (uint256 tokenId) {
-        uint256 assets = vault.asyncWithdrawBalance(asset_);
+        uint256 assets = vault.asyncWithdrawalBalance(asset_);
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = vault.totalAssets();
 
@@ -167,7 +167,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
 
         assertApproxEqRel(status.amountOfShares, amount, 1e15, "Amount should match");
 
-        assets = vault.asyncWithdrawBalance(asset_);
+        assets = vault.asyncWithdrawalBalance(asset_);
         uint256 amountInBase = _convertAssetToBase(asset_, amount);
 
         assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
@@ -213,7 +213,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
 
         assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
 
-        uint256 assets = vault.asyncWithdrawBalance(asset_);
+        uint256 assets = vault.asyncWithdrawalBalance(asset_);
         assertEq(assets, 0, "Queued assets should match");
     }
 
@@ -223,7 +223,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
     {
         IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
 
-        uint256 assets = vault.asyncWithdrawBalance(asset_);
+        uint256 assets = vault.asyncWithdrawalBalance(asset_);
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = vault.totalAssets();
 
@@ -233,7 +233,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
 
         assertEq(request.amount, amount, "Amount should match");
 
-        assets = vault.asyncWithdrawBalance(asset_);
+        assets = vault.asyncWithdrawalBalance(asset_);
         uint256 amountInBase = _convertAssetToBase(asset_, amount);
 
         assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
@@ -259,7 +259,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
 
         assertApproxEqRel(vault.totalAssets(), totalAssets - expectedFee, 1e15, "Total assets should match");
 
-        uint256 assets = vault.asyncWithdrawBalance(asset_);
+        uint256 assets = vault.asyncWithdrawalBalance(asset_);
         assertEq(assets, 0, "Queued assets should match");
     }
 

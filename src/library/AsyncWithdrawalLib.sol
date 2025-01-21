@@ -6,14 +6,15 @@ import {IVault} from "src/interface/IVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
 import {IWithdrawalQueue} from "src/interface/external/lido/IWithdrawalQueue.sol";
+import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
 
-library AsyncWithdrawLib {
+library AsyncWithdrawalLib {
     error UnsupportedAsset(address asset);
+
     /**
      * @notice Internal function to compute the total assets. Must handle the assets that are in queue for withdrawal.
      * @dev This function should return the amount in base denomination.
      */
-
     function computeTotalAssets() public view returns (uint256 totalBaseBalance) {
         totalBaseBalance = VaultLib.computeTotalAssets();
 
@@ -25,7 +26,7 @@ library AsyncWithdrawLib {
         uint256 assetListLength = assetList.length;
 
         for (uint256 i = 0; i < assetListLength; i++) {
-            uint256 balanceInBase = asyncWithdrawBalance(assetList[i], address(this));
+            uint256 balanceInBase = asyncWithdrawalBalance(assetList[i], address(this));
             totalBaseBalance += balanceInBase;
         }
     }
@@ -35,11 +36,11 @@ library AsyncWithdrawLib {
      * @param asset_ The address of the asset.
      * @dev This function should return the amount in base denomination.
      */
-    function asyncWithdrawBalance(address asset_, address owner) public view returns (uint256 baseAssets) {
-        baseAssets = _getQueuedAssetsInBase(asset_, owner);
+    function asyncWithdrawalBalance(address asset_, address owner) public view returns (uint256 baseAssets) {
+        baseAssets = _asyncWithdrawalBalance(asset_, owner);
     }
 
-    function _getAssetsQueuedForWithdrawal(address queueManager_, address owner)
+    function _asyncWithdrawalBalanceYN(address queueManager_, address owner)
         private
         view
         returns (uint256 baseAssets)
@@ -56,8 +57,11 @@ library AsyncWithdrawLib {
         return baseAssets;
     }
 
-    function _getQueuedAssetsInBase(address asset, address owner) private view returns (uint256 baseAssets) {
+    function _asyncWithdrawalBalance(address asset, address owner) private view returns (uint256 baseAssets) {
         // TODO: support WOETH
+        if (asset == MC.WOETH) {
+            return OriginWithdrawalLib._asyncWithdrawalBalanceWOETH();
+        }
 
         if (asset == MC.WSTETH) {
             IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
@@ -70,11 +74,11 @@ library AsyncWithdrawLib {
         }
 
         if (asset == MC.YNETH) {
-            return _getAssetsQueuedForWithdrawal(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, owner);
+            return _asyncWithdrawalBalanceYN(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, owner);
         }
 
         if (asset == MC.YNLSDE) {
-            return _getAssetsQueuedForWithdrawal(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, owner);
+            return _asyncWithdrawalBalanceYN(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, owner);
         }
 
         return 0;
