@@ -8,6 +8,7 @@ import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 library OriginWithdrawalLib {
     event WOETHWithdrawalRequested(uint256 assetAmount, uint256 requestId);
     event WOETHWithdrawalsClaimed(uint256 baseAmount, uint256[] requestIds);
+    event OETHWithdrawalRequested(uint256 assetAmount, uint256 requestId);
 
     struct OriginWithdrawalStorage {
         uint256[] requestIds;
@@ -61,6 +62,16 @@ library OriginWithdrawalLib {
         _addRequestId(requestId);
 
         emit WOETHWithdrawalRequested(amount, requestId);
+    }
+
+    function requestWithdrawalOETH(uint256 amount) public returns (uint256 requestId) {
+        IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
+        IERC20 oeth = IERC20(MC.OETH);
+
+        oeth.approve(address(oethVault), amount);
+        (requestId,) = oethVault.requestWithdrawal(amount);
+        _addRequestId(requestId);
+        emit OETHWithdrawalRequested(amount, requestId);
     }
 
     function claimWithdrawalsWOETH(uint256[] calldata requestIds)
