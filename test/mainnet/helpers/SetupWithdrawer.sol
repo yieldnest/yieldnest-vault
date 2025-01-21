@@ -1,23 +1,15 @@
-
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import "lib/forge-std/src/Test.sol";
-import {console} from "lib/forge-std/src/console.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
-import {IVault} from "src/interface/IVault.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
-import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {IValidator} from "src/interface/IValidator.sol";
-import {MockProvider} from "test/unit/mocks/MockProvider.sol";
-import {IWithdrawalQueueManager, IRedemptionAssetsVault} from "src/interface/IWithdrawalQueueManager.sol";
+import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
 
-contract SetupWithdrawer is Test, Etches, MainnetActors {
-    IWithdrawalQueueManager public withdrawalQueueManagerLsde;
-    IWithdrawalQueueManager public withdrawalQueueManagerYneth;
+contract SetupWithdrawer is Test, Etches, MainnetActors, WithdrawerUtils {
     function setup() public returns (Withdrawer vault) {
         string memory name = "YieldNest Withdrawer";
         string memory symbol = "ynWithdrawer";
@@ -31,9 +23,7 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
 
         vault = Withdrawer(payable(address(vaultProxy)));
-   
-        withdrawalQueueManagerLsde = IWithdrawalQueueManager(payable(address(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER)));
-        withdrawalQueueManagerYneth = IWithdrawalQueueManager(payable(address(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER)));
+
         configureWithdrawer(vault);
     }
 
@@ -49,7 +39,7 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
         vault.grantRole(vault.ALLOCATOR_MANAGER_ROLE(), ALLOCATOR_MANAGER);
 
-        // test cannot unpause vault without buffer
+        // test cannot unpause vault without provider
         vm.expectRevert();
         vault.unpause();
 
@@ -67,89 +57,22 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         vault.addAsset(MC.SFRXETH, true, true);
         vault.addAsset(MC.YNLSDE, true, true);
         vault.addAsset(MC.YNETH, true, true);
-        // configure processor rules
 
-        //donate to redemtion asset vault
-        deal(MC.YNLSDE, MC.YNLSDE_REDEMPTION_ASSETS_VAULT, 100 ether);
-        deal(MC.YNETH, MC.YNETH_REDEMPTION_ASSETS_VAULT, 100 ether);
-        // TODO: add rules for withdraws
-        addApprovalRule(vault, MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
-        addApprovalRule(vault, MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+        // setup processor rules for the withdrawer
+        setApprovalRule(vault, MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+        setRequestWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+        setClaimWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
 
-        addAsyncWithdrawRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
-        addAsyncWithdrawRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+        setApprovalRule(vault, MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+        setRequestWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+        setClaimWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
 
-        addClaimWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
-        addClaimWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
-
-        addClaimWithdrawalsRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
-        addClaimWithdrawalsRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
+        setApprovalRule(vault, MC.WSTETH, MC.WSTETH_WITHDRAWAL_QUEUE);
+        setRequestWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
+        setClaimWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
 
         // Unpause the vault
         vault.unpause();
         vm.stopPrank();
-    }
-
-    function addApprovalRule(Withdrawer vault_, address contractAddress, address receiver) internal {
-        bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        address[] memory allowList = new address[](1);
-        allowList[0] = receiver;
-
-        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
-        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
-    }
-
-    function addAsyncWithdrawRule(Withdrawer vault_, address contractAddress) internal {
-        bytes4 funcSig = bytes4(keccak256("requestWithdrawal(uint256)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        paramRules[0] =
-            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
-    }
-
-    function addClaimWithdrawalRule(Withdrawer vault_, address contractAddress, address receiver) internal {
-        bytes4 funcSig = bytes4(keccak256("claimWithdrawal(uint256,address)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-
-        address[] memory allowList = new address[](1);
-        allowList[0] = receiver;
-
-        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
-
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
-    }
-
-    function addClaimWithdrawalsRule(Withdrawer vault_, address contractAddress, address receiver) internal {
-        bytes4 funcSig = bytes4(keccak256("claimWithdrawals(uint256[],address[])"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: true, allowList: new address[](0)});
-
-         address[] memory allowList = new address[](1);
-        allowList[0] = receiver;
-
-        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: true, allowList: allowList});
-
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
 }

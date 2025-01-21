@@ -9,7 +9,7 @@ import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IERC20, Math} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
-import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
+import {IWithdrawalQueueManager, IRedemptionAssetsVault} from "src/interface/IWithdrawalQueueManager.sol";
 import {IWithdrawalQueue} from "src/interface/external/lido/IWithdrawalQueue.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 
@@ -17,22 +17,10 @@ import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessC
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
 
-interface IAssetRegistry {
-    function getAssets() external view returns (address[] memory);
-}
-
-interface IRedemptionAssetsVault {
-    function redemptionRate() external view returns (uint256);
-    function assetRegistry() external view returns (IAssetRegistry);
-    function availableRedemptionAssets() external view returns (uint256);
-    function deposit(uint256 amount, address asset) external;
-}
-
 contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUtils {
     using Math for uint256;
 
     Withdrawer public vault;
-
     uint256 public constant INITIAL_BALANCE = 100 ether;
 
     IProvider public provider = IProvider(MC.PROVIDER);
@@ -51,9 +39,9 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         deal(MC.YNETH, address(vault), INITIAL_BALANCE);
         deal(MC.YNLSDE, address(vault), INITIAL_BALANCE);
 
-        // NOTE: setup some default balances for withdrawal queue managers
-        deal(MC.YNETH_REDEMPTION_ASSETS_VAULT, INITIAL_BALANCE * 100);
+        // NOTE: donate some assets to the queue managers / redemption assets vaults
         deal(MC.WSTETH_WITHDRAWAL_QUEUE, INITIAL_BALANCE * 100);
+        deal(MC.YNETH_REDEMPTION_ASSETS_VAULT, INITIAL_BALANCE * 100);
 
         address[] memory assets = IRedemptionAssetsVault(MC.YNLSDE_REDEMPTION_ASSETS_VAULT).assetRegistry().getAssets();
         for (uint256 i = 0; i < assets.length; i++) {
@@ -62,7 +50,6 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
             IRedemptionAssetsVault(MC.YNLSDE_REDEMPTION_ASSETS_VAULT).deposit(INITIAL_BALANCE * 100, assets[i]);
         }
 
-        // NOTE: donate some assets to the queue managers / redemption assets vaults
         assertGt(
             MC.WSTETH_WITHDRAWAL_QUEUE.balance,
             INITIAL_BALANCE,
@@ -83,21 +70,6 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         vm.startPrank(ADMIN);
         _grantFinalizerRole(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
         _grantFinalizerRole(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
-        vm.stopPrank();
-
-        // NOTE: setup processor rules for the withdrawer
-        vm.startPrank(ADMIN);
-        setApprovalRule(vault, MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
-        setRequestWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
-        setClaimWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
-
-        setApprovalRule(vault, MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
-        setRequestWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
-        setClaimWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
-
-        setApprovalRule(vault, MC.WSTETH, MC.WSTETH_WITHDRAWAL_QUEUE);
-        setRequestWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
-        setClaimWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
         vm.stopPrank();
 
         vm.startPrank(ADMIN);
@@ -203,7 +175,8 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
     }
 
     function _getWithdrawalRequestStatusFromQueue(uint256 tokenId)
-        internal view
+        internal
+        view
         returns (IWithdrawalQueue.WithdrawalRequestStatus memory)
     {
         uint256[] memory tokenIds = new uint256[](1);

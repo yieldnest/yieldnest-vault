@@ -38,9 +38,15 @@ interface IWithdrawalQueueManager {
     function withdrawalRequest(uint256 tokenId) external view returns (WithdrawalRequest memory request);
 }
 
+interface IAssetRegistry {
+    function getAssets() external view returns (address[] memory);
+}
+
 interface IRedemptionAssetsVault {
     function redeemer() external view returns (address);
     function deposit(uint256 amount) external;
+    function deposit(uint256 amount, address asset) external;
     function availableRedemptionAssets() external view returns (uint256);
     function redemptionRate() external view returns (uint256);
+    function assetRegistry() external view returns (IAssetRegistry);
 }
