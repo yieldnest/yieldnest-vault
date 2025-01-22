@@ -41,7 +41,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function totalAssets() public view virtual returns (uint256) {
         if (_getVaultStorage().alwaysComputeTotalAssets) {
-            return _computeTotalAssets();
+            return computeTotalAssets();
         }
         return _getVaultStorage().totalAssets;
     }
@@ -627,14 +627,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _processAccounting() internal virtual {
-        uint256 totalBaseBalance = _computeTotalAssets();
+        uint256 totalBaseBalance = computeTotalAssets();
 
         _getVaultStorage().totalAssets = totalBaseBalance;
         // solhint-disable-next-line not-rely-on-time
         emit ProcessAccounting(block.timestamp, totalBaseBalance);
     }
 
-    function _computeTotalAssets() internal view virtual returns (uint256 totalBaseBalance) {
+    function computeTotalAssets() public view virtual returns (uint256 totalBaseBalance) {
         totalBaseBalance = VaultLib.computeTotalAssets();
     }
 

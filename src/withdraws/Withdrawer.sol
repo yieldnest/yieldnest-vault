@@ -37,7 +37,7 @@ contract Withdrawer is BaseStrategy {
         vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
     }
 
-    function _computeTotalAssets() internal view virtual override returns (uint256 totalBaseBalance) {
+    function computeTotalAssets() public view virtual override returns (uint256 totalBaseBalance) {
         return AsyncWithdrawalLib.computeTotalAssets();
     }
 
