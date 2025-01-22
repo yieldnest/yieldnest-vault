@@ -1,6 +1,9 @@
 
 echo "ERC20:"
 # keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.ERC20")) - 1)) & ~bytes32(uint256(0xff))
+#
+echo "withdraw.origin:"
+cast keccak "yieldnest.storage.withdraw.origin"
 
 echo "viewer:"
 cast keccak "yieldnest.storage.viewer"

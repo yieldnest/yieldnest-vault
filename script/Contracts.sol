@@ -26,8 +26,15 @@ library MainnetContracts {
     address public constant PROVIDER = address(123456789); // TODO: Update with deployed Provider
     address public constant BUFFER = address(987654321); // TODO: Update with deployed buffer
 
-    address public constant YNLSDE_WM = 0x8Face3283E20b19d98a7a132274B69C1304D60b4;
-    address public constant YNETH_WM = 0x0BC9BC81aD379810B36AD5cC95387112990AA67b;
+    address public constant WSTETH_WITHDRAWAL_QUEUE = 0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1;
+
+    address public constant YNLSDE_WITHDRAWAL_QUEUE_MANAGER = 0x8Face3283E20b19d98a7a132274B69C1304D60b4;
+    address public constant YNLSDE_REDEMPTION_ASSETS_VAULT = 0x73bC33999C34a5126CA19dC900F22690C288D55e;
+
+    address public constant YNETH_WITHDRAWAL_QUEUE_MANAGER = 0x0BC9BC81aD379810B36AD5cC95387112990AA67b;
+    address public constant YNETH_REDEMPTION_ASSETS_VAULT = 0x5D6e53c42E3B37f82F693937BC508940769c5caf;
+
+    address public constant OETH_VAULT = 0x39254033945AA2E4809Cc2977E7087BEE48bd7Ab;
 
     address public constant CURVE_REGISTRY = 0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c;
 

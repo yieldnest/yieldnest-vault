@@ -21,6 +21,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     Vault public vault;
     WETH9 public weth;
     MockERC20 public asset;
+    MockERC20 public asset2;
 
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 1_000 * 10 ** 18;
@@ -40,6 +41,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
 
         // Deploy mock asset
         asset = new MockERC20("Mock Token", "MOCK");
+        asset2 = new MockERC20("Mock Token 2", "MOCK2");
     }
 
     function test_Vault_addAsset() public {
@@ -111,6 +113,65 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
             )
         );
         vault.updateAsset(0, IVault.AssetUpdateFields({active: false}));
+    }
+
+    function test_Vault_deleteAsset_unauthorized() public {
+        vm.prank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), vault.ASSET_MANAGER_ROLE()
+            )
+        );
+        vault.deleteAsset(0);
+    }
+
+    function test_Vault_deleteAsset_defaultAsset() public {
+        vm.prank(ASSET_MANAGER);
+        vm.expectRevert(IVault.DefaultAsset.selector);
+        vault.deleteAsset(0);
+    }
+
+    function test_Vault_deleteAsset_invalidIndex() public {
+        vm.prank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+
+        uint256 invalidIndex = vault.getAssets().length;
+        vm.startPrank(ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(IVault.InvalidAsset.selector, address(0)));
+        vault.deleteAsset(invalidIndex);
+        vm.stopPrank();
+    }
+
+    function test_Vault_deleteAsset_success() public {
+        vm.startPrank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+        vault.addAsset(address(asset2), true);
+        vm.stopPrank();
+
+        assertEq(vault.getAssets().length, 7);
+
+        vm.startPrank(ASSET_MANAGER);
+        vault.deleteAsset(1);
+        vm.stopPrank();
+
+        assertEq(vault.getAssets().length, 6);
+    }
+
+    function test_Vault_deleteAsset_notEmpty() public {
+        vm.startPrank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+        vault.addAsset(address(asset2), true);
+        vm.stopPrank();
+
+        assertEq(vault.getAssets().length, 7);
+
+        deal(address(asset2), address(vault), 100);
+        vm.startPrank(ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(IVault.AssetNotEmpty.selector, address(asset2)));
+        vault.deleteAsset(6);
+        vm.stopPrank();
     }
 
     function test_Vault_setProvider() public {
