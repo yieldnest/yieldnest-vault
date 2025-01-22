@@ -4,31 +4,37 @@ pragma solidity ^0.8.24;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
-import {Etches} from "test/unit/helpers/Etches.sol";
+import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
 
-contract SetupWithdrawer is Test, Etches, MainnetActors, WithdrawerUtils {
+contract SetupWithdrawer is Test, MainnetActors, Etches, WithdrawerUtils {
     function setup() public returns (Withdrawer vault) {
-        string memory name = "YieldNest Withdrawer";
-        string memory symbol = "ynWithdrawer";
-
         Withdrawer vaultImplementation = new Withdrawer();
 
         // Deploy the proxy
-        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(address(vaultImplementation), ADMIN, "");
+        TransparentUpgradeableProxy vaultProxy =
+            new TransparentUpgradeableProxy(address(vaultImplementation), ADMIN, "");
 
         vault = Withdrawer(payable(address(vaultProxy)));
 
-        vm.prank(ADMIN);
-        vault.initialize(ADMIN, name, symbol, 18, true, false);
+        string memory name = "YieldNest Withdrawer";
+        string memory symbol = "ynWithdrawer";
+        uint8 decimals_ = 18;
+        bool countNativeAsset_ = true;
+        bool alwaysComputeTotalAssets_ = false;
+
+        vm.startPrank(ADMIN);
+        vault.initialize(ADMIN, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
+        vm.stopPrank();
 
         configureWithdrawer(vault);
     }
 
     function configureWithdrawer(Withdrawer vault) internal {
         mockProvider();
+
         vm.startPrank(ADMIN);
 
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
@@ -53,6 +59,7 @@ contract SetupWithdrawer is Test, Etches, MainnetActors, WithdrawerUtils {
         vault.addAsset(MC.METH, true, true);
         vault.addAsset(MC.RETH, true, true);
         vault.addAsset(MC.WOETH, true, true);
+        vault.addAsset(MC.OETH, true, true);
         vault.addAsset(MC.SWELL, true, true);
         vault.addAsset(MC.SFRXETH, true, true);
         vault.addAsset(MC.YNLSDE, true, true);

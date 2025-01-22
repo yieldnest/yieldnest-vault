@@ -10,6 +10,8 @@ library OriginWithdrawalLib {
     event WOETHWithdrawalsClaimed(uint256 baseAmount, uint256[] requestIds);
     event OETHWithdrawalRequested(uint256 assetAmount, uint256 requestId);
 
+    error NotEnoughBalance();
+
     struct OriginWithdrawalStorage {
         uint256[] requestIds;
     }
@@ -52,23 +54,32 @@ library OriginWithdrawalLib {
 
     function requestWithdrawalWOETH(uint256 amount) public returns (uint256 requestId) {
         IERC4626 woeth = IERC4626(MC.WOETH);
-        IERC20 oeth = IERC20(MC.OETH);
-        IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
+        if (woeth.balanceOf(address(this)) < amount) {
+            revert NotEnoughBalance();
+        }
 
         uint256 amountInOETH = woeth.redeem(amount, address(this), address(this));
-        requestId = requestWithdrawalOETH(amountInOETH);
+
+        requestId = _requestWithdrawalOETH(amountInOETH);
         emit WOETHWithdrawalRequested(amount, requestId);
     }
 
     function requestWithdrawalOETH(uint256 amount) public returns (uint256 requestId) {
+        _requestWithdrawalOETH(amount);
+        emit OETHWithdrawalRequested(amount, requestId);
+    }
+
+    function _requestWithdrawalOETH(uint256 amount) private returns (uint256 requestId) {
         IERC20 oeth = IERC20(MC.OETH);
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
+        if (oeth.balanceOf(address(this)) < amount) {
+            revert NotEnoughBalance();
+        }
 
         oeth.approve(address(oethVault), amount);
         (requestId,) = oethVault.requestWithdrawal(amount);
 
         _addRequestId(requestId);
-        emit OETHWithdrawalRequested(amount, requestId);
     }
 
     function claimWithdrawalsWOETH(uint256[] calldata requestIds)

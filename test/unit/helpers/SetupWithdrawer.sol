@@ -14,9 +14,6 @@ import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 
 contract SetupWithdrawer is Test, Etches, MainnetActors {
     function setup() public returns (Withdrawer vault, WETH9 weth) {
-        string memory name = "YieldNest Withdrawer";
-        string memory symbol = "ynWithdrawer";
-
         Withdrawer vaultImplementation = new Withdrawer();
 
         // Deploy the proxy
@@ -25,8 +22,14 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
 
         vault = Withdrawer(payable(address(vaultProxy)));
 
+        string memory name = "YieldNest Withdrawer";
+        string memory symbol = "ynWithdrawer";
+        uint8 decimals_ = 18;
+        bool countNativeAsset_ = true;
+        bool alwaysComputeTotalAssets_ = false;
+
         vm.prank(ADMIN);
-        vault.initialize(ADMIN, name, symbol, 18, true, false);
+        vault.initialize(ADMIN, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
         weth = WETH9(payable(MC.WETH));
 
         configureLocal(vault);

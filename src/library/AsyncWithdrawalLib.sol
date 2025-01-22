@@ -65,19 +65,22 @@ library AsyncWithdrawalLib {
         return baseAssets;
     }
 
+    function _asyncWithdrawalBalanceWSTETH() private view returns (uint256 baseAssets) {
+        IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
+        uint256[] memory requestIds = queue.getWithdrawalRequests(address(this));
+        IWithdrawalQueue.WithdrawalRequestStatus[] memory statuses = queue.getWithdrawalStatus(requestIds);
+        for (uint256 i = 0; i < statuses.length; i++) {
+            baseAssets += statuses[i].amountOfStETH;
+        }
+    }
+
     function _asyncWithdrawalBalance(address asset) private view returns (uint256 baseAssets) {
         if (asset == MC.WOETH) {
             return OriginWithdrawalLib._asyncWithdrawalBalanceWOETH();
         }
 
         if (asset == MC.WSTETH) {
-            IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
-            uint256[] memory requestIds = queue.getWithdrawalRequests(address(this));
-            IWithdrawalQueue.WithdrawalRequestStatus[] memory statuses = queue.getWithdrawalStatus(requestIds);
-            for (uint256 i = 0; i < statuses.length; i++) {
-                baseAssets += statuses[i].amountOfStETH;
-            }
-            return baseAssets;
+            return _asyncWithdrawalBalanceWSTETH();
         }
 
         if (asset == MC.YNETH) {
