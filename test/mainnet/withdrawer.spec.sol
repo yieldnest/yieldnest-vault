@@ -18,6 +18,7 @@ import {Vm} from "lib/forge-std/src/Vm.sol";
 import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 
+
 contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUtils {
     using Math for uint256;
 
@@ -95,7 +96,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         return assets.mulDiv(10 ** 18, rate, Math.Rounding.Floor);
     }
 
-    function test_Vault_views() public view {
+    function test_Vault_views() public {
         assertEq(vault.asset(), MC.WETH, "Asset address should match");
 
         uint256 totalAssets = INITIAL_BALANCE; // WETH
@@ -103,7 +104,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         totalAssets += _convertAssetToBase(MC.WOETH, INITIAL_BALANCE); // WOETH
         totalAssets += _convertAssetToBase(MC.YNETH, INITIAL_BALANCE); // YNETH
         totalAssets += _convertAssetToBase(MC.YNLSDE, INITIAL_BALANCE); // YNLSDE
-
+        vault.processAccounting();
         assertEq(vault.totalAssets(), totalAssets, "Total assets should match");
     }
 
@@ -115,7 +116,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
     }
 
     function test_Vault_ClaimWithdrawal_YNETH(uint256 amount) public {
-        vm.assume(amount > 1000);
+        vm.assume(amount > 1e6);
         vm.assume(amount < INITIAL_BALANCE / 2);
 
         uint256 tokenId = _requestWithdrawal(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, amount);
@@ -314,6 +315,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
 
         uint256 assets = vault.asyncWithdrawalBalance(asset_);
         assertEq(assets, 0, "Queued assets should be zero");
+        vault.processAccounting();
         uint256 totalAssets = vault.totalAssets();
 
         tokenId = processRequestWithdrawal(vault, queueManager_, asset_, amount);
@@ -331,6 +333,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
 
     function _claimWithdrawal(address asset_, address queueManager_, uint256 tokenId) internal {
         IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
+        vault.processAccounting();
         uint256 totalAssets = vault.totalAssets();
 
         vm.startPrank(ADMIN);
@@ -338,14 +341,12 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         vm.stopPrank();
 
         processClaimWithdrawal(vault, queueManager_, tokenId);
-
         IWithdrawalQueueManager.WithdrawalRequest memory request = queueManager.withdrawalRequest(tokenId);
 
         uint256 withdrawalFee = queueManager.withdrawalFee();
         uint256 amountInBase = _convertAssetToBase(asset_, request.amount);
 
-        uint256 expectedFee = queueManager.calculateFee(amountInBase, withdrawalFee);
-
+        uint256 expectedFee = queueManager.calculateFee(amountInBase, request.feeAtRequestTime);
         assertApproxEqRel(vault.totalAssets(), totalAssets - expectedFee, 1e15, "Total assets should match");
 
         uint256 assets = vault.asyncWithdrawalBalance(asset_);

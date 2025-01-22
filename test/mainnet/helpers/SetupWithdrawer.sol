@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
-import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
+import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
@@ -17,12 +17,12 @@ contract SetupWithdrawer is Test, Etches, MainnetActors, WithdrawerUtils {
         Withdrawer vaultImplementation = new Withdrawer();
 
         // Deploy the proxy
-        bytes memory initData =
-            abi.encodeWithSelector(Withdrawer.initialize.selector, ADMIN, name, symbol, 18, true, true);
-
-        TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
+        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(address(vaultImplementation), ADMIN, "");
 
         vault = Withdrawer(payable(address(vaultProxy)));
+
+        vm.prank(ADMIN);
+        vault.initialize(ADMIN, name, symbol, 18, true, false);
 
         configureWithdrawer(vault);
     }

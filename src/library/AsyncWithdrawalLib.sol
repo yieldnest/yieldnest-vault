@@ -58,6 +58,7 @@ library AsyncWithdrawalLib {
                 // get fee
                 uint256 fee = baseAmount * requests[i].feeAtRequestTime / 1000000;
                 // add base amount minus fee
+
                 baseAssets += baseAmount - fee;
             }
         }
