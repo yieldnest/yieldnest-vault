@@ -294,13 +294,13 @@ contract FeeMathTest is Test {
                 uint256 linearAmount = bufferAvailable - bufferNonLinearAmount;
                 uint256 nonLinearAmount = withdrawalAmount - linearAmount;
 
-                uint256 linearFee = linearAmount * fee / (fee + BASIS_POINT_SCALE);
+                uint256 linearFee2 = linearAmount * fee / (fee + BASIS_POINT_SCALE);
                 uint256 quadraticFee = FeeMathPoly.calculateQuadraticTotalFee(
                     fee, 0, nonLinearAmount * BASIS_POINT_SCALE / bufferNonLinearAmount
                 );
                 uint256 nonLinearFee = nonLinearAmount * quadraticFee / (quadraticFee + BASIS_POINT_SCALE);
 
-                expectedFee = linearFee + nonLinearFee;
+                expectedFee = linearFee2 + nonLinearFee;
             }
         } else {
             // Entirely in non-linear region
