@@ -9,7 +9,8 @@ import {
     IRETH,
     IswETH,
     IFrxEthWethDualOracle,
-    IynLSDe
+    IynLSDe,
+    ICurveLpConnector
 } from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
@@ -20,6 +21,8 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 
 contract Provider is IProvider {
     error UnsupportedAsset(address asset);
+    error RateIsStale();
+    error RateIsNegative();
 
     function getRate(address asset) public view virtual returns (uint256) {
         if (asset == MC.WETH) {
@@ -70,6 +73,18 @@ contract Provider is IProvider {
             */
             uint256 frxETHPriceInETH = IFrxEthWethDualOracle(MC.FRX_ETH_WETH_DUAL_ORACLE).getCurveEmaEthPerFrxEth();
             return IsfrxETH(MC.SFRXETH).pricePerShare() * frxETHPriceInETH / 1e18;
+        }
+
+        if (asset == MC.CURVE_LP_YNETH_YNLSDE_STRATEGY) {
+            (int256 lpRate, uint256 updatedAt) = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR).rate();
+            if (lpRate < 0) {
+                revert RateIsNegative();
+            }
+            if (updatedAt < block.timestamp - 5 hours) {
+                revert RateIsStale();
+            }
+
+            return uint256(lpRate);
         }
 
         revert UnsupportedAsset(asset);
