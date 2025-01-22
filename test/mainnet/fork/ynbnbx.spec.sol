@@ -10,15 +10,12 @@ import {Vault} from "src/Vault.sol";
 import {ProxyAdmin} from "src/Common.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
-import {VaultUtils} from "script/VaultUtils.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {Vault} from "src/Vault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 
-
-
-contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
+contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils {
     Vault public vault;
     IERC20 public wbnb;
 

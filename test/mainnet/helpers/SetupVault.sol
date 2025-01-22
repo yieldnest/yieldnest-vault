@@ -11,9 +11,9 @@ import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 
 import {Etches} from "test/mainnet/helpers/Etches.sol";
-import {VaultUtils} from "script/VaultUtils.sol";
+import {BaseRuleUtils} from "script/rules/BaseRuleUtils.sol";
 
-contract SetupVault is Test, MainnetActors, Etches, VaultUtils {
+contract SetupVault is Test, MainnetActors, Etches, BaseRuleUtils {
     function deploy() public returns (Vault) {
         // Deploy implementation contract
         Vault implementation = new Vault();

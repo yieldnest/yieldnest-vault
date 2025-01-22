@@ -10,9 +10,9 @@ import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IValidator} from "src/interface/IValidator.sol";
-import {VaultUtils} from "script/VaultUtils.sol";
+import {BaseRuleUtils} from "script/rules/BaseRuleUtils.sol";
 
-contract SetupVault is Test, Etches, MainnetActors, VaultUtils {
+contract SetupVault is Test, Etches, MainnetActors, BaseRuleUtils {
     function setup() public returns (Vault vault, WETH9 weth) {
         string memory name = "YieldNest MAX";
         string memory symbol = "ynMAx";

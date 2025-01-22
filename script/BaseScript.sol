@@ -6,7 +6,7 @@ import {Script, stdJson} from "lib/forge-std/src/Script.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {TestnetActors, IActors, MainnetActors} from "script/Actors.sol";
 import {BscContracts, ChapelContracts, IContracts} from "script/Contracts.sol";
-import {VaultUtils} from "script/VaultUtils.sol";
+import {BaseRuleUtils} from "script/rules/BaseRuleUtils.sol";
 
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
@@ -20,7 +20,7 @@ import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 import {ProxyUtils} from "script/ProxyUtils.sol";
 
-abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
+abstract contract BaseScript is Script, BaseRuleUtils, ProxyUtils {
     using stdJson for string;
 
     uint256 public minDelay;
