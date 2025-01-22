@@ -1,19 +1,16 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import "lib/forge-std/src/Test.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
-import {IVault} from "src/interface/IVault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
-import {WETH9} from "test/unit/mocks/MockWETH.sol";
-import {Etches} from "test/unit/helpers/Etches.sol";
+import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {IValidator} from "src/interface/IValidator.sol";
-import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
 
-contract SetupWithdrawer is Test, Etches, MainnetActors {
-    function setup() public returns (Withdrawer vault, WETH9 weth) {
+contract SetupWithdrawer is Test, MainnetActors, Etches, WithdrawerUtils {
+    function setup() public returns (Withdrawer vault) {
         Withdrawer vaultImplementation = new Withdrawer();
 
         // Deploy the proxy
@@ -28,16 +25,15 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         bool countNativeAsset_ = true;
         bool alwaysComputeTotalAssets_ = false;
 
-        vm.prank(ADMIN);
+        vm.startPrank(ADMIN);
         vault.initialize(ADMIN, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
-        weth = WETH9(payable(MC.WETH));
+        vm.stopPrank();
 
-        configureLocal(vault);
+        configureWithdrawer(vault);
     }
 
-    function configureLocal(Withdrawer vault) internal {
-        // etch to mock the mainnet contracts
-        mockAll();
+    function configureWithdrawer(Withdrawer vault) internal {
+        mockProvider();
 
         vm.startPrank(ADMIN);
 
@@ -49,7 +45,7 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
         vault.grantRole(vault.ALLOCATOR_MANAGER_ROLE(), ALLOCATOR_MANAGER);
 
-        // test cannot unpause vault withtout buffer
+        // test cannot unpause vault without provider
         vm.expectRevert();
         vault.unpause();
 
@@ -58,18 +54,29 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
 
         // Add assets: Base asset always first
         vault.addAsset(MC.WETH, true, true);
-        vault.addAsset(MC.STETH, 18, true, true);
-        vault.addAsset(MC.WBTC, true, true);
+        vault.addAsset(MC.STETH, true, true);
+        vault.addAsset(MC.WSTETH, true, true);
         vault.addAsset(MC.METH, true, true);
+        vault.addAsset(MC.RETH, true, true);
+        vault.addAsset(MC.WOETH, true, true);
+        vault.addAsset(MC.OETH, true, true);
+        vault.addAsset(MC.SWELL, true, true);
+        vault.addAsset(MC.SFRXETH, true, true);
+        vault.addAsset(MC.YNLSDE, true, true);
+        vault.addAsset(MC.YNETH, true, true);
 
-        // configure processor rules
+        // setup processor rules for the withdrawer
+        setApprovalRule(vault, MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+        setRequestWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+        setClaimWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
 
-        // TODO: add rules for withdraws
+        setApprovalRule(vault, MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+        setRequestWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+        setClaimWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
 
-        // Set WBTC rate to 20 ETH
-        MockProvider(MC.PROVIDER).setRate(MC.WBTC, 20e18);
-        // Set METH rate to 1.2 ETH
-        MockProvider(MC.PROVIDER).setRate(MC.METH, 1.2e18);
+        setApprovalRule(vault, MC.WSTETH, MC.WSTETH_WITHDRAWAL_QUEUE);
+        setRequestWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
+        setClaimWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
 
         // Unpause the vault
         vault.unpause();
