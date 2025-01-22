@@ -1,3 +1,4 @@
+/* solhint-disable no-empty-blocks, no-unused-import */
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
