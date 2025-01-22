@@ -66,6 +66,8 @@ interface IVault is IERC4626 {
     error InvalidString();
     error InvalidArray();
     error ExceededMaxDeposit(address sender, uint256 amount, uint256 maxAssets);
+    error DefaultAsset();
+    error AssetNotEmpty(address);
     error InvalidAsset(address);
     error InvalidTarget(address);
     error InvalidDecimals();
@@ -100,6 +102,7 @@ interface IVault is IERC4626 {
     event NativeDeposit(uint256 amount);
     event ProcessAccounting(uint256 timestamp, uint256 totalAssets);
     event UpdateAsset(uint256 indexed index, address indexed asset, AssetUpdateFields fields);
+    event DeleteAsset(uint256 indexed index, address indexed asset);
     event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
 
     // 4626-MAX

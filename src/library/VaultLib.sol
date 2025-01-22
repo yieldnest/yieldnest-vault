@@ -95,6 +95,35 @@ library VaultLib {
         emit IVault.NewAsset(asset_, decimals_, index);
     }
 
+    function updateAsset(uint256 index, IVault.AssetUpdateFields calldata fields) public {
+        IVault.AssetStorage storage assetStorage = getAssetStorage();
+        if (index >= assetStorage.list.length) {
+            revert IVault.InvalidAsset(address(0));
+        }
+
+        address asset_ = assetStorage.list[index];
+        IVault.AssetParams storage assetParams = assetStorage.assets[asset_];
+        assetParams.active = fields.active;
+        emit IVault.UpdateAsset(index, asset_, fields);
+    }
+
+    function deleteAsset(uint256 index) public {
+        if (index == 0) revert IVault.DefaultAsset();
+        IVault.AssetStorage storage assetStorage = getAssetStorage();
+        if (index >= assetStorage.list.length) {
+            revert IVault.InvalidAsset(address(0));
+        }
+        address asset_ = assetStorage.list[index];
+        if (IERC20(asset_).balanceOf(address(this)) > 0) {
+            revert IVault.AssetNotEmpty(asset_);
+        }
+
+        assetStorage.list[index] = assetStorage.list[assetStorage.list.length - 1];
+        assetStorage.list.pop();
+        delete assetStorage.assets[asset_];
+        emit IVault.DeleteAsset(index, asset_);
+    }
+
     function convertAssetToBase(address asset_, uint256 assets) public view returns (uint256) {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
         uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
@@ -148,18 +177,6 @@ library VaultLib {
     function setProcessorRule(address target, bytes4 functionSig, IVault.FunctionRule calldata rule) public {
         getProcessorStorage().rules[target][functionSig] = rule;
         emit IVault.SetProcessorRule(target, functionSig, rule);
-    }
-
-    function updateAsset(uint256 index, IVault.AssetUpdateFields calldata fields) public {
-        IVault.AssetStorage storage assetStorage = getAssetStorage();
-        if (index >= assetStorage.list.length) {
-            revert IVault.InvalidAsset(address(0));
-        }
-
-        address asset_ = assetStorage.list[index];
-        IVault.AssetParams storage assetParams = assetStorage.assets[asset_];
-        assetParams.active = fields.active;
-        emit IVault.UpdateAsset(index, asset_, fields);
     }
 
     function setProvider(address provider_) public {

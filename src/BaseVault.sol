@@ -564,6 +564,18 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+     * @notice Deletes an existing asset from the vault.
+     * @param index The index of the asset to delete.
+     */
+    function deleteAsset(uint256 index) public virtual onlyRole(ASSET_MANAGER_ROLE) {
+        _deleteAsset(index);
+    }
+
+    function _deleteAsset(uint256 index) internal virtual {
+        VaultLib.deleteAsset(index);
+    }
+
+    /**
      * @notice Sets whether the vault should always compute total assets.
      * @param alwaysComputeTotalAssets_ Whether to always compute total assets.
      */
