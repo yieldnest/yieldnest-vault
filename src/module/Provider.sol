@@ -9,7 +9,8 @@ import {
     IRETH,
     IswETH,
     IFrxEthWethDualOracle,
-    IynLSDe
+    IynLSDe,
+    ICurveLpConnector
 } from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
@@ -69,6 +70,23 @@ contract Provider is IProvider {
             */
             uint256 frxETHPriceInETH = IFrxEthWethDualOracle(MC.FRX_ETH_WETH_DUAL_ORACLE).getCurveEmaEthPerFrxEth();
             return IsfrxETH(MC.SFRXETH).pricePerShare() * frxETHPriceInETH / 1e18;
+        }
+
+        if (asset == MC.CURVE_LP_YNETH_YNLSDE_POOL) {
+            (int256 lpRate, uint256 updatedAt) = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR).rate();
+                 // assert rate is positive
+            if (lpRate < 0) {
+                revert("Rate is negative");
+            }
+
+            // assert recent update
+            if (updatedAt < block.timestamp - 5 hours) {
+                revert("Rate is stale");
+            }
+            // // convert lp rate to ynlsde rate
+            // uint256 ynlsdeRate = lpRate * IERC4626(MC.YNLSDE).convertToAssets(1e18) / IERC4626(MC.YNETH).convertToAssets(1e18);
+ 
+            return uint256(lpRate);
         }
 
         revert UnsupportedAsset(asset);
