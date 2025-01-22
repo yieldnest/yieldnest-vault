@@ -39,17 +39,26 @@ library AsyncWithdrawalLib {
         baseAssets = _asyncWithdrawalBalance(asset_);
     }
 
-    function _asyncWithdrawalBalanceYNAsset(address queueManager_) private view returns (uint256 baseAssets) {
+    function _asyncWithdrawalBalanceYNAsset(address queueManager_, address asset_)
+        private
+        view
+        returns (uint256 baseAssets)
+    {
         IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
         (, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
             queueManager.withdrawalRequestsForOwner(address(this));
+
+        uint256 decimals = 10 ** VaultLib.getAssetStorage().assets[asset_].decimals;
+
         for (uint256 i = 0; i < requests.length; i++) {
             if (!requests[i].processed) {
                 // NOTE: needs to be fixed - assumes no slashing for now, as in reality eigenlayer slashing is not active yet
-                // also we do not account for the fees here
-                baseAssets += requests[i].amount * requests[i].redemptionRateAtRequestTime / 1e18;
-                // subtract fee
-                baseAssets -= queueManager.calculateFee(requests[i].amount, requests[i].feeAtRequestTime);
+                // get base amount
+                uint256 baseAmount = requests[i].amount * requests[i].redemptionRateAtRequestTime / decimals;
+                // get fee
+                uint256 fee = baseAmount * requests[i].feeAtRequestTime / 1000000;
+                // add base amount minus fee
+                baseAssets += baseAmount - fee;
             }
         }
         return baseAssets;
@@ -71,11 +80,11 @@ library AsyncWithdrawalLib {
         }
 
         if (asset == MC.YNETH) {
-            return _asyncWithdrawalBalanceYNAsset(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+            return _asyncWithdrawalBalanceYNAsset(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, MC.YNETH);
         }
 
         if (asset == MC.YNLSDE) {
-            return _asyncWithdrawalBalanceYNAsset(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+            return _asyncWithdrawalBalanceYNAsset(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, MC.YNLSDE);
         }
 
         return 0;
