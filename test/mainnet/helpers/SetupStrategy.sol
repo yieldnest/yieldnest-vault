@@ -33,7 +33,7 @@ contract SetupStrategy is Test, Etches, MainnetActors {
 
     }
 
-    function configureLPStrategy(Strategy vault_) internal {
+    function configureLPStrategy(Strategy vault) internal {
         // etch to mock the mainnet contracts
         string memory name = "YieldNest-Curve LP";
         string memory symbol = "ynETHxLP";
@@ -56,13 +56,13 @@ contract SetupStrategy is Test, Etches, MainnetActors {
         vault.addAsset(MC.YNLSDE, true);
 
         // configure processor rules
-        setDepositRule(vault, MC.BUFFER, address(vault));
-        setWethDepositRule(vault, MC.WETH);
+        // setDepositRule(vault, MC.BUFFER, address(vault));
+        // setWethDepositRule(vault, MC.WETH);
 
-        setApprovalRule(vault, address(vault), MC.YNETH);
-        setApprovalRule(vault, address(vault), MC.YNLSDE);
+        // setApprovalRule(vault, address(vault), MC.YNETH);
+        // setApprovalRule(vault, address(vault), MC.YNLSDE);
 
-        setWithdrawRule(vault, MC.CURVE_LP_YNETH_YNLSDE_POOL, address(vault));
+        // setWithdrawRule(vault, MC.CURVE_LP_YNETH_YNLSDE_POOL, address(vault));
 
         vault.setBuffer(MC.BUFFER);
 
