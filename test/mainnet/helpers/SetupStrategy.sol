@@ -11,65 +11,66 @@ import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
-import {Strategy} from "src/Strategy.sol";
+import {TokenizedStrategy} from "src/strategy/yearn/TokenizedStrategy.sol";
 
 contract SetupStrategy is Test, Etches, MainnetActors {
-   
- function setup() public returns (Strategy vault) {
+    // yearn Vault factory address for v3.0.2
+   address public factory = 0x444045c5C13C246e117eD36437303cac8E250aB0;
+ function setup() public returns (TokenizedStrategy vault) {
         string memory name = "YieldNest-Curve LP";
         string memory symbol = "ynLPx";
 
-        Strategy vaultImplementation = new Strategy();
+        TokenizedStrategy vaultImplementation = new TokenizedStrategy(address(1));
 
         // Deploy the proxy
         bytes memory initData =
-            abi.encodeWithSelector(Strategy.initialize.selector, ADMIN, name, symbol, 18);
+            abi.encodeWithSelector(TokenizedStrategy.initialize.selector, ADMIN, name, symbol, 18);
 
         TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(address(vaultImplementation), ADMIN, "");
 
-        vault = Strategy(payable(address(vaultProxy)));
+        vault = TokenizedStrategy(payable(address(vaultProxy)));
         vm.prank(ADMIN);
-        vault.initialize(ADMIN, name, symbol, 18);
+        vault.initialize(MC.CURVE_LP_YNETH_YNLSDE_POOL, name, ADMIN, ADMIN, factory);
 
     }
 
-    function configureLPStrategy(Strategy vault) internal {
-        // etch to mock the mainnet contracts
-        string memory name = "YieldNest-Curve LP";
-        string memory symbol = "ynETHxLP";
+    // function configureLPStrategy(Strategy vault) internal {
+    //     // etch to mock the mainnet contracts
+    //     string memory name = "YieldNest-Curve LP";
+    //     string memory symbol = "ynETHxLP";
 
-        vm.startPrank(ADMIN);
+    //     vm.startPrank(ADMIN);
 
-        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
-        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
-        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+    //     vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
+    //     vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
+    //     vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
+    //     vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+    //     vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
+    //     vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
+    //     vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
 
-        vault.setProvider(MC.PROVIDER);
+    //     vault.setProvider(MC.PROVIDER);
 
-        // Add assets: Base asset always first
-        vault.addAsset(MC.CURVE_LP_YNETH_YNLSDE_POOL, false);
-        vault.addAsset(MC.YNETH, true);
-        vault.addAsset(MC.YNLSDE, true);
+    //     // Add assets: Base asset always first
+    //     vault.addAsset(MC.CURVE_LP_YNETH_YNLSDE_POOL, false);
+    //     vault.addAsset(MC.YNETH, true);
+    //     vault.addAsset(MC.YNLSDE, true);
 
-        // configure processor rules
-        // setDepositRule(vault, MC.BUFFER, address(vault));
-        // setWethDepositRule(vault, MC.WETH);
+    //     // configure processor rules
+    //     // setDepositRule(vault, MC.BUFFER, address(vault));
+    //     // setWethDepositRule(vault, MC.WETH);
 
-        // setApprovalRule(vault, address(vault), MC.YNETH);
-        // setApprovalRule(vault, address(vault), MC.YNLSDE);
+    //     // setApprovalRule(vault, address(vault), MC.YNETH);
+    //     // setApprovalRule(vault, address(vault), MC.YNLSDE);
 
-        // setWithdrawRule(vault, MC.CURVE_LP_YNETH_YNLSDE_POOL, address(vault));
+    //     // setWithdrawRule(vault, MC.CURVE_LP_YNETH_YNLSDE_POOL, address(vault));
 
-        vault.setBuffer(MC.BUFFER);
+    //     vault.setBuffer(MC.BUFFER);
 
-        // Unpause the vault
-        vault.unpause();
-        vm.stopPrank();
-    }
+    //     // Unpause the vault
+    //     vault.unpause();
+    //     vm.stopPrank();
+    // }
 
     function setDepositRule(Vault vault_, address contractAddress, address receiver) internal {
         bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
