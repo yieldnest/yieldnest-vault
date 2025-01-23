@@ -11,7 +11,8 @@ import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IValidator} from "src/interface/IValidator.sol";
-import {ynETHxLPStrategy} from "src/ynETHxLPStrategy.sol";
+import {YNETHxLPStrategy} from "src/ynETHxLPStrategy.sol";
+import {TokenizedStrategy} from "src/strategy/yearn/TokenizedStrategy.sol";
 
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
@@ -20,11 +21,12 @@ interface IynETH {
 }
 
 contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
-    ynETHxLPStrategy public vault;
+    YNETHxLPStrategy public vault;
+    TokenizedStrategy public tokenizedStrategy;
      address public buffer = address(0x45c3B59d53e2e148Aaa6a857521059676D5c0489);
     function setUp() public {
         SetupStrategy setup = new SetupStrategy();
-        vault = ynETHxLPStrategy(payable(address(setup.setup())));
+        (tokenizedStrategy, vault) = setup.setup();
         vm.startPrank(ADMIN);
         configureMainnet();
         vm.stopPrank();
