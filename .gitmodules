@@ -13,6 +13,3 @@
 [submodule "lib/yieldnest-protocol"]
 	path = lib/yieldnest-protocol
 	url = https://github.com/yieldnest/yieldnest-protocol
-[submodule "lib/tokenized-strategy"]
-	path = lib/tokenized-strategy
-	url = https://github.com/lib/tokenized-strategy
