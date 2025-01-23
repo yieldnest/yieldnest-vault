@@ -9,4 +9,4 @@
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable
 [submodule "lib/tokenized-strategy"]
 	path = lib/tokenized-strategy
-	url = https://github.com/yearn/tokenized-strategy
+	url = https://github.com/lib/tokenized-strategy
