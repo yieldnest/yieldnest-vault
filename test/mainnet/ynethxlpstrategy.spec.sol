@@ -24,7 +24,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
      address public buffer = address(0x45c3B59d53e2e148Aaa6a857521059676D5c0489);
     function setUp() public {
         SetupStrategy setup = new SetupStrategy();
-        vault = ynETHxLPStrategy(address(setup.setup()));
+        vault = ynETHxLPStrategy(payable(address(setup.setup())));
         vm.startPrank(ADMIN);
         configureMainnet();
         vm.stopPrank();
@@ -32,6 +32,6 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
 
     function configureMainnet() internal {
-        setApprovalRule(vault, MC.CURVE_LP_YNETH_YNLSDE_POOL, buffer);
+        // setApprovalRule(vault, MC.CURVE_LP_YNETH_YNLSDE_POOL, buffer);
     }
 }
