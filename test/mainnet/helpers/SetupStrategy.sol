@@ -12,25 +12,19 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {TokenizedStrategy} from "src/strategy/yearn/TokenizedStrategy.sol";
-
+import {YNETHxLPStrategy} from "src/ynETHxLPStrategy.sol";
 contract SetupStrategy is Test, Etches, MainnetActors {
     // yearn Vault factory address for v3.0.2
    address public factory = 0x444045c5C13C246e117eD36437303cac8E250aB0;
- function setup() public returns (TokenizedStrategy vault) {
+ function setup() public returns (TokenizedStrategy tokenizedStrategy, YNETHxLPStrategy vault) {
         string memory name = "YieldNest-Curve LP";
         string memory symbol = "ynLPx";
 
-        TokenizedStrategy vaultImplementation = new TokenizedStrategy(address(1));
-
-        // Deploy the proxy
-        bytes memory initData =
-            abi.encodeWithSelector(TokenizedStrategy.initialize.selector, ADMIN, name, symbol, 18);
-
-        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(address(vaultImplementation), ADMIN, "");
-
-        vault = TokenizedStrategy(payable(address(vaultProxy)));
+        tokenizedStrategy = new TokenizedStrategy(factory);
+        vault = new YNETHxLPStrategy(MC.CURVE_LP_YNETH_YNLSDE_POOL, name);
+   
         vm.prank(ADMIN);
-        vault.initialize(MC.CURVE_LP_YNETH_YNLSDE_POOL, name, ADMIN, ADMIN, factory);
+        
 
     }
 
