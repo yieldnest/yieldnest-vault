@@ -5,7 +5,7 @@ import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {ICurvePool} from "src/interface/external/curve/ICurvePool.sol";
+import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 
 /// @title ynMaxVault <--> Curve LP <--> ERC4626 Strategy Connector
