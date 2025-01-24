@@ -13,9 +13,11 @@ import {IValidator} from "src/interface/IValidator.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 
 contract SetupVault is Test, MainnetActors, Etches {
-
     function upgrade() public {
+        upgrade(true);
+    }
 
+    function upgrade(bool mockBuffer_) public {
         Vault newVault = Vault(payable(new ynETHxVault()));
 
         TLC timelock = TLC(payable(MC.TIMELOCK));
@@ -26,7 +28,7 @@ contract SetupVault is Test, MainnetActors, Etches {
         uint256 value = 0;
 
         bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
-        
+
         bytes memory initData = abi.encodeWithSelector(ynETHxVault.initializeV2.selector, 18, 0);
         bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(newVault), initData);
 
@@ -62,16 +64,17 @@ contract SetupVault is Test, MainnetActors, Etches {
 
         assertEq(vault.symbol(), "ynETHx");
 
+        if (mockBuffer_) {
+            mockBuffer();
+        }
+        mockProvider();
+
         configureMainnet(vault);
     }
 
     function configureMainnet(Vault vault) internal {
-
-        // etch to mock ETHRate provider and Buffer
-        mockAll();
-
         vm.startPrank(ADMIN);
-        
+
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
         vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
         vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
@@ -99,8 +102,8 @@ contract SetupVault is Test, MainnetActors, Etches {
         setApprovalRule(vault, address(vault), MC.YNETH);
         setApprovalRule(vault, address(vault), MC.YNLSDE);
 
-        vault.setBuffer(MC.BUFFER);                                                                  
-        
+        vault.setBuffer(MC.BUFFER);
+
         vm.stopPrank();
 
         vault.processAccounting();
@@ -119,7 +122,8 @@ contract SetupVault is Test, MainnetActors, Etches {
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -140,7 +144,8 @@ contract SetupVault is Test, MainnetActors, Etches {
         paramRules[1] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
@@ -150,19 +155,17 @@ contract SetupVault is Test, MainnetActors, Etches {
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault_.setProcessorRule(weth_, funcSig, rule);
-    }    
+    }
 
     function deployViewer(Vault vault_) public returns (MaxVaultViewer viewer) {
         MaxVaultViewer implementation = new MaxVaultViewer();
 
-        bytes memory initData = abi.encodeWithSelector(
-            MaxVaultViewer.initialize.selector,
-            address(vault_),
-            address(ADMIN)
-        );
+        bytes memory initData =
+            abi.encodeWithSelector(MaxVaultViewer.initialize.selector, address(vault_), address(ADMIN));
 
         TUP proxy = new TUP(address(implementation), ADMIN, initData);
         viewer = MaxVaultViewer(payable(address(proxy)));
@@ -171,5 +174,4 @@ contract SetupVault is Test, MainnetActors, Etches {
         viewer.grantRole(viewer.UPDATER_ROLE(), ADMIN);
         vm.stopPrank();
     }
-
 }
