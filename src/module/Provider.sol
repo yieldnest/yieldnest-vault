@@ -80,7 +80,8 @@ contract Provider is IProvider {
             if (lpRate < 0) {
                 revert RateIsNegative();
             }
-            if (updatedAt < block.timestamp - 5 hours) {
+            // solhint-disable-next-line not-rely-on-time
+            if (updatedAt < block.timestamp - 24 hours) {
                 revert RateIsStale();
             }
 
