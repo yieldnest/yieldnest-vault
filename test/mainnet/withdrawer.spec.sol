@@ -15,10 +15,10 @@ import {IProvider} from "src/interface/IProvider.sol";
 
 import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
-import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
+import {WithdrawerRules} from "script/WithdrawerRules.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 
-contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUtils {
+contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRules {
     using Math for uint256;
 
     Withdrawer public vault;
