@@ -15,10 +15,6 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
     function setup() public returns (Vault vault, WETH9 weth) {
-        return setup(true);
-    }
-
-    function setup(bool mockAll_) public returns (Vault vault, WETH9 weth) {
         string memory name = "YieldNest MAX";
         string memory symbol = "ynMAx";
 
@@ -33,11 +29,6 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault = Vault(payable(address(vaultProxy)));
         weth = WETH9(payable(MC.WETH));
 
-        if (mockAll_) {
-        // etch to mock the mainnet contracts
-        mockAll();
-        }
-
         if (block.chainid == 31337) {
             configureLocal(vault);
         }
@@ -48,6 +39,9 @@ contract SetupVault is Test, Etches, MainnetActors {
     }
 
     function configureLocal(Vault vault) internal {
+        // etch to mock the mainnet contracts
+        mockAll();
+
         vm.startPrank(ADMIN);
 
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
@@ -97,6 +91,10 @@ contract SetupVault is Test, Etches, MainnetActors {
     }
 
     function configureMainnet(Vault vault) internal {
+        // etch to mock the mainnet contracts
+
+        mockAll();
+
         string memory name = "YieldNest ETH MAX";
         string memory symbol = "ynETHx";
 
