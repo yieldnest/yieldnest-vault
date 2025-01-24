@@ -16,15 +16,15 @@ interface IBaseStrategy {
         address _owner
     ) external view returns (uint256);
 
-    function deployFunds(uint256 _assets) external;
+    // function deployFunds(uint256 _assets) external;
 
-    function freeFunds(uint256 _amount) external;
+    // function freeFunds(uint256 _amount) external;
 
-    function harvestAndReport() external returns (uint256);
+    // function harvestAndReport() external returns (uint256);
 
-    function tendThis(uint256 _totalIdle) external;
+    // function tendThis(uint256 _totalIdle) external;
 
-    function shutdownWithdraw(uint256 _amount) external;
+    // function shutdownWithdraw(uint256 _amount) external;
 
-    function tendTrigger() external view returns (bool, bytes memory);
+    // function tendTrigger() external view returns (bool, bytes memory);
 }
