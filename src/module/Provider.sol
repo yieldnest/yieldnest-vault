@@ -21,6 +21,8 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 
 contract Provider is IProvider {
     error UnsupportedAsset(address asset);
+    error RateIsStale();
+    error RateIsNegative();
 
     function getRate(address asset) public view virtual returns (uint256) {
         if (asset == MC.WETH) {
@@ -72,19 +74,14 @@ contract Provider is IProvider {
             return IsfrxETH(MC.SFRXETH).pricePerShare() * frxETHPriceInETH / 1e18;
         }
 
-        if (asset == MC.CURVE_LP_YNETH_YNLSDE_POOL) {
+        if (asset == MC.CURVE_LP_YNETH_YNLSDE_STRATEGY) {
             (int256 lpRate, uint256 updatedAt) = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR).rate();
-            // assert rate is positive
             if (lpRate < 0) {
-                revert("Rate is negative");
+                revert RateIsNegative();
             }
-
-            // assert recent update
-            // if (updatedAt < block.timestamp - 5 hours) {
-            //     revert("Rate is stale");
-            // }
-            // // convert lp rate to ynlsde rate
-            // uint256 ynlsdeRate = lpRate * IERC4626(MC.YNLSDE).convertToAssets(1e18) / IERC4626(MC.YNETH).convertToAssets(1e18);
+            if (updatedAt < block.timestamp - 5 hours) {
+                revert RateIsStale();
+            }
 
             return uint256(lpRate);
         }
