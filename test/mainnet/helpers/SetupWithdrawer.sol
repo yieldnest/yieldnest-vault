@@ -17,9 +17,9 @@ contract SetupWithdrawer is Test, MainnetActors, Etches, WithdrawerRules, BaseRu
         // Deploy the proxy
         TransparentUpgradeableProxy vaultProxy =
             new TransparentUpgradeableProxy(address(vaultImplementation), ADMIN, "");
-
+        
         vault = Withdrawer(payable(address(vaultProxy)));
-
+        
         string memory name = "YieldNest Withdrawer";
         string memory symbol = "ynWithdrawer";
         uint8 decimals_ = 18;

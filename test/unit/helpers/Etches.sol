@@ -30,7 +30,6 @@ contract Etches is Test {
         mockProvider();
         mockBuffer();
         mockYNLSDEPool();
-        mockLPConnector();
     }
 
     function mockWETH9() public {
@@ -104,11 +103,5 @@ contract Etches is Test {
         WETH9 ynlsdePool = new WETH9();
         bytes memory code = address(ynlsdePool).code;
         vm.etch(MainnetContracts.CURVE_LP_YNETH_YNLSDE_POOL, code);
-    }
-
-    function mockLPConnector() public {
-        MockConnector connector = new MockConnector();
-        bytes memory code = address(connector).code;
-        vm.etch(MainnetContracts.CURVE_LP_YNETH_YNLSDE_CONNECTOR, code);
     }
 }

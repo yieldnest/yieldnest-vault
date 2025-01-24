@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
 import {AsyncWithdrawalLib} from "src/library/AsyncWithdrawalLib.sol";
 import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 
 contract Withdrawer is BaseStrategy {
     function initialize(
@@ -50,7 +51,7 @@ contract Withdrawer is BaseStrategy {
     }
 
     function asyncWithdrawalBalance(address asset) external view returns (uint256) {
-        return AsyncWithdrawalLib.asyncWithdrawalBalance(asset);
+        return IProvider(provider()).asyncWithdrawalBalance(asset);
     }
 
     function getWOETHRequestIds() external view returns (uint256[] memory) {
