@@ -12,17 +12,11 @@ import {MockBuffer} from "test/unit/mocks/MockBuffer.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {MockERC20} from "test/unit/mocks/MockERC20.sol";
 import {MockERC20CustomDecimals} from "test/unit/mocks/MockERC20CustomDecimals.sol";
-import {MockConnector} from "test/unit/mocks/MockConnector.sol";
 
 import {Test} from "lib/forge-std/src/Test.sol";
 
 contract Etches is Test {
     function mockAll() public {
-        mockBuffer();
-        mockAllExceptBuffer();
-    }
-
-    function mockAllExceptBuffer() public {
         mockWETH9();
         mockStETH();
         mockYNETH();
@@ -33,8 +27,7 @@ contract Etches is Test {
         mockCL_STETH();
         mockWBTC();
         mockProvider();
-        mockYNLSDEPool();
-        mockLPConnector();
+        mockBuffer();
     }
 
     function mockWETH9() public {
@@ -102,17 +95,5 @@ contract Etches is Test {
         MockBuffer buffer = new MockBuffer();
         bytes memory code = address(buffer).code;
         vm.etch(MainnetContracts.BUFFER, code);
-    }
-
-    function mockYNLSDEPool() public {
-        WETH9 ynlsdePool = new WETH9();
-        bytes memory code = address(ynlsdePool).code;
-        vm.etch(MainnetContracts.CURVE_LP_YNETH_YNLSDE_POOL, code);
-    }
-
-    function mockLPConnector() public {
-        MockConnector connector = new MockConnector();
-        bytes memory code = address(connector).code;
-        vm.etch(MainnetContracts.CURVE_LP_YNETH_YNLSDE_CONNECTOR, code);
     }
 }

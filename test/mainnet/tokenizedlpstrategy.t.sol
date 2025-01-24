@@ -6,56 +6,57 @@ import {Vault} from "src/Vault.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {TransparentUpgradeableProxy, IERC20} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {Etches} from "test/unit/helpers/Etches.sol";
-import {WETH9} from "test/unit/mocks/MockWETH.sol";
-import {SetupVault} from "test/unit/helpers/SetupVault.sol";
+import {Etches} from "test/mainnet/helpers/Etches.sol";
+import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
-import {MockTokenizedStrategy} from "test/unit/mocks/yearn/MockTokenizedStrategy.sol";
+import {MockTokenizedStrategy} from "test/mainnet/mocks/yearn/MockTokenizedStrategy.sol";
 import {Provider} from "src/module/Provider.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
-import {MockConnector} from "test/unit/mocks/MockConnector.sol";
+import {MockConnector} from "test/mainnet/mocks/MockConnector.sol";
+import {ICurvePool} from "src/interface/external/curve/ICurvePool.sol";
 
 contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches {
     MockTokenizedStrategy public strategy;
     Vault public vault;
-    WETH9 public lpToken;
-    Provider public provider;
+    ICurvePool public pool;
     MockConnector public connector;
     uint256 public constant INITIAL_BALANCE = 101 ether;
     uint256 public constant MOCK_RATE = 1.2 ether;
 
-    function setUp() public {
-        vm.warp(10 hours);
+    function mockConnector(address _vault, address _strategy, address _assetA, address _assetB) public {
+        MockConnector connector_ = new MockConnector(_vault, _strategy, _assetA, _assetB);
+        vm.etch(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, address(connector_).code);
 
+        connector = MockConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+        connector.initialize(block.timestamp, int256(MOCK_RATE));
+
+        (int256 rate, uint256 timestamp) = connector.rate();
+        assertEq(uint256(rate), MOCK_RATE, "Connector rate should be set correctly");
+        assertEq(timestamp, block.timestamp, "Connector timestamp should be set correctly");
+    }
+
+    function setUp() public {
         SetupVault setup = new SetupVault();
-        (vault, lpToken) = setup.setup(true);
-        string memory name = "MockTokenizedStrategy";
-        string memory symbol = "MTS";
+        setup.upgrade(false);
+        vault = Vault(payable(MC.YNETHX));
 
         // etch strategy
         MockTokenizedStrategy strategy_ = new MockTokenizedStrategy();
         vm.etch(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, address(strategy_).code);
 
         strategy = MockTokenizedStrategy(payable(address(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY)));
+
+        // initialize strategy
+        string memory name = "MockTokenizedStrategy";
         strategy.initialize(MC.CURVE_LP_YNETH_YNLSDE_POOL, name, ADMIN, ADMIN, ADMIN);
 
-        lpToken = WETH9(payable(MC.CURVE_LP_YNETH_YNLSDE_POOL));
-        vm.deal(address(vault), INITIAL_BALANCE);
-        vm.startPrank(address(vault));
-        lpToken.deposit{value: INITIAL_BALANCE}();
-        lpToken.transfer(address(vault), INITIAL_BALANCE);
+        pool = ICurvePool(payable(MC.CURVE_LP_YNETH_YNLSDE_POOL));
 
-        vm.label(address(lpToken), "lp token");
+        mockConnector(address(vault), address(strategy), MC.YNETH, MC.YNLSDE);
+
+        vm.label(address(pool), "pool");
         vm.label(address(strategy), "strategy");
         vm.label(address(vault), "vault");
-
-        connector = MockConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
-
-        connector.setTimeStamp(block.timestamp);
-        connector.setRate(int256(MOCK_RATE));
-        (int256 rate, uint256 timestamp) = connector.rate();
-        assertEq(uint256(rate), MOCK_RATE, "Connector rate should be set correctly");
-        assertEq(timestamp, block.timestamp, "Connector timestamp should be set correctly");
 
         configureVault();
     }
@@ -67,13 +68,17 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_processAccounting() public {
+        uint256 totalAssetsBefore = vault.totalAssets();
+
         uint256 strategyBalance = 1e18; // 1 strategy token
         deal(address(strategy), address(vault), strategyBalance);
 
         vault.processAccounting();
 
         uint256 expectedBaseValue = (strategyBalance * MOCK_RATE) / 1e18;
-        assertEq(vault.totalAssets(), expectedBaseValue, "Vault should account strategy value correctly");
+        assertEq(
+            vault.totalAssets(), totalAssetsBefore + expectedBaseValue, "Vault should account strategy value correctly"
+        );
     }
 
     function test_strategyRateReverts_whenStale() public {
