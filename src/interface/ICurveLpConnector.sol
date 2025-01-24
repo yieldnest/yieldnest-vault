@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 interface ICurveLpConnector {
     function rate() external view returns (int256, uint256);
     function deposit(uint256 _amountA, uint256 _amountB, uint256 _minOut) external returns (uint256);

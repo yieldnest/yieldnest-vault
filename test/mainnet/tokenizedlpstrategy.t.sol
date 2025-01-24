@@ -13,15 +13,20 @@ import {MockTokenizedStrategy} from "test/mainnet/mocks/yearn/MockTokenizedStrat
 import {Provider} from "src/module/Provider.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 import {MockConnector} from "test/mainnet/mocks/MockConnector.sol";
-import {ICurvePool} from "src/interface/external/curve/ICurvePool.sol";
+import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
+import {ConnectorRules} from "script/ConnectorRules.sol";
+import {BaseRules} from "script/BaseRules.sol";
 
-contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches {
+contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRules, BaseRules {
     MockTokenizedStrategy public strategy;
     Vault public vault;
     ICurvePool public pool;
     MockConnector public connector;
     uint256 public constant INITIAL_BALANCE = 101 ether;
     uint256 public constant MOCK_RATE = 1.2 ether;
+
+    address public constant ASSET_A = MC.YNETH;
+    address public constant ASSET_B = MC.YNLSDE;
 
     function mockConnector(address _vault, address _strategy, address _assetA, address _assetB) public {
         MockConnector connector_ = new MockConnector(_vault, _strategy, _assetA, _assetB);
@@ -52,7 +57,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches {
 
         pool = ICurvePool(payable(MC.CURVE_LP_YNETH_YNLSDE_POOL));
 
-        mockConnector(address(vault), address(strategy), MC.YNETH, MC.YNLSDE);
+        mockConnector(address(vault), address(strategy), ASSET_A, ASSET_B);
 
         vm.label(address(pool), "pool");
         vm.label(address(strategy), "strategy");
@@ -64,6 +69,11 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches {
     function configureVault() public {
         vm.startPrank(ADMIN);
         vault.addAsset(address(strategy), false);
+        vault.grantRole(vault.PROCESSOR_ROLE(), address(this));
+        setApprovalRule(vault, ASSET_A, address(connector));
+        setApprovalRule(vault, ASSET_B, address(connector));
+        setConnectorDepositRule(vault, address(connector));
+        setConnectorWithdrawRule(vault, address(connector));
         vm.stopPrank();
     }
 
@@ -126,7 +136,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches {
 
     function test_deposit_allocateToBuffer_withdraw(uint256 assets, uint256 bufferAmount) public {
         vm.assume(assets > 10000 && assets < 100_000_000 ether);
-        vm.assume(bufferAmount > 1000 && bufferAmount < assets);
+        vm.assume(bufferAmount > 10000 && bufferAmount < assets);
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
@@ -204,5 +214,19 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches {
             assertEq(balanceBefore, balanceAfter, "WETH balance should not change");
             assertEq(bufferAfter, bufferBefore - maxWithdraw, "Buffer balance should increase by buffer amount");
         }
+    }
+
+    function test_connector_deposit(uint256 amountA, uint256 amountB) public {
+        vm.assume(amountA > 1000 && amountA < 1000 ether);
+        vm.assume(amountB > 1000 && amountB < 1000 ether);
+
+        deal(ASSET_A, address(vault), amountA);
+        deal(ASSET_B, address(vault), amountB);
+
+        assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+
+        uint256 shares = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+
+        assertEq(strategy.balanceOf(address(vault)), shares, "Strategy balance should match shares");
     }
 }

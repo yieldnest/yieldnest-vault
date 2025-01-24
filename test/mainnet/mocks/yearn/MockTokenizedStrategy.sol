@@ -2,8 +2,6 @@
 pragma solidity >=0.8.18;
 
 import {Math, ERC20, SafeERC20} from "src/Common.sol";
-import {IFactory} from "test/interface/external/yearn/IFactory.sol";
-import {IBaseStrategy} from "test/interface/external/yearn/IBaseStrategy.sol";
 
 /**
  * @title Yearn Tokenized Strategy
@@ -333,6 +331,14 @@ contract MockTokenizedStrategy {
 
         // Emit event to signal a new strategy has been initialized.
         emit NewTokenizedStrategy(address(this), _asset, API_VERSION);
+    }
+
+    function availableDepositLimit(address) public pure returns (uint256) {
+        return type(uint256).max;
+    }
+
+    function availableWithdrawLimit(address) public pure returns (uint256) {
+        return type(uint256).max;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -683,7 +689,7 @@ contract MockTokenizedStrategy {
         // Cannot deposit when shutdown or to the strategy.
         if (S.shutdown || receiver == address(this)) return 0;
 
-        return IBaseStrategy(address(this)).availableDepositLimit(receiver);
+        return availableDepositLimit(receiver);
     }
 
     /// @dev Internal implementation of {maxMint}.
@@ -691,7 +697,7 @@ contract MockTokenizedStrategy {
         // Cannot mint when shutdown or to the strategy.
         if (S.shutdown || receiver == address(this)) return 0;
 
-        maxMint_ = IBaseStrategy(address(this)).availableDepositLimit(receiver);
+        maxMint_ = availableDepositLimit(receiver);
         if (maxMint_ != type(uint256).max) {
             maxMint_ = _convertToShares(S, maxMint_, Math.Rounding.Floor);
         }
@@ -700,7 +706,7 @@ contract MockTokenizedStrategy {
     /// @dev Internal implementation of {maxWithdraw}.
     function _maxWithdraw(StrategyData storage S, address owner) internal view returns (uint256 maxWithdraw_) {
         // Get the max the owner could withdraw currently.
-        maxWithdraw_ = IBaseStrategy(address(this)).availableWithdrawLimit(owner);
+        maxWithdraw_ = availableWithdrawLimit(owner);
 
         // If there is no limit enforced.
         if (maxWithdraw_ == type(uint256).max) {
@@ -714,7 +720,7 @@ contract MockTokenizedStrategy {
     /// @dev Internal implementation of {maxRedeem}.
     function _maxRedeem(StrategyData storage S, address owner) internal view returns (uint256 maxRedeem_) {
         // Get the max the owner could withdraw currently.
-        maxRedeem_ = IBaseStrategy(address(this)).availableWithdrawLimit(owner);
+        maxRedeem_ = availableWithdrawLimit(owner);
 
         // Conversion would overflow and saves a min check if there is no withdrawal limit.
         if (maxRedeem_ == type(uint256).max) {
