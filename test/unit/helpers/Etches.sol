@@ -18,6 +18,11 @@ import {Test} from "lib/forge-std/src/Test.sol";
 
 contract Etches is Test {
     function mockAll() public {
+        mockBuffer();
+        mockAllExceptBuffer();
+    }
+
+    function mockAllExceptBuffer() public {
         mockWETH9();
         mockStETH();
         mockYNETH();
@@ -28,7 +33,6 @@ contract Etches is Test {
         mockCL_STETH();
         mockWBTC();
         mockProvider();
-        mockBuffer();
         mockYNLSDEPool();
         mockLPConnector();
     }
