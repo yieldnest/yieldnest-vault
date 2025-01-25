@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
-import {AsyncWithdrawalLib} from "src/library/AsyncWithdrawalLib.sol";
+import {BaseWithdrawer} from "src/withdraws/BaseWithdrawer.sol";
 import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
-import {IProvider} from "src/interface/IProvider.sol";
-import {IWithdrawer} from "src/interface/IWithdrawer.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
+import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
+import {IWithdrawalQueue} from "src/interface/external/lido/IWithdrawalQueue.sol";
+import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 
-contract Withdrawer is BaseStrategy, IWithdrawer {
+contract Withdrawer is BaseWithdrawer {
     function initialize(
         address admin,
         string memory name,
@@ -39,20 +40,75 @@ contract Withdrawer is BaseStrategy, IWithdrawer {
         vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
     }
 
-    function computeTotalAssets() public view virtual override returns (uint256 totalBaseBalance) {
-        return AsyncWithdrawalLib.computeTotalAssets();
+    /**
+     * @notice function to handle the assets that are in queue for withdrawal.
+     * @param asset_ The address of the asset.
+     * @dev This function should return the amount in base denomination.
+     */
+    function asyncWithdrawalBalance(address asset_) public view virtual override returns (uint256 baseAssets) {
+        baseAssets = _asyncWithdrawalBalance(asset_);
     }
 
-    function _feeOnRaw(uint256) public pure override returns (uint256) {
+    function _asyncWithdrawalBalanceYNAsset(address queueManager_, address asset_)
+        private
+        view
+        returns (uint256 baseAssets)
+    {
+        IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
+        (, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) =
+            queueManager.withdrawalRequestsForOwner(address(this));
+
+        uint256 decimals = 10 ** _getAssetStorage().assets[asset_].decimals;
+
+        for (uint256 i = 0; i < requests.length; i++) {
+            if (!requests[i].processed) {
+                // NOTE: needs to be fixed - assumes no slashing for now,
+                // as in reality eigenlayer slashing is not active yet
+                uint256 baseAmount = requests[i].amount * requests[i].redemptionRateAtRequestTime / decimals;
+                uint256 fee = baseAmount * requests[i].feeAtRequestTime / 1000000;
+                baseAssets += baseAmount - fee;
+            }
+        }
+        return baseAssets;
+    }
+
+    function _asyncWithdrawalBalanceWSTETH() private view returns (uint256 baseAssets) {
+        IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
+        uint256[] memory requestIds = queue.getWithdrawalRequests(address(this));
+        IWithdrawalQueue.WithdrawalRequestStatus[] memory statuses = queue.getWithdrawalStatus(requestIds);
+        for (uint256 i = 0; i < statuses.length; i++) {
+            baseAssets += statuses[i].amountOfStETH;
+        }
+    }
+
+    function _asyncWithdrawalBalanceWOETH() private view returns (uint256 baseAssets) {
+        IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
+        uint256[] memory requestIds = OriginWithdrawalLib.getWOETHRequestIds();
+        for (uint256 i = 0; i < requestIds.length; i++) {
+            uint256 requestId = requestIds[i];
+            IOETHVault.WithdrawalRequest memory request = oethVault.withdrawalRequests(requestId);
+            baseAssets += request.amount;
+        }
+    }
+
+    function _asyncWithdrawalBalance(address asset) private view returns (uint256 baseAssets) {
+        if (asset == MC.WOETH) {
+            return _asyncWithdrawalBalanceWOETH();
+        }
+
+        if (asset == MC.WSTETH) {
+            return _asyncWithdrawalBalanceWSTETH();
+        }
+
+        if (asset == MC.YNETH) {
+            return _asyncWithdrawalBalanceYNAsset(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, MC.YNETH);
+        }
+
+        if (asset == MC.YNLSDE) {
+            return _asyncWithdrawalBalanceYNAsset(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, MC.YNLSDE);
+        }
+
         return 0;
-    }
-
-    function _feeOnTotal(uint256) public pure override returns (uint256) {
-        return 0;
-    }
-
-    function asyncWithdrawalBalance(address asset) external view returns (uint256) {
-        return IProvider(provider()).asyncWithdrawalBalance(asset);
     }
 
     function getWOETHRequestIds() external view returns (uint256[] memory) {
