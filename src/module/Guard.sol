@@ -3,12 +3,13 @@ pragma solidity ^0.8.24;
 
 import {IVault} from "src/interface/IVault.sol";
 import {IValidator} from "src/interface/IValidator.sol";
+import {VaultLib} from "src/library/VaultLib.sol";
 
 library Guard {
     function validateCall(address target, uint256 value, bytes calldata data) internal view {
         bytes4 funcSig = bytes4(data[:4]);
 
-        IVault.FunctionRule storage rule = _getProcessorStorage().rules[target][funcSig];
+        IVault.FunctionRule storage rule = VaultLib.getProcessorStorage().rules[target][funcSig];
 
         if (!rule.isActive) revert RuleNotActive(target, funcSig);
 
@@ -38,12 +39,6 @@ library Guard {
             }
         }
         return false;
-    }
-
-    function _getProcessorStorage() internal pure returns (IVault.ProcessorStorage storage $) {
-        assembly {
-            $.slot := 0x52bb806a772c899365572e319d3d6f49ed2259348d19ab0da8abccd4bd46abb5
-        }
     }
 
     error RuleNotActive(address, bytes4);

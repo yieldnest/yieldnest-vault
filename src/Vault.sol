@@ -3,26 +3,17 @@ pragma solidity ^0.8.24;
 
 import {BaseVault} from "src/BaseVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
-import {IStrategy} from "src/interface/IStrategy.sol";
-import {Math} from "./Common.sol";
+import {VaultLib} from "src/library/VaultLib.sol";
 
 contract Vault is BaseVault {
-    using Math for uint256;
-
-    string public constant VAULT_VERSION = "0.1.2";
-
+    string public constant VAULT_VERSION = "0.2.0";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
-    struct FeeStorage {
-        /// @notice The base withdrawal fee in basis points (1e8 = 100%)
-        uint64 baseWithdrawalFee;
-    }
-    /// @notice The fraction of the buffer below which flat fees apply, in basis points (1e8 = 100%). Only used by quadratic fees
+    /// @notice The fraction of the buffer below which flat fees apply, in basis points (1e8 = 100%).
+    /// Only used by quadratic fees
 
-    function _getFeeStorage() internal pure returns (FeeStorage storage $) {
-        assembly {
-            $.slot := 0xde924653ae91bd33356774e603163bd5862c93462f31acccae5f965be6e6599b
-        }
+    function _getFeeStorage() internal pure returns (FeeStorage storage) {
+        return VaultLib.getFeeStorage();
     }
 
     /**

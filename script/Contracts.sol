@@ -22,6 +22,7 @@ library MainnetContracts {
 
     // stake managers
     address public constant BNBX_STAKE_MANAGER = 0x3b961e83400D51e6E1AF5c450d3C7d7b80588d28;
+    address public constant SLIS_BNB_STAKE_HUB = 0x0000000000000000000000000000000000002002;
     address public constant SLIS_BNB_STAKE_MANAGER = 0x1adB950d8bB3dA4bE104211D5AB038628e477fE6;
     address public constant AS_BNB_MINTER = 0x2F31ab8950c50080E77999fa456372f276952fD8;
 

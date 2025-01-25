@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {MockBuffer} from "test/mainnet/mocks/MockBuffer.sol";
+import {MockStakeHub} from "test/mainnet/mocks/MockStakeHub.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Provider} from "src/module/Provider.sol";
@@ -24,5 +25,11 @@ contract Etches is Test, MainnetActors {
         MockBuffer buffer = new MockBuffer();
         bytes memory code = address(buffer).code;
         vm.etch(MC.BUFFER, code);
+    }
+
+    function mockStakeHub() public {
+        MockStakeHub stakeHub = new MockStakeHub();
+        bytes memory code = address(stakeHub).code;
+        vm.etch(MC.SLIS_BNB_STAKE_HUB, code);
     }
 }
