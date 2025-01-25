@@ -3,12 +3,11 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
-import {console} from "lib/forge-std/src/console.sol";
 import {FeeMathPoly} from "src/module/FeeMathPoly.sol";
 
 contract FeeMathTest is Test {
-    uint256 constant BASIS_POINT_SCALE = 1e8;
-    uint256 constant BUFFER_FEE_FLAT_PORTION = 8e7; // 80%
+    uint256 public constant BASIS_POINT_SCALE = 1e8;
+    uint256 public constant BUFFER_FEE_FLAT_PORTION = 8e7; // 80%
 
     function test_LinearFee(uint256 amount, uint256 fee) public pure {
         // Bound fee to valid range (0 to BASIS_POINT_SCALE)
@@ -38,7 +37,8 @@ contract FeeMathTest is Test {
         vm.assume(baseFee <= FeeMath.BASIS_POINT_SCALE); // Ensure end >= start
 
         // With full buffer, should just be linear fee
-        uint256 expectedFee = (withdrawalAmount * baseFee) / BASIS_POINT_SCALE; // Calculate expected fee using same formula as linearFee()
+        // Calculate expected fee using same formula as linearFee()
+        uint256 expectedFee = (withdrawalAmount * baseFee) / BASIS_POINT_SCALE;
         uint256 actualFee = FeeMathPoly.quadraticBufferFee(
             withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, baseFee, FeeMath.FeeType.OnRaw
         );
@@ -175,7 +175,8 @@ contract FeeMathTest is Test {
         uint256 fee = FeeMathPoly.calculateQuadraticTotalFee(baseFee, start, end);
 
         // Calculate expected fee using the quadratic formula:
-        // expectedFee = ((1 - baseFee) * (end^3 - start^3)/3 + baseFee * (end - start)) / (end - start) * BASIS_POINT_SCALE
+        // expectedFee = ((1 - baseFee) * (end^3 - start^3)/3
+        // + baseFee * (end - start)) / (end - start) * BASIS_POINT_SCALE
         // Calculate cubic terms separately with different order of operations
         uint256 scaledEnd = end * end * end;
         uint256 scaledStart = start * start * start;
@@ -269,7 +270,7 @@ contract FeeMathTest is Test {
         vm.assume(fee > 0 && fee <= FeeMath.BASIS_POINT_SCALE / 2);
 
         // With low buffer, fee should be higher than linear fee
-        uint256 linearFee = FeeMath.linearFee(withdrawalAmount, fee, FeeMath.FeeType.OnTotal);
+        // uint256 linearFee = FeeMath.linearFee(withdrawalAmount, fee, FeeMath.FeeType.OnTotal);
         uint256 actualFee = FeeMathPoly.quadraticBufferFee(
             withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, fee, FeeMath.FeeType.OnTotal
         );
@@ -294,13 +295,13 @@ contract FeeMathTest is Test {
                 uint256 linearAmount = bufferAvailable - bufferNonLinearAmount;
                 uint256 nonLinearAmount = withdrawalAmount - linearAmount;
 
-                uint256 linearFee = linearAmount * fee / (fee + BASIS_POINT_SCALE);
+                uint256 linearFee_ = linearAmount * fee / (fee + BASIS_POINT_SCALE);
                 uint256 quadraticFee = FeeMathPoly.calculateQuadraticTotalFee(
                     fee, 0, nonLinearAmount * BASIS_POINT_SCALE / bufferNonLinearAmount
                 );
                 uint256 nonLinearFee = nonLinearAmount * quadraticFee / (quadraticFee + BASIS_POINT_SCALE);
 
-                expectedFee = linearFee + nonLinearFee;
+                expectedFee = linearFee_ + nonLinearFee;
             }
         } else {
             // Entirely in non-linear region

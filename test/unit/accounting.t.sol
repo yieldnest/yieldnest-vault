@@ -11,7 +11,6 @@ import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IProvider} from "src/interface/IProvider.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -298,20 +297,19 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         expectedTotalSupply += shares;
 
         // Direct transfer of WETH to the vault
-        deal(alice, depositAmountWETH);
-        (success,) = MC.WETH.call{value: depositAmountWETH}("");
+        deal(MC.WETH, address(alice), depositAmountWETH);
         IERC20(MC.WETH).transfer(address(vault), depositAmountWETH);
         expectedTotalAssets += depositAmountWETH;
 
         // Direct transfer of STETH to the vault
         deal(alice, depositAmountSTETH);
         (success,) = MC.STETH.call{value: depositAmountSTETH}("");
-        aliceStEthDepositAmount = IERC20(steth).balanceOf(alice);
+        uint256 aliceStEthDepositAmount2 = IERC20(steth).balanceOf(alice);
 
         uint256 rate = IProvider(MC.PROVIDER).getRate(MC.STETH);
-        expectedTotalAssets += (aliceStEthDepositAmount * rate) / (10 ** 18);
+        expectedTotalAssets += (aliceStEthDepositAmount2 * rate) / (10 ** 18);
 
-        IERC20(steth).transfer(address(vault), aliceStEthDepositAmount);
+        IERC20(steth).transfer(address(vault), aliceStEthDepositAmount2);
 
         vault.processAccounting();
 
@@ -346,7 +344,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         // Direct transfer of WETH
         deal(alice, wethAmount);
         (success,) = MC.WETH.call{value: wethAmount}("");
-        require(success, "WETH transfer failed");
+        assertTrue(success, "WETH transfer failed");
         vm.prank(alice);
         IERC20(MC.WETH).transfer(address(vault), wethAmount);
         expectedTotalAssets += wethAmount;

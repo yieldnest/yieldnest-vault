@@ -1,3 +1,4 @@
+/* solhint-disable one-contract-per-file, gas-custom-errors */
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
@@ -22,7 +23,7 @@ contract MockValidator is IValidator {
         validationResult = result;
     }
 
-    function validate(address target, uint256 value, bytes calldata data) external view {
+    function validate(address, uint256, bytes calldata) external view {
         require(validationResult, "Validation failed");
     }
 }
@@ -247,7 +248,8 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         values[0] = 0;
 
         bytes[] memory data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 10000000 ether, address(vault)); // Invalid function signature
+        // Invalid function signature
+        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 10000000 ether, address(vault));
 
         // Expect the processor call to fail with and send return data
         vm.prank(PROCESSOR);

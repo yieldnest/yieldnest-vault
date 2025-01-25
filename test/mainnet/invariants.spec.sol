@@ -10,9 +10,7 @@ import {IERC20, TransparentUpgradeableProxy} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 
-
 contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
-
     Vault public vault;
 
     function setUp() public {
@@ -23,13 +21,17 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
     function totalSupplyInvariant(uint256 supply) public view {
         uint256 finalVaultTotalSupply = vault.totalSupply();
-        assertEqThreshold(supply, finalVaultTotalSupply, 3, "Vault totalSupply should be original totalSupply plus additional");
+        assertEqThreshold(
+            supply, finalVaultTotalSupply, 3, "Vault totalSupply should be original totalSupply plus additional"
+        );
     }
 
     function totalAssetsInvariant(uint256 assets) public view {
         uint256 finalVaultTotalAssets = vault.totalAssets();
-        assertEqThreshold(assets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional");
-    }    
+        assertEqThreshold(
+            assets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional"
+        );
+    }
 
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
@@ -80,7 +82,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         // Test the previewDeposit function
         deal(address(this), 1 ether);
         (bool success,) = MC.WETH.call{value: 1 ether}("");
-        require(success, "Weth deposit failed");
+        assertTrue(success, "Weth deposit failed");
         IERC20(MC.WETH).approve(address(vault), 1 ether);
         IERC20(MC.WETH).transfer(address(vault), 1 ether);
 
@@ -94,7 +96,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         // Test the depositAsset function
         deal(address(this), assets);
         (success,) = MC.WETH.call{value: assets}("");
-        if (!success) revert("Weth deposit failed");
+        assertTrue(success, "Weth deposit failed");
         IERC20(MC.WETH).approve(address(vault), assets);
 
         address receiver = address(this);
@@ -142,7 +144,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         // Test the depositAsset function
         (bool success,) = MC.WETH.call{value: assets}("");
-        if (!success) revert("Weth deposit failed");
+        assertTrue(success, "Weth deposit failed");
         IERC20(MC.WETH).approve(address(vault), assets);
 
         address receiver = address(this);
@@ -178,7 +180,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         // Test the convertToAssets function
         uint256 assets = vault.convertToAssets(shares);
         assertGt(assets, 0, "Assets should be greater than 0");
-        
+
         deal(alice, assets);
 
         // Test the previewMint function
@@ -188,13 +190,13 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         // Test the mint function
         vm.startPrank(alice);
         (bool success,) = MC.WETH.call{value: assets}("");
-        if (!success) revert("Weth deposit failed");
+        assertTrue(success, "Weth deposit failed");
         IERC20(MC.WETH).approve(address(vault), assets);
 
         uint256 mintedAssets = vault.mint(shares, alice);
         assertEq(mintedAssets, assets, "Minted assets should equal the converted assets");
         vm.stopPrank();
-        
+
         allocateToBuffer(assets);
 
         totalSupplyInvariant(initialSupply + shares);
@@ -204,7 +206,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     function test_Vault_4626Invariants_redeem(uint256 assets) public {
         if (assets < 3) return;
         if (assets > 100_000_000 ether) return;
-        
+
         address alice = address(420);
         deal(alice, assets);
 
@@ -219,12 +221,11 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         vm.startPrank(alice);
         (bool success,) = MC.WETH.call{value: assets}("");
-        if (!success) revert("Weth deposit failed");
+        assertTrue(success, "Weth deposit failed");
         IERC20(baseAsset).approve(address(vault), assets);
         uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
         assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
         vm.stopPrank();
-
 
         // hypothetically allocated 100% to the buffer
         allocateToBuffer(assets);
@@ -269,7 +270,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         vm.startPrank(alice);
         (bool success,) = MC.WETH.call{value: assets}("");
-        if (!success) revert("Weth deposit failed");
+        assertTrue(success, "Weth deposit failed");
         IERC20(baseAsset).approve(address(vault), assets);
         uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
         assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
@@ -280,10 +281,12 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         // Test the previewWithdraw function
         uint256 previewedWithdrawShares = vault.previewWithdraw(assets);
-        assertEqThreshold(previewedWithdrawShares, shares, 3, "Previewed withdraw shares should equal the original shares");
-        
+        assertEqThreshold(
+            previewedWithdrawShares, shares, 3, "Previewed withdraw shares should equal the original shares"
+        );
+
         vm.startPrank(alice);
-    
+
         uint256 withdrawableAssets = vault.maxWithdraw(alice);
         assertEqThreshold(withdrawableAssets, assets, 3, "Withdrawable assets should equal the original shares");
 
@@ -298,10 +301,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         totalAssetsInvariant(initialAssets);
     }
 
-    
-    function test_Vault_4626Invariants_depositStETHWithReferral(
-        uint256 assets
-    ) public {
+    function test_Vault_4626Invariants_depositStETHWithReferral(uint256 assets) public {
         if (assets < 2) return;
         if (assets > 1_000 ether) return;
 
@@ -316,11 +316,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         // Deploy referral adapter
         address implementation = address(new XReferralAdapter());
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            implementation,
-            MC.PROXY_ADMIN,
-            ""
-        );
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(implementation, MC.PROXY_ADMIN, "");
         XReferralAdapter adapter = XReferralAdapter(address(proxy));
 
         {
@@ -328,7 +324,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
             deal(alice, assets);
             vm.startPrank(alice);
             (bool success,) = MC.STETH.call{value: assets}("");
-            require(success, "stETH deposit failed");
+            assertTrue(success, "stETH deposit failed");
             vm.stopPrank();
 
             vm.startPrank(alice);
@@ -338,13 +334,14 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         uint256 shares = vault.convertToShares(assets);
         assertGt(shares, 0, "Shares should be greater than 0");
 
-        assertEqThreshold(vault.convertToAssets(shares), assets, 3, "Converted assets should equal the original assets");
+        uint256 convertedAssets = vault.convertToAssets(shares);
+        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
         // Approve adapter to spend stETH
         IERC20(MC.STETH).approve(address(adapter), assets);
 
-        uint256 depositedShares = adapter.depositAssetWithReferral(address(vault), MC.STETH, assets, referrer, receiver);
-        assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
+        uint256 depShares = adapter.depositAssetWithReferral(address(vault), MC.STETH, assets, referrer, receiver);
+        assertEqThreshold(depShares, shares, 3, "Deposited shares should equal the converted shares");
 
         vm.stopPrank();
 

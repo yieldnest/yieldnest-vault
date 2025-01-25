@@ -1,7 +1,7 @@
+/* solhint-disable gas-custom-errors */
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IStrategy} from "src/interface/IStrategy.sol";
 import {IERC20, ERC20} from "src/Common.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 

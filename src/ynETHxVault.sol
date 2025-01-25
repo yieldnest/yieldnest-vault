@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {Vault} from "src/Vault.sol";
-import {IVault} from "src/interface/IVault.sol";
 
+// solhint-disable-next-line contract-name-capwords
 contract ynETHxVault is Vault {
     /**
      * @notice Initializes the vault.

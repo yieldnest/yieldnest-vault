@@ -24,11 +24,13 @@ contract VaultViewsUnitTest is Test, Etches {
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 100_000 ether;
 
-    PublicViewsVault pVault;
+    PublicViewsVault public pVault;
 
     function setUp() public {
         SetupVault setupVault = new SetupVault();
         (vault, weth) = setupVault.setup();
+
+        pVault = PublicViewsVault(payable(address(vault)));
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
@@ -38,8 +40,6 @@ contract VaultViewsUnitTest is Test, Etches {
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
-
-        pVault = PublicViewsVault(payable(address(vault)));
     }
 
     function test_Vault_asset() public view {

@@ -13,7 +13,7 @@ import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {MockERC20} from "test/unit/mocks/MockERC20.sol";
 import {MockERC20CustomDecimals} from "test/unit/mocks/MockERC20CustomDecimals.sol";
 
-import "lib/forge-std/src/Test.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
 
 contract Etches is Test {
     function mockAll() public {
@@ -74,8 +74,8 @@ contract Etches is Test {
     }
 
     function mockCL_STETH() public {
-        MockCL_STETH cl_steth = new MockCL_STETH();
-        bytes memory code = address(cl_steth).code;
+        MockCL_STETH clsteth = new MockCL_STETH();
+        bytes memory code = address(clsteth).code;
         vm.etch(MainnetContracts.CL_STETH_FEED, code);
     }
 
