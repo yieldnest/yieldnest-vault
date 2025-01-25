@@ -4,13 +4,11 @@ pragma solidity ^0.8.24;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {Vault} from "src/Vault.sol";
-import {IVault} from "src/interface/IVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 
 contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
-
     Vault public vault;
 
     function setUp() public {
@@ -54,7 +52,7 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
         // Test the convertToShares function
         uint256 amount = 1 ether;
         uint256 shares = vault.convertToShares(amount);
-        assertLe(shares,amount, "Shares should less or equal to amount deposited");
+        assertLe(shares, amount, "Shares should less or equal to amount deposited");
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
@@ -86,4 +84,3 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
         assertEq(assets[4], MC.YNLSDE, "Fourth asset should be YNLSDE");
     }
 }
-

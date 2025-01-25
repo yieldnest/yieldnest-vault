@@ -390,7 +390,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         if (depositAmount < 1 || depositAmount > 100_000_00 ether) return;
 
         (bool success,) = address(vault).call{value: depositAmount}("");
-        require(success == true, "Deposit eth failed");
+        assertTrue(success, "Deposit eth failed");
         vault.processAccounting();
 
         // Check the shares minted
@@ -479,7 +479,15 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
         vm.expectEmit(true, true, true, true);
         emit ReferralDepositProcessed(
-            address(vault), address(weth), address(alice), address(this), alice, assets, previewShares, block.timestamp
+            address(vault),
+            address(weth),
+            address(alice),
+            address(this),
+            alice,
+            assets,
+            previewShares,
+            // solhint-disable-next-line not-rely-on-time
+            block.timestamp
         );
         vm.prank(alice);
         uint256 shares =
@@ -494,8 +502,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         uint256 assets = 1 ether;
         vm.expectRevert();
         vm.prank(alice);
-        uint256 shares =
-            referallAdapter.depositAssetWithReferral(address(emptyVault), address(weth), assets, address(this), alice);
+        referallAdapter.depositAssetWithReferral(address(emptyVault), address(weth), assets, address(this), alice);
     }
 
     function test_xReferralAdapter_deposit_revert_ZeroAddress() public {

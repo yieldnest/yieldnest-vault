@@ -12,7 +12,6 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 
-
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
     function balanceOf(address owner) external returns (uint256);
@@ -20,7 +19,6 @@ interface IynETH {
 }
 
 contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
-
     Vault public vault;
 
     function setUp() public {
@@ -53,8 +51,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         vault.processAccounting();
     }
 
-        event Log(string,uint256);
-
+    event Log(string, uint256);
 
     function test_Vault_ynETH_depositAndAllocate() public {
         // if (assets < 0.1 ether) return;
@@ -74,7 +71,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
         (bool success,) = MC.WETH.call{value: assets}("");
-        if (!success) revert("Weth deposit failed");
+        assertTrue(success, "Weth deposit failed");
         IERC20(MC.WETH).approve(address(vault), assets);
 
         address assetAddress = vault.asset();
@@ -92,7 +89,12 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         vm.stopPrank();
 
         uint256 newTotalAssets = vault.totalAssets();
-        assertEqThreshold(newTotalAssets, totalAssets + assets, 5, "New total assets should equal deposit amount plus original total assets");
+        assertEqThreshold(
+            newTotalAssets,
+            totalAssets + assets,
+            5,
+            "New total assets should equal deposit amount plus original total assets"
+        );
     }
 
     function processWithrdawWeth(uint256 assets) public {
@@ -108,6 +110,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
         vault.processor(targets, values, data);
     }
+
     function processDepositYnETH(uint256 assets) public {
         // convert WETH to ETH
         address[] memory targets = new address[](1);
@@ -129,7 +132,8 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
         paramRules[0] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault.setProcessorRule(MC.WETH, funcSig, rule);
     }
@@ -144,7 +148,8 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
 
         paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
-        IVault.FunctionRule memory rule = IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault.setProcessorRule(MC.YNETH, funcSig, rule);
     }
@@ -155,7 +160,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         address bob = address(1776);
 
         vm.deal(bob, 100 ether);
-        
+
         vm.startPrank(bob);
         // previous vault total Assets
         uint256 previousTotalAssets = vault.totalAssets();
@@ -170,6 +175,10 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         uint256 newTotalAssets = vault.totalAssets();
         uint256 ynEthRate = IProvider(MC.PROVIDER).getRate(MC.YNETH);
 
-        assertEq(newTotalAssets, previousTotalAssets + (ynEthShares * ynEthRate / 1e18), "Total assets should match the previous total assets plus the equivalent ynETH shares in base denomination");
+        assertEq(
+            newTotalAssets,
+            previousTotalAssets + (ynEthShares * ynEthRate / 1e18),
+            "Total assets should match the previous total assets plus the equivalent ynETH shares in base denomination"
+        );
     }
 }

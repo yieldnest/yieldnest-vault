@@ -6,18 +6,13 @@ import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
-import {IERC20, TransparentUpgradeableProxy} from "src/Common.sol";
+import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
-import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
-import {console} from "lib/forge-std/src/console.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-
 
 contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
-
     Vault public vault;
 
     function setUp() public {
@@ -26,11 +21,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         vault = Vault(payable(MC.YNETHX));
 
         // Deploy mock buffer
-        MockERC4626 mockBuffer = new MockERC4626(
-            ERC20(MC.WETH),
-            "Mock Buffer",
-            "BUFF"
-        );
+        MockERC4626 mockBuffer = new MockERC4626(ERC20(MC.WETH), "Mock Buffer", "BUFF");
 
         // Set mock buffer address
         vm.prank(ADMIN);
@@ -67,13 +58,17 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
     function totalSupplyInvariant(uint256 supply) public view {
         uint256 finalVaultTotalSupply = vault.totalSupply();
-        assertEqThreshold(supply, finalVaultTotalSupply, 3, "Vault totalSupply should be original totalSupply plus additional");
+        assertEqThreshold(
+            supply, finalVaultTotalSupply, 3, "Vault totalSupply should be original totalSupply plus additional"
+        );
     }
 
     function totalAssetsInvariant(uint256 assets) public view {
         uint256 finalVaultTotalAssets = vault.totalAssets();
-        assertEqThreshold(assets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional");
-    }    
+        assertEqThreshold(
+            assets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional"
+        );
+    }
 
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
@@ -94,10 +89,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         vault.processAccounting();
     }
 
-    function test_Vault_4626Invariants_depositBase_WithBufferAllocation(
-        uint256 assets,
-        uint256 bufferAmount
-    ) public {
+    function test_Vault_4626Invariants_depositBase_WithBufferAllocation(uint256 assets, uint256 bufferAmount) public {
         if (assets < 2) return;
         if (assets > 100_000_000 ether) return;
         if (bufferAmount > assets) return;
@@ -119,7 +111,8 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         uint256 shares = vault.convertToShares(assets);
         assertGt(shares, 0, "Shares should be greater than 0");
 
-        assertEqThreshold(vault.convertToAssets(shares), assets, 3, "Converted assets should equal the original assets");
+        uint256 convertedAssets = vault.convertToAssets(shares);
+        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
         uint256 previewedShares = vault.previewDeposit(assets);
         assertEqThreshold(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
@@ -132,7 +125,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
             // Test the depositAsset function
             deal(address(this), assets);
             (bool success,) = MC.WETH.call{value: assets}("");
-            if (!success) revert("Weth deposit failed");
+            assertTrue(success, "Weth deposit failed");
             IERC20(MC.WETH).approve(address(vault), assets);
 
             address receiver = address(this);
@@ -161,7 +154,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     function testDonationToBuffer_withoutBufferAllocation() public {
         uint256 assets = 1 ether;
         uint256 bufferAmount = 0.5 ether;
-        
+
         // Initial state
         uint256 initialSupply = vault.totalSupply();
         uint256 initialAssets = vault.totalAssets();
@@ -169,9 +162,9 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         // Make initial deposit
         deal(address(this), assets);
         (bool success,) = MC.WETH.call{value: assets}("");
-        if (!success) revert("Weth deposit failed");
+        assertTrue(success, "Weth deposit failed");
         IERC20(MC.WETH).approve(address(vault), assets);
-        uint256 shares =vault.deposit(assets, address(this));
+        uint256 shares = vault.deposit(assets, address(this));
 
         // Process accounting
         vault.processAccounting();
@@ -182,16 +175,14 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         // Donate directly to buffer
         deal(address(this), 1 ether);
         (success,) = MC.WETH.call{value: 1 ether}("");
-        if (!success) revert("Weth deposit failed");
+        assertTrue(success, "Weth deposit failed");
         IERC20(MC.WETH).transfer(vault.buffer(), 1 ether);
 
         // Allocate to buffer
         allocateToBuffer(bufferAmount);
 
-
         totalSupplyInvariant(initialSupply + shares);
         // assets go down because of buffer donation
-        totalAssetsInvariant(initialAssets + (assets  - bufferAmount));
-
+        totalAssetsInvariant(initialAssets + (assets - bufferAmount));
     }
 }

@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import "lib/forge-std/src/Test.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
-import {IVault} from "src/interface/IVault.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {IValidator} from "src/interface/IValidator.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 
 contract SetupWithdrawer is Test, Etches, MainnetActors {

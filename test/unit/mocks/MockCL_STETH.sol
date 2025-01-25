@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
+// solhint-disable contract-name-capwords
 contract MockCL_STETH {
-    constructor() {}
-
     function latestRoundData()
         external
         pure

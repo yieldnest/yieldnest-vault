@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
-import {TransparentUpgradeableProxy, IERC20} from "src/Common.sol";
+import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";

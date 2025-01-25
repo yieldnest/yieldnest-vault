@@ -14,8 +14,6 @@ import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {IStETH} from "test/interface/external/lido/IStETH.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 
-
-
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
     function balanceOf(address owner) external returns (uint256);
@@ -23,7 +21,6 @@ interface IynETH {
 }
 
 contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
-
     Vault public vault;
 
     function setUp() public {
@@ -45,8 +42,8 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         vault.revokeRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
         vm.stopPrank();
     }
-    function configureCurveActions(SetupVault setup, Vault _vault) internal {
 
+    function configureCurveActions(SetupVault setup, Vault _vault) internal {
         vm.startPrank(ADMIN);
 
         // Get ethSteth pool from registry
@@ -63,36 +60,23 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
 
         // Add curve pool actions
         for (uint256 i = 0; i < curvePools.length; i++) {
-
             // Exchange function
             bytes4 exchange = bytes4(keccak256("exchange(int128,int128,uint256,uint256)"));
             IVault.ParamRule[] memory exchangeRules = new IVault.ParamRule[](4);
-            exchangeRules[0] = IVault.ParamRule({
-                paramType: IVault.ParamType.UINT256,
-                isArray: false,
-                allowList: new address[](0)
-            });
-            exchangeRules[1] = IVault.ParamRule({
-                paramType: IVault.ParamType.UINT256,
-                isArray: false,
-                allowList: new address[](0)
-            });
-            exchangeRules[2] = IVault.ParamRule({
-                paramType: IVault.ParamType.UINT256,
-                isArray: false,
-                allowList: new address[](0)
-            });
-            exchangeRules[3] = IVault.ParamRule({
-                paramType: IVault.ParamType.UINT256,
-                isArray: false,
-                allowList: new address[](0)
-            });
+            exchangeRules[0] =
+                IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+            exchangeRules[1] =
+                IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+            exchangeRules[2] =
+                IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+            exchangeRules[3] =
+                IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
-            _vault.setProcessorRule(curvePools[i], exchange, IVault.FunctionRule({
-                isActive: true,
-                paramRules: exchangeRules,
-                validator: IValidator(address(0))
-            }));
+            _vault.setProcessorRule(
+                curvePools[i],
+                exchange,
+                IVault.FunctionRule({isActive: true, paramRules: exchangeRules, validator: IValidator(address(0))})
+            );
         }
         // Set approval rule to allow ethStethPool to spend stETH tokens from the vault
         setup.setApprovalRule(_vault, MC.STETH, ethStethPool);
@@ -113,7 +97,7 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
 
         // Convert ETH to stETH via Lido
         vm.startPrank(user);
-        IStETH(MC.STETH).submit{value: amount + 100 wei }(address(0));
+        IStETH(MC.STETH).submit{value: amount + 100 wei}(address(0));
         vm.stopPrank();
 
         // Approve and deposit stETH to vault
@@ -124,7 +108,6 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
 
         // Read total assets before swap
         uint256 totalAssetsBefore = vault.totalAssets();
-
 
         // Exchange stETH for ETH via Curve pool
         ICurveRegistry registry = ICurveRegistry(MC.CURVE_REGISTRY);
@@ -137,11 +120,7 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         uint256 delta = swapAmount - minOut + 2 wei; // wei difference from stETH balance error
 
         // Prepare approve data
-        bytes memory approveData = abi.encodeWithSelector(
-            IERC20.approve.selector,
-            address(pool),
-            swapAmount
-        );
+        bytes memory approveData = abi.encodeWithSelector(IERC20.approve.selector, address(pool), swapAmount);
 
         // Prepare exchange data
         bytes memory exchangeData = abi.encodeWithSelector(
@@ -188,7 +167,7 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         vm.deal(user, amount);
         vm.startPrank(user);
         (bool success,) = address(vault).call{value: amount}("");
-        require(success, "ETH transfer failed");
+        assertTrue(success, "ETH transfer failed");
         vm.stopPrank();
 
         // Get curve pool for ETH/stETH

@@ -3,14 +3,13 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
-import {TransparentUpgradeableProxy, IERC20} from "src/Common.sol";
+import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;

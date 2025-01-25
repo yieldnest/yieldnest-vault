@@ -6,7 +6,7 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IERC4626} from "src/Common.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
-import {IStETH, IMETH, IOETH, IRETH, IswETH, IynLSDe} from "src/interface/IProvider.sol";
+import {IStETH, IMETH, IRETH, IynLSDe} from "src/interface/IProvider.sol";
 
 contract ProviderTest is Test, Etches {
     Provider public provider;

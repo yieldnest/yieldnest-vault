@@ -66,7 +66,8 @@ contract Provider is IProvider {
         if (asset == MC.SFRXETH) {
             /* 
             
-            The deposit asset for sfrxETH is frxETH and not ETH. In order to account for any frxETH/ETH rate fluctuations,
+            The deposit asset for sfrxETH is frxETH and not ETH. 
+            In order to account for any frxETH/ETH rate fluctuations,
             an frxETH/ETH oracle is used as provided by Frax.
 
             Documentation: https://docs.frax.finance/frax-oracle/advanced-concepts
@@ -100,13 +101,10 @@ contract Provider is IProvider {
 
         for (uint256 i = 0; i < requests.length; i++) {
             if (!requests[i].processed) {
-                // NOTE: needs to be fixed - assumes no slashing for now, as in reality eigenlayer slashing is not active yet
-                // get base amount
+                // NOTE: needs to be fixed - assumes no slashing for now,
+                // as in reality eigenlayer slashing is not active yet
                 uint256 baseAmount = requests[i].amount * requests[i].redemptionRateAtRequestTime / decimals;
-                // get fee
                 uint256 fee = baseAmount * requests[i].feeAtRequestTime / 1000000;
-                // add base amount minus fee
-
                 baseAssets += baseAmount - fee;
             }
         }

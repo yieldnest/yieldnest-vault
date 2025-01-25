@@ -51,9 +51,9 @@ contract Vault4626ComplianceUnitTest is Test, MainnetActors, Etches {
     */
     function test_Vault_Compliance_maxWithdraw_assetConversion() public view {
         uint256 aliceBalance = vault.balanceOf(alice);
-        uint256 baseConvertedAssets = vault.convertToAssets(aliceBalance);
+        uint256 convertedAssets = vault.convertToAssets(aliceBalance);
         uint256 maxWithdrawAmount = vault.maxWithdraw(alice);
-        assertEq(maxWithdrawAmount, baseConvertedAssets, "Max withdraw amount should be equal to base converted assets");
+        assertEq(maxWithdrawAmount, convertedAssets, "Max withdraw amount should be equal to base converted assets");
     }
 
     /*
