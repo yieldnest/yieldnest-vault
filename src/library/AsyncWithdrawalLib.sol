@@ -10,25 +10,6 @@ import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
 
 library AsyncWithdrawalLib {
     /**
-     * @notice Internal function to compute the total assets. Must handle the assets that are in queue for withdrawal.
-     * @dev This function should return the amount in base denomination.
-     */
-    function computeTotalAssets() public view returns (uint256 totalBaseBalance) {
-        totalBaseBalance = VaultLib.computeTotalAssets();
-
-        // Get storage
-        IVault.AssetStorage storage assetStorage = VaultLib.getAssetStorage();
-
-        // Iterate through assets
-        address[] memory assetList = assetStorage.list;
-        uint256 assetListLength = assetList.length;
-
-        for (uint256 i = 0; i < assetListLength; i++) {
-            totalBaseBalance += asyncWithdrawalBalance(assetList[i]);
-        }
-    }
-
-    /**
      * @notice function to handle the assets that are in queue for withdrawal.
      * @param asset_ The address of the asset.
      * @dev This function should return the amount in base denomination.

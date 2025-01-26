@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
 import {AsyncWithdrawalLib} from "src/library/AsyncWithdrawalLib.sol";
+import {VaultLib} from "src/library/VaultLib.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 abstract contract BaseWithdrawer is BaseStrategy {
     function initialize(
@@ -44,8 +46,23 @@ abstract contract BaseWithdrawer is BaseStrategy {
         return 0;
     }
 
-    function computeTotalAssets() public view virtual override returns (uint256 totalBaseBalance) {
-        totalBaseBalance = AsyncWithdrawalLib.computeTotalAssets();
+    /**
+     * @notice Internal function to compute the total assets. Must handle the assets that are in queue for withdrawal.
+     * @dev This function should return the amount in base denomination.
+     */
+    function computeTotalAssets() public view override returns (uint256 totalBaseBalance) {
+        totalBaseBalance = super.computeTotalAssets();
+
+        // Get storage
+        IVault.AssetStorage storage assetStorage = VaultLib.getAssetStorage();
+
+        // Iterate through assets
+        address[] memory assetList = assetStorage.list;
+        uint256 assetListLength = assetList.length;
+
+        for (uint256 i = 0; i < assetListLength; i++) {
+            totalBaseBalance += asyncWithdrawalBalance(assetList[i]);
+        }
     }
 
     /**
