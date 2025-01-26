@@ -13,8 +13,8 @@ import {MockTokenizedStrategy} from "test/mainnet/mocks/yearn/MockTokenizedStrat
 import {Provider} from "src/module/Provider.sol";
 import {MockConnector} from "test/mainnet/mocks/MockConnector.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
-import {ConnectorRules} from "script/ConnectorRules.sol";
-import {BaseRules} from "script/BaseRules.sol";
+import {ConnectorRules} from "script/rules/ConnectorRules.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
 
 contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRules, BaseRules {
     MockTokenizedStrategy public strategy;
