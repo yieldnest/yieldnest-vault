@@ -15,7 +15,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 
 import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
-import {WithdrawerRules} from "script/WithdrawerRules.sol";
+import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 
 contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRules {
