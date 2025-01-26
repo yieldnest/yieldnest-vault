@@ -1,58 +1,18 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
-import {AsyncWithdrawalLib} from "src/library/AsyncWithdrawalLib.sol";
+import {BaseWithdrawer} from "src/withdraws/BaseWithdrawer.sol";
 import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
-import {IProvider} from "src/interface/IProvider.sol";
-import {IWithdrawer} from "src/interface/IWithdrawer.sol";
+import {AsyncWithdrawalLib} from "src/library/AsyncWithdrawalLib.sol";
 
-contract Withdrawer is BaseStrategy, IWithdrawer {
-    function initialize(
-        address admin,
-        string memory name,
-        string memory symbol,
-        uint8 decimals_,
-        bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_
-    ) external virtual initializer {
-        _initialize(admin, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
-    }
-
-    function _initialize(
-        address admin,
-        string memory name,
-        string memory symbol,
-        uint8 decimals_,
-        bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_
-    ) internal virtual {
-        __ERC20_init(name, symbol);
-        __AccessControl_init();
-        __ReentrancyGuard_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.paused = true;
-        vaultStorage.decimals = decimals_;
-        vaultStorage.countNativeAsset = countNativeAsset_;
-        vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
-    }
-
-    function computeTotalAssets() public view virtual override returns (uint256 totalBaseBalance) {
-        return AsyncWithdrawalLib.computeTotalAssets();
-    }
-
-    function _feeOnRaw(uint256) public pure override returns (uint256) {
-        return 0;
-    }
-
-    function _feeOnTotal(uint256) public pure override returns (uint256) {
-        return 0;
-    }
-
-    function asyncWithdrawalBalance(address asset) external view returns (uint256) {
-        return IProvider(provider()).asyncWithdrawalBalance(asset);
+contract Withdrawer is BaseWithdrawer {
+    /**
+     * @notice function to handle the assets that are in queue for withdrawal.
+     * @param asset_ The address of the asset.
+     * @dev This function should return the amount in base denomination.
+     */
+    function asyncWithdrawalBalance(address asset_) public view virtual override returns (uint256) {
+        return AsyncWithdrawalLib.asyncWithdrawalBalance(asset_);
     }
 
     function getWOETHRequestIds() external view returns (uint256[] memory) {
