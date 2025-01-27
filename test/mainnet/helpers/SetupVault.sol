@@ -13,10 +13,6 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 
 contract SetupVault is Test, MainnetActors, Etches, BaseRules {
     function upgrade() public {
-        upgrade(true);
-    }
-
-    function upgrade(bool mockBuffer_) public {
         Vault newVault = Vault(payable(new ynETHxVault()));
 
         TLC timelock = TLC(payable(MC.TIMELOCK));
@@ -64,15 +60,13 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
 
         assertEq(vault.symbol(), "ynETHx");
 
-        if (mockBuffer_) {
-            mockBuffer();
-        }
-        mockProvider();
-
         configureMainnet(vault);
     }
 
     function configureMainnet(Vault vault) internal {
+        // etch to mock ETHRate provider and Buffer
+        mockAll();
+
         vm.startPrank(ADMIN);
 
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
