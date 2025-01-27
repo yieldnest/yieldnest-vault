@@ -24,7 +24,10 @@ library MainnetContracts {
     address public constant PROXY_ADMIN = 0xA02A8DC24171aC161cCb74Ef02C28e3cA2204783;
 
     address public constant PROVIDER = address(123456789); // TODO: Update with deployed Provider
-    address public constant BUFFER = address(0x45c3B59d53e2e148Aaa6a857521059676D5c0489);
+    address public constant BUFFER = address(987654321); // TODO: Update with deployed buffer
+
+    // EVK Vault eWETH-22 is used as the buffer for ynETHx
+    address public constant EULER_WETH_22_VAULT = address(0x45c3B59d53e2e148Aaa6a857521059676D5c0489);
 
     address public constant WSTETH_WITHDRAWAL_QUEUE = 0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1;
 

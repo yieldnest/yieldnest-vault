@@ -28,6 +28,8 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
     address public constant ASSET_A = MC.YNETH;
     address public constant ASSET_B = MC.YNLSDE;
 
+    address public alice = address(0xa11c3);
+
     function mockConnector(address _vault, address _strategy, address _assetA, address _assetB) public {
         MockConnector connector_ = new MockConnector(_vault, _strategy, _assetA, _assetB);
         vm.etch(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, address(connector_).code);
@@ -42,7 +44,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
 
     function setUp() public {
         SetupVault setup = new SetupVault();
-        setup.upgrade(false);
+        setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
 
         // etch strategy
@@ -67,13 +69,39 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
     }
 
     function configureVault() public {
+        uint256 bufferIndex = 0;
+        address[] memory assets = vault.getAssets();
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (assets[i] == MC.BUFFER) {
+                bufferIndex = i;
+            }
+        }
+
+        assertTrue(bufferIndex != 0 && bufferIndex < assets.length, "Buffer not found");
+
         vm.startPrank(ADMIN);
+        // delete old buffer
+        vault.deleteAsset(bufferIndex);
+
+        // add strategy as asset
         vault.addAsset(address(strategy), false);
-        vault.grantRole(vault.PROCESSOR_ROLE(), address(this));
+
+        // add euler vault as buffer & asset
+        vault.addAsset(MC.EULER_WETH_22_VAULT, false);
+        vault.setBuffer(MC.EULER_WETH_22_VAULT);
+
+        // set buffer rules
+        setApprovalRule(vault, MC.WETH, vault.buffer());
+        setDepositRule(vault, vault.buffer(), address(vault));
+
+        // set connector rules
         setApprovalRule(vault, ASSET_A, address(connector));
         setApprovalRule(vault, ASSET_B, address(connector));
         setConnectorDepositRule(vault, address(connector));
         setConnectorWithdrawRule(vault, address(connector));
+
+        // grant PROCESSOR_ROLE to this contract for processor
+        vault.grantRole(vault.PROCESSOR_ROLE(), address(this));
         vm.stopPrank();
     }
 
@@ -91,20 +119,20 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         );
     }
 
-    function test_strategyRateReverts_whenStale() public {
-        vm.warp(block.timestamp + 10 hours);
+    function test_strategyRateReverts_whenNegative() public {
+        connector.setRate(-1);
 
         uint256 strategyBalance = 1e18; // 1 strategy token
         deal(address(strategy), address(vault), strategyBalance);
 
-        vm.expectRevert(Provider.RateIsStale.selector);
+        vm.expectRevert(Provider.RateIsNegative.selector);
         vault.processAccounting();
     }
 
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
         targets[0] = MC.WETH;
-        targets[1] = MC.BUFFER;
+        targets[1] = vault.buffer();
 
         uint256[] memory values = new uint256[](2);
         values[0] = 0;
@@ -166,11 +194,14 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         assertApproxEqRel(previewedAssets, assets, 1e15, "Previewed assets should equal the original assets");
 
         {
-            deal(MC.WETH, address(this), assets);
-            IERC20(MC.WETH).approve(address(vault), assets);
+            deal(MC.WETH, alice, assets);
 
             // Test the deposit function
-            uint256 depositedShares = vault.deposit(assets, address(this));
+            vm.startPrank(alice);
+            IERC20(MC.WETH).approve(address(vault), assets);
+            uint256 depositedShares = vault.deposit(assets, alice);
+            vm.stopPrank();
+
             assertEq(depositedShares, shares, "Deposited shares should equal the converted shares");
         }
 
@@ -194,7 +225,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         totalAssetsInvariant(initialAssets + assets);
 
         {
-            uint256 maxWithdraw = vault.maxWithdraw(address(this));
+            uint256 maxWithdraw = vault.maxWithdraw(alice);
             assertGt(maxWithdraw, 0, "Max withdraw should be greater than 0");
 
             uint256 balanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
@@ -203,7 +234,9 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
             uint256 convertedShares = vault.convertToShares(maxWithdraw);
 
             // Test the withdraw function
-            uint256 withdrawnShares = vault.withdraw(maxWithdraw, address(this), address(this));
+            vm.startPrank(alice);
+            uint256 withdrawnShares = vault.withdraw(maxWithdraw, alice, alice);
+            vm.stopPrank();
             assertApproxEqRel(
                 withdrawnShares, convertedShares, 1e15, "Withdrawn shares should equal the converted shares"
             );

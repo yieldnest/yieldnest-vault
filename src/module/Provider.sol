@@ -21,7 +21,6 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 
 contract Provider is IProvider {
     error UnsupportedAsset(address asset);
-    error RateIsStale();
     error RateIsNegative();
 
     function getRate(address asset) public view virtual returns (uint256) {
@@ -37,7 +36,7 @@ contract Provider is IProvider {
             return 1e18;
         }
 
-        if (asset == MC.BUFFER || asset == MC.YNETH || asset == MC.WOETH) {
+        if (asset == MC.BUFFER || asset == MC.YNETH || asset == MC.WOETH || asset == MC.EULER_WETH_22_VAULT) {
             return IERC4626(asset).convertToAssets(1e18);
         }
 
@@ -76,16 +75,12 @@ contract Provider is IProvider {
         }
 
         if (asset == MC.CURVE_LP_YNETH_YNLSDE_STRATEGY) {
-            (int256 lpRate, uint256 updatedAt) = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR).rate();
-            if (lpRate < 0) {
+            (int256 strategyRate,) = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR).rate();
+            if (strategyRate < 0) {
                 revert RateIsNegative();
             }
-            // solhint-disable-next-line not-rely-on-time
-            if (updatedAt < block.timestamp - 24 hours) {
-                revert RateIsStale();
-            }
 
-            return uint256(lpRate);
+            return uint256(strategyRate);
         }
 
         revert UnsupportedAsset(asset);
