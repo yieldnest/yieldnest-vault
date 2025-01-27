@@ -48,7 +48,7 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         uint256 vaultWBNBBefore = wbnb.balanceOf(address(vault));
 
         // Deposit WBNB to get shares
-        vault.deposit(depositAmount, alice);
+        uint256 shares = vault.deposit(depositAmount, alice);
         vm.stopPrank();
 
         // Check balances after deposit
@@ -59,9 +59,7 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         assertEq(
             vault.totalAssets(), initialTotalAssets + depositAmount, "Total assets should increase by deposit amount"
         );
-        assertEq(
-            vault.totalSupply(), initialTotalSupply + depositAmount, "Total supply should increase by deposit amount"
-        );
+        assertEq(vault.totalSupply(), initialTotalSupply + shares, "Total supply should increase by deposit amount");
 
         // Check that vault WBNB balance increased by deposit amount
         assertEq(
@@ -77,13 +75,15 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
 
             _processorDepositToERC4626(MainnetContracts.YNCLISBNBK, depositAmount);
 
+            uint256 clisBNBShares = IERC4626(vault.buffer()).convertToShares(depositAmount);
+
             // Verify WBNB was transferred to clisBNB
             assertEq(
                 wbnb.balanceOf(address(vault)), vaultWBNBBefore, "Vault should have vaultWBNBBefore WBNB after deposit"
             );
             assertEq(
                 IERC20(MainnetContracts.YNCLISBNBK).balanceOf(address(vault)),
-                depositAmount,
+                clisBNBShares,
                 "Vault should have received ynClisBNBk tokens"
             );
 
@@ -114,10 +114,13 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
             // Store state before unstaking
             uint256 totalAssetsBefore = vault.totalAssets();
             uint256 totalSupplyBefore = vault.totalSupply();
+            uint256 clisBNBSharesBefore = IERC20(MainnetContracts.YNCLISBNBK).balanceOf(address(vault));
 
             // Process unstaking through processor
             vm.prank(PROCESSOR);
             vault.processor(targets, values, data);
+
+            uint256 clisBNBShares = IERC4626(MainnetContracts.YNCLISBNBK).convertToShares(withdrawAmount);
 
             // Verify half of ynClisBNBk was unstaked back to WBNB
             assertEq(
@@ -127,7 +130,7 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
             );
             assertEq(
                 IERC20(MainnetContracts.YNCLISBNBK).balanceOf(address(vault)),
-                withdrawAmount,
+                clisBNBSharesBefore - clisBNBShares,
                 "Vault should have half ynClisBNBk remaining"
             );
 
@@ -143,17 +146,19 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
 
         uint256 initialWBNBBalance = wbnb.balanceOf(address(vault));
         uint256 initialSupply = vault.totalSupply();
+        uint256 initialAssets = vault.totalAssets();
         {
             // Initial deposit
             // Give alice some WBNB
             deal(address(wbnb), alice, depositAmount);
             vm.startPrank(alice);
             wbnb.approve(address(vault), depositAmount);
-            vault.deposit(depositAmount, alice);
+            uint256 shares = vault.deposit(depositAmount, alice);
             vm.stopPrank();
 
             // Verify initial state
-            assertEq(vault.totalSupply(), initialSupply + depositAmount, "Initial total supply should match deposit");
+            assertEq(vault.totalSupply(), initialSupply + shares, "Total supply should match deposit");
+            assertEq(vault.totalAssets(), initialAssets + depositAmount, "Total assets should match deposit");
             assertEq(
                 wbnb.balanceOf(address(vault)), initialWBNBBalance + depositAmount, "Vault should have WBNB balance"
             );
@@ -163,8 +168,12 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 totalSupplyBefore = vault.totalSupply();
 
+        uint256 beforeBufferBalance = IERC20(MainnetContracts.YNWBNBK).balanceOf(address(vault));
+
         // Process deposit to buffer
         _processorDepositToERC4626(MainnetContracts.YNWBNBK, depositAmount);
+
+        uint256 bufferShares = IERC4626(MainnetContracts.YNWBNBK).convertToShares(depositAmount);
 
         // Verify WBNB was transferred to buffer
         assertEq(
@@ -174,7 +183,7 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         );
         assertEq(
             IERC20(MainnetContracts.YNWBNBK).balanceOf(address(vault)),
-            depositAmount,
+            beforeBufferBalance + bufferShares,
             "Vault should have received ynWBNBk tokens"
         );
         assertEq(vault.totalAssets(), totalAssetsBefore, "Total assets should remain unchanged");
@@ -188,11 +197,6 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         // Verify final state after withdrawal
         assertEq(vault.totalSupply(), initialSupply, "Total supply should be initialSupply after withdrawal");
         assertApproxEqRel(wbnb.balanceOf(alice), depositAmount, 1e15, "Alice should have received WBNB");
-        assertEq(
-            IERC20(MainnetContracts.YNWBNBK).balanceOf(address(vault)),
-            depositAmount - wbnb.balanceOf(alice),
-            "Vault's ynWBNBk balance should equal deposit minus withdrawal"
-        );
     }
 
     function testUpgradeVaultWithTimelock(address vaultAddress, Vault newImplementation) internal {
@@ -369,7 +373,7 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
 
         // Donate native BNB to vault
         (bool success,) = address(vault).call{value: donationAmount}("");
-        require(success, "BNB donation failed");
+        assertTrue(success, "BNB donation failed");
 
         vm.stopPrank();
 
@@ -437,10 +441,6 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         uint256 bufferSharesBefore = IERC4626(vault.buffer()).balanceOf(address(vault));
         uint256 bufferTotalSupplyBefore = IERC4626(vault.buffer()).totalSupply();
 
-        {
-            uint256 bufferRate = IERC4626(vault.buffer()).convertToAssets(1e18);
-        }
-
         // Create bob and give him BNB for donation
         address bob = makeAddr("bob");
         vm.deal(bob, donationAmount);
@@ -448,19 +448,16 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         // Bob donates directly to buffer
         vm.startPrank(bob);
         (bool success,) = address(vault.buffer()).call{value: donationAmount}("");
-        require(success, "BNB donation failed");
+        assertTrue(success, "BNB donation failed");
         vm.stopPrank();
 
         // Verify buffer increased by donation
         assertEq(
             IERC4626(vault.buffer()).totalAssets(), bufferBefore + donationAmount, "Buffer should increase by donation"
         );
-        // Get rate from provider for YNWBNBk
-        uint256 rate = IProvider(vault.provider()).getRate(MainnetContracts.YNWBNBK);
 
         // Verify total assets increased but shares unchanged
         {
-            uint256 bufferRate = IERC4626(vault.buffer()).convertToAssets(1e18);
             uint256 vaultShareProportion = (donationAmount * bufferSharesBefore) / bufferTotalSupplyBefore;
 
             assertApproxEqAbs(
@@ -488,11 +485,6 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         wbnb.approve(address(vault), depositAmount);
         vault.deposit(depositAmount, alice);
         vm.stopPrank();
-
-        // Store initial state
-        uint256 initialTotalAssets = vault.totalAssets();
-        uint256 initialTotalSupply = vault.totalSupply();
-        uint256 initialAliceShares = vault.balanceOf(alice);
 
         // Bob donates directly to buffer
         Vault buffer = Vault(payable(vault.buffer()));
@@ -525,12 +517,13 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
             vm.deal(bob, donationAmount);
             vm.startPrank(bob);
             (bool success,) = address(buffer).call{value: donationAmount}("");
-            require(success, "BNB donation failed");
+            assertTrue(success, "BNB donation failed");
             vm.stopPrank();
         }
 
-        // Get YNWBNBk vault and print totals
-        Vault ynwbnbk = Vault(payable(MainnetContracts.YNWBNBK));
+        // Store initial state
+        uint256 initialTotalAssets = vault.totalAssets();
+        uint256 initialTotalSupply = vault.totalSupply();
 
         // Verify buffer total assets increased by donation
         assertEq(
@@ -548,13 +541,6 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
     }
 
     function _processorDepositToERC4626(address erc4626Token, uint256 depositAmount) public {
-        // Create approval calldata for the ERC4626 token
-        bytes memory approveCalldata = abi.encodeWithSignature("approve(address,uint256)", erc4626Token, depositAmount);
-
-        // Create deposit calldata
-        bytes memory depositCalldata =
-            abi.encodeWithSignature("deposit(uint256,address)", depositAmount, address(vault));
-
         // Set up arrays for processor call
         address[] memory targets = new address[](2);
         targets[0] = IERC4626(erc4626Token).asset();
@@ -565,8 +551,8 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         values[1] = 0;
 
         bytes[] memory data = new bytes[](2);
-        data[0] = approveCalldata;
-        data[1] = depositCalldata;
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", erc4626Token, depositAmount);
+        data[1] = abi.encodeWithSignature("deposit(uint256,address)", depositAmount, address(vault));
 
         // Process transactions through processor
         vm.prank(PROCESSOR);

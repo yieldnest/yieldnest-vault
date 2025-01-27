@@ -2,6 +2,9 @@
 pragma solidity ^0.8.24;
 
 contract MockStakeHub {
+    error NoStake();
+    error FailedToSendEther();
+
     mapping(address => uint256) public staked;
 
     function stake() external payable {
@@ -9,10 +12,12 @@ contract MockStakeHub {
     }
 
     function claim(address _validator, uint256) external {
-        require(staked[_validator] > 0, "no stake");
+        if (staked[_validator] == 0) {
+            revert NoStake();
+        }
         (bool success,) = payable(msg.sender).call{value: staked[_validator]}("");
         if (!success) {
-            revert("failed to send ether");
+            revert FailedToSendEther();
         }
         staked[_validator] = 0;
     }
