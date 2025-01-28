@@ -11,8 +11,9 @@ import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
 
-contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
+contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors, BaseRules {
     Vault public vault;
 
     function setUp() public {
@@ -24,33 +25,21 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         MockERC4626 mockBuffer = new MockERC4626(ERC20(MC.WETH), "Mock Buffer", "BUFF");
 
         // Set mock buffer address
-        vm.prank(ADMIN);
+        vm.startPrank(ADMIN);
         vault.setBuffer(address(mockBuffer));
 
         // Deploy mock provider
         MockProvider mockProvider = new MockProvider();
+
         // Set mock provider address
-        vm.prank(ADMIN);
         vault.setProvider(address(mockProvider));
 
-        // Grant DEFAULT_ADMIN_ROLE to setup contract
-        vm.startPrank(ADMIN);
-        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
-        vm.stopPrank();
-
-        setup.setApprovalRule(vault, MC.WETH, address(mockBuffer));
-        setup.setDepositRule(vault, address(mockBuffer), address(vault));
-
-        // Remove DEFAULT_ADMIN_ROLE from setup contract
-        vm.startPrank(ADMIN);
-        vault.revokeRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
-        vault.revokeRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
-        vm.stopPrank();
+        setApprovalRule(vault, MC.WETH, address(mockBuffer));
+        setDepositRule(vault, address(mockBuffer), address(vault));
 
         // Add mock buffer as an asset
-        vm.prank(ADMIN);
         vault.addAsset(address(mockBuffer), false);
+        vm.stopPrank();
 
         // Configure mock provider to use ERC4626 rate for buffer
         mockProvider.addERC4626(address(mockBuffer));

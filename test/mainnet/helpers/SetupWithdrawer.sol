@@ -7,9 +7,10 @@ import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
+import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
 
-contract SetupWithdrawer is Test, MainnetActors, Etches, WithdrawerUtils {
+contract SetupWithdrawer is Test, MainnetActors, Etches, WithdrawerRules, BaseRules {
     function setup() public returns (Withdrawer vault) {
         Withdrawer vaultImplementation = new Withdrawer();
 
