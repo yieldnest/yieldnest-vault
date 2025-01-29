@@ -3,16 +3,15 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
-import {IVault} from "src/interface/IVault.sol";
 import {TimelockController as TLC, TransparentUpgradeableProxy as TUP} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {ynETHxVault} from "src/ynETHxVault.sol";
-import {IValidator} from "src/interface/IValidator.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
 
-contract SetupVault is Test, MainnetActors, Etches {
+contract SetupVault is Test, MainnetActors, Etches, BaseRules {
     function upgrade() public {
         Vault newVault = Vault(payable(new ynETHxVault()));
 
@@ -102,58 +101,6 @@ contract SetupVault is Test, MainnetActors, Etches {
         vm.stopPrank();
 
         vault.processAccounting();
-    }
-
-    function setDepositRule(Vault vault_, address contractAddress, address receiver) public {
-        bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        paramRules[0] =
-            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-
-        address[] memory allowList = new address[](1);
-        allowList[0] = receiver;
-
-        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
-
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
-    }
-
-    function setApprovalRule(Vault vault_, address contractAddress, address spender) public {
-        address[] memory allowList = new address[](1);
-        allowList[0] = spender;
-        setApprovalRule(vault_, contractAddress, allowList);
-    }
-
-    function setApprovalRule(Vault vault_, address contractAddress, address[] memory allowList) public {
-        bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
-
-        paramRules[1] =
-            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
-    }
-
-    function setWethDepositRule(Vault vault_, address weth_) public {
-        bytes4 funcSig = bytes4(keccak256("deposit()"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
-
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        vault_.setProcessorRule(weth_, funcSig, rule);
     }
 
     function deployViewer(Vault vault_) public returns (MaxVaultViewer viewer) {

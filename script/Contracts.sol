@@ -26,6 +26,9 @@ library MainnetContracts {
     address public constant PROVIDER = address(123456789); // TODO: Update with deployed Provider
     address public constant BUFFER = address(987654321); // TODO: Update with deployed buffer
 
+    // EVK Vault eWETH-22 is used as the buffer for ynETHx
+    address public constant EULER_WETH_22_VAULT = address(0x45c3B59d53e2e148Aaa6a857521059676D5c0489);
+
     address public constant WSTETH_WITHDRAWAL_QUEUE = 0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1;
 
     address public constant YNLSDE_WITHDRAWAL_QUEUE_MANAGER = 0x8Face3283E20b19d98a7a132274B69C1304D60b4;
@@ -46,4 +49,10 @@ library MainnetContracts {
     address public constant FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
 
     address public constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+
+    address public constant CURVE_LP_YNETH_YNLSDE_POOL = 0x1f59cC10c6360DA918B0235c98E58008452816EB;
+    // TODO: Update with deployed curve lp connector
+    address public constant CURVE_LP_YNETH_YNLSDE_CONNECTOR = address(0x80085);
+    // TODO: Update with deployed curve lp strategy
+    address public constant CURVE_LP_YNETH_YNLSDE_STRATEGY = address(0x80086);
 }

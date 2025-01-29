@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IVault, IValidator} from "src/interface/IVault.sol";
 
-contract WithdrawerUtils {
+contract WithdrawerRules {
     function setRequestWithdrawalRule(IVault vault_, address contractAddress) internal {
         address[] memory allowList = new address[](1);
         allowList[0] = address(vault_);
@@ -148,28 +148,5 @@ contract WithdrawerUtils {
         data[0] = abi.encodeWithSignature("claimWithdrawal(uint256)", tokenId);
 
         vault_.processor(targets, values, data);
-    }
-
-    function setApprovalRule(IVault vault_, address contractAddress, address spender) internal {
-        address[] memory allowList = new address[](1);
-        allowList[0] = spender;
-
-        setApprovalRule(vault_, contractAddress, allowList);
-    }
-
-    function setApprovalRule(IVault vault_, address contractAddress, address[] memory allowList) internal {
-        bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
-
-        paramRules[1] =
-            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
     }
 }

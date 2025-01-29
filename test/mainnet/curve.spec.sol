@@ -13,6 +13,7 @@ import {ICurveRegistry} from "test/interface/external/curve/ICurveRegistry.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {IStETH} from "test/interface/external/lido/IStETH.sol";
 import {IValidator} from "src/interface/IValidator.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
 
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
@@ -20,7 +21,7 @@ interface IynETH {
     function approve(address spender, uint256 amount) external returns (uint256);
 }
 
-contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
+contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors, BaseRules {
     Vault public vault;
 
     function setUp() public {
@@ -34,7 +35,7 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
         vm.stopPrank();
 
-        configureCurveActions(setup, vault);
+        configureCurveActions(vault);
 
         // Remove DEFAULT_ADMIN_ROLE from setup contract
         vm.startPrank(ADMIN);
@@ -43,7 +44,7 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
         vm.stopPrank();
     }
 
-    function configureCurveActions(SetupVault setup, Vault _vault) internal {
+    function configureCurveActions(Vault _vault) internal {
         vm.startPrank(ADMIN);
 
         // Get ethSteth pool from registry
@@ -79,11 +80,11 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors {
             );
         }
         // Set approval rule to allow ethStethPool to spend stETH tokens from the vault
-        setup.setApprovalRule(_vault, MC.STETH, ethStethPool);
+        setApprovalRule(_vault, MC.STETH, ethStethPool);
 
         // Set approval rules for ynETH and wstETH to be spent by ynETHWstETH pool
-        setup.setApprovalRule(_vault, MC.YNETH, ynETHWstETHPool);
-        setup.setApprovalRule(_vault, MC.WSTETH, ynETHWstETHPool);
+        setApprovalRule(_vault, MC.YNETH, ynETHWstETHPool);
+        setApprovalRule(_vault, MC.WSTETH, ynETHWstETHPool);
 
         vm.stopPrank();
     }
