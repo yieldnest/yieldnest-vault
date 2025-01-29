@@ -75,6 +75,7 @@ contract FeeMathTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(FeeMath.WithdrawalExceedsBuffer.selector, withdrawalAmount, bufferAvailable)
         );
+
         FeeMathPoly.quadraticBufferFee(
             withdrawalAmount, bufferMaxSize, bufferAvailable, BUFFER_FEE_FLAT_PORTION, fee, FeeMath.FeeType.OnRaw
         );
