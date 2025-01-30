@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
-import {AsyncWithdrawalLib} from "src/library/AsyncWithdrawalLib.sol";
 import {VaultLib} from "src/library/VaultLib.sol";
 import {IVault} from "src/interface/IVault.sol";
 

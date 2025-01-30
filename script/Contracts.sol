@@ -52,6 +52,5 @@ library MainnetContracts {
 
     address public constant CURVE_LP_YNETH_YNLSDE_POOL = 0x1f59cC10c6360DA918B0235c98E58008452816EB;
     address public constant CURVE_LP_YNETH_YNLSDE_CONNECTOR = 0xe1d86ac4aD5073279A46DB8cB6f1AbBB80c854c5;
-    // TODO: Update with deployed curve lp strategy when deployed (the current address is the strategy returned by the connector)
     address public constant CURVE_LP_YNETH_YNLSDE_STRATEGY = 0x823976dA34aC45C23a8DfEa51B3Ff1Ae0D980213;
 }
