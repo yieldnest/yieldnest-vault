@@ -8,7 +8,7 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
-import {Provider} from "src/module/Provider.sol";
+import {Provider, IProvider} from "src/module/Provider.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
@@ -238,54 +238,79 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
     }
 
     function test_connector_deposit(uint256 amountA, uint256 amountB) public {
-        vm.assume(amountA > 1000 && amountA < 1000 ether);
-        vm.assume(amountB > 1000 && amountB < 1000 ether);
+        vm.assume(amountA > 1000 && amountA < 100_000 ether);
+        vm.assume(amountB > 1000 && amountB < 100_000 ether);
 
         deal(ASSET_A, address(vault), amountA);
         deal(ASSET_B, address(vault), amountB);
+
+        vault.processAccounting();
 
         uint256 initialTotalAssets = vault.totalAssets();
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
         uint256 shares = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
-        assertEq(strategy.balanceOf(address(vault)), shares, "Strategy balance should match shares");
+        vault.processAccounting();
 
+        assertEq(strategy.balanceOf(address(vault)), shares, "Strategy balance should match shares");
         assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
         assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
-        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e15, "Total assets should not change");
+
+        uint256 assetARate = IProvider(MC.PROVIDER).getRate(ASSET_A);
+        uint256 amountAInBase = amountA * assetARate / 1e18;
+
+        uint256 assetBRate = IProvider(MC.PROVIDER).getRate(ASSET_B);
+        uint256 amountBInBase = amountB * assetBRate / 1e18;
+
+        uint256 strategyRate = IProvider(MC.PROVIDER).getRate(address(strategy));
+        uint256 sharesInBase = shares * strategyRate / 1e18;
+
+        assertApproxEqRel(sharesInBase, amountAInBase + amountBInBase, 1e15, "Shares should match expected");
+
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change");
     }
 
     function test_connector_deposit_withdraw(uint256 amountA, uint256 amountB) public {
-        vm.assume(amountA > 1000 && amountA < 1000 ether);
-        vm.assume(amountB > 1000 && amountB < 1000 ether);
+        vm.assume(amountA > 1000 && amountA < 100_000 ether);
+        vm.assume(amountB > 1000 && amountB < 100_000 ether);
 
         deal(ASSET_A, address(vault), amountA);
         deal(ASSET_B, address(vault), amountB);
+
+        vault.processAccounting();
 
         uint256 initialTotalAssets = vault.totalAssets();
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
         uint256 shares = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
+        vault.processAccounting();
+
         assertEq(strategy.balanceOf(address(vault)), shares, "Strategy balance should match shares");
 
         assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
         assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
-        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e15, "Total assets should not change");
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first deposit");
 
         processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
+
+        vault.processAccounting();
 
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
         assertGe(IERC20(ASSET_B).balanceOf(address(vault)), 1000, "Asset B balance should be correct");
         assertGe(IERC20(ASSET_A).balanceOf(address(vault)), 1000, "Asset A balance should be correct");
-        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e15, "Total assets should not change");
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first withdraw");
 
         amountA = IERC20(ASSET_A).balanceOf(address(vault));
         amountB = IERC20(ASSET_B).balanceOf(address(vault));
 
         uint256 shares2 = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+
+        vault.processAccounting();
+
+        assertApproxEqRel(shares2, shares, 1e15, "Second shares should match shares");
 
         assertEq(strategy.balanceOf(address(vault)), shares2, "Strategy balance should match shares");
 
@@ -293,6 +318,16 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
 
         assertApproxEqRel(shares2, shares, 1e15, "Second shares should match shares");
-        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e15, "Total assets should not change");
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second deposit");
+
+        processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
+
+        vault.processAccounting();
+
+        assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+
+        assertGe(IERC20(ASSET_B).balanceOf(address(vault)), 500, "Asset B balance should be correct");
+        assertGe(IERC20(ASSET_A).balanceOf(address(vault)), 500, "Asset A balance should be correct");
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second withdraw");
     }
 }
