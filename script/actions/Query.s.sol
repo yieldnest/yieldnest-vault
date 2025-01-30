@@ -34,5 +34,18 @@ contract Query is Script {
         console2.log("\n=== SLISBNB Balance ===");
         console2.log("SLISBNB: %s", vm.toString(slisbnb));
         console2.log("Balance: %s", slisbnbBalance);
+
+        address ynasbnbk = MC.YNASBNBK;
+        uint256 ynasbnbkBalance = IERC20Metadata(ynasbnbk).balanceOf(address(vault));
+        
+        console2.log("\n=== YNASBNBK Balance ===");
+        console2.log("YNASBNBK: %s", vm.toString(ynasbnbk));
+        console2.log("Balance: %s", ynasbnbkBalance);
+
+        uint256 convertedAssets = vault.convertToAssets(1e18);
+        
+        console2.log("\n=== YNBNBX Convert 1 Share to Assets ==="); 
+        console2.log("1 Share in Assets: %s", convertedAssets);
+
     }
 }

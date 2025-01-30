@@ -21,6 +21,7 @@ contract GenerateAsBNBTxData is Script {
         console2.log("Current Chain ID: %s", block.chainid);
 
         uint256 bnbAmount = 950 ether;
+
         
         // Generate calldata for WBNB withdraw
         bytes memory wbnbWithdrawData = abi.encodeWithSelector(
@@ -83,7 +84,7 @@ contract GenerateAsBNBTxData is Script {
         console2.log("SLISBNB Amount: %s", slisAmount);
         console2.log("Expected ASBNB Amount: %s", asBnbAmount);
 
-        asBnbAmount = 915000000000000000000;
+        asBnbAmount = 915142343727850655700;
 
         // Generate calldata for ASBNB approve to ynAsBNBk
         bytes memory asBnbApproveData = abi.encodeWithSelector(
@@ -115,5 +116,7 @@ contract GenerateAsBNBTxData is Script {
         console2.log("Receiver: %s", vm.toString(MC.YNBNBX));
         console2.log("Transaction data:");
         console2.logBytes(depositAssetData);
+
+
     }
 }
