@@ -45,6 +45,7 @@ contract TestnetActors is IActors {
     address public constant EXECUTOR_1 = YnSecurityCouncil;
     address public constant EXECUTOR_2 = YnSecurityCouncil;
 
+    address public constant ALLOCATOR_MANAGER = YnSecurityCouncil;
     address public constant FEE_MANAGER = YnSecurityCouncil;
     address public constant PROVIDER_MANAGER = YnSecurityCouncil;
     address public constant BUFFER_MANAGER = YnSecurityCouncil;
@@ -71,6 +72,7 @@ contract MainnetActors is IActors {
     address public constant EXECUTOR_2 = YnSecurityCouncil;
     address public constant PROPOSER_2 = YnSecurityCouncil;
 
+    address public constant ALLOCATOR_MANAGER = YnSecurityCouncil;
     address public constant FEE_MANAGER = YnSecurityCouncil;
     address public constant PROVIDER_MANAGER = YnSecurityCouncil;
     address public constant BUFFER_MANAGER = YnSecurityCouncil;

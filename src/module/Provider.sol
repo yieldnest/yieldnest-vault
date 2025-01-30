@@ -11,11 +11,10 @@ import {IAsBnbMinter} from "src/interface/external/astherus/IAsBnbMinter.sol";
 /*
     The Provider fetches state from other contracts.
 */
-
 contract Provider is IProvider {
     error UnsupportedAsset(address asset);
 
-    function getRate(address asset) external view override returns (uint256) {
+    function getRate(address asset) public view override returns (uint256) {
         if (asset == MC.YNWBNBK || asset == MC.YNBNBK || asset == MC.YNCLISBNBK || asset == MC.YNASBNBK) {
             return IERC4626(asset).convertToAssets(1e18);
         }
