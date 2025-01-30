@@ -16,12 +16,11 @@ import {MockConnector} from "test/mainnet/mocks/MockConnector.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
-
 contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRules, BaseRules {
     MockTokenizedStrategy public strategy;
     Vault public vault;
     ICurvePool public pool;
-    MockConnector public connector;
+    ICurveLpConnector public connector;
     uint256 public constant INITIAL_BALANCE = 101 ether;
     uint256 public constant MOCK_RATE = 1.2 ether;
 
@@ -30,37 +29,26 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
 
     address public alice = address(0xa11c3);
 
-    function mockConnector(address _vault, address _strategy, address _assetA, address _assetB) public {
-        MockConnector connector_ = new MockConnector(_vault, _strategy, _assetA, _assetB);
-        vm.etch(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, address(connector_).code);
-
-        connector = MockConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
-        connector.initialize(block.timestamp, int256(MOCK_RATE));
-
-        (int256 rate, uint256 timestamp) = connector.rate();
-        assertEq(uint256(rate), MOCK_RATE, "Connector rate should be set correctly");
-        assertEq(timestamp, block.timestamp, "Connector timestamp should be set correctly");
-    }
-
     function setUp() public {
         SetupVault setup = new SetupVault();
         setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
+        connector = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+
+        address strategyAddress = address(connector.STRATEGY());
 
         // etch strategy
         MockTokenizedStrategy strategy_ = new MockTokenizedStrategy();
-        vm.etch(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, address(strategy_).code);
+        vm.etch(strategyAddress, address(strategy_).code);
 
-        strategy = MockTokenizedStrategy(payable(address(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY)));
+        strategy = MockTokenizedStrategy(payable(address(strategyAddress)));
 
         // initialize strategy
         string memory name = "MockTokenizedStrategy";
         strategy.initialize(MC.CURVE_LP_YNETH_YNLSDE_POOL, name, ADMIN, ADMIN, ADMIN);
 
         pool = ICurvePool(payable(MC.CURVE_LP_YNETH_YNLSDE_POOL));
-
-        mockConnector(address(vault), address(strategy), ASSET_A, ASSET_B);
-
+        
         vm.label(address(pool), "pool");
         vm.label(address(strategy), "strategy");
         vm.label(address(vault), "vault");
@@ -110,17 +98,22 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
 
         uint256 strategyBalance = 1e18; // 1 strategy token
         deal(address(strategy), address(vault), strategyBalance);
-
+        assertEq(strategy.balanceOf(address(vault)), strategyBalance, "Strategy balance should be 1");
+        
         vault.processAccounting();
-
-        uint256 expectedBaseValue = (strategyBalance * MOCK_RATE) / 1e18;
+        (int256 rate,) = connector.rate();
+        uint256 expectedBaseValue = (strategyBalance * uint256(rate)) / 1e18;
         assertEq(
             vault.totalAssets(), totalAssetsBefore + expectedBaseValue, "Vault should account strategy value correctly"
         );
     }
 
     function test_strategyRateReverts_whenNegative() public {
-        connector.setRate(-1);
+        vm.mockCall(
+            address(connector),
+            abi.encodeWithSelector(ICurveLpConnector.rate.selector),
+            abi.encode(int256(-1), block.timestamp)
+        );
 
         uint256 strategyBalance = 1e18; // 1 strategy token
         deal(address(strategy), address(vault), strategyBalance);
@@ -253,9 +246,8 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         vm.assume(amountA > 1000 && amountA < 1000 ether);
         vm.assume(amountB > 1000 && amountB < 1000 ether);
 
-        deal(ASSET_A, address(vault), amountA);
-        deal(ASSET_B, address(vault), amountB);
-
+        deal(address(connector.ASSET_A()), address(vault), amountA);
+        deal(address(connector.ASSET_B()), address(vault), amountB);
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
         uint256 shares = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
