@@ -56,4 +56,18 @@ contract BaseRules {
 
         vault_.setProcessorRule(weth_, funcSig, rule);
     }
+
+    function setWethWithdrawRule(IVault vault_, address weth_) internal {
+        bytes4 funcSig = bytes4(keccak256("withdraw(uint256)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](1);
+
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+
+        vault_.setProcessorRule(weth_, funcSig, rule);
+    }
 }

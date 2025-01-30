@@ -3,19 +3,18 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
-import {TimelockController as TLC, TransparentUpgradeableProxy as TUP} from "src/Common.sol";
+import {TimelockController} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {ynETHxVault} from "src/ynETHxVault.sol";
-import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {Provider} from "src/module/Provider.sol";
 
-contract SetupVault is Test, MainnetActors, Etches, BaseRules {
+contract ynETHxUpgrader is BaseRules, MainnetActors {
     function upgrade() public {
-        Vault newVault = Vault(payable(new ynETHxVault()));
+        Vault implementation = Vault(payable(new ynETHxVault()));
 
-        TLC timelock = TLC(payable(MC.TIMELOCK));
+        TimelockController timelock = TimelockController(payable(MC.TIMELOCK));
 
         // schedule a proxy upgrade transaction on the timelock
         // the traget is the proxy admin for the max Vault Proxy Contract
@@ -37,7 +36,7 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
         vm.stopPrank();
 
         bytes32 id = keccak256(abi.encode(target, value, data, predecessor, salt));
-        assert(timelock.getOperationState(id) == TLC.OperationState.Waiting);
+        assert(timelock.getOperationState(id) == TimelockController.OperationState.Waiting);
 
         assertEq(timelock.isOperationReady(id), false);
         assertEq(timelock.isOperationDone(id), false);
@@ -52,7 +51,7 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
         // Verify the transaction was executed successfully
         assertEq(timelock.isOperationReady(id), false);
         assertEq(timelock.isOperationDone(id), true);
-        assert(timelock.getOperationState(id) == TLC.OperationState.Done);
+        assert(timelock.getOperationState(id) == TimelockController.OperationState.Done);
 
         vm.stopPrank();
 
@@ -60,14 +59,10 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
 
         assertEq(vault.symbol(), "ynETHx");
 
-        configureMainnet(vault);
+        configureVault(vault);
     }
 
     function configureMainnet(Vault vault) internal {
-        // etch to mock ETHRate provider and Buffer
-        mockAll();
-
-        vm.startPrank(ADMIN);
 
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
         vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
@@ -77,40 +72,36 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
 
-        vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
         vault.addAsset(MC.WETH, true);
-        vault.addAsset(MC.BUFFER, false);
+        vault.addAsset(MC.EULER_WETH_22_VAULT, false); // buffer
         vault.addAsset(MC.STETH, true);
         vault.addAsset(MC.YNETH, true);
         vault.addAsset(MC.YNLSDE, true);
+        vault.addAsset(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, false);
 
-        setDepositRule(vault, MC.BUFFER, address(vault));
+        setDepositRule(vault, MC.EULER_WETH_22_VAULT, address(vault)); // buffer
         setDepositRule(vault, MC.YNETH, address(vault));
         setDepositRule(vault, MC.YNLSDE, address(vault));
         setWethDepositRule(vault, MC.WETH);
+        setWethWithdrawRule(vault, MC.WETH);
 
-        setApprovalRule(vault, MC.WETH, MC.BUFFER);
+        setApprovalRule(vault, address(vault), MC.EULER_WETH_22_VAULT);
+        setApprovalRule(vault, address(vault), MC.YNETH);
+        setApprovalRule(vault, address(vault), MC.YNLSDE);
+        setApprovalRule(vault, MC.WETH, MC.EULER_WETH_22_VAULT);
 
-        vault.setBuffer(MC.BUFFER);
+        setApprovalRule(vault, MC.YNETH, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+        setApprovalRule(vault, MC.YNLSDE, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+        setConnectorDepositRule(vault, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
+        setConnectorWithdrawRule(vault, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
 
-        vm.stopPrank();
+        address[] memory wethStrategies = new address[](1);
 
-        vault.processAccounting();
+        vault.setProvider(MC.PROVIDER); // TODO: deploy provider first
+        vault.setBuffer(MC.EULER_WETH_22_VAULT);
+
     }
 
-    function deployViewer(Vault vault_) public returns (MaxVaultViewer viewer) {
-        MaxVaultViewer implementation = new MaxVaultViewer();
-
-        bytes memory initData =
-            abi.encodeWithSelector(MaxVaultViewer.initialize.selector, address(vault_), address(ADMIN));
-
-        TUP proxy = new TUP(address(implementation), ADMIN, initData);
-        viewer = MaxVaultViewer(payable(address(proxy)));
-
-        vm.startPrank(ADMIN);
-        viewer.grantRole(viewer.UPDATER_ROLE(), ADMIN);
-        vm.stopPrank();
-    }
 }
