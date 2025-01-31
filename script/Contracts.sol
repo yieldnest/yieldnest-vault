@@ -23,6 +23,7 @@ library MainnetContracts {
     address public constant FACTORY = 0x1756987c66eC529be59D3Ec1edFB005a2F9728E1;
     address public constant PROXY_ADMIN = 0xA02A8DC24171aC161cCb74Ef02C28e3cA2204783;
 
+    address public constant WITHDRAWER = address(234567891); // TODO: Update with deployed Withdrawer
     address public constant PROVIDER = address(123456789); // TODO: Update with deployed Provider
     address public constant BUFFER = address(987654321); // TODO: Update with deployed buffer
 
