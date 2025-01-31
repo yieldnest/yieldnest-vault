@@ -95,6 +95,8 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
 
         vault.setBuffer(MC.BUFFER);
 
+        vault.unpause();
+
         vm.stopPrank();
 
         vault.processAccounting();

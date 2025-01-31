@@ -33,6 +33,7 @@ contract ynETHxVault is VaultFees {
      */
     function initializeV2(uint8 decimals_, uint64 baseWithdrawalFee_) external reinitializer(2) {
         VaultStorage storage vaultStorage = _getVaultStorage();
+        vaultStorage.paused = true;
         vaultStorage.decimals = decimals_;
         vaultStorage.countNativeAsset = true;
 
