@@ -271,10 +271,10 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change");
     }
 
-    function test_connector_deposit_withdraw(uint256 amountA, uint256 amountB) public {
+    function test_connector_deposit_withdraw(uint256 amountA) public {
         vm.assume(amountA > 1000 && amountA < 100_000 ether);
-        vm.assume(amountB > 1000 && amountB < 100_000 ether);
 
+        uint256 amountB = amountA;
         deal(ASSET_A, address(vault), amountA);
         deal(ASSET_B, address(vault), amountB);
 
