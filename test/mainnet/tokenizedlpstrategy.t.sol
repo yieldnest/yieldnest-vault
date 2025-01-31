@@ -3,63 +3,44 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
-import {IVault} from "src/interface/IVault.sol";
-import {TransparentUpgradeableProxy, IERC20} from "src/Common.sol";
+import {IERC20} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
-import {MockTokenizedStrategy} from "test/mainnet/mocks/yearn/MockTokenizedStrategy.sol";
-import {Provider} from "src/module/Provider.sol";
+import {Provider, IProvider} from "src/module/Provider.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
-import {MockConnector} from "test/mainnet/mocks/MockConnector.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 
 contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRules, BaseRules {
-    MockTokenizedStrategy public strategy;
+    IERC20 public strategy;
     Vault public vault;
     ICurvePool public pool;
-    MockConnector public connector;
+    ICurveLpConnector public connector;
     uint256 public constant INITIAL_BALANCE = 101 ether;
-    uint256 public constant MOCK_RATE = 1.2 ether;
 
     address public constant ASSET_A = MC.YNETH;
     address public constant ASSET_B = MC.YNLSDE;
 
     address public alice = address(0xa11c3);
 
-    function mockConnector(address _vault, address _strategy, address _assetA, address _assetB) public {
-        MockConnector connector_ = new MockConnector(_vault, _strategy, _assetA, _assetB);
-        vm.etch(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, address(connector_).code);
-
-        connector = MockConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
-        connector.initialize(block.timestamp, int256(MOCK_RATE));
-
-        (int256 rate, uint256 timestamp) = connector.rate();
-        assertEq(uint256(rate), MOCK_RATE, "Connector rate should be set correctly");
-        assertEq(timestamp, block.timestamp, "Connector timestamp should be set correctly");
-    }
-
     function setUp() public {
         SetupVault setup = new SetupVault();
         setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
+        connector = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
 
-        // etch strategy
-        MockTokenizedStrategy strategy_ = new MockTokenizedStrategy();
-        vm.etch(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, address(strategy_).code);
+        assertEq(address(connector.STRATEGY()), MC.CURVE_LP_YNETH_YNLSDE_STRATEGY);
+        assertEq(address(connector.ASSET_A()), ASSET_A);
+        assertEq(address(connector.ASSET_B()), ASSET_B);
 
-        strategy = MockTokenizedStrategy(payable(address(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY)));
-
-        // initialize strategy
-        string memory name = "MockTokenizedStrategy";
-        strategy.initialize(MC.CURVE_LP_YNETH_YNLSDE_POOL, name, ADMIN, ADMIN, ADMIN);
+        strategy = IERC20(payable(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY));
 
         pool = ICurvePool(payable(MC.CURVE_LP_YNETH_YNLSDE_POOL));
 
-        mockConnector(address(vault), address(strategy), ASSET_A, ASSET_B);
+        connector = ICurveLpConnector(payable(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR));
 
         vm.label(address(pool), "pool");
         vm.label(address(strategy), "strategy");
@@ -97,6 +78,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         // set connector rules
         setApprovalRule(vault, ASSET_A, address(connector));
         setApprovalRule(vault, ASSET_B, address(connector));
+        setApprovalRule(vault, address(strategy), address(connector));
         setConnectorDepositRule(vault, address(connector));
         setConnectorWithdrawRule(vault, address(connector));
 
@@ -110,17 +92,23 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
 
         uint256 strategyBalance = 1e18; // 1 strategy token
         deal(address(strategy), address(vault), strategyBalance);
+        assertEq(strategy.balanceOf(address(vault)), strategyBalance, "Strategy balance should be 1");
 
         vault.processAccounting();
-
-        uint256 expectedBaseValue = (strategyBalance * MOCK_RATE) / 1e18;
+        (int256 rate,) = connector.rate();
+        uint256 expectedBaseValue = (strategyBalance * uint256(rate)) / 1e18;
         assertEq(
             vault.totalAssets(), totalAssetsBefore + expectedBaseValue, "Vault should account strategy value correctly"
         );
     }
 
     function test_strategyRateReverts_whenNegative() public {
-        connector.setRate(-1);
+        vm.mockCall(
+            address(connector),
+            abi.encodeWithSelector(ICurveLpConnector.rate.selector),
+            // solhint-disable-next-line not-rely-on-time
+            abi.encode(int256(-1), block.timestamp)
+        );
 
         uint256 strategyBalance = 1e18; // 1 strategy token
         deal(address(strategy), address(vault), strategyBalance);
@@ -248,18 +236,97 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
             assertEq(bufferAfter, bufferBefore - maxWithdraw, "Buffer balance should increase by buffer amount");
         }
     }
+    function test_connector_deposit(uint256 amountA) public {
+        vm.assume(amountA > 1000 && amountA < 100_000 ether);
 
-    function test_connector_deposit(uint256 amountA, uint256 amountB) public {
-        vm.assume(amountA > 1000 && amountA < 1000 ether);
-        vm.assume(amountB > 1000 && amountB < 1000 ether);
-
+        uint256 amountB = amountA;
         deal(ASSET_A, address(vault), amountA);
         deal(ASSET_B, address(vault), amountB);
 
+        vault.processAccounting();
+
+        uint256 initialTotalAssets = vault.totalAssets();
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
         uint256 shares = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
+        vault.processAccounting();
+
         assertEq(strategy.balanceOf(address(vault)), shares, "Strategy balance should match shares");
+        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
+        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
+
+        uint256 assetARate = IProvider(MC.PROVIDER).getRate(ASSET_A);
+        uint256 amountAInBase = amountA * assetARate / 1e18;
+
+        uint256 assetBRate = IProvider(MC.PROVIDER).getRate(ASSET_B);
+        uint256 amountBInBase = amountB * assetBRate / 1e18;
+
+        uint256 strategyRate = IProvider(MC.PROVIDER).getRate(address(strategy));
+        uint256 sharesInBase = shares * strategyRate / 1e18;
+
+        assertApproxEqRel(sharesInBase, amountAInBase + amountBInBase, 1e15, "Shares should match expected");
+
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change");
+    }
+
+    function test_connector_deposit_withdraw(uint256 amountA) public {
+        vm.assume(amountA > 1000 && amountA < 100_000 ether);
+
+        uint256 amountB = amountA;
+        deal(ASSET_A, address(vault), amountA);
+        deal(ASSET_B, address(vault), amountB);
+
+        vault.processAccounting();
+
+        uint256 initialTotalAssets = vault.totalAssets();
+        assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+
+        uint256 shares = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+
+        vault.processAccounting();
+
+        assertEq(strategy.balanceOf(address(vault)), shares, "Strategy balance should match shares");
+
+        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
+        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first deposit");
+
+        processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
+
+        vault.processAccounting();
+
+        assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+
+        assertGe(IERC20(ASSET_B).balanceOf(address(vault)), 1000, "Asset B balance should be correct");
+        assertGe(IERC20(ASSET_A).balanceOf(address(vault)), 1000, "Asset A balance should be correct");
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first withdraw");
+
+        amountA = IERC20(ASSET_A).balanceOf(address(vault));
+        amountB = IERC20(ASSET_B).balanceOf(address(vault));
+
+        uint256 shares2 = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+
+        vault.processAccounting();
+
+        assertApproxEqRel(shares2, shares, 1e15, "Second shares should match shares");
+
+        assertEq(strategy.balanceOf(address(vault)), shares2, "Strategy balance should match shares");
+
+        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
+        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
+
+        assertApproxEqRel(shares2, shares, 1e15, "Second shares should match shares");
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second deposit");
+
+        processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
+
+        vault.processAccounting();
+
+        assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+
+        assertGe(IERC20(ASSET_B).balanceOf(address(vault)), 500, "Asset B balance should be correct");
+        assertGe(IERC20(ASSET_A).balanceOf(address(vault)), 500, "Asset A balance should be correct");
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second withdraw");
     }
 }

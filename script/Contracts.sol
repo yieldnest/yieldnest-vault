@@ -51,8 +51,6 @@ library MainnetContracts {
     address public constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
 
     address public constant CURVE_LP_YNETH_YNLSDE_POOL = 0x1f59cC10c6360DA918B0235c98E58008452816EB;
-    // TODO: Update with deployed curve lp connector
-    address public constant CURVE_LP_YNETH_YNLSDE_CONNECTOR = address(0x80085);
-    // TODO: Update with deployed curve lp strategy
-    address public constant CURVE_LP_YNETH_YNLSDE_STRATEGY = address(0x80086);
+    address public constant CURVE_LP_YNETH_YNLSDE_CONNECTOR = 0xe66E34F9E3116ce497Cbd15268f175eC711539d5;
+    address public constant CURVE_LP_YNETH_YNLSDE_STRATEGY = 0x823976dA34aC45C23a8DfEa51B3Ff1Ae0D980213;
 }

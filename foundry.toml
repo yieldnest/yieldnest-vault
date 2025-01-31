@@ -7,6 +7,8 @@ evm_version = "cancun"
 optimizer = true
 optimizer-runs = 200
 solc_version = "0.8.24"
+# the following is needed after https://github.com/foundry-rs/foundry/pull/9537
+allow_internal_expect_revert = true
 fs_permissions = [
   { access = "read-write", path = "./deployments" },
   { access = "read", path = "./" },
@@ -20,6 +22,7 @@ test = "test/mainnet"
 eth_rpc_url = "https://rpc.ankr.com/eth"
 evm_version = "cancun"
 solc_version = "0.8.24"
+allow_internal_expect_revert = true
 fs_permissions = [
   { access = "read-write", path = "./deployments" },
   { access = "read", path = "./" },

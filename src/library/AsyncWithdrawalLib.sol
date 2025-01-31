@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {VaultLib} from "src/library/VaultLib.sol";
-import {IVault} from "src/interface/IVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
 import {IWithdrawalQueue} from "src/interface/external/lido/IWithdrawalQueue.sol";
