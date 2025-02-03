@@ -109,6 +109,9 @@ interface IVault is IERC4626 {
     function getAssets() external view returns (address[] memory list);
     function getAsset(address asset_) external view returns (AssetParams memory);
     function getProcessorRule(address contractAddress, bytes4 funcSig) external view returns (FunctionRule memory);
+    function setProcessorRule(address target, bytes4 functionSig, FunctionRule memory rule) external;
+    function setProcessorRules(address[] memory targets, bytes4[] memory functionSigs, FunctionRule[] memory rules)
+        external;
     function previewDepositAsset(address assetAddress, uint256 assets) external view returns (uint256);
     function depositAsset(address assetAddress, uint256 amount, address receiver) external returns (uint256);
     function provider() external view returns (address);
