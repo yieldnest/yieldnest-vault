@@ -71,6 +71,12 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
 
         vm.startPrank(ADMIN);
         vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(configurer));
+
+        // the following roles are granted to the admin for testing purposes
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), ADMIN);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ADMIN);
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), ADMIN);
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), ADMIN);
         vm.stopPrank();
 
         configurer.configure();

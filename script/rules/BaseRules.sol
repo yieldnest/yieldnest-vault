@@ -6,13 +6,21 @@ import {SafeRules} from "./SafeRules.sol";
 
 contract BaseRules {
     function setApprovalRule(IVault vault_, address contractAddress, address spender) internal {
+        setApprovalRule(vault_, contractAddress, spender, false);
+    }
+
+    function setApprovalRule(IVault vault_, address contractAddress, address spender, bool force) internal {
         address[] memory allowList = new address[](1);
         allowList[0] = spender;
 
-        setApprovalRule(vault_, contractAddress, allowList);
+        setApprovalRule(vault_, contractAddress, allowList, force);
     }
 
     function setApprovalRule(IVault vault_, address contractAddress, address[] memory allowList) internal {
+        setApprovalRule(vault_, contractAddress, allowList, false);
+    }
+
+    function setApprovalRule(IVault vault_, address contractAddress, address[] memory allowList, bool force) internal {
         bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
@@ -25,7 +33,7 @@ contract BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
+        SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule, force);
     }
 
     function setDepositRule(IVault vault_, address contractAddress) public {

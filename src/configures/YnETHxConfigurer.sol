@@ -179,10 +179,10 @@ contract YnETHxConfigurer is BaseRules, ConnectorRules, YieldNestRules, Withdraw
             vault.addAsset(MC.WETH, true);
             vault.addAsset(MC.YNETH, true);
             vault.addAsset(MC.YNLSDE, true);
+            vault.addAsset(MC.STETH, true);
 
             vault.addAsset(MC.EULER_WETH_22_VAULT, false); // buffer
             vault.addAsset(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, false);
-            vault.addAsset(MC.STETH, false);
             vault.addAsset(MC.WSTETH, false);
             vault.addAsset(MC.OETH, false);
             vault.addAsset(MC.WOETH, false);
@@ -260,6 +260,7 @@ contract YnETHxConfigurer is BaseRules, ConnectorRules, YieldNestRules, Withdraw
             // ynETH-ynLSDe pool connector & tokenized strategy
             // setApprovalRule(vault, MC.YNETH, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
             // setApprovalRule(vault, MC.YNLSDE, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+            setApprovalRule(vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
             setConnectorDepositRule(vault, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
             setConnectorWithdrawRule(vault, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
         }

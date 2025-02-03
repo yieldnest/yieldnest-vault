@@ -46,43 +46,8 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         vm.label(address(strategy), "strategy");
         vm.label(address(vault), "vault");
 
-        configureVault();
-    }
-
-    function configureVault() public {
-        uint256 bufferIndex = 0;
-        address[] memory assets = vault.getAssets();
-        for (uint256 i = 0; i < assets.length; i++) {
-            if (assets[i] == MC.BUFFER) {
-                bufferIndex = i;
-            }
-        }
-
-        assertTrue(bufferIndex != 0 && bufferIndex < assets.length, "Buffer not found");
-
-        vm.startPrank(ADMIN);
-        // delete old buffer
-        vault.deleteAsset(bufferIndex);
-
-        // add strategy as asset
-        vault.addAsset(address(strategy), false);
-
-        // add euler vault as buffer & asset
-        vault.addAsset(MC.EULER_WETH_22_VAULT, false);
-        vault.setBuffer(MC.EULER_WETH_22_VAULT);
-
-        // set buffer rules
-        setApprovalRule(vault, MC.WETH, vault.buffer());
-        setDepositRule(vault, vault.buffer());
-
-        // set connector rules
-        setApprovalRule(vault, ASSET_A, address(connector));
-        setApprovalRule(vault, ASSET_B, address(connector));
-        setApprovalRule(vault, address(strategy), address(connector));
-        setConnectorDepositRule(vault, address(connector));
-        setConnectorWithdrawRule(vault, address(connector));
-
         // grant PROCESSOR_ROLE to this contract for processor
+        vm.startPrank(ADMIN);
         vault.grantRole(vault.PROCESSOR_ROLE(), address(this));
         vm.stopPrank();
     }

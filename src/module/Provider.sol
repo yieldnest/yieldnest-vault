@@ -14,14 +14,25 @@ import {
 } from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-
 /*
     The Provider fetches state from other contracts.
 */
 
+interface IBaseStrategy {
+    function STRATEGY_VERSION() external view returns (string memory);
+}
+
 contract Provider is IProvider {
     error UnsupportedAsset(address asset);
     error RateIsNegative();
+
+    function isVault(address asset) public view returns (bool) {
+        try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
+            return keccak256(bytes(version)) == keccak256(bytes("0.1.0"));
+        } catch {
+            return false;
+        }
+    }
 
     function getRate(address asset) public view virtual returns (uint256) {
         if (asset == MC.WETH) {
@@ -81,6 +92,10 @@ contract Provider is IProvider {
             }
 
             return uint256(strategyRate);
+        }
+
+        if (isVault(asset)) {
+            return IERC4626(asset).convertToAssets(1e18);
         }
 
         revert UnsupportedAsset(asset);

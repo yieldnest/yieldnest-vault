@@ -48,7 +48,7 @@ contract VaultMainnetViewerTest is Test, AssertUtils, MainnetActors {
         uint256 totalAssets = vault.totalAssets();
 
         assertEq(assetsInfo.length, assets.length);
-        assertEq(assetsInfo.length, 5);
+        assertEq(assetsInfo.length, 10);
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata asset = IERC20Metadata(assets[i]);
@@ -79,7 +79,7 @@ contract VaultMainnetViewerTest is Test, AssertUtils, MainnetActors {
         uint256 totalAssets = vault.totalAssets();
 
         assertEq(assetsInfo.length, assets.length);
-        assertEq(assetsInfo.length, 5);
+        assertEq(assetsInfo.length, 10);
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata asset = IERC20Metadata(assets[i]);
@@ -105,7 +105,7 @@ contract VaultMainnetViewerTest is Test, AssertUtils, MainnetActors {
 
     function test_Vault_Viewer_isUnderlyingAsset() public {
         assertFalse(viewer.isUnderlyingAsset(MC.WETH));
-        assertFalse(viewer.isUnderlyingAsset(MC.BUFFER));
+        assertFalse(viewer.isUnderlyingAsset(vault.buffer()));
         assertFalse(viewer.isUnderlyingAsset(MC.STETH));
         assertFalse(viewer.isUnderlyingAsset(MC.YNETH));
         assertFalse(viewer.isUnderlyingAsset(MC.YNLSDE));
@@ -113,26 +113,26 @@ contract VaultMainnetViewerTest is Test, AssertUtils, MainnetActors {
         address[] memory underlyingAssets = new address[](3);
         underlyingAssets[0] = MC.WETH;
         underlyingAssets[1] = MC.STETH;
-        underlyingAssets[2] = MC.BUFFER;
+        underlyingAssets[2] = vault.buffer();
 
         vm.prank(ADMIN);
         viewer.addUnderlyingAssets(underlyingAssets);
 
         assertTrue(viewer.isUnderlyingAsset(MC.WETH));
         assertTrue(viewer.isUnderlyingAsset(MC.STETH));
-        assertTrue(viewer.isUnderlyingAsset(MC.BUFFER));
+        assertTrue(viewer.isUnderlyingAsset(vault.buffer()));
 
         assertEq(viewer.getUnderlyingAssetsLength(), 3);
 
         address[] memory underlyingAssets2 = new address[](1);
-        underlyingAssets2[0] = MC.BUFFER;
+        underlyingAssets2[0] = vault.buffer();
 
         vm.prank(ADMIN);
         viewer.removeUnderlyingAssets(underlyingAssets2);
 
         assertTrue(viewer.isUnderlyingAsset(MC.WETH));
         assertTrue(viewer.isUnderlyingAsset(MC.STETH));
-        assertFalse(viewer.isUnderlyingAsset(MC.BUFFER));
+        assertFalse(viewer.isUnderlyingAsset(vault.buffer()));
 
         assertEq(viewer.getUnderlyingAssetsLength(), 2);
     }
@@ -143,7 +143,7 @@ contract VaultMainnetViewerTest is Test, AssertUtils, MainnetActors {
             IVaultViewer.AssetInfo[] memory strategies = viewer.getStrategies();
 
             assertEq(assetsInfo.length, strategies.length);
-            assertEq(strategies.length, 5);
+            assertEq(strategies.length, 10);
         }
 
         address[] memory underlyingAssets = new address[](2);
@@ -156,11 +156,11 @@ contract VaultMainnetViewerTest is Test, AssertUtils, MainnetActors {
         {
             IVaultViewer.AssetInfo[] memory strategies = viewer.getStrategies();
 
-            assertEq(strategies.length, 3);
+            assertEq(strategies.length, 8);
 
-            assertEq(strategies[0].asset, MC.BUFFER);
-            assertEq(strategies[1].asset, MC.YNETH);
-            assertEq(strategies[2].asset, MC.YNLSDE);
+            assertEq(strategies[0].asset, MC.YNETH);
+            assertEq(strategies[1].asset, MC.YNLSDE);
+            assertEq(strategies[2].asset, MC.EULER_WETH_22_VAULT);
         }
     }
 }

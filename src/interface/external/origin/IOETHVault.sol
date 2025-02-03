@@ -26,4 +26,6 @@ interface IOETHVault {
     function withdrawalRequests(uint256 _index) external view returns (WithdrawalRequest memory);
     function withdrawalQueueMetadata() external view returns (WithdrawalQueueMetadata memory);
     function CLAIM_DELAY() external view returns (uint256);
+    function governor() external view returns (address);
+    function setMaxSupplyDiff(uint256 _maxSupplyDiff) external;
 }
