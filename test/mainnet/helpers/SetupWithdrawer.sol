@@ -7,6 +7,7 @@ import {TimelockController, TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetActors, IActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
+import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {Provider} from "src/module/Provider.sol";
 import {BaseRoles} from "script/roles/BaseRoles.sol";
@@ -102,7 +103,18 @@ contract SetupWithdrawer is Test, MainnetActors {
 
         // NOTE: woeth withdrawal is handled via direct methods on the vault
 
-        // TODO: add rules for wrap/unwrap WSTETH and WOETH
+        {
+            // wrap/unwrap wstETH
+            StakedEtherRules.setWrapRule(vault, MC.WSTETH);
+            StakedEtherRules.setUnwrapRule(vault, MC.WSTETH);
+        }
+
+        {
+            // wrap/unwrap woeth
+            BaseRules.setDepositRule(vault, MC.WOETH);
+            BaseRules.setWithdrawRule(vault, MC.WOETH);
+            BaseRules.setRedeemRule(vault, MC.WOETH);
+        }
 
         vault.unpause();
 
