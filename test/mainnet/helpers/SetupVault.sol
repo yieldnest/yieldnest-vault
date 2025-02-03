@@ -5,7 +5,7 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {Provider} from "src/module/Provider.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Vault} from "src/Vault.sol";
-import {TimelockController as TLC, TransparentUpgradeableProxy as TUP} from "src/Common.sol";
+import {TimelockController, TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {YnETHxVault} from "src/YnETHxVault.sol";
@@ -19,7 +19,7 @@ contract SetupVault is Test, MainnetActors {
     function upgrade() public {
         Vault newVault = Vault(payable(new YnETHxVault()));
 
-        TLC timelock = TLC(payable(MC.TIMELOCK));
+        TimelockController timelock = TimelockController(payable(MC.TIMELOCK));
 
         // schedule a proxy upgrade transaction on the timelock
         // the traget is the proxy admin for the max Vault Proxy Contract
@@ -41,7 +41,7 @@ contract SetupVault is Test, MainnetActors {
         vm.stopPrank();
 
         bytes32 id = keccak256(abi.encode(target, value, data, predecessor, salt));
-        assert(timelock.getOperationState(id) == TLC.OperationState.Waiting);
+        assert(timelock.getOperationState(id) == TimelockController.OperationState.Waiting);
 
         assertEq(timelock.isOperationReady(id), false);
         assertEq(timelock.isOperationDone(id), false);
@@ -57,7 +57,7 @@ contract SetupVault is Test, MainnetActors {
         // Verify the transaction was executed successfully
         assertEq(timelock.isOperationReady(id), false);
         assertEq(timelock.isOperationDone(id), true);
-        assert(timelock.getOperationState(id) == TLC.OperationState.Done);
+        assert(timelock.getOperationState(id) == TimelockController.OperationState.Done);
 
         Vault vault = Vault(payable(MC.YNETHX));
 
@@ -97,7 +97,7 @@ contract SetupVault is Test, MainnetActors {
         bytes memory initData =
             abi.encodeWithSelector(MaxVaultViewer.initialize.selector, address(vault_), address(ADMIN));
 
-        TUP proxy = new TUP(address(implementation), ADMIN, initData);
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), ADMIN, initData);
         viewer = MaxVaultViewer(payable(address(proxy)));
 
         vm.startPrank(ADMIN);

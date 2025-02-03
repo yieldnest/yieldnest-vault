@@ -105,6 +105,27 @@ library BaseRules {
         SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
     }
 
+    function setRedeemRule(IVault vault_, address contractAddress) public {
+        bytes4 funcSig = bytes4(keccak256("redeem(uint256,address,address)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](3);
+
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        address[] memory allowList = new address[](1);
+        allowList[0] = address(vault_);
+
+        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        paramRules[2] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+
+        SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
+    }
+
     function setWithdrawAssetRule(IVault vault_, address contractAddress, address asset) internal {
         address[] memory allowList = new address[](1);
         allowList[0] = asset;
