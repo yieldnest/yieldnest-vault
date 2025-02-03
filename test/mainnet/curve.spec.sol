@@ -8,7 +8,6 @@ import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IERC20} from "src/Common.sol";
-import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {ICurveRegistry} from "test/interface/external/curve/ICurveRegistry.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {IStETH} from "test/interface/external/lido/IStETH.sol";
@@ -21,7 +20,7 @@ interface IynETH {
     function approve(address spender, uint256 amount) external returns (uint256);
 }
 
-contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors, BaseRules {
+contract VaultMainnetCurveTest is Test, MainnetActors {
     Vault public vault;
 
     function setUp() public {
@@ -74,11 +73,11 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors, BaseRules {
         }
         // forcing set rule for testing
         // Set approval rule to allow ethStethPool to spend stETH tokens from the vault
-        setApprovalRule(_vault, MC.STETH, ethStethPool, true);
+        BaseRules.setApprovalRule(_vault, MC.STETH, ethStethPool, true);
 
         // Set approval rules for ynETH and wstETH to be spent by ynETHWstETH pool
-        setApprovalRule(_vault, MC.YNETH, ynETHWstETHPool, true);
-        setApprovalRule(_vault, MC.WSTETH, ynETHWstETHPool, true);
+        BaseRules.setApprovalRule(_vault, MC.YNETH, ynETHWstETHPool, true);
+        BaseRules.setApprovalRule(_vault, MC.WSTETH, ynETHWstETHPool, true);
 
         vm.stopPrank();
     }

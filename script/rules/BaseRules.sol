@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IVault, IValidator} from "src/interface/IVault.sol";
 import {SafeRules} from "./SafeRules.sol";
 
-contract BaseRules {
+library BaseRules {
     function setApprovalRule(IVault vault_, address contractAddress, address spender) internal {
         setApprovalRule(vault_, contractAddress, spender, false);
     }

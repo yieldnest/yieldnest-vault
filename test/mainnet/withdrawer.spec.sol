@@ -2,13 +2,12 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
+import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IERC20, Math} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
-import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IWithdrawalQueueManager, IRedemptionAssetsVault} from "src/interface/IWithdrawalQueueManager.sol";
 import {IWithdrawalQueue} from "src/interface/external/lido/IWithdrawalQueue.sol";
 import {IProvider} from "src/interface/IProvider.sol";
@@ -17,9 +16,8 @@ import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessC
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
-import {Vault} from "src/Vault.sol";
 
-contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRules {
+contract WithdrawerMainnetTest is Test, MainnetActors {
     using Math for uint256;
 
     Withdrawer public vault;
@@ -31,17 +29,10 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
     bytes32 internal constant QUEUE_POSITION = keccak256("lido.WithdrawalQueue.queue");
 
     function setUp() public {
-        SetupVault setup = new SetupVault();
-        setup.upgrade();
+        SetupWithdrawer setup = new SetupWithdrawer();
+        vault = Withdrawer(setup.setup());
 
-        {
-            Vault maxVault = Vault(payable(MC.YNETHX));
-            address[] memory assets_ = maxVault.getAssets();
-
-            vault = Withdrawer(payable(assets_[9]));
-
-            provider = IProvider(vault.provider());
-        }
+        provider = IProvider(vault.provider());
 
         // NOTE: setup some default balances for the vault
         deal(MC.WETH, address(vault), INITIAL_BALANCE);
@@ -291,7 +282,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = vault.totalAssets();
 
-        tokenId = processRequestWithdrawalWstETH(vault, MC.WSTETH_WITHDRAWAL_QUEUE, asset_, amount);
+        tokenId = WithdrawerRules.processRequestWithdrawalWstETH(vault, MC.WSTETH_WITHDRAWAL_QUEUE, asset_, amount);
 
         IWithdrawalQueue.WithdrawalRequestStatus memory status = _getWithdrawalRequestStatusFromQueue(tokenId);
 
@@ -340,7 +331,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
         queue.finalize{value: amountOfEth}(tokenId, shareRate);
         vm.stopPrank();
 
-        processClaimWithdrawalWstETH(vault, MC.WSTETH_WITHDRAWAL_QUEUE, tokenId);
+        WithdrawerRules.processClaimWithdrawalWstETH(vault, MC.WSTETH_WITHDRAWAL_QUEUE, tokenId);
 
         assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
 
@@ -359,7 +350,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
         vault.processAccounting();
         uint256 totalAssets = vault.totalAssets();
 
-        tokenId = processRequestWithdrawal(vault, queueManager_, asset_, amount);
+        tokenId = WithdrawerRules.processRequestWithdrawal(vault, queueManager_, asset_, amount);
 
         IWithdrawalQueueManager.WithdrawalRequest memory request = queueManager.withdrawalRequest(tokenId);
 
@@ -381,7 +372,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
         queueManager.finalizeRequestsUpToIndex(tokenId + 1);
         vm.stopPrank();
 
-        processClaimWithdrawal(vault, queueManager_, tokenId);
+        WithdrawerRules.processClaimWithdrawal(vault, queueManager_, tokenId);
         IWithdrawalQueueManager.WithdrawalRequest memory request = queueManager.withdrawalRequest(tokenId);
 
         uint256 amountInBase = _convertAssetToBase(asset_, request.amount);

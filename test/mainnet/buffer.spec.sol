@@ -13,7 +13,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 
-contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors, BaseRules {
+contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
 
     function setUp() public {
@@ -24,25 +24,30 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors, BaseRul
         // Deploy mock buffer
         MockERC4626 mockBuffer = new MockERC4626(ERC20(MC.WETH), "Mock Buffer", "BUFF");
 
-        // Set mock buffer address
-        vm.startPrank(ADMIN);
-        vault.setBuffer(address(mockBuffer));
-
         // Deploy mock provider
         MockProvider mockProvider = new MockProvider();
+
+        // Configure mock provider to use ERC4626 rate for buffer
+        mockProvider.addERC4626(address(mockBuffer));
+
+        vm.startPrank(ADMIN);
+
+        // Set mock buffer address
+        vault.setBuffer(address(mockBuffer));
 
         // Set mock provider address
         vault.setProvider(address(mockProvider));
 
-        setApprovalRule(vault, MC.WETH, address(mockBuffer), true);
-        setDepositRule(vault, address(mockBuffer));
-
         // Add mock buffer as an asset
         vault.addAsset(address(mockBuffer), false);
+
+        // Grant PROCESSOR_MANAGER_ROLE to this contract
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));
+
         vm.stopPrank();
 
-        // Configure mock provider to use ERC4626 rate for buffer
-        mockProvider.addERC4626(address(mockBuffer));
+        BaseRules.setApprovalRule(vault, MC.WETH, address(mockBuffer), true);
+        BaseRules.setDepositRule(vault, address(mockBuffer));
     }
 
     function totalSupplyInvariant(uint256 supply) public view {

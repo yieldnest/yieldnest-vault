@@ -7,12 +7,11 @@ import {Vault} from "src/Vault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
-import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {IERC20Metadata, Math} from "src/Common.sol";
 
-contract VaultMainnetViewerTest is Test, AssertUtils, MainnetActors {
+contract VaultMainnetViewerTest is Test, MainnetActors {
     Vault public vault;
 
     MaxVaultViewer public viewer;

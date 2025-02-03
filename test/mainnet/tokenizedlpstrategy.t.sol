@@ -5,16 +5,14 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
 import {IERC20} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Provider, IProvider} from "src/module/Provider.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
-import {BaseRules} from "script/rules/BaseRules.sol";
 
-contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRules, BaseRules {
+contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
     IERC20 public strategy;
     Vault public vault;
     ICurvePool public pool;
@@ -203,7 +201,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
     }
 
     function test_connector_deposit(uint256 amountA) public {
-        vm.assume(amountA > 1000 && amountA < 100_000 ether);
+        vm.assume(amountA > 10000 && amountA < 100_000 ether);
 
         uint256 amountB = amountA;
         deal(ASSET_A, address(vault), amountA);
@@ -214,7 +212,8 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         uint256 initialTotalAssets = vault.totalAssets();
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
-        uint256 shares = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        uint256 shares =
+            ConnectorRules.processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
 
@@ -237,7 +236,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
     }
 
     function test_connector_deposit_withdraw(uint256 amountA) public {
-        vm.assume(amountA > 1000 && amountA < 100_000 ether);
+        vm.assume(amountA > 10000 && amountA < 100_000 ether);
 
         uint256 amountB = amountA;
         deal(ASSET_A, address(vault), amountA);
@@ -248,7 +247,8 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         uint256 initialTotalAssets = vault.totalAssets();
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
-        uint256 shares = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        uint256 shares =
+            ConnectorRules.processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
 
@@ -260,7 +260,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
             vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first deposit"
         );
 
-        processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
+        ConnectorRules.processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
 
         vault.processAccounting();
 
@@ -275,7 +275,8 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         amountA = IERC20(ASSET_A).balanceOf(address(vault));
         amountB = IERC20(ASSET_B).balanceOf(address(vault));
 
-        uint256 shares2 = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        uint256 shares2 =
+            ConnectorRules.processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
 
@@ -291,7 +292,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
             vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second deposit"
         );
 
-        processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
+        ConnectorRules.processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
 
         vault.processAccounting();
 

@@ -7,10 +7,9 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
 import {IERC20, TransparentUpgradeableProxy} from "src/Common.sol";
-import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 
-contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
+contract VaultMainnetInvariantsTest is Test, MainnetActors {
     Vault public vault;
 
     function setUp() public {
