@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {VaultFees} from "src/VaultFees.sol";
+import {Vault} from "src/Vault.sol";
 import {IERC20} from "src/Common.sol";
 
-// solhint-disable-next-line contract-name-capwords
-contract ynETHxVault is VaultFees {
+contract YnETHxVault is Vault {
     /**
      * @dev Storage structure for ERC4626 asset information.
      * @param _asset The ERC20 token associated with the strategy.

@@ -35,7 +35,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors, BaseRul
         vault.setProvider(address(mockProvider));
 
         setApprovalRule(vault, MC.WETH, address(mockBuffer));
-        setDepositRule(vault, address(mockBuffer), address(vault));
+        setDepositRule(vault, address(mockBuffer));
 
         // Add mock buffer as an asset
         vault.addAsset(address(mockBuffer), false);

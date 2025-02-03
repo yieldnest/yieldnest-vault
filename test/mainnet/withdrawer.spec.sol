@@ -24,7 +24,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
     Withdrawer public vault;
     uint256 public constant INITIAL_BALANCE = 100 ether;
 
-    IProvider public provider = IProvider(MC.PROVIDER);
+    IProvider public provider;
 
     address internal constant CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
     bytes32 internal constant QUEUE_POSITION = keccak256("lido.WithdrawalQueue.queue");
@@ -32,6 +32,8 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
     function setUp() public {
         SetupWithdrawer setup = new SetupWithdrawer();
         vault = setup.setup();
+
+        provider = IProvider(vault.provider());
 
         // NOTE: setup some default balances for the vault
         deal(MC.WETH, address(vault), INITIAL_BALANCE);

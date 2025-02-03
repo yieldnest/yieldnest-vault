@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IVault, IValidator} from "src/interface/IVault.sol";
+import {SafeRules} from "./SafeRules.sol";
 
 contract ConnectorRules {
     function setConnectorDepositRule(IVault vault_, address connectorAddress) internal {
@@ -18,7 +19,7 @@ contract ConnectorRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        vault_.setProcessorRule(connectorAddress, funcSig, rule);
+        SafeRules.setProcessorRule(vault_, connectorAddress, funcSig, rule);
     }
 
     function processConnectorDeposit(
@@ -64,7 +65,7 @@ contract ConnectorRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        vault_.setProcessorRule(connectorAddress, funcSig, rule);
+        SafeRules.setProcessorRule(vault_, connectorAddress, funcSig, rule);
     }
 
     function processConnectorWithdraw(
