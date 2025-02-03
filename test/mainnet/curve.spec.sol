@@ -31,17 +31,10 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors, BaseRules {
 
         // Grant DEFAULT_ADMIN_ROLE to setup contract
         vm.startPrank(ADMIN);
-        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));
         vm.stopPrank();
 
         configureCurveActions(vault);
-
-        // Remove DEFAULT_ADMIN_ROLE from setup contract
-        vm.startPrank(ADMIN);
-        vault.revokeRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
-        vault.revokeRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
-        vm.stopPrank();
     }
 
     function configureCurveActions(Vault _vault) internal {
@@ -79,12 +72,13 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors, BaseRules {
                 IVault.FunctionRule({isActive: true, paramRules: exchangeRules, validator: IValidator(address(0))})
             );
         }
+        // forcing set rule for testing
         // Set approval rule to allow ethStethPool to spend stETH tokens from the vault
-        setApprovalRule(_vault, MC.STETH, ethStethPool);
+        setApprovalRule(_vault, MC.STETH, ethStethPool, true);
 
         // Set approval rules for ynETH and wstETH to be spent by ynETHWstETH pool
-        setApprovalRule(_vault, MC.YNETH, ynETHWstETHPool);
-        setApprovalRule(_vault, MC.WSTETH, ynETHWstETHPool);
+        setApprovalRule(_vault, MC.YNETH, ynETHWstETHPool, true);
+        setApprovalRule(_vault, MC.WSTETH, ynETHWstETHPool, true);
 
         vm.stopPrank();
     }

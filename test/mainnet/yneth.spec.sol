@@ -35,7 +35,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
         targets[0] = MC.WETH;
-        targets[1] = MC.BUFFER;
+        targets[1] = vault.buffer();
 
         uint256[] memory values = new uint256[](2);
         values[0] = 0;

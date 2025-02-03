@@ -247,6 +247,10 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
         uint256 totalAssets = vault.totalAssets();
 
+        vm.startPrank(oethVault.governor());
+        oethVault.setMaxSupplyDiff(0);
+        vm.stopPrank();
+
         uint256[] memory tokenIds = new uint256[](1);
         tokenIds[0] = tokenId;
 
