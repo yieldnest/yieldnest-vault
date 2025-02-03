@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
+import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
@@ -17,6 +17,7 @@ import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessC
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
+import {Vault} from "src/Vault.sol";
 
 contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRules {
     using Math for uint256;
@@ -30,10 +31,17 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
     bytes32 internal constant QUEUE_POSITION = keccak256("lido.WithdrawalQueue.queue");
 
     function setUp() public {
-        SetupWithdrawer setup = new SetupWithdrawer();
-        vault = setup.setup();
+        SetupVault setup = new SetupVault();
+        setup.upgrade();
 
-        provider = IProvider(vault.provider());
+        {
+            Vault maxVault = Vault(payable(MC.YNETHX));
+            address[] memory assets_ = maxVault.getAssets();
+
+            vault = Withdrawer(payable(assets_[9]));
+
+            provider = IProvider(vault.provider());
+        }
 
         // NOTE: setup some default balances for the vault
         deal(MC.WETH, address(vault), INITIAL_BALANCE);
