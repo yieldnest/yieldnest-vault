@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IVault, IValidator} from "src/interface/IVault.sol";
 import {SafeRules} from "./SafeRules.sol";
 
-contract YieldNestRules {
+library YieldNestRules {
     function setYnETHDepositRule(IVault vault_, address contractAddress, address receiver) public {
         bytes4 funcSig = bytes4(keccak256("depositETH(address)"));
 

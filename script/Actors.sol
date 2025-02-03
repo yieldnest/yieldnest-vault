@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 interface IActors {
     function ADMIN() external view returns (address);
+    function PAUSER() external view returns (address);
+    function UNPAUSER() external view returns (address);
     function PROCESSOR() external view returns (address);
     function EXECUTOR_1() external view returns (address);
     function PROPOSER_1() external view returns (address);

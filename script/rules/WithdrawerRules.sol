@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IVault, IValidator} from "src/interface/IVault.sol";
 import {SafeRules} from "./SafeRules.sol";
 
-contract WithdrawerRules {
+library WithdrawerRules {
     function setRequestWithdrawalRule(IVault vault_, address contractAddress) internal {
         address[] memory allowList = new address[](1);
         allowList[0] = address(vault_);

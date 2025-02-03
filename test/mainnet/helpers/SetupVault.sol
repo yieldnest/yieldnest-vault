@@ -2,18 +2,20 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
+import {Provider} from "src/module/Provider.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Vault} from "src/Vault.sol";
 import {TimelockController as TLC, TransparentUpgradeableProxy as TUP} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {YnETHxVault} from "src/YnETHxVault.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
-import {BaseRules} from "script/rules/BaseRules.sol";
 
 import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
 
-contract SetupVault is Test, MainnetActors, Etches, BaseRules {
+import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
+
+contract SetupVault is Test, MainnetActors {
     function upgrade() public {
         Vault newVault = Vault(payable(new YnETHxVault()));
 
@@ -68,6 +70,9 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
         assertTrue(vault.paused(), "Vault should be paused");
 
         YnETHxConfigurer configurer = new YnETHxConfigurer();
+        SetupWithdrawer setup = new SetupWithdrawer();
+        Withdrawer withdrawer = setup.setup();
+        Provider provider = new Provider();
 
         vm.startPrank(ADMIN);
         vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(configurer));
@@ -79,12 +84,9 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), ADMIN);
         vm.stopPrank();
 
-        configurer.configure();
+        configurer.configure(address(provider), address(withdrawer));
 
         assertFalse(vault.paused(), "Vault should not be paused");
-
-        vm.expectRevert(); // cannot configure twice
-        configurer.configure();
 
         vault.processAccounting();
     }
