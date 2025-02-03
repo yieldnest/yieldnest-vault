@@ -7,13 +7,15 @@ import {TimelockController as TLC, TransparentUpgradeableProxy as TUP} from "src
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
-import {ynETHxVault} from "src/ynETHxVault.sol";
+import {YnETHxVault} from "src/YnETHxVault.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 
+import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
+
 contract SetupVault is Test, MainnetActors, Etches, BaseRules {
     function upgrade() public {
-        Vault newVault = Vault(payable(new ynETHxVault()));
+        Vault newVault = Vault(payable(new YnETHxVault()));
 
         TLC timelock = TLC(payable(MC.TIMELOCK));
 
@@ -24,7 +26,7 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
 
         bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
 
-        bytes memory initData = abi.encodeWithSelector(ynETHxVault.initializeV2.selector, 18, 0);
+        bytes memory initData = abi.encodeWithSelector(YnETHxVault.initializeV2.selector, 18, 0);
         bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(newVault), initData);
 
         bytes32 predecessor = bytes32(0);
@@ -48,56 +50,35 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
         vm.warp(block.timestamp + 86401);
         vm.startPrank(EXECUTOR_1);
         timelock.execute(target, value, data, predecessor, salt);
+        vm.stopPrank();
 
         // Verify the transaction was executed successfully
         assertEq(timelock.isOperationReady(id), false);
         assertEq(timelock.isOperationDone(id), true);
         assert(timelock.getOperationState(id) == TLC.OperationState.Done);
 
-        vm.stopPrank();
-
         Vault vault = Vault(payable(MC.YNETHX));
 
         assertEq(vault.symbol(), "ynETHx");
 
-        configureMainnet(vault);
+        configure(vault);
     }
 
-    function configureMainnet(Vault vault) internal {
-        // etch to mock ETHRate provider and Buffer
-        mockAll();
+    function configure(Vault vault) internal {
+        assertTrue(vault.paused(), "Vault should be paused");
+
+        YnETHxConfigurer configurer = new YnETHxConfigurer();
 
         vm.startPrank(ADMIN);
-
-        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
-        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
-        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
-
-        vault.setProvider(MC.PROVIDER);
-
-        // Add assets: Base asset always first
-        vault.addAsset(MC.WETH, true);
-        vault.addAsset(MC.BUFFER, false);
-        vault.addAsset(MC.STETH, true);
-        vault.addAsset(MC.YNETH, true);
-        vault.addAsset(MC.YNLSDE, true);
-
-        setDepositRule(vault, MC.BUFFER, address(vault));
-        setDepositRule(vault, MC.YNETH, address(vault));
-        setDepositRule(vault, MC.YNLSDE, address(vault));
-        setWethDepositRule(vault, MC.WETH);
-
-        setApprovalRule(vault, MC.WETH, MC.BUFFER);
-
-        vault.setBuffer(MC.BUFFER);
-
-        vault.unpause();
-
+        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(configurer));
         vm.stopPrank();
+
+        configurer.configure();
+
+        assertFalse(vault.paused(), "Vault should not be paused");
+
+        vm.expectRevert(); // cannot configure twice
+        configurer.configure();
 
         vault.processAccounting();
     }

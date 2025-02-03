@@ -173,7 +173,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         vault.depositAsset(MC.YNETH, bobYnETHBalance, bob);
 
         uint256 newTotalAssets = vault.totalAssets();
-        uint256 ynEthRate = IProvider(MC.PROVIDER).getRate(MC.YNETH);
+        uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
 
         assertEq(
             newTotalAssets,

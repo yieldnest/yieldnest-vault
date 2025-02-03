@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IVault, IValidator} from "src/interface/IVault.sol";
+import {SafeRules} from "./SafeRules.sol";
 
 contract WithdrawerRules {
     function setRequestWithdrawalRule(IVault vault_, address contractAddress) internal {
@@ -18,7 +19,7 @@ contract WithdrawerRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
+        SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
     }
 
     function processRequestWithdrawal(IVault vault_, address contractAddress, address asset_, uint256 amount)
@@ -59,7 +60,7 @@ contract WithdrawerRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
+        SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
     }
 
     function processClaimWithdrawal(IVault vault_, address contractAddress, uint256 tokenId) internal {
@@ -92,7 +93,7 @@ contract WithdrawerRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
+        SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
     }
 
     function processRequestWithdrawalWstETH(IVault vault_, address contractAddress, address asset_, uint256 amount)
@@ -134,7 +135,7 @@ contract WithdrawerRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        vault_.setProcessorRule(contractAddress, funcSig, rule);
+        SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
     }
 
     function processClaimWithdrawalWstETH(IVault vault_, address contractAddress, uint256 tokenId) internal {

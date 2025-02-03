@@ -55,16 +55,16 @@ contract SetupWithdrawer is Test, MainnetActors, Etches, WithdrawerRules, BaseRu
 
         // Add assets: Base asset always first
         vault.addAsset(MC.WETH, true, true);
-        vault.addAsset(MC.STETH, true, true);
-        vault.addAsset(MC.WSTETH, true, true);
-        vault.addAsset(MC.METH, true, true);
-        vault.addAsset(MC.RETH, true, true);
-        vault.addAsset(MC.WOETH, true, true);
-        vault.addAsset(MC.OETH, true, true);
-        vault.addAsset(MC.SWELL, true, true);
-        vault.addAsset(MC.SFRXETH, true, true);
-        vault.addAsset(MC.YNLSDE, true, true);
-        vault.addAsset(MC.YNETH, true, true);
+        vault.addAsset(MC.STETH, true, false);
+        vault.addAsset(MC.WSTETH, true, false);
+        vault.addAsset(MC.METH, true, false);
+        vault.addAsset(MC.RETH, true, false);
+        vault.addAsset(MC.WOETH, true, false);
+        vault.addAsset(MC.OETH, true, false);
+        vault.addAsset(MC.SWELL, true, false);
+        vault.addAsset(MC.SFRXETH, true, false);
+        vault.addAsset(MC.YNLSDE, true, false);
+        vault.addAsset(MC.YNETH, true, false);
 
         // setup processor rules for the withdrawer
         setApprovalRule(vault, MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
