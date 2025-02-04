@@ -83,24 +83,24 @@ contract SetupWithdrawer is Test, MainnetActors {
 
         {
             // ynETH withdrawal queue
-            (address ynEth_, bytes4 funcSig, IVault.FunctionRule memory rule) = BaseRules.getApprovalRule(vault, MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
-            vault.setProcessorRule(ynEth_, funcSig, rule);
+            BaseRules.RuleParams memory ynEthRuleParams = BaseRules.getApprovalRule(vault, MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+            vault.setProcessorRule(ynEthRuleParams.contractAddress, ynEthRuleParams.funcSig, ynEthRuleParams.rule);
             WithdrawerRules.setRequestWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
             WithdrawerRules.setClaimWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
         }
 
         {
             // ynLSDe withdrawal queue
-            (address ynLsDe_, bytes4 funcSig, IVault.FunctionRule memory rule) = BaseRules.getApprovalRule(vault, MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
-            vault.setProcessorRule(ynLsDe_, funcSig, rule);
+            BaseRules.RuleParams memory ynLsDeRuleParams = BaseRules.getApprovalRule(vault, MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+            vault.setProcessorRule(ynLsDeRuleParams.contractAddress, ynLsDeRuleParams.funcSig, ynLsDeRuleParams.rule);
             WithdrawerRules.setRequestWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
             WithdrawerRules.setClaimWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
         }
 
         {
             // wstETH withdrawal queue
-            (address wstEth_, bytes4 funcSig, IVault.FunctionRule memory rule) = BaseRules.getApprovalRule(vault, MC.WSTETH, MC.WSTETH_WITHDRAWAL_QUEUE);
-            vault.setProcessorRule(wstEth_, funcSig, rule);
+            BaseRules.RuleParams memory wstEthRuleParams = BaseRules.getApprovalRule(vault, MC.WSTETH, MC.WSTETH_WITHDRAWAL_QUEUE);
+            vault.setProcessorRule(wstEthRuleParams.contractAddress, wstEthRuleParams.funcSig, wstEthRuleParams.rule);
             WithdrawerRules.setRequestWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
             WithdrawerRules.setClaimWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
         }
@@ -117,12 +117,12 @@ contract SetupWithdrawer is Test, MainnetActors {
 
         {
             // wrap/unwrap woeth
-            (address woeth_, bytes4 funcSig, IVault.FunctionRule memory rule) = BaseRules.getDepositRule(vault, MC.WOETH);
-            vault.setProcessorRule(woeth_, funcSig, rule);
-            (woeth_, funcSig, rule) = BaseRules.getWithdrawRule(vault, MC.WOETH);
-            vault.setProcessorRule(woeth_, funcSig, rule);
-            (woeth_, funcSig, rule) = BaseRules.getRedeemRule(vault, MC.WOETH);
-            vault.setProcessorRule(woeth_, funcSig, rule);
+            BaseRules.RuleParams memory woethDepositRuleParams = BaseRules.getDepositRule(vault, MC.WOETH);
+            vault.setProcessorRule(woethDepositRuleParams.contractAddress, woethDepositRuleParams.funcSig, woethDepositRuleParams.rule);
+            BaseRules.RuleParams memory woethWithdrawRuleParams = BaseRules.getWithdrawRule(vault, MC.WOETH);
+            vault.setProcessorRule(woethWithdrawRuleParams.contractAddress, woethWithdrawRuleParams.funcSig, woethWithdrawRuleParams.rule);
+            BaseRules.RuleParams memory woethRedeemRuleParams = BaseRules.getRedeemRule(vault, MC.WOETH);
+            vault.setProcessorRule(woethRedeemRuleParams.contractAddress, woethRedeemRuleParams.funcSig, woethRedeemRuleParams.rule);
         }
 
         vault.unpause();
