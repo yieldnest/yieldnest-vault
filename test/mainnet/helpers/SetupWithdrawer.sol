@@ -11,6 +11,7 @@ import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {Provider} from "src/module/Provider.sol";
 import {BaseRoles} from "script/roles/BaseRoles.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 contract SetupWithdrawer is Test, MainnetActors {
     function _deployTimelockController() internal virtual returns (address) {
@@ -110,7 +111,7 @@ contract SetupWithdrawer is Test, MainnetActors {
             // wrap/unwrap wstETH
             (address wsteth_, bytes4 funcSig, IVault.FunctionRule memory rule) = StakedEtherRules.getWrapRule(vault, MC.WSTETH);
             vault.setProcessorRule(wsteth_, funcSig, rule);
-            (wsteth_, funcSig, rule) = StakedEtherRules.getUnwrapRule(vault, MC.WSTETH);
+            StakedEtherRules.setUnwrapRule(vault, MC.WSTETH);
             vault.setProcessorRule(wsteth_, funcSig, rule);
         }
 

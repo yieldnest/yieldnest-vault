@@ -7,6 +7,7 @@ import {SafeRules} from "./SafeRules.sol";
 library BaseRules {
     function getApprovalRule(IVault vault_, address contractAddress, address spender)
         internal
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         return getApprovalRule(vault_, contractAddress, spender, false);
@@ -14,6 +15,7 @@ library BaseRules {
 
     function getApprovalRule(IVault vault_, address contractAddress, address spender, bool force)
         internal
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         address[] memory allowList = new address[](1);
@@ -24,6 +26,7 @@ library BaseRules {
 
     function getApprovalRule(IVault vault_, address contractAddress, address[] memory allowList)
         internal
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         return getApprovalRule(vault_, contractAddress, allowList, false);
@@ -31,6 +34,7 @@ library BaseRules {
 
     function getApprovalRule(IVault vault_, address contractAddress, address[] memory allowList, bool force)
         internal
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
@@ -45,12 +49,12 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        // SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule, force);
         return (contractAddress, funcSig, rule);
     }
 
     function getDepositRule(IVault vault_, address contractAddress)
         public
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
@@ -68,12 +72,12 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        // SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
         return (contractAddress, funcSig, rule);
     }
 
     function getDepositAssetRule(IVault vault_, address contractAddress, address asset)
         internal
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         address[] memory allowList = new address[](1);
@@ -84,6 +88,7 @@ library BaseRules {
 
     function getDepositAssetRule(IVault vault_, address contractAddress, address[] memory allowList)
         internal
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         bytes4 funcSig = bytes4(keccak256("depositAsset(address,uint256,address)"));
@@ -104,12 +109,12 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        // vault_.setProcessorRule(contractAddress, funcSig, rule);
         return (contractAddress, funcSig, rule);
     }
 
     function getWithdrawRule(IVault vault_, address contractAddress)
         public
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         bytes4 funcSig = bytes4(keccak256("withdraw(uint256,address,address)"));
@@ -129,12 +134,12 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        // SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
         return (contractAddress, funcSig, rule);
     }
 
     function getRedeemRule(IVault vault_, address contractAddress)
         public
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         bytes4 funcSig = bytes4(keccak256("redeem(uint256,address,address)"));
@@ -154,12 +159,12 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        // SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
         return (contractAddress, funcSig, rule);
     }
 
     function getWithdrawAssetRule(IVault vault_, address contractAddress, address asset)
         internal
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         address[] memory allowList = new address[](1);
@@ -170,6 +175,7 @@ library BaseRules {
 
     function getWithdrawAssetRule(IVault vault_, address contractAddress, address[] memory assetList)
         internal
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         bytes4 funcSig = bytes4(keccak256("withdrawAsset(address,uint256,address,address)"));
@@ -191,12 +197,12 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        // vault_.setProcessorRule(contractAddress, funcSig, rule);
         return (contractAddress, funcSig, rule);
     }
 
     function getWethDepositRule(IVault vault_, address weth_)
         public
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         bytes4 funcSig = bytes4(keccak256("deposit()"));
@@ -206,12 +212,12 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        // SafeRules.setProcessorRule(vault_, weth_, funcSig, rule);
         return (weth_, funcSig, rule);
     }
 
     function getWethWithdrawRule(IVault vault_, address weth_)
         internal
+        pure
         returns (address, bytes4, IVault.FunctionRule memory)
     {
         bytes4 funcSig = bytes4(keccak256("withdraw(uint256)"));
@@ -224,7 +230,6 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        // SafeRules.setProcessorRule(vault_, weth_, funcSig, rule);
         return (weth_, funcSig, rule);
     }
 }
