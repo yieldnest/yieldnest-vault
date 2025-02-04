@@ -49,24 +49,18 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         vm.stopPrank();
 
         _setApprovalRule(address(mockBuffer));
-        //@note: uncomment this for a stack too deep error
+        //@note: uncomment next line for a stack too deep error
         // _setDepositRule(address(mockBuffer));
     }
 
     function _setApprovalRule(address mockBuffer) internal {
-            IVault.FunctionRule memory rule;
-            address contractAddress;
-            bytes4 funcSig;
-        (contractAddress, funcSig, rule) = BaseRules.getApprovalRule(vault, MC.WETH, address(mockBuffer), true);
-        vault.setProcessorRule(contractAddress, funcSig, rule);
+        BaseRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(vault, MC.WETH, address(mockBuffer), true);
+        vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
     }
 
     function _setDepositRule(address mockBuffer) internal {
-            IVault.FunctionRule memory rule;
-            address contractAddress;
-            bytes4 funcSig;
-        (contractAddress, funcSig, rule) = BaseRules.getDepositRule(vault, address(mockBuffer));
-        vault.setProcessorRule(contractAddress, funcSig, rule);
+        BaseRules.RuleParams memory ruleParams = BaseRules.getDepositRule(vault, address(mockBuffer));
+        vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
     }
 
     function totalSupplyInvariant(uint256 supply) public view {
