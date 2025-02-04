@@ -8,6 +8,8 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {YieldNestRules} from "script/rules/YieldNestRules.sol";
 import {BaseRoles} from "script/roles/BaseRoles.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 contract YnETHxConfigurer is MainnetActors {
     error NotAdmin();
@@ -52,8 +54,11 @@ contract YnETHxConfigurer is MainnetActors {
 
         {
             // wrap/unwrap ETH
-            BaseRules.setWethDepositRule(vault, MC.WETH);
-            BaseRules.setWethWithdrawRule(vault, MC.WETH);
+            (address weth_, bytes4 funcSig, IVault.FunctionRule memory rule) =
+                BaseRules.getWethDepositRule(vault, MC.WETH);
+            SafeRules.setProcessorRule(vault, weth_, funcSig, rule);
+            (weth_, funcSig, rule) = BaseRules.getWethWithdrawRule(vault, MC.WETH);
+            SafeRules.setProcessorRule(vault, weth_, funcSig, rule);
         }
 
         {
@@ -61,7 +66,9 @@ contract YnETHxConfigurer is MainnetActors {
             address[] memory strategies = new address[](2);
             strategies[0] = MC.EULER_WETH_22_VAULT;
             strategies[1] = withdrawer;
-            BaseRules.setApprovalRule(vault, MC.WETH, strategies);
+            (address weth_, bytes4 funcSig, IVault.FunctionRule memory rule) =
+                BaseRules.getApprovalRule(vault, MC.WETH, strategies);
+            SafeRules.setProcessorRule(vault, weth_, funcSig, rule);
         }
 
         {
@@ -75,15 +82,20 @@ contract YnETHxConfigurer is MainnetActors {
             strategies[1] = withdrawer;
 
             for (uint256 i = 0; i < assets.length; i++) {
-                BaseRules.setApprovalRule(vault, assets[i], strategies);
+                (address asset_, bytes4 funcSig, IVault.FunctionRule memory rule) =
+                    BaseRules.getApprovalRule(vault, assets[i], strategies);
+                SafeRules.setProcessorRule(vault, asset_, funcSig, rule);
             }
         }
 
         {
             // buffer deposit/withdraw WETH
-            // setApprovalRule(vault, MC.WETH, MC.EULER_WETH_22_VAULT);
-            BaseRules.setDepositRule(vault, MC.EULER_WETH_22_VAULT);
-            BaseRules.setWithdrawRule(vault, MC.EULER_WETH_22_VAULT);
+            // getApprovalRule(vault, MC.WETH, MC.EULER_WETH_22_VAULT);
+            (address eulerWeth_, bytes4 funcSig, IVault.FunctionRule memory rule) =
+                BaseRules.getDepositRule(vault, MC.EULER_WETH_22_VAULT);
+            SafeRules.setProcessorRule(vault, eulerWeth_, funcSig, rule);
+            (eulerWeth_, funcSig, rule) = BaseRules.getWithdrawRule(vault, MC.EULER_WETH_22_VAULT);
+            SafeRules.setProcessorRule(vault, eulerWeth_, funcSig, rule);
         }
 
         {
@@ -97,7 +109,7 @@ contract YnETHxConfigurer is MainnetActors {
             assets[0] = MC.WSTETH;
             assets[1] = MC.WOETH;
             // for (uint256 i = 0; i < assets.length; i++) {
-            //     setApprovalRule(vault, assets[i], MC.YNLSDE);
+            //     getApprovalRule(vault, assets[i], MC.YNLSDE);
             // }
             YieldNestRules.setYnEigenDepositRule(vault, MC.YNLSDE, assets, address(vault));
         }
@@ -113,15 +125,19 @@ contract YnETHxConfigurer is MainnetActors {
             strategies[1] = withdrawer;
 
             for (uint256 i = 0; i < assets.length; i++) {
-                BaseRules.setApprovalRule(vault, assets[i], strategies);
+                (address asset_, bytes4 funcSig, IVault.FunctionRule memory rule) =
+                    BaseRules.getApprovalRule(vault, assets[i], strategies);
+                vault.setProcessorRule(asset_, funcSig, rule);
             }
         }
 
         {
             // ynETH-ynLSDe pool connector & tokenized strategy
-            // setApprovalRule(vault, MC.YNETH, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
-            // setApprovalRule(vault, MC.YNLSDE, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
-            BaseRules.setApprovalRule(vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+            // getApprovalRule(vault, MC.YNETH, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+            // getApprovalRule(vault, MC.YNLSDE, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+            (address ynLsDe_, bytes4 funcSig, IVault.FunctionRule memory rule) =
+                BaseRules.getApprovalRule(vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+            SafeRules.setProcessorRule(vault, ynLsDe_, funcSig, rule);
             ConnectorRules.setConnectorDepositRule(vault, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
             ConnectorRules.setConnectorWithdrawRule(vault, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
         }
@@ -148,13 +164,20 @@ contract YnETHxConfigurer is MainnetActors {
                 ) {
                     continue;
                 }
-                BaseRules.setApprovalRule(vault, assets[i], withdrawer);
+                (address asset_, bytes4 approvalFuncSig, IVault.FunctionRule memory approvalRule) =
+                    BaseRules.getApprovalRule(vault, assets[i], withdrawer);
+                vault.setProcessorRule(asset_, approvalFuncSig, approvalRule);
             }
-            BaseRules.setDepositAssetRule(vault, withdrawer, assets);
+            (address withdrawer_, bytes4 depositFuncSig, IVault.FunctionRule memory depositRule) =
+                BaseRules.getDepositAssetRule(vault, withdrawer, assets);
+            vault.setProcessorRule(withdrawer_, depositFuncSig, depositRule);
 
             // Withdrawable: only WETH
-            BaseRules.setWithdrawRule(vault, withdrawer);
-            BaseRules.setWithdrawAssetRule(vault, withdrawer, MC.WETH);
+            (address withdrawer__, bytes4 withdrawFuncSig, IVault.FunctionRule memory withdrawRule) =
+                BaseRules.getWithdrawRule(vault, withdrawer);
+            vault.setProcessorRule(withdrawer__, withdrawFuncSig, withdrawRule);
+            (withdrawer__, withdrawFuncSig, withdrawRule) = BaseRules.getWithdrawAssetRule(vault, withdrawer, MC.WETH);
+            vault.setProcessorRule(withdrawer__, withdrawFuncSig, withdrawRule);
         }
 
         vault.unpause();

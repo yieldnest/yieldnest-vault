@@ -82,21 +82,24 @@ contract SetupWithdrawer is Test, MainnetActors {
 
         {
             // ynETH withdrawal queue
-            BaseRules.setApprovalRule(vault, MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+            (address ynEth_, bytes4 funcSig, IVault.FunctionRule memory rule) = BaseRules.getApprovalRule(vault, MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
+            vault.setProcessorRule(ynEth_, funcSig, rule);
             WithdrawerRules.setRequestWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
             WithdrawerRules.setClaimWithdrawalRule(vault, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER);
         }
 
         {
             // ynLSDe withdrawal queue
-            BaseRules.setApprovalRule(vault, MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+            (address ynLsDe_, bytes4 funcSig, IVault.FunctionRule memory rule) = BaseRules.getApprovalRule(vault, MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
+            vault.setProcessorRule(ynLsDe_, funcSig, rule);
             WithdrawerRules.setRequestWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
             WithdrawerRules.setClaimWithdrawalRule(vault, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER);
         }
 
         {
             // wstETH withdrawal queue
-            BaseRules.setApprovalRule(vault, MC.WSTETH, MC.WSTETH_WITHDRAWAL_QUEUE);
+            (address wstEth_, bytes4 funcSig, IVault.FunctionRule memory rule) = BaseRules.getApprovalRule(vault, MC.WSTETH, MC.WSTETH_WITHDRAWAL_QUEUE);
+            vault.setProcessorRule(wstEth_, funcSig, rule);
             WithdrawerRules.setRequestWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
             WithdrawerRules.setClaimWithdrawalWstETHRule(vault, MC.WSTETH_WITHDRAWAL_QUEUE);
         }
@@ -105,15 +108,20 @@ contract SetupWithdrawer is Test, MainnetActors {
 
         {
             // wrap/unwrap wstETH
-            StakedEtherRules.setWrapRule(vault, MC.WSTETH);
-            StakedEtherRules.setUnwrapRule(vault, MC.WSTETH);
+            (address wsteth_, bytes4 funcSig, IVault.FunctionRule memory rule) = StakedEtherRules.getWrapRule(vault, MC.WSTETH);
+            vault.setProcessorRule(wsteth_, funcSig, rule);
+            (wsteth_, funcSig, rule) = StakedEtherRules.getUnwrapRule(vault, MC.WSTETH);
+            vault.setProcessorRule(wsteth_, funcSig, rule);
         }
 
         {
             // wrap/unwrap woeth
-            BaseRules.setDepositRule(vault, MC.WOETH);
-            BaseRules.setWithdrawRule(vault, MC.WOETH);
-            BaseRules.setRedeemRule(vault, MC.WOETH);
+            (address woeth_, bytes4 funcSig, IVault.FunctionRule memory rule) = BaseRules.getDepositRule(vault, MC.WOETH);
+            vault.setProcessorRule(woeth_, funcSig, rule);
+            (woeth_, funcSig, rule) = BaseRules.getWithdrawRule(vault, MC.WOETH);
+            vault.setProcessorRule(woeth_, funcSig, rule);
+            (woeth_, funcSig, rule) = BaseRules.getRedeemRule(vault, MC.WOETH);
+            vault.setProcessorRule(woeth_, funcSig, rule);
         }
 
         vault.unpause();
