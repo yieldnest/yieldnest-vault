@@ -46,8 +46,10 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         vm.stopPrank();
 
-        BaseRules.setApprovalRule(vault, MC.WETH, address(mockBuffer), true);
-        BaseRules.setDepositRule(vault, address(mockBuffer));
+        (address weth_, bytes4 funcSig, IVault.FunctionRule memory rule) = BaseRules.getApprovalRule(vault, MC.WETH, address(mockBuffer), true);
+        vault.setProcessorRule(weth_, funcSig, rule);
+        (address mockBuffer_, bytes4 depositFuncSig, IVault.FunctionRule depositRule) = BaseRules.getDepositRule(vault, address(mockBuffer));
+        vault.setProcessorRule(mockBuffer_, depositFuncSig, depositRule);
     }
 
     function totalSupplyInvariant(uint256 supply) public view {

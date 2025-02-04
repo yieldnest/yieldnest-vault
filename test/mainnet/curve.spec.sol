@@ -73,11 +73,14 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
         }
         // forcing set rule for testing
         // Set approval rule to allow ethStethPool to spend stETH tokens from the vault
-        BaseRules.setApprovalRule(_vault, MC.STETH, ethStethPool, true);
+        (address steth_, bytes4 funcSig, IVault.FunctionRule memory rule) = BaseRules.getApprovalRule(_vault, MC.STETH, ethStethPool, true);
+        _vault.setProcessorRule(steth_, funcSig, rule);
 
         // Set approval rules for ynETH and wstETH to be spent by ynETHWstETH pool
-        BaseRules.setApprovalRule(_vault, MC.YNETH, ynETHWstETHPool, true);
-        BaseRules.setApprovalRule(_vault, MC.WSTETH, ynETHWstETHPool, true);
+        (address ynEth_, bytes4 ynEthFuncSig, IVault.FunctionRule ynEthRule) = BaseRules.getApprovalRule(_vault, MC.YNETH, ynETHWstETHPool, true);
+        _vault.setProcessorRule(ynEth_, ynEthFuncSig, ynEthRule);
+        (address wstEth_, bytes4 wstEthFuncSig, IVault.FunctionRule wstEthRule) = BaseRules.getApprovalRule(_vault, MC.WSTETH, ynETHWstETHPool, true);
+        _vault.setProcessorRule(wstEth_, wstEthFuncSig, wstEthRule);
 
         vm.stopPrank();
     }
