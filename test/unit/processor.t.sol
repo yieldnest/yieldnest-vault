@@ -204,6 +204,138 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         }
     }
 
+    function test_Vault_setProcessorRule() public {
+        bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
+        address receiver = address(420);
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        address[] memory allowList = new address[](1);
+        allowList[0] = receiver;
+
+        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+
+        vm.prank(PROCESSOR_MANAGER);
+        vault.setProcessorRule(address(421), funcSig, rule);
+
+        IVault.FunctionRule memory setRule = vault.getProcessorRule(address(421), funcSig);
+        assertEq(setRule.isActive, rule.isActive, "Rule should be active");
+        assertEq(setRule.paramRules.length, paramRules.length, "Param rules length should match");
+        assertEq(setRule.paramRules[1].allowList[0], receiver, "Allow list should match");
+    }
+
+    function test_Vault_setProcessorRules_Revert_OnlyProcessorManager() public {
+        bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
+        address receiver = address(420);
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        address[] memory allowList = new address[](1);
+        allowList[0] = receiver;
+
+        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+
+        vm.prank(address(420));
+        vm.expectRevert();
+        vault.setProcessorRule(address(421), funcSig, rule);
+    }
+
+    function test_Vault_setProcessorRules() public {
+        // deposit(uint256,address)
+        bytes4 depositSig = bytes4(keccak256("deposit(uint256,address)"));
+        address receiver = address(420);
+        IVault.ParamRule[] memory depostParamRules = new IVault.ParamRule[](2);
+
+        depostParamRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        address[] memory allowList = new address[](1);
+        allowList[0] = receiver;
+
+        depostParamRules[1] =
+            IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        IVault.FunctionRule memory depositRule =
+            IVault.FunctionRule({isActive: true, paramRules: depostParamRules, validator: IValidator(address(0))});
+        // approve(address,uint256)
+        bytes4 approveSig = bytes4(keccak256("approve(address,uint256)"));
+
+        IVault.ParamRule[] memory approveParamRules = new IVault.ParamRule[](2);
+
+        approveParamRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        approveParamRules[1] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        IVault.FunctionRule memory approveRule =
+            IVault.FunctionRule({isActive: true, paramRules: approveParamRules, validator: IValidator(address(0))});
+        // deposit()
+        bytes4 depositWethSig = bytes4(keccak256("deposit()"));
+
+        IVault.ParamRule[] memory depositWethParamRules = new IVault.ParamRule[](0);
+
+        IVault.FunctionRule memory depositWethRule =
+            IVault.FunctionRule({isActive: true, paramRules: depositWethParamRules, validator: IValidator(address(0))});
+
+        IVault.FunctionRule[] memory rules = new IVault.FunctionRule[](3);
+        rules[0] = depositRule;
+        rules[1] = approveRule;
+        rules[2] = depositWethRule;
+
+        address[] memory targets = new address[](3);
+        targets[0] = address(421);
+        targets[1] = address(422);
+        targets[2] = address(423);
+
+        bytes4[] memory funcSigs = new bytes4[](3);
+        funcSigs[0] = depositSig;
+        funcSigs[1] = approveSig;
+        funcSigs[2] = depositWethSig;
+
+        vm.prank(PROCESSOR_MANAGER);
+        vault.setProcessorRules(targets, funcSigs, rules);
+
+        IVault.FunctionRule memory setRule = vault.getProcessorRule(targets[0], funcSigs[0]);
+        assertEq(setRule.isActive, rules[0].isActive, "Rule should be active");
+        assertEq(setRule.paramRules.length, rules[0].paramRules.length, "Param rules length should match");
+        assertEq(setRule.paramRules[1].allowList[0], receiver, "Allow list 1  should match");
+
+        setRule = vault.getProcessorRule(targets[1], funcSigs[1]);
+        assertEq(setRule.isActive, true, "Rule should be active");
+        assertEq(setRule.paramRules.length, rules[1].paramRules.length, "Param rules length should match");
+        assertEq(setRule.paramRules[0].allowList[0], address(receiver), "Allow list 2 should match");
+
+        setRule = vault.getProcessorRule(targets[2], funcSigs[2]);
+        assertEq(setRule.isActive, rules[2].isActive, "Rule should be active");
+        assertEq(setRule.paramRules.length, rules[2].paramRules.length, "Param rules length should match");
+    }
+
+    function test_Vault_setProcessorRules_Revert_InvalidArrayLength() public {
+        address[] memory targets = new address[](1);
+        targets[0] = address(421);
+
+        bytes4[] memory funcSigs = new bytes4[](2);
+        funcSigs[0] = bytes4(keccak256("deposit(uint256,address)"));
+        funcSigs[1] = bytes4(keccak256("approve(address,uint256)"));
+
+        IVault.FunctionRule[] memory rules = new IVault.FunctionRule[](2);
+
+        vm.prank(PROCESSOR_MANAGER);
+        vm.expectRevert();
+        vault.setProcessorRules(targets, funcSigs, rules);
+    }
+
     function test_Vault_processorCall_failsWithBadTarget() public {
         address[] memory targets = new address[](1);
         targets[0] = address(0); // Invalid target address
