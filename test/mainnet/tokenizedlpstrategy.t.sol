@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {IERC20} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
@@ -10,7 +11,6 @@ import {MainnetActors} from "script/Actors.sol";
 import {Provider, IProvider} from "src/module/Provider.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
-import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 
 contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
     IERC20 public strategy;
@@ -212,8 +212,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         uint256 initialTotalAssets = vault.totalAssets();
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
-        uint256 shares =
-            ConnectorRules.processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        uint256 shares = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
 
@@ -247,8 +246,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         uint256 initialTotalAssets = vault.totalAssets();
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
-        uint256 shares =
-            ConnectorRules.processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        uint256 shares = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
 
@@ -260,7 +258,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
             vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first deposit"
         );
 
-        ConnectorRules.processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
+        _processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
 
         vault.processAccounting();
 
@@ -275,8 +273,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         amountA = IERC20(ASSET_A).balanceOf(address(vault));
         amountB = IERC20(ASSET_B).balanceOf(address(vault));
 
-        uint256 shares2 =
-            ConnectorRules.processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        uint256 shares2 = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
 
@@ -292,7 +289,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
             vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second deposit"
         );
 
-        ConnectorRules.processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
+        _processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
 
         vault.processAccounting();
 
@@ -303,5 +300,58 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         assertApproxEqRel(
             vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second withdraw"
         );
+    }
+
+    function _processConnectorDeposit(
+        IVault vault_,
+        address connectorAddress,
+        address assetA,
+        address assetB,
+        uint256 amountA,
+        uint256 amountB,
+        uint256 minOut
+    ) internal returns (uint256 shares) {
+        address[] memory targets = new address[](3);
+        targets[0] = assetA;
+        targets[1] = assetB;
+        targets[2] = connectorAddress;
+
+        uint256[] memory values = new uint256[](3);
+        values[0] = 0;
+        values[1] = 0;
+        values[2] = 0;
+
+        bytes[] memory data = new bytes[](3);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", connectorAddress, amountA);
+        data[1] = abi.encodeWithSignature("approve(address,uint256)", connectorAddress, amountB);
+        data[2] = abi.encodeWithSignature("deposit(uint256,uint256,uint256)", amountA, amountB, minOut);
+
+        bytes[] memory returnData = vault_.processor(targets, values, data);
+
+        shares = abi.decode(returnData[2], (uint256));
+    }
+
+    function _processConnectorWithdraw(
+        IVault vault_,
+        address connectorAddress,
+        address strategyAddress,
+        uint256 amount,
+        uint256 minAmountA,
+        uint256 minAmountB
+    ) internal returns (uint256[2] memory) {
+        address[] memory targets = new address[](2);
+        targets[0] = strategyAddress;
+        targets[1] = connectorAddress;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", connectorAddress, amount);
+        data[1] = abi.encodeWithSignature("withdraw(uint256,uint256,uint256)", amount, minAmountA, minAmountB);
+
+        bytes[] memory returnData = vault_.processor(targets, values, data);
+
+        return abi.decode(returnData[1], (uint256[2]));
     }
 }

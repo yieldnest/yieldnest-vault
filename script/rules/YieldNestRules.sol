@@ -5,7 +5,11 @@ import {IVault, IValidator} from "src/interface/IVault.sol";
 import {SafeRules} from "./SafeRules.sol";
 
 library YieldNestRules {
-    function setYnETHDepositRule(IVault vault_, address contractAddress, address receiver) public {
+    function getYnETHDepositRule(address contractAddress, address receiver)
+        internal
+        pure
+        returns (SafeRules.RuleParams memory)
+    {
         bytes4 funcSig = bytes4(keccak256("depositETH(address)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](1);
@@ -18,11 +22,13 @@ library YieldNestRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
+        return SafeRules.RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
     }
 
-    function setYnEigenDepositRule(IVault vault_, address contractAddress, address[] memory assetList, address receiver)
-        public
+    function getYnEigenDepositRule(address contractAddress, address[] memory assetList, address receiver)
+        internal
+        pure
+        returns (SafeRules.RuleParams memory)
     {
         bytes4 funcSig = bytes4(keccak256("deposit(address,uint256,address)"));
 
@@ -41,6 +47,6 @@ library YieldNestRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        SafeRules.setProcessorRule(vault_, contractAddress, funcSig, rule);
+        return SafeRules.RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
     }
 }
