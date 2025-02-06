@@ -27,6 +27,15 @@ library BaseRoles {
         vault.grantRole(vault.UNPAUSER_ROLE(), address(this));
     }
 
+    function configureTemporaryRoles(BaseVault vault, address deployer) internal {
+        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), deployer);
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), deployer);
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), deployer);
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), deployer);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), deployer);
+        vault.grantRole(vault.UNPAUSER_ROLE(), deployer);
+    }
+
     function renounceTemporaryRoles(BaseVault vault) internal {
         vault.renounceRole(vault.DEFAULT_ADMIN_ROLE(), address(this));
         vault.renounceRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));
@@ -34,5 +43,14 @@ library BaseRoles {
         vault.renounceRole(vault.PROVIDER_MANAGER_ROLE(), address(this));
         vault.renounceRole(vault.ASSET_MANAGER_ROLE(), address(this));
         vault.renounceRole(vault.UNPAUSER_ROLE(), address(this));
+    }
+
+    function renounceTemporaryRoles(BaseVault vault, address deployer) internal {
+        vault.renounceRole(vault.DEFAULT_ADMIN_ROLE(), deployer);
+        vault.renounceRole(vault.PROCESSOR_MANAGER_ROLE(), deployer);
+        vault.renounceRole(vault.BUFFER_MANAGER_ROLE(), deployer);
+        vault.renounceRole(vault.PROVIDER_MANAGER_ROLE(), deployer);
+        vault.renounceRole(vault.ASSET_MANAGER_ROLE(), deployer);
+        vault.renounceRole(vault.UNPAUSER_ROLE(), deployer);
     }
 }

@@ -82,7 +82,7 @@ contract DeployWithdrawer is Script {
         {
             // configure roles
             BaseRoles.configureDefaultRoles(withdrawer, timelock, actors);
-            BaseRoles.configureTemporaryRoles(withdrawer);
+            BaseRoles.configureTemporaryRoles(withdrawer, deployer);
         }
 
         // set the rate provider contract
@@ -154,6 +154,6 @@ contract DeployWithdrawer is Script {
 
         withdrawer.unpause();
 
-        BaseRoles.renounceTemporaryRoles(withdrawer);
+        BaseRoles.renounceTemporaryRoles(withdrawer, deployer);
     }
 }
