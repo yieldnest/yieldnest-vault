@@ -19,6 +19,7 @@ import {MainnetActors} from "script/Actors.sol";
 
 contract DeployWithdrawer is Script {
     using stdJson for string;
+
     error InvalidRules();
 
     address public deployer;
