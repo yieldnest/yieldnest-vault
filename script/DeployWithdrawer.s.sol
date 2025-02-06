@@ -64,15 +64,15 @@ contract DeployWithdrawer is Script {
             bool countNativeAsset_ = true;
             bool alwaysComputeTotalAssets_ = false;
 
-            withdrawer.initialize(
-                MainnetActors.ADMIN, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_
-            );
+            withdrawer.initialize(actors.ADMIN(), name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
         }
 
-        _configureWithdrawer(withdrawer, address(MC.PROVIDER), MC.TIMELOCK);
+        _configureWithdrawer(address(MC.PROVIDER), MC.TIMELOCK);
 
         saveDeployment(
-            address(withdrawerImplementation), address(withdrawerProxy), ProxyUtils.getProxyAdmin(withdrawerProxy)
+            address(withdrawerImplementation),
+            address(withdrawerProxy),
+            ProxyUtils.getProxyAdmin(address(withdrawerProxy))
         );
 
         vm.stopBroadcast();
@@ -82,7 +82,7 @@ contract DeployWithdrawer is Script {
         {
             // configure roles
             BaseRoles.configureDefaultRoles(withdrawer, timelock, actors);
-            BaseRoles.configureTemporaryRoles(deployer);
+            BaseRoles.configureTemporaryRoles(withdrawer);
         }
 
         // set the rate provider contract
