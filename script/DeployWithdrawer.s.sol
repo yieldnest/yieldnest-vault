@@ -19,8 +19,11 @@ import {MainnetActors} from "script/Actors.sol";
 
 contract DeployWithdrawer is Script {
     using stdJson for string;
+    error InvalidRules();
 
+    address public deployer;
     Withdrawer public withdrawer;
+    MainnetActors public actors;
 
     function label() public view returns (string memory) {
         return string.concat("Withdrawer-", Strings.toString(block.chainid));
@@ -42,6 +45,8 @@ contract DeployWithdrawer is Script {
 
     function run() public {
         vm.startBroadcast();
+        deployer = msg.sender;
+        actors = new MainnetActors();
         Withdrawer withdrawerImplementation = new Withdrawer();
 
         // Deploy the proxy
@@ -72,13 +77,11 @@ contract DeployWithdrawer is Script {
         vm.stopBroadcast();
     }
 
-    function _configureWithdrawer(Withdrawer withdrawer, address provider, address timelock) internal {
+    function _configureWithdrawer(address provider, address timelock) internal {
         {
             // configure roles
-            BaseRoles.configureDefaultRoles(withdrawer, timelock, IActors(MainnetActors.ADMIN));
-            BaseRoles.configureTemporaryRoles(withdrawer);
-            withdrawer.grantRole(withdrawer.DEFAULT_ADMIN_ROLE(), MainnetActors.ADMIN);
-            withdrawer.grantRole(withdrawer.ALLOCATOR_MANAGER_ROLE(), ALLOCATOR_MANAGER);
+            BaseRoles.configureDefaultRoles(withdrawer, timelock, actors);
+            BaseRoles.configureTemporaryRoles(deployer);
         }
 
         // set the rate provider contract
