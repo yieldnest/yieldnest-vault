@@ -16,7 +16,7 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 
 contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
-    
+
     function setUp() public {
         SetupVault setup = new SetupVault();
         setup.upgrade();

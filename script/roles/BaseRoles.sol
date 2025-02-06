@@ -20,11 +20,7 @@ library BaseRoles {
     }
 
     function configureTemporaryRoles(BaseVault vault) internal {
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), address(this));
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), address(this));
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
-        vault.grantRole(vault.UNPAUSER_ROLE(), address(this));
+        configureTemporaryRoles(vault, address(this));
     }
 
     function configureTemporaryRoles(BaseVault vault, address deployer) internal {
@@ -37,12 +33,7 @@ library BaseRoles {
     }
 
     function renounceTemporaryRoles(BaseVault vault) internal {
-        vault.renounceRole(vault.DEFAULT_ADMIN_ROLE(), address(this));
-        vault.renounceRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));
-        vault.renounceRole(vault.BUFFER_MANAGER_ROLE(), address(this));
-        vault.renounceRole(vault.PROVIDER_MANAGER_ROLE(), address(this));
-        vault.renounceRole(vault.ASSET_MANAGER_ROLE(), address(this));
-        vault.renounceRole(vault.UNPAUSER_ROLE(), address(this));
+        renounceTemporaryRoles(vault, address(this));
     }
 
     function renounceTemporaryRoles(BaseVault vault, address deployer) internal {

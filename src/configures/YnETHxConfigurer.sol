@@ -161,7 +161,7 @@ contract YnETHxConfigurer is MainnetActors {
             revert InvalidRules();
         }
 
-        SafeRules.setProcessorRules(vault, rules);
+        SafeRules.setProcessorRules(vault, rules, true);
 
         vault.unpause();
 
