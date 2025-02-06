@@ -12,8 +12,7 @@ import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
-import {IVault} from "src/interface/IVault.sol";
-
+import {SafeRules} from "script/rules/SafeRules.sol";
 
 contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
@@ -48,19 +47,14 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         vm.stopPrank();
 
-        _setApprovalRule(address(mockBuffer));
-        //@note: uncomment next line for a stack too deep error
-        // _setDepositRule(address(mockBuffer));
+        _setupRules(address(mockBuffer));
     }
 
-    function _setApprovalRule(address mockBuffer) internal {
-        BaseRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(vault, MC.WETH, address(mockBuffer), true);
-        vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
-    }
-
-    function _setDepositRule(address mockBuffer) internal {
-        BaseRules.RuleParams memory ruleParams = BaseRules.getDepositRule(vault, address(mockBuffer));
-        vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
+    function _setupRules(address mockBuffer) internal {
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](2);
+        rules[0] = BaseRules.getApprovalRule(MC.WETH, address(mockBuffer));
+        rules[1] = BaseRules.getDepositRule(address(mockBuffer), address(vault));
+        SafeRules.setProcessorRules(vault, rules, true);
     }
 
     function totalSupplyInvariant(uint256 supply) public view {

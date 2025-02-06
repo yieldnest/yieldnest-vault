@@ -5,43 +5,21 @@ import {IVault, IValidator} from "src/interface/IVault.sol";
 import {SafeRules} from "./SafeRules.sol";
 
 library BaseRules {
-    struct RuleParams {
-        address contractAddress;
-        bytes4 funcSig;
-        IVault.FunctionRule rule;
-    }
-
-    function getApprovalRule(IVault vault_, address contractAddress, address spender)
+    function getApprovalRule(address contractAddress, address spender)
         internal
         pure
-        returns (RuleParams memory)
-    {
-        return getApprovalRule(vault_, contractAddress, spender, false);
-    }
-
-    function getApprovalRule(IVault vault_, address contractAddress, address spender, bool force)
-        internal
-        pure
-        returns (RuleParams memory)
+        returns (SafeRules.RuleParams memory)
     {
         address[] memory allowList = new address[](1);
         allowList[0] = spender;
 
-        return getApprovalRule(vault_, contractAddress, allowList, force);
+        return getApprovalRule(contractAddress, allowList);
     }
 
-    function getApprovalRule(IVault vault_, address contractAddress, address[] memory allowList)
+    function getApprovalRule(address contractAddress, address[] memory allowList)
         internal
         pure
-        returns (RuleParams memory)
-    {
-        return getApprovalRule(vault_, contractAddress, allowList, false);
-    }
-
-    function getApprovalRule(IVault vault_, address contractAddress, address[] memory allowList, bool force)
-        internal
-        pure
-        returns (RuleParams memory)
+        returns (SafeRules.RuleParams memory)
     {
         bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
 
@@ -55,10 +33,14 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        return RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
+        return SafeRules.RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
     }
 
-    function getDepositRule(IVault vault_, address contractAddress) public pure returns (RuleParams memory) {
+    function getDepositRule(address contractAddress, address receiver)
+        internal
+        pure
+        returns (SafeRules.RuleParams memory)
+    {
         bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
@@ -67,31 +49,31 @@ library BaseRules {
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         address[] memory allowList = new address[](1);
-        allowList[0] = address(vault_);
+        allowList[0] = address(receiver);
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        return RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
+        return SafeRules.RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
     }
 
-    function getDepositAssetRule(IVault vault_, address contractAddress, address asset)
+    function getDepositAssetRule(address contractAddress, address asset, address receiver)
         internal
         pure
-        returns (RuleParams memory)
+        returns (SafeRules.RuleParams memory)
     {
         address[] memory allowList = new address[](1);
         allowList[0] = asset;
 
-        return getDepositAssetRule(vault_, contractAddress, allowList);
+        return getDepositAssetRule(contractAddress, allowList, receiver);
     }
 
-    function getDepositAssetRule(IVault vault_, address contractAddress, address[] memory allowList)
+    function getDepositAssetRule(address contractAddress, address[] memory allowList, address receiver)
         internal
         pure
-        returns (RuleParams memory)
+        returns (SafeRules.RuleParams memory)
     {
         bytes4 funcSig = bytes4(keccak256("depositAsset(address,uint256,address)"));
 
@@ -103,7 +85,7 @@ library BaseRules {
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         address[] memory allowListReceivers = new address[](1);
-        allowListReceivers[0] = address(vault_);
+        allowListReceivers[0] = address(receiver);
 
         paramRules[2] =
             IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowListReceivers});
@@ -111,10 +93,14 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        return RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
+        return SafeRules.RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
     }
 
-    function getWithdrawRule(IVault vault_, address contractAddress) public pure returns (RuleParams memory) {
+    function getWithdrawRule(address contractAddress, address receiver)
+        public
+        pure
+        returns (SafeRules.RuleParams memory)
+    {
         bytes4 funcSig = bytes4(keccak256("withdraw(uint256,address,address)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](3);
@@ -123,7 +109,7 @@ library BaseRules {
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         address[] memory allowList = new address[](1);
-        allowList[0] = address(vault_);
+        allowList[0] = address(receiver);
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
@@ -132,10 +118,14 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        return RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
+        return SafeRules.RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
     }
 
-    function getRedeemRule(IVault vault_, address contractAddress) public pure returns (RuleParams memory) {
+    function getRedeemRule(address contractAddress, address receiver)
+        internal
+        pure
+        returns (SafeRules.RuleParams memory)
+    {
         bytes4 funcSig = bytes4(keccak256("redeem(uint256,address,address)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](3);
@@ -144,7 +134,7 @@ library BaseRules {
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         address[] memory allowList = new address[](1);
-        allowList[0] = address(vault_);
+        allowList[0] = address(receiver);
 
         paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
@@ -153,24 +143,24 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        return RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
+        return SafeRules.RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
     }
 
-    function getWithdrawAssetRule(IVault vault_, address contractAddress, address asset)
+    function getWithdrawAssetRule(address contractAddress, address asset, address receiver)
         internal
         pure
-        returns (RuleParams memory)
+        returns (SafeRules.RuleParams memory)
     {
         address[] memory allowList = new address[](1);
         allowList[0] = asset;
 
-        return getWithdrawAssetRule(vault_, contractAddress, allowList);
+        return getWithdrawAssetRule(contractAddress, allowList, receiver);
     }
 
-    function getWithdrawAssetRule(IVault vault_, address contractAddress, address[] memory assetList)
+    function getWithdrawAssetRule(address contractAddress, address[] memory assetList, address receiver)
         internal
         pure
-        returns (RuleParams memory)
+        returns (SafeRules.RuleParams memory)
     {
         bytes4 funcSig = bytes4(keccak256("withdrawAsset(address,uint256,address,address)"));
 
@@ -182,7 +172,7 @@ library BaseRules {
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         address[] memory allowList = new address[](1);
-        allowList[0] = address(vault_);
+        allowList[0] = address(receiver);
 
         paramRules[2] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
@@ -191,10 +181,10 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        return RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
+        return SafeRules.RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
     }
 
-    function getWethDepositRule(IVault vault_, address weth_) public pure returns (RuleParams memory) {
+    function getWethDepositRule(address weth_) internal pure returns (SafeRules.RuleParams memory) {
         bytes4 funcSig = bytes4(keccak256("deposit()"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
@@ -202,10 +192,10 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        return RuleParams({contractAddress: weth_, funcSig: funcSig, rule: rule});
+        return SafeRules.RuleParams({contractAddress: weth_, funcSig: funcSig, rule: rule});
     }
 
-    function getWethWithdrawRule(IVault vault_, address weth_) internal pure returns (RuleParams memory) {
+    function getWethWithdrawRule(address weth_) internal pure returns (SafeRules.RuleParams memory) {
         bytes4 funcSig = bytes4(keccak256("withdraw(uint256)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](1);
@@ -216,6 +206,6 @@ library BaseRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        return RuleParams({contractAddress: weth_, funcSig: funcSig, rule: rule});
+        return SafeRules.RuleParams({contractAddress: weth_, funcSig: funcSig, rule: rule});
     }
 }

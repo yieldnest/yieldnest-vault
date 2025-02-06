@@ -13,6 +13,7 @@ import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {IStETH} from "test/interface/external/lido/IStETH.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
 
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
@@ -73,13 +74,13 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
         }
         // forcing set rule for testing
         // Set approval rule to allow ethStethPool to spend stETH tokens from the vault
-        BaseRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(_vault, MC.STETH, ethStethPool, true);
+        SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(MC.STETH, ethStethPool);
         _vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
 
         // Set approval rules for ynETH and wstETH to be spent by ynETHWstETH pool
-        BaseRules.RuleParams memory ynEthRuleParams = BaseRules.getApprovalRule(_vault, MC.YNETH, ynETHWstETHPool, true);
+        SafeRules.RuleParams memory ynEthRuleParams = BaseRules.getApprovalRule(MC.YNETH, ynETHWstETHPool);
         _vault.setProcessorRule(ynEthRuleParams.contractAddress, ynEthRuleParams.funcSig, ynEthRuleParams.rule);
-        BaseRules.RuleParams memory wstEthRuleParams = BaseRules.getApprovalRule(_vault, MC.WSTETH, ynETHWstETHPool, true);
+        SafeRules.RuleParams memory wstEthRuleParams = BaseRules.getApprovalRule(MC.WSTETH, ynETHWstETHPool);
         _vault.setProcessorRule(wstEthRuleParams.contractAddress, wstEthRuleParams.funcSig, wstEthRuleParams.rule);
 
         vm.stopPrank();
