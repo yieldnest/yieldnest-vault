@@ -41,7 +41,6 @@ contract DeployWithdrawer is Script {
     }
 
     function run() public {
-
         vm.startBroadcast();
         Withdrawer withdrawerImplementation = new Withdrawer();
 
@@ -59,12 +58,16 @@ contract DeployWithdrawer is Script {
             bool countNativeAsset_ = true;
             bool alwaysComputeTotalAssets_ = false;
 
-            withdrawer.initialize(MainnetActors.ADMIN, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
+            withdrawer.initialize(
+                MainnetActors.ADMIN, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_
+            );
         }
 
         _configureWithdrawer(withdrawer, address(MC.PROVIDER), MC.TIMELOCK);
 
-        saveDeployment(address(withdrawerImplementation), address(withdrawerProxy), withdrawerProxy.getAdmin());
+        saveDeployment(
+            address(withdrawerImplementation), address(withdrawerProxy), ProxyUtils.getProxyAdmin(withdrawerProxy)
+        );
 
         vm.stopBroadcast();
     }
