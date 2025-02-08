@@ -173,7 +173,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
         // WIP
 
         // Verify withdrawer configuration
-        // assertTrue(Withdrawer(withdrawer).hasRole(Withdrawer(withdrawer).ALLOCATOR_ROLE(), address(vault)));
+        assertTrue(Withdrawer(withdrawer).hasRole(Withdrawer(withdrawer).ALLOCATOR_ROLE(), address(vault)));
 
         // // Verify withdrawer deposit assets
         // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.WETH));

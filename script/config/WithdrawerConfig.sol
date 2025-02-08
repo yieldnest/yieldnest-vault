@@ -31,6 +31,7 @@ library WithdrawerConfig {
         {
             // configure roles
             BaseRoles.configureDefaultRoles(vault, timelock, actors);
+            vault.grantRole(vault.ALLOCATOR_ROLE(), MC.YNETHX);
             BaseRoles.configureTemporaryRoles(vault, deployer);
         }
 
