@@ -125,44 +125,26 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
         assertEq(vault.baseWithdrawalFee(), 1e5); // 0.1%
 
         // Verify deposit assets
-        {
-            IVault.AssetParams memory asset = vault.getAsset(MC.WETH);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-        }
-        {
-            IVault.AssetParams memory asset = vault.getAsset(MC.YNETH);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-        }
-        {
-            IVault.AssetParams memory asset = vault.getAsset(MC.YNLSDE);
+        address[] memory activeAssets = new address[](3);
+        activeAssets[0] = MC.WETH;
+        activeAssets[1] = MC.YNETH;
+        activeAssets[2] = MC.YNLSDE;
+
+        for (uint256 i = 0; i < activeAssets.length; i++) {
+            IVault.AssetParams memory asset = vault.getAsset(activeAssets[i]);
             assertTrue(asset.active);
             assertEq(asset.decimals, 18);
         }
 
-        {
-            IVault.AssetParams memory asset = vault.getAsset(MC.EULER_WETH_22_VAULT);
-            assertFalse(asset.active);
-            assertEq(asset.decimals, 18);
-        }
-        {
-            IVault.AssetParams memory asset = vault.getAsset(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY); 
-            assertFalse(asset.active);
-            assertEq(asset.decimals, 18);
-        }
-        {
-            IVault.AssetParams memory asset = vault.getAsset(address(withdrawer));
-            assertFalse(asset.active);
-            assertEq(asset.decimals, 18);
-        }
-        {
-            IVault.AssetParams memory asset = vault.getAsset(MC.WSTETH);
-            assertFalse(asset.active); 
-            assertEq(asset.decimals, 18);
-        }
-        {
-            IVault.AssetParams memory asset = vault.getAsset(MC.WOETH);
+        address[] memory inactiveAssets = new address[](5);
+        inactiveAssets[0] = MC.EULER_WETH_22_VAULT;
+        inactiveAssets[1] = MC.CURVE_LP_YNETH_YNLSDE_STRATEGY;
+        inactiveAssets[2] = address(withdrawer);
+        inactiveAssets[3] = MC.WSTETH;
+        inactiveAssets[4] = MC.WOETH;
+
+        for (uint256 i = 0; i < inactiveAssets.length; i++) {
+            IVault.AssetParams memory asset = vault.getAsset(inactiveAssets[i]);
             assertFalse(asset.active);
             assertEq(asset.decimals, 18);
         }
@@ -189,53 +171,26 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
             assertEq(asset.decimals, 18);
             assertTrue(Withdrawer(withdrawer).getAssetWithdrawable(MC.WETH));
         }
-        {
-            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.YNETH);
+        address[] memory assets = new address[](9);
+        assets[0] = MC.YNETH;
+        assets[1] = MC.YNLSDE;
+        assets[2] = MC.WOETH;
+        assets[3] = MC.OETH;
+        assets[4] = MC.WSTETH;
+        assets[5] = MC.STETH;
+        assets[6] = MC.METH;
+        assets[7] = MC.SFRXETH;
+        assets[8] = MC.WETH;
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(assets[i]);
             assertTrue(asset.active);
             assertEq(asset.decimals, 18);
-            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.YNETH));
-        }
-        {
-            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.YNLSDE);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.YNLSDE));
-        }
-        {
-            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.WOETH);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.WOETH));
-        }
-        {
-            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.OETH);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.OETH));
-        }
-        {
-            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.WSTETH);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.WSTETH));
-        }
-        {
-            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.STETH);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.STETH));
-        }
-        {
-            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.METH);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.METH));
-        }
-        {
-            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.SFRXETH);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.SFRXETH));
+            if (assets[i] == MC.WETH) {
+                assertTrue(Withdrawer(withdrawer).getAssetWithdrawable(assets[i]));
+            } else {
+                assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(assets[i]));
+            }
         }
     }
 }
