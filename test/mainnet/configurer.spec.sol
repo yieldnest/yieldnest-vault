@@ -174,27 +174,61 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
 
         // Verify withdrawer configuration
         assertTrue(Withdrawer(withdrawer).hasRole(Withdrawer(withdrawer).ALLOCATOR_ROLE(), address(vault)));
-
-        // // Verify withdrawer deposit assets
-        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.WETH));
-        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.YNETH));
-        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.YNLSDE));
-        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.WOETH));
-        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.OETH));
-        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.WSTETH));
-        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.STETH));
-        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.METH));
-        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.SFRXETH));
-
-        // // Verify withdrawer withdrawable assets
-        // assertTrue(Withdrawer(withdrawer).isWithdrawableAsset(MC.WETH));
-        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.YNETH));
-        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.YNLSDE));
-        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.WOETH));
-        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.OETH));
-        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.WSTETH));
-        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.STETH));
-        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.METH));
-        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.SFRXETH));
+        
+        // Verify withdrawer deposit assets
+        {
+            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.WETH);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+            assertTrue(Withdrawer(withdrawer).getAssetWithdrawable(MC.WETH));
+        }
+        {
+            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.YNETH);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.YNETH));
+        }
+        {
+            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.YNLSDE);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.YNLSDE));
+        }
+        {
+            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.WOETH);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.WOETH));
+        }
+        {
+            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.OETH);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.OETH));
+        }
+        {
+            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.WSTETH);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.WSTETH));
+        }
+        {
+            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.STETH);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.STETH));
+        }
+        {
+            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.METH);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.METH));
+        }
+        {
+            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.SFRXETH);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+            assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(MC.SFRXETH));
+        }
     }
 }
