@@ -9,14 +9,19 @@ import {TimelockController} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {YnETHxVault} from "src/YnETHxVault.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
 
 import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 
 contract VaultConfigureUpgradeTest is Test, MainnetActors {
+
+    Vault vault;
+    Withdrawer withdrawer;
+
     function test_configure() public {
-        Vault vault = Vault(payable(MC.YNETHX));
+        vault = Vault(payable(MC.YNETHX));
         uint256 previousTotalAssets = vault.totalAssets();
 
         {
@@ -79,7 +84,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
 
             YnETHxConfigurer configurer = new YnETHxConfigurer();
             SetupWithdrawer setup = new SetupWithdrawer();
-            Withdrawer withdrawer = setup.setup();
+            withdrawer = setup.setup();
             Provider provider = new Provider();
 
             vm.startPrank(ADMIN);
@@ -105,5 +110,91 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
                 keccak256(bytes(vault.VAULT_VERSION())), keccak256(bytes("0.2.0")), "Vault version should be 0.1.2"
             );
         }
+
+        verify_configuration();
+    }
+
+
+    function verify_configuration() internal {
+        // Verify core vault configuration
+        assertEq(vault.alwaysComputeTotalAssets(), false);
+        assertEq(vault.countNativeAsset(), true);
+        assertEq(vault.decimals(), 18);
+        assertEq(vault.baseWithdrawalFee(), 1e5); // 0.1%
+
+        // Verify deposit assets
+        {
+            IVault.AssetParams memory asset = vault.getAsset(MC.WETH);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+        }
+        {
+            IVault.AssetParams memory asset = vault.getAsset(MC.YNETH);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+        }
+        {
+            IVault.AssetParams memory asset = vault.getAsset(MC.YNLSDE);
+            assertTrue(asset.active);
+            assertEq(asset.decimals, 18);
+        }
+
+        {
+            IVault.AssetParams memory asset = vault.getAsset(MC.EULER_WETH_22_VAULT);
+            assertFalse(asset.active);
+            assertEq(asset.decimals, 18);
+        }
+        {
+            IVault.AssetParams memory asset = vault.getAsset(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY); 
+            assertFalse(asset.active);
+            assertEq(asset.decimals, 18);
+        }
+        {
+            IVault.AssetParams memory asset = vault.getAsset(address(withdrawer));
+            assertFalse(asset.active);
+            assertEq(asset.decimals, 18);
+        }
+        {
+            IVault.AssetParams memory asset = vault.getAsset(MC.WSTETH);
+            assertFalse(asset.active); 
+            assertEq(asset.decimals, 18);
+        }
+        {
+            IVault.AssetParams memory asset = vault.getAsset(MC.WOETH);
+            assertFalse(asset.active);
+            assertEq(asset.decimals, 18);
+        }
+
+        // Verify total number of assets
+        address[] memory assets = vault.getAssets();
+         // WETH, YNETH, YNLSDE, EULER_WETH_22_VAULT, CURVE_LP_YNETH_YNLSDE_STRATEGY, withdrawer, WSTETH, WOETH, STETH, OETH
+        assertEq(assets.length, 10);
+
+        // WIP
+
+        // Verify withdrawer configuration
+        // assertTrue(Withdrawer(withdrawer).hasRole(Withdrawer(withdrawer).ALLOCATOR_ROLE(), address(vault)));
+
+        // // Verify withdrawer deposit assets
+        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.WETH));
+        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.YNETH));
+        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.YNLSDE));
+        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.WOETH));
+        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.OETH));
+        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.WSTETH));
+        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.STETH));
+        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.METH));
+        // assertTrue(Withdrawer(withdrawer).isDepositAsset(MC.SFRXETH));
+
+        // // Verify withdrawer withdrawable assets
+        // assertTrue(Withdrawer(withdrawer).isWithdrawableAsset(MC.WETH));
+        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.YNETH));
+        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.YNLSDE));
+        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.WOETH));
+        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.OETH));
+        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.WSTETH));
+        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.STETH));
+        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.METH));
+        // assertFalse(Withdrawer(withdrawer).isWithdrawableAsset(MC.SFRXETH));
     }
 }
