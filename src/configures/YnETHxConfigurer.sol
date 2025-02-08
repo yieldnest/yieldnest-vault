@@ -28,7 +28,7 @@ contract YnETHxConfigurer is MainnetActors {
             // configure roles
             BaseRoles.configureDefaultRoles(vault, MC.TIMELOCK, IActors(address(this)));
             vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
-            BaseRoles.configureTemporaryRoles(vault);
+            BaseRoles.configureTemporaryRolesForMaxVault(vault, address(this));
         }
 
         // set the rate provider contract
@@ -37,12 +37,15 @@ contract YnETHxConfigurer is MainnetActors {
         // set the buffer
         vault.setBuffer(MC.EULER_WETH_22_VAULT);
 
+        // set withdrawal fee to 0.1%
+        vault.setBaseWithdrawalFee(1e5);
+
         {
             // add assets: Base asset always first
             vault.addAsset(MC.WETH, true);
             vault.addAsset(MC.YNETH, true);
             vault.addAsset(MC.YNLSDE, true);
-            
+
             vault.addAsset(MC.STETH, false);
             vault.addAsset(MC.EULER_WETH_22_VAULT, false); // buffer
             vault.addAsset(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, false);
@@ -165,6 +168,6 @@ contract YnETHxConfigurer is MainnetActors {
 
         vault.unpause();
 
-        BaseRoles.renounceTemporaryRoles(vault);
+        BaseRoles.renounceTemporaryRolesForMaxVault(vault, address(this));
     }
 }

@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {BaseVault} from "src/BaseVault.sol";
 import {IActors} from "script/Actors.sol";
+import {Vault} from "src/Vault.sol";
 
 library BaseRoles {
     function configureDefaultRoles(BaseVault vault, address timelock, IActors actors) internal {
@@ -32,8 +33,9 @@ library BaseRoles {
         vault.grantRole(vault.UNPAUSER_ROLE(), deployer);
     }
 
-    function renounceTemporaryRoles(BaseVault vault) internal {
-        renounceTemporaryRoles(vault, address(this));
+    function configureTemporaryRolesForMaxVault(BaseVault vault, address deployer) internal {
+        configureTemporaryRoles(vault, deployer);
+        vault.grantRole(Vault(payable(address(vault))).FEE_MANAGER_ROLE(), deployer);
     }
 
     function renounceTemporaryRoles(BaseVault vault, address deployer) internal {
@@ -43,5 +45,10 @@ library BaseRoles {
         vault.renounceRole(vault.PROVIDER_MANAGER_ROLE(), deployer);
         vault.renounceRole(vault.ASSET_MANAGER_ROLE(), deployer);
         vault.renounceRole(vault.UNPAUSER_ROLE(), deployer);
+    }
+
+    function renounceTemporaryRolesForMaxVault(BaseVault vault, address deployer) internal {
+        renounceTemporaryRoles(vault, deployer);
+        vault.renounceRole(Vault(payable(address(vault))).FEE_MANAGER_ROLE(), address(this));
     }
 }
