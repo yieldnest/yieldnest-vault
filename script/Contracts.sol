@@ -1,6 +1,19 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
+interface IContracts {
+    function WETH() external pure returns (address);
+    function STETH() external pure returns (address);
+    function WSTETH() external pure returns (address);
+    function YNETH() external pure returns (address);
+    function YNETHX() external pure returns (address);
+    function YNLSDE() external pure returns (address);
+    function OETH() external pure returns (address);
+    function WOETH() external pure returns (address);
+    function METH() external pure returns (address);
+    function SFRXETH() external pure returns (address);
+}
+
 library MainnetContracts {
     address public constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -53,4 +66,46 @@ library MainnetContracts {
     address public constant CURVE_LP_YNETH_YNLSDE_POOL = 0x1f59cC10c6360DA918B0235c98E58008452816EB;
     address public constant CURVE_LP_YNETH_YNLSDE_CONNECTOR = 0xe66E34F9E3116ce497Cbd15268f175eC711539d5;
     address public constant CURVE_LP_YNETH_YNLSDE_STRATEGY = 0x823976dA34aC45C23a8DfEa51B3Ff1Ae0D980213;
+}
+
+contract L1Contracts is IContracts {
+    function WETH() external pure override returns (address) {
+        return MainnetContracts.WETH;
+    }
+
+    function STETH() external pure override returns (address) {
+        return MainnetContracts.STETH;
+    }
+
+    function WSTETH() external pure override returns (address) {
+        return MainnetContracts.WSTETH;
+    }
+
+    function YNETH() external pure override returns (address) {
+        return MainnetContracts.YNETH;
+    }
+
+    function YNETHX() external pure override returns (address) {
+        return MainnetContracts.YNETHX;
+    }
+
+    function YNLSDE() external pure override returns (address) {
+        return MainnetContracts.YNLSDE;
+    }
+
+    function OETH() external pure override returns (address) {
+        return MainnetContracts.OETH;
+    }
+
+    function WOETH() external pure override returns (address) {
+        return MainnetContracts.WOETH;
+    }
+
+    function METH() external pure override returns (address) {
+        return MainnetContracts.METH;
+    }
+
+    function SFRXETH() external pure override returns (address) {
+        return MainnetContracts.SFRXETH;
+    }
 }
