@@ -28,6 +28,7 @@ contract Provider is IProvider {
 
     function isVault(address asset) public view returns (bool) {
         try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
+            // TODO: this is not ideal, as it's not forward compatible with future vault versions ...
             return keccak256(bytes(version)) == keccak256(bytes("0.1.0"));
         } catch {
             return false;
