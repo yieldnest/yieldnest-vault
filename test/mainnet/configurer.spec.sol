@@ -111,9 +111,36 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
             );
         }
 
+        verifyProvider();
+
         verify_configuration();
 
         verifyWithdrawerConfiguration(vault, withdrawer);
+    }
+
+    function verifyProvider() internal {
+        Provider provider = Provider(vault.provider());
+
+        // Verify rates for all LSDs
+        assertGt(provider.getRate(MC.STETH), 0, "stETH rate should be greater than 0");
+        assertGt(provider.getRate(MC.WSTETH), 0, "wstETH rate should be greater than 0");
+        assertGt(provider.getRate(MC.RETH), 0, "rETH rate should be greater than 0");
+        assertGt(provider.getRate(MC.SFRXETH), 0, "sfrxETH rate should be greater than 0");
+        assertGt(provider.getRate(MC.OETH), 0, "OETH rate should be greater than 0");
+        assertGt(provider.getRate(MC.WOETH), 0, "wOETH rate should be greater than 0");
+        assertGt(provider.getRate(MC.SWELL), 0, "SWELL rate should be greater than 0");
+        assertGt(provider.getRate(MC.METH), 0, "mETH rate should be greater than 0");
+
+        // Verify rates for YieldNest tokens
+        assertGt(provider.getRate(MC.YNETH), 0, "ynETH rate should be greater than 0");
+        assertGt(provider.getRate(MC.YNLSDE), 0, "ynLSDE rate should be greater than 0");
+
+        // Verify rates for strategies
+        assertGt(provider.getRate(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY), 0, "Curve LP strategy rate should be greater than 0");
+        assertGt(provider.getRate(address(withdrawer)), 0, "Withdrawer rate should be greater than 0");
+
+        // Base asset should always be 1:1
+        assertEq(provider.getRate(MC.WETH), 1e18, "WETH rate should be 1:1");
     }
 
 
