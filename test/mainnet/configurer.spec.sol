@@ -112,6 +112,8 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
         }
 
         verify_configuration();
+
+        verifyWithdrawerConfiguration(vault, withdrawer);
     }
 
 
@@ -169,12 +171,17 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
         address[] memory assets = vault.getAssets();
          // WETH, YNETH, YNLSDE, EULER_WETH_22_VAULT, CURVE_LP_YNETH_YNLSDE_STRATEGY, withdrawer, WSTETH, WOETH, STETH, OETH
         assertEq(assets.length, 10);
+    }
 
+    function verifyWithdrawerConfiguration(
+        Vault vault,
+        Withdrawer withdrawer
+    ) internal {
         // WIP
 
         // Verify withdrawer configuration
         assertTrue(Withdrawer(withdrawer).hasRole(Withdrawer(withdrawer).ALLOCATOR_ROLE(), address(vault)));
-        
+
         // Verify withdrawer deposit assets
         {
             IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.WETH);
