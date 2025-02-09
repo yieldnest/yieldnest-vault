@@ -24,6 +24,7 @@ library VaultVerification {
         vm.assertEq(vault.countNativeAsset(), true);
         vm.assertEq(vault.decimals(), 18);
         vm.assertEq(vault.baseWithdrawalFee(), 1e5); // 0.1%
+        vm.assertFalse(vault.paused(), "Vault should not be paused");
 
         // Verify deposit assets
         address[] memory activeAssets = new address[](3);
@@ -124,6 +125,18 @@ library VaultVerification {
 
     function verifyRules(IVault vault) internal view {
         Withdrawer withdrawer = getWithdrawer(vault);
+
+        {
+            // Verify WETH approvals
+            address[] memory wethSpenders = new address[](2);
+            wethSpenders[0] = MC.EULER_WETH_22_VAULT;
+            wethSpenders[1] = address(withdrawer);
+
+            SafeRules.RuleParams memory wethParams = BaseRules.getApprovalRule(MC.WETH, wethSpenders);
+            RulesVerification.verifyProcessorRule(
+                vault, wethParams.contractAddress, wethParams.funcSig, wethParams.rule
+            );
+        }
 
         {
             SafeRules.RuleParams memory depositParams = BaseRules.getWethDepositRule(MC.WETH);
