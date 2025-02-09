@@ -17,11 +17,9 @@ import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 
 contract VaultConfigureUpgradeTest is Test, MainnetActors {
 
-    Vault vault;
-    Withdrawer withdrawer;
-
     function test_configure() public {
-        vault = Vault(payable(MC.YNETHX));
+        Vault vault = Vault(payable(MC.YNETHX));
+        Withdrawer withdrawer;
         uint256 previousTotalAssets = vault.totalAssets();
 
         {
@@ -111,15 +109,14 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
             );
         }
 
-        verifyProvider();
+        verifyProvider(Provider(IVault(address(vault)).provider()), withdrawer);
 
-        verify_configuration();
+        verifyVaultConfiguration(vault, withdrawer);
 
         verifyWithdrawerConfiguration(vault, withdrawer);
     }
 
-    function verifyProvider() internal {
-        Provider provider = Provider(vault.provider());
+    function verifyProvider(Provider provider, Withdrawer withdrawer) internal {
 
         // Verify rates for all LSDs
         assertGt(provider.getRate(MC.STETH), 0, "stETH rate should be greater than 0");
@@ -144,7 +141,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
     }
 
 
-    function verify_configuration() internal {
+    function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal {
         // Verify core vault configuration
         assertEq(vault.alwaysComputeTotalAssets(), false);
         assertEq(vault.countNativeAsset(), true);
