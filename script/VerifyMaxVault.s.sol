@@ -5,6 +5,9 @@ import {IVault} from "src/BaseVault.sol";
 import {BaseVerifyScript} from "script/BaseVerifyScript.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
+import {VaultVerification} from "script/verification/VaultVerification.sol";
+import {Provider} from "src/module/Provider.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script VerifyMaxVault
 contract VerifyMaxVault is BaseVerifyScript {
@@ -40,10 +43,19 @@ contract VerifyMaxVault is BaseVerifyScript {
         assertEq(asset.index, 0, "asset[0].index is invalid");
 
         console.log("Verifying WETH deposit and withdraw rules.");
-        _verifyWethWithdrawRule(vault, contracts.WETH());
-        _verifyWethDepositRule(vault, contracts.WETH());
+
+        // Get withdrawer from vault assets
+        Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
 
         // TODO: Add rest of assertions and verifications
+        // Verify vault configuration using VaultVerification library
+        VaultVerification.verifyVaultConfiguration(vault, withdrawer);
+
+        // Verify provider configuration
+        VaultVerification.verifyProvider(Provider(address(rateProvider)), withdrawer);
+
+        // Verify processor rules
+        VaultVerification.verifyRules(vault);
 
         assertFalse(vault.paused());
 

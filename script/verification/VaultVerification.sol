@@ -17,7 +17,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
 
 library VaultVerification {
-    function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal {
+    function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal view {
         Vm vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
         // Verify core vault configuration
