@@ -14,7 +14,7 @@ import {MainnetActors, IActors} from "script/Actors.sol";
 import {Provider} from "src/module/Provider.sol";
 import {WithdrawerConfig} from "./config/WithdrawerConfig.sol";
 
-contract DeployWithdrawer is Script, MainnetActors {
+contract DeployWithdrawer is Script, MainnetActors, ProxyUtils {
     using stdJson for string;
 
     error InvalidRules();
@@ -38,7 +38,7 @@ contract DeployWithdrawer is Script, MainnetActors {
         vm.serializeAddress(label(), "provider", address(provider));
         vm.serializeAddress(label(), "implementation", address(implementation));
         vm.serializeAddress(label(), "proxy", address(withdrawer));
-        vm.serializeAddress(label(), "proxyAdmin", ProxyUtils.getProxyAdmin(address(withdrawer)));
+        vm.serializeAddress(label(), "proxyAdmin", getProxyAdmin(address(withdrawer)));
         vm.serializeAddress(label(), "timelock", MC.TIMELOCK);
 
         string memory jsonOutput = vm.serializeAddress(label(), label(), address(withdrawer));

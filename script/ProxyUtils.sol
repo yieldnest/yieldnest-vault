@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {ERC1967Utils} from "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
-library ProxyUtils {
+contract ProxyUtils {
     address internal constant CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
 
     /**
