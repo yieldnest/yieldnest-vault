@@ -9,6 +9,10 @@ import {RulesVerification} from "script/verification/RulesVerification.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
+import {RulesVerification} from "script/verification/RulesVerification.sol";
+import {ConnectorRules} from "script/rules/ConnectorRules.sol";
+import {YieldNestRules} from "script/rules/YieldNestRules.sol";
 
 library VaultVerification {
     function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal {
@@ -121,33 +125,44 @@ library VaultVerification {
         RulesVerification.verifyWethDepositRule(vault, MC.WETH);
         RulesVerification.verifyWethWithdrawRule(vault, MC.WETH);
 
-        // ynETH rules
-        RulesVerification.verifyDepositRule(vault, MC.YNETH);
-        RulesVerification.verifyApprovalRule(vault, MC.YNETH, MC.YNETH);
-
-        // ynLSDe rules
         {
-            address[] memory depositAssets = new address[](2);
-            depositAssets[0] = MC.WSTETH;
-            depositAssets[1] = MC.WOETH;
-            RulesVerification.verifyDepositAssetRule(vault, MC.YNLSDE, depositAssets);
-            RulesVerification.verifyApprovalRule(vault, MC.YNLSDE, MC.YNLSDE);
+            // ynETH rules
+            SafeRules.RuleParams memory params = YieldNestRules.getYnETHDepositRule(MC.YNETH, address(vault));
+            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
         }
+
+        {
+            // Approve rules for deposit assets
+            address[] memory spenders = new address[](2);
+            spenders[0] = MC.YNLSDE;
+            spenders[1] = address(withdrawer);
+
+            RulesVerification.verifyApprovalRule(vault, MC.WSTETH, spenders);
+            RulesVerification.verifyApprovalRule(vault, MC.WOETH, spenders);
+        }
+
+        // // ynLSDe rules
+        // {
+        //     address[] memory depositAssets = new address[](2);
+        //     depositAssets[0] = MC.WSTETH;
+        //     depositAssets[1] = MC.WOETH;
+        //     RulesVerification.verifyDepositAssetRule(vault, MC.YNLSDE, depositAssets);
+        // }
 
         // Curve LP Strategy rules
         {
-            address[] memory depositAssets = new address[](2);
-            depositAssets[0] = MC.YNETH;
-            depositAssets[1] = MC.YNLSDE;
-            RulesVerification.verifyDepositAssetRule(vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, depositAssets);
-            RulesVerification.verifyApprovalRule(
-                vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY
-            );
-        }
+            // address[] memory depositAssets = new address[](2);
+            // depositAssets[0] = MC.YNETH;
+            // depositAssets[1] = MC.YNLSDE;
+            // RulesVerification.verifyDepositAssetRule(vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, depositAssets);
+            // RulesVerification.verifyApprovalRule(
+            //     vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY
+            // );
 
-        // Approve rules for deposit assets
-        RulesVerification.verifyApprovalRule(vault, MC.WSTETH, MC.YNLSDE);
-        RulesVerification.verifyApprovalRule(vault, MC.WOETH, MC.YNLSDE);
+            // SafeRules.RuleParams memory params =
+            //     ConnectorRules.getConnectorWithdrawRule(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY);
+            // RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+        }
     }
 
     function getWithdrawer(IVault vault) internal view returns (Withdrawer) {

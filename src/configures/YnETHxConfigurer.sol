@@ -66,9 +66,10 @@ contract YnETHxConfigurer is MainnetActors {
 
         {
             // approvals for WETH
-            address[] memory strategies = new address[](2);
+            address[] memory strategies = new address[](3);
             strategies[0] = MC.EULER_WETH_22_VAULT;
             strategies[1] = withdrawer;
+            strategies[2] = MC.YNETH;
             rules[ruleIndex++] = BaseRules.getApprovalRule(MC.WETH, strategies);
         }
 

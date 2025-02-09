@@ -115,6 +115,8 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
         VaultVerification.verifyProvider(Provider(IVault(address(vault)).provider()), withdrawer);
 
         VaultVerification.verifyVaultConfiguration(vault, withdrawer);
+        
+        VaultVerification.verifyRules(vault);
 
         VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
     }

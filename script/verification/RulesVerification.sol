@@ -192,4 +192,21 @@ library RulesVerification {
             }
         }
     }
+
+    function verifyConnectorDepositRule(IVault vault_, address connectorAddress) public view {
+        bytes4 funcSig = bytes4(keccak256("deposit(uint256,uint256,uint256)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](3);
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+        paramRules[1] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+        paramRules[2] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+
+        verifyProcessorRule(vault_, connectorAddress, funcSig, rule);
+    }
 }
