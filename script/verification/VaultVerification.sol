@@ -125,9 +125,17 @@ library VaultVerification {
     function verifyRules(IVault vault) internal view {
         Withdrawer withdrawer = getWithdrawer(vault);
 
-        // WETH wrap/unwrap rules
-        RulesVerification.verifyWethDepositRule(vault, MC.WETH);
-        RulesVerification.verifyWethWithdrawRule(vault, MC.WETH);
+        {
+            SafeRules.RuleParams memory depositParams = BaseRules.getWethDepositRule(MC.WETH);
+            RulesVerification.verifyProcessorRule(
+                vault, depositParams.contractAddress, depositParams.funcSig, depositParams.rule
+            );
+
+            SafeRules.RuleParams memory withdrawParams = BaseRules.getWethWithdrawRule(MC.WETH);
+            RulesVerification.verifyProcessorRule(
+                vault, withdrawParams.contractAddress, withdrawParams.funcSig, withdrawParams.rule
+            );
+        }
 
         {
             // ynETH rules
@@ -145,15 +153,21 @@ library VaultVerification {
                 YieldNestRules.getYnEigenDepositRule(MC.YNLSDE, depositAssets, address(vault));
             RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
         }
-
         {
             // Approve rules for deposit assets
             address[] memory spenders = new address[](2);
             spenders[0] = MC.YNLSDE;
             spenders[1] = address(withdrawer);
 
-            RulesVerification.verifyApprovalRule(vault, MC.WSTETH, spenders);
-            RulesVerification.verifyApprovalRule(vault, MC.WOETH, spenders);
+            SafeRules.RuleParams memory wstethParams = BaseRules.getApprovalRule(MC.WSTETH, spenders);
+            RulesVerification.verifyProcessorRule(
+                vault, wstethParams.contractAddress, wstethParams.funcSig, wstethParams.rule
+            );
+
+            SafeRules.RuleParams memory woethParams = BaseRules.getApprovalRule(MC.WOETH, spenders);
+            RulesVerification.verifyProcessorRule(
+                vault, woethParams.contractAddress, woethParams.funcSig, woethParams.rule
+            );
         }
 
         // Curve LP Strategy rules
