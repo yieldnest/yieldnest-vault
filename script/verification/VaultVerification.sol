@@ -54,6 +54,9 @@ library VaultVerification {
         address[] memory assets = vault.getAssets();
         // WETH, YNETH, YNLSDE, EULER_WETH_22_VAULT, CURVE_LP_YNETH_YNLSDE_STRATEGY, withdrawer, WSTETH, WOETH, STETH, OETH
         vm.assertEq(assets.length, 10);
+
+        // Verify buffer configuration
+        vm.assertEq(vault.buffer(), MC.EULER_WETH_22_VAULT, "Buffer should be set to Euler WETH 22 vault");
     }
 
     function verifyProvider(Provider provider, Withdrawer withdrawer) internal view {
@@ -202,6 +205,19 @@ library VaultVerification {
                     BaseRules.getWithdrawAssetRule(address(withdrawer), MC.WETH, address(vault));
                 RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
             }
+        }
+
+        // Verify buffer rules
+        {
+            // Verify deposit rule
+            SafeRules.RuleParams memory params = BaseRules.getDepositRule(MC.EULER_WETH_22_VAULT, address(vault));
+            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+        }
+
+        {
+            // Verify withdraw rule
+            SafeRules.RuleParams memory params = BaseRules.getWithdrawRule(MC.EULER_WETH_22_VAULT, address(vault));
+            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
         }
     }
 
