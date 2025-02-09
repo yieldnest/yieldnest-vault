@@ -159,9 +159,17 @@ library VaultVerification {
             //     vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY
             // );
 
-            // SafeRules.RuleParams memory params =
-            //     ConnectorRules.getConnectorWithdrawRule(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY);
-            // RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            {
+                SafeRules.RuleParams memory params =
+                    ConnectorRules.getConnectorDepositRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+                RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            }
+
+            {
+                SafeRules.RuleParams memory params =
+                    ConnectorRules.getConnectorWithdrawRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+                RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            }
         }
     }
 
