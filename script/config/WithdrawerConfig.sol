@@ -14,13 +14,15 @@ import {IActors} from "script/Actors.sol";
 library WithdrawerConfig {
     error InvalidRules();
 
+    string constant WITHDRAWER_SYMBOL = "ynETHxWithdrawer";
+
     function configure(Withdrawer vault, address provider, address timelock, address deployer, IActors actors)
         internal
     {
         {
             // initialize
-            string memory name = "YieldNest Withdrawer";
-            string memory symbol = "ynWithdrawer";
+            string memory name = "ynETH MAX Withdrawer";
+            string memory symbol = WITHDRAWER_SYMBOL;
             uint8 decimals_ = 18;
             bool countNativeAsset_ = true;
             bool alwaysComputeTotalAssets_ = false;

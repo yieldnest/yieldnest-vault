@@ -5,9 +5,10 @@ import {IVault, IValidator} from "src/interface/IVault.sol";
 import {Provider} from "src/module/Provider.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Vault} from "src/Vault.sol";
-
+import {RulesVerification} from "script/verification/RulesVerification.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
+import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 
 library VaultVerification {
     function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal {
@@ -111,5 +112,52 @@ library VaultVerification {
                 vm.assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(assets[i]));
             }
         }
+    }
+
+    function verifyRules(IVault vault) internal view {
+        Withdrawer withdrawer = getWithdrawer(vault);
+
+        // WETH wrap/unwrap rules
+        RulesVerification.verifyWethDepositRule(vault, MC.WETH);
+        RulesVerification.verifyWethWithdrawRule(vault, MC.WETH);
+
+        // ynETH rules
+        RulesVerification.verifyDepositRule(vault, MC.YNETH);
+        RulesVerification.verifyApprovalRule(vault, MC.YNETH, MC.YNETH);
+
+        // ynLSDe rules
+        {
+            address[] memory depositAssets = new address[](2);
+            depositAssets[0] = MC.WSTETH;
+            depositAssets[1] = MC.WOETH;
+            RulesVerification.verifyDepositAssetRule(vault, MC.YNLSDE, depositAssets);
+            RulesVerification.verifyApprovalRule(vault, MC.YNLSDE, MC.YNLSDE);
+        }
+
+        // Curve LP Strategy rules
+        {
+            address[] memory depositAssets = new address[](2);
+            depositAssets[0] = MC.YNETH;
+            depositAssets[1] = MC.YNLSDE;
+            RulesVerification.verifyDepositAssetRule(vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, depositAssets);
+            RulesVerification.verifyApprovalRule(
+                vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY
+            );
+        }
+
+        // Approve rules for deposit assets
+        RulesVerification.verifyApprovalRule(vault, MC.WSTETH, MC.YNLSDE);
+        RulesVerification.verifyApprovalRule(vault, MC.WOETH, MC.YNLSDE);
+    }
+
+    function getWithdrawer(IVault vault) internal view returns (Withdrawer) {
+        // Look up withdrawer by symbol
+        address[] memory assets = vault.getAssets();
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (keccak256(bytes(IVault(assets[i]).symbol())) == keccak256(bytes(WithdrawerConfig.WITHDRAWER_SYMBOL))) {
+                return Withdrawer(payable(assets[i]));
+            }
+        }
+        revert("Withdrawer not found");
     }
 }

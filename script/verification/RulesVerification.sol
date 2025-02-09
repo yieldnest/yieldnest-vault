@@ -10,7 +10,7 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 
 library RulesVerification {
-    function _verifyDepositRule(IVault vault_, address contractAddress) internal view {
+    function verifyDepositRule(IVault vault_, address contractAddress) public view {
         address[] memory allowList = new address[](1);
         allowList[0] = address(vault_);
 
@@ -26,20 +26,17 @@ library RulesVerification {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        _verifyProcessorRule(vault_, contractAddress, funcSig, rule);
+        verifyProcessorRule(vault_, contractAddress, funcSig, rule);
     }
 
-    function _verifyDepositAssetRule(IVault vault_, address contractAddress, address asset) internal view {
+    function verifyDepositAssetRule(IVault vault_, address contractAddress, address asset) public view {
         address[] memory allowList = new address[](1);
         allowList[0] = asset;
 
-        _verifyDepositAssetRule(vault_, contractAddress, allowList);
+        verifyDepositAssetRule(vault_, contractAddress, allowList);
     }
 
-    function _verifyDepositAssetRule(IVault vault_, address contractAddress, address[] memory allowList)
-        internal
-        view
-    {
+    function verifyDepositAssetRule(IVault vault_, address contractAddress, address[] memory allowList) public view {
         bytes4 funcSig = bytes4(keccak256("depositAsset(address,uint256,address)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](3);
@@ -58,10 +55,10 @@ library RulesVerification {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        _verifyProcessorRule(vault_, contractAddress, funcSig, rule);
+        verifyProcessorRule(vault_, contractAddress, funcSig, rule);
     }
 
-    function _verifyWithdrawRule(IVault vault_, address contractAddress) internal view {
+    function verifyWithdrawRule(IVault vault_, address contractAddress) public view {
         address[] memory allowList = new address[](1);
         allowList[0] = address(vault_);
 
@@ -79,20 +76,17 @@ library RulesVerification {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        _verifyProcessorRule(vault_, contractAddress, funcSig, rule);
+        verifyProcessorRule(vault_, contractAddress, funcSig, rule);
     }
 
-    function _verifyWithdrawAssetRule(IVault vault_, address contractAddress, address asset) internal view {
+    function verifyWithdrawAssetRule(IVault vault_, address contractAddress, address asset) public view {
         address[] memory allowList = new address[](1);
         allowList[0] = asset;
 
-        _verifyWithdrawAssetRule(vault_, contractAddress, allowList);
+        verifyWithdrawAssetRule(vault_, contractAddress, allowList);
     }
 
-    function _verifyWithdrawAssetRule(IVault vault_, address contractAddress, address[] memory assetList)
-        internal
-        view
-    {
+    function verifyWithdrawAssetRule(IVault vault_, address contractAddress, address[] memory assetList) public view {
         address[] memory allowList = new address[](1);
         allowList[0] = address(vault_);
         bytes4 funcSig = bytes4(keccak256("withdrawAsset(address,uint256,address,address)"));
@@ -111,17 +105,17 @@ library RulesVerification {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        _verifyProcessorRule(vault_, contractAddress, funcSig, rule);
+        verifyProcessorRule(vault_, contractAddress, funcSig, rule);
     }
 
-    function _verifyApprovalRule(IVault vault_, address contractAddress, address spender) internal view {
+    function verifyApprovalRule(IVault vault_, address contractAddress, address spender) public view {
         address[] memory allowList = new address[](1);
         allowList[0] = spender;
 
-        _verifyApprovalRule(vault_, contractAddress, allowList);
+        verifyApprovalRule(vault_, contractAddress, allowList);
     }
 
-    function _verifyApprovalRule(IVault vault_, address contractAddress, address[] memory allowList) internal view {
+    function verifyApprovalRule(IVault vault_, address contractAddress, address[] memory allowList) public view {
         bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
@@ -134,10 +128,10 @@ library RulesVerification {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        _verifyProcessorRule(vault_, contractAddress, funcSig, rule);
+        verifyProcessorRule(vault_, contractAddress, funcSig, rule);
     }
 
-    function _verifyWethDepositRule(IVault vault_, address weth_) internal view {
+    function verifyWethDepositRule(IVault vault_, address weth_) public view {
         bytes4 funcSig = bytes4(keccak256("deposit()"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
@@ -145,10 +139,10 @@ library RulesVerification {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        _verifyProcessorRule(vault_, weth_, funcSig, rule);
+        verifyProcessorRule(vault_, weth_, funcSig, rule);
     }
 
-    function _verifyWethWithdrawRule(IVault vault_, address weth_) internal view {
+    function verifyWethWithdrawRule(IVault vault_, address weth_) public view {
         bytes4 funcSig = bytes4(keccak256("withdraw(uint256)"));
 
         IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](1);
@@ -159,15 +153,15 @@ library RulesVerification {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        _verifyProcessorRule(vault_, weth_, funcSig, rule);
+        verifyProcessorRule(vault_, weth_, funcSig, rule);
     }
 
-    function _verifyProcessorRule(
+    function verifyProcessorRule(
         IVault vault_,
         address contractAddress,
         bytes4 funcSig,
         IVault.FunctionRule memory expectedResult
-    ) internal view {
+    ) public view {
         IVault.FunctionRule memory rule = vault_.getProcessorRule(contractAddress, funcSig);
 
         Vm vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
