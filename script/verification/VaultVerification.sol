@@ -13,6 +13,7 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {RulesVerification} from "script/verification/RulesVerification.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {YieldNestRules} from "script/rules/YieldNestRules.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
 
 library VaultVerification {
     function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal {
@@ -132,6 +133,17 @@ library VaultVerification {
         }
 
         {
+            // ynLSDe rules
+            address[] memory depositAssets = new address[](2);
+            depositAssets[0] = MC.WSTETH;
+            depositAssets[1] = MC.WOETH;
+
+            SafeRules.RuleParams memory params =
+                YieldNestRules.getYnEigenDepositRule(MC.YNLSDE, depositAssets, address(vault));
+            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+        }
+
+        {
             // Approve rules for deposit assets
             address[] memory spenders = new address[](2);
             spenders[0] = MC.YNLSDE;
@@ -151,13 +163,11 @@ library VaultVerification {
 
         // Curve LP Strategy rules
         {
-            // address[] memory depositAssets = new address[](2);
-            // depositAssets[0] = MC.YNETH;
-            // depositAssets[1] = MC.YNLSDE;
-            // RulesVerification.verifyDepositAssetRule(vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, depositAssets);
-            // RulesVerification.verifyApprovalRule(
-            //     vault, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY
-            // );
+            {
+                SafeRules.RuleParams memory params =
+                    BaseRules.getApprovalRule(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+                RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            }
 
             {
                 SafeRules.RuleParams memory params =
