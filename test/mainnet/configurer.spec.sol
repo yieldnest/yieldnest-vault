@@ -15,6 +15,9 @@ import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
 
 import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 
+import {VaultVerification} from "script/verification/VaultVerification.sol";
+
+
 contract VaultConfigureUpgradeTest is Test, MainnetActors {
 
     function test_configure() public {
@@ -109,112 +112,10 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
             );
         }
 
-        verifyProvider(Provider(IVault(address(vault)).provider()), withdrawer);
+        VaultVerification.verifyProvider(Provider(IVault(address(vault)).provider()), withdrawer);
 
-        verifyVaultConfiguration(vault, withdrawer);
+        VaultVerification.verifyVaultConfiguration(vault, withdrawer);
 
-        verifyWithdrawerConfiguration(vault, withdrawer);
-    }
-
-    function verifyProvider(Provider provider, Withdrawer withdrawer) internal {
-
-        // Verify rates for all LSDs
-        assertGt(provider.getRate(MC.STETH), 0, "stETH rate should be greater than 0");
-        assertGt(provider.getRate(MC.WSTETH), 0, "wstETH rate should be greater than 0");
-        assertGt(provider.getRate(MC.RETH), 0, "rETH rate should be greater than 0");
-        assertGt(provider.getRate(MC.SFRXETH), 0, "sfrxETH rate should be greater than 0");
-        assertGt(provider.getRate(MC.OETH), 0, "OETH rate should be greater than 0");
-        assertGt(provider.getRate(MC.WOETH), 0, "wOETH rate should be greater than 0");
-        assertGt(provider.getRate(MC.SWELL), 0, "SWELL rate should be greater than 0");
-        assertGt(provider.getRate(MC.METH), 0, "mETH rate should be greater than 0");
-
-        // Verify rates for YieldNest tokens
-        assertGt(provider.getRate(MC.YNETH), 0, "ynETH rate should be greater than 0");
-        assertGt(provider.getRate(MC.YNLSDE), 0, "ynLSDE rate should be greater than 0");
-
-        // Verify rates for strategies
-        assertGt(provider.getRate(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY), 0, "Curve LP strategy rate should be greater than 0");
-        assertGt(provider.getRate(address(withdrawer)), 0, "Withdrawer rate should be greater than 0");
-
-        // Base asset should always be 1:1
-        assertEq(provider.getRate(MC.WETH), 1e18, "WETH rate should be 1:1");
-    }
-
-
-    function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal {
-        // Verify core vault configuration
-        assertEq(vault.alwaysComputeTotalAssets(), false);
-        assertEq(vault.countNativeAsset(), true);
-        assertEq(vault.decimals(), 18);
-        assertEq(vault.baseWithdrawalFee(), 1e5); // 0.1%
-
-        // Verify deposit assets
-        address[] memory activeAssets = new address[](3);
-        activeAssets[0] = MC.WETH;
-        activeAssets[1] = MC.YNETH;
-        activeAssets[2] = MC.YNLSDE;
-
-        for (uint256 i = 0; i < activeAssets.length; i++) {
-            IVault.AssetParams memory asset = vault.getAsset(activeAssets[i]);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-        }
-
-        address[] memory inactiveAssets = new address[](5);
-        inactiveAssets[0] = MC.EULER_WETH_22_VAULT;
-        inactiveAssets[1] = MC.CURVE_LP_YNETH_YNLSDE_STRATEGY;
-        inactiveAssets[2] = address(withdrawer);
-        inactiveAssets[3] = MC.WSTETH;
-        inactiveAssets[4] = MC.WOETH;
-
-        for (uint256 i = 0; i < inactiveAssets.length; i++) {
-            IVault.AssetParams memory asset = vault.getAsset(inactiveAssets[i]);
-            assertFalse(asset.active);
-            assertEq(asset.decimals, 18);
-        }
-
-        // Verify total number of assets
-        address[] memory assets = vault.getAssets();
-         // WETH, YNETH, YNLSDE, EULER_WETH_22_VAULT, CURVE_LP_YNETH_YNLSDE_STRATEGY, withdrawer, WSTETH, WOETH, STETH, OETH
-        assertEq(assets.length, 10);
-    }
-
-    function verifyWithdrawerConfiguration(
-        Vault vault,
-        Withdrawer withdrawer
-    ) internal {
-        // WIP
-
-        // Verify withdrawer configuration
-        assertTrue(Withdrawer(withdrawer).hasRole(Withdrawer(withdrawer).ALLOCATOR_ROLE(), address(vault)));
-
-        // Verify withdrawer deposit assets
-        {
-            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(MC.WETH);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-            assertTrue(Withdrawer(withdrawer).getAssetWithdrawable(MC.WETH));
-        }
-        address[] memory assets = new address[](9);
-        assets[0] = MC.YNETH;
-        assets[1] = MC.YNLSDE;
-        assets[2] = MC.WOETH;
-        assets[3] = MC.OETH;
-        assets[4] = MC.WSTETH;
-        assets[5] = MC.STETH;
-        assets[6] = MC.METH;
-        assets[7] = MC.SFRXETH;
-        assets[8] = MC.WETH;
-
-        for (uint256 i = 0; i < assets.length; i++) {
-            IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(assets[i]);
-            assertTrue(asset.active);
-            assertEq(asset.decimals, 18);
-            if (assets[i] == MC.WETH) {
-                assertTrue(Withdrawer(withdrawer).getAssetWithdrawable(assets[i]));
-            } else {
-                assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(assets[i]));
-            }
-        }
+        VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
     }
 }
