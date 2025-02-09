@@ -153,14 +153,6 @@ library VaultVerification {
             RulesVerification.verifyApprovalRule(vault, MC.WOETH, spenders);
         }
 
-        // // ynLSDe rules
-        // {
-        //     address[] memory depositAssets = new address[](2);
-        //     depositAssets[0] = MC.WSTETH;
-        //     depositAssets[1] = MC.WOETH;
-        //     RulesVerification.verifyDepositAssetRule(vault, MC.YNLSDE, depositAssets);
-        // }
-
         // Curve LP Strategy rules
         {
             {
@@ -178,6 +170,36 @@ library VaultVerification {
             {
                 SafeRules.RuleParams memory params =
                     ConnectorRules.getConnectorWithdrawRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
+                RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            }
+        }
+
+        // Withdrawer rules
+        {
+            // Verify deposit rules for all assets
+            address[] memory assets = new address[](10);
+            uint256 index = 0;
+
+            assets[index++] = MC.WETH;
+            assets[index++] = MC.YNETH;
+            assets[index++] = MC.YNLSDE;
+            assets[index++] = MC.WOETH;
+            assets[index++] = MC.OETH;
+            assets[index++] = MC.WSTETH;
+            assets[index++] = MC.STETH;
+            assets[index++] = MC.METH;
+            assets[index++] = MC.SFRXETH;
+
+            {
+                SafeRules.RuleParams memory params =
+                    BaseRules.getDepositAssetRule(address(withdrawer), assets, address(vault));
+                RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            }
+
+            {
+                // Verify withdraw rules
+                SafeRules.RuleParams memory params =
+                    BaseRules.getWithdrawAssetRule(address(withdrawer), MC.WETH, address(vault));
                 RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
             }
         }
