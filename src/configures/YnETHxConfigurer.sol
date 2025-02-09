@@ -9,6 +9,7 @@ import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {YieldNestRules} from "script/rules/YieldNestRules.sol";
 import {BaseRoles} from "script/roles/BaseRoles.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
+import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
 
 contract YnETHxConfigurer is MainnetActors {
     error NotAdmin();
@@ -55,7 +56,7 @@ contract YnETHxConfigurer is MainnetActors {
             vault.addAsset(withdrawer, false);
         }
 
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](22);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](27);
         uint256 ruleIndex = 0;
 
         {
@@ -158,6 +159,19 @@ contract YnETHxConfigurer is MainnetActors {
             // Withdrawable: only WETH
             rules[ruleIndex++] = BaseRules.getWithdrawRule(withdrawer, address(vault));
             rules[ruleIndex++] = BaseRules.getWithdrawAssetRule(withdrawer, MC.WETH, address(vault));
+        }
+
+        {
+            // wrap/unwrap wstETH
+            rules[ruleIndex++] = StakedEtherRules.getWrapRule(MC.WSTETH);
+            rules[ruleIndex++] = StakedEtherRules.getUnwrapRule(MC.WSTETH);
+        }
+
+        {
+            // wrap/unwrap woeth
+            rules[ruleIndex++] = BaseRules.getDepositRule(MC.WOETH, address(vault));
+            rules[ruleIndex++] = BaseRules.getWithdrawRule(MC.WOETH, address(vault));
+            rules[ruleIndex++] = BaseRules.getRedeemRule(MC.WOETH, address(vault));
         }
 
         if (ruleIndex != rules.length) {

@@ -14,6 +14,7 @@ import {RulesVerification} from "script/verification/RulesVerification.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {YieldNestRules} from "script/rules/YieldNestRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
 
 library VaultVerification {
     function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal {
@@ -38,12 +39,14 @@ library VaultVerification {
             vm.assertEq(asset.decimals, 18);
         }
 
-        address[] memory inactiveAssets = new address[](5);
+        address[] memory inactiveAssets = new address[](7);
         inactiveAssets[0] = MC.EULER_WETH_22_VAULT;
         inactiveAssets[1] = MC.CURVE_LP_YNETH_YNLSDE_STRATEGY;
         inactiveAssets[2] = address(withdrawer);
         inactiveAssets[3] = MC.WSTETH;
         inactiveAssets[4] = MC.WOETH;
+        inactiveAssets[5] = MC.STETH;
+        inactiveAssets[6] = MC.OETH;
 
         for (uint256 i = 0; i < inactiveAssets.length; i++) {
             IVault.AssetParams memory asset = vault.getAsset(inactiveAssets[i]);
@@ -244,6 +247,33 @@ library VaultVerification {
         {
             // Verify withdraw rule
             SafeRules.RuleParams memory params = BaseRules.getWithdrawRule(MC.EULER_WETH_22_VAULT, address(vault));
+            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+        }
+
+        // Verify wstETH wrap/unwrap rules
+        {
+            SafeRules.RuleParams memory params = StakedEtherRules.getWrapRule(MC.WSTETH);
+            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+        }
+
+        {
+            SafeRules.RuleParams memory params = StakedEtherRules.getUnwrapRule(MC.WSTETH);
+            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+        }
+
+        // Verify woETH deposit/withdraw/redeem rules
+        {
+            SafeRules.RuleParams memory params = BaseRules.getDepositRule(MC.WOETH, address(vault));
+            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+        }
+
+        {
+            SafeRules.RuleParams memory params = BaseRules.getWithdrawRule(MC.WOETH, address(vault));
+            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+        }
+
+        {
+            SafeRules.RuleParams memory params = BaseRules.getRedeemRule(MC.WOETH, address(vault));
             RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
         }
     }
