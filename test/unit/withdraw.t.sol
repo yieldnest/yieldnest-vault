@@ -50,7 +50,7 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches {
         data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
         data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
 
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vault.processor(targets, values, data);
     }
 
@@ -179,7 +179,7 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_redeemWhilePaused() public {
-        vm.prank(ADMIN);
+        vm.prank(PAUSER);
         vault.pause();
         assertEq(vault.paused(), true);
 
@@ -189,7 +189,7 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_withdrawWhilePaused() public {
-        vm.prank(ADMIN);
+        vm.prank(PAUSER);
         vault.pause();
         assertEq(vault.paused(), true);
 
@@ -291,7 +291,7 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_maxWithdrawWhenPaused() public {
-        vm.prank(ADMIN);
+        vm.prank(PAUSER);
         vault.pause();
         assertEq(vault.paused(), true);
 
