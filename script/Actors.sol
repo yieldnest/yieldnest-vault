@@ -70,6 +70,7 @@ contract HoleskyActors is IActors {
 
 contract MainnetActors is IActors {
     address public constant YnSecurityCouncil = 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975;
+    address public constant YnBootstrapper = 0x832e0D8e7A7Bdfe181f30df614383FAA4B5C2924;
 
     address public constant ADMIN = YnSecurityCouncil;
     address public constant PROCESSOR = YnSecurityCouncil;
@@ -88,6 +89,6 @@ contract MainnetActors is IActors {
 
     address public constant UPDATER = YnSecurityCouncil;
     // FIXME; set different bootstrapper for mainnet
-    address public constant BOOTSTRAPPER = YnSecurityCouncil;
+    address public constant BOOTSTRAPPER = YnBootstrapper;
     address public constant UNAUTHORIZED = address(0);
 }
