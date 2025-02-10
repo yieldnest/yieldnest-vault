@@ -90,7 +90,7 @@ library VaultVerification {
         vm.assertEq(provider.getRate(MC.WETH), 1e18, "WETH rate should be 1:1");
     }
 
-    function verifyWithdrawerConfiguration(Vault vault, Withdrawer withdrawer) internal {
+    function verifyWithdrawerConfiguration(Vault vault, Withdrawer withdrawer) internal view {
         Vm vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
         // Verify withdrawer configuration
