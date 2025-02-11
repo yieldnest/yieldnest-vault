@@ -10,7 +10,6 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
-import {RulesVerification} from "script/verification/RulesVerification.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {YieldNestRules} from "script/rules/YieldNestRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
