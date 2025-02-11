@@ -90,9 +90,10 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
 
             vm.startPrank(ADMIN);
             newVault.grantRole(newVault.DEFAULT_ADMIN_ROLE(), address(configurer));
+            
+            configurer.configure(address(provider), address(withdrawer));
             vm.stopPrank();
 
-            configurer.configure(address(provider), address(withdrawer));
         }
 
         {
@@ -119,5 +120,6 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
         VaultVerification.verifyRules(vault);
 
         VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
+
     }
 }

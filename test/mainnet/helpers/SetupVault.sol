@@ -82,10 +82,10 @@ contract SetupVault is Test, MainnetActors {
         vault.grantRole(vault.ASSET_MANAGER_ROLE(), ADMIN);
         vault.grantRole(vault.BUFFER_MANAGER_ROLE(), ADMIN);
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), ADMIN);
-        vm.stopPrank();
+       
 
         configurer.configure(address(provider), address(withdrawer));
-
+        vm.stopPrank();
         assertFalse(vault.paused(), "Vault should not be paused");
 
         vault.processAccounting();

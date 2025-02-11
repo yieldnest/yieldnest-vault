@@ -15,8 +15,16 @@ contract YnETHxConfigurer is MainnetActors {
     error NotAdmin();
     error InvalidVaultVersion();
     error InvalidRules();
+    error NotActor(address sender, address actor);
 
-    function configure(address provider, address withdrawer) external {
+    modifier onlyActor(address actor) {
+        if (msg.sender != actor) {
+            revert NotActor(msg.sender, actor);
+        }
+        _;
+    }
+
+    function configure(address provider, address withdrawer) external onlyActor(ADMIN) {
         YnETHxVault vault = YnETHxVault(payable(MC.YNETHX));
         if (!vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), address(this))) {
             revert NotAdmin();
