@@ -120,5 +120,6 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
         VaultVerification.verifyRules(vault);
 
         VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
+
     }
 }
