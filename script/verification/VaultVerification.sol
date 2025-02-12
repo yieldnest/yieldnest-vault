@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IVault, IValidator} from "src/interface/IVault.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {Provider} from "src/module/Provider.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Vault} from "src/Vault.sol";
@@ -9,12 +9,12 @@ import {RulesVerification} from "script/verification/RulesVerification.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
-import {SafeRules} from "script/rules/SafeRules.sol";
 import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {YieldNestRules} from "script/rules/YieldNestRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
+import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 
 library VaultVerification {
     function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal view {
@@ -329,5 +329,20 @@ library VaultVerification {
             }
         }
         revert("Withdrawer not found");
+    }
+
+    function verifyViewer(IVaultViewer viewer, IVault vault) internal view {
+        Vm vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+        vm.assertEq(address(viewer.getVault()), address(vault), "Viewer vault is correct");
+
+        IVaultViewer.AssetInfo[] memory assets = viewer.getAssets();
+        address[] memory assertsList = vault.getAssets();
+        vm.assertEq(assets.length, assertsList.length);
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            vm.assertEq(assets[i].asset, assertsList[i]);
+            vm.assertEq(assets[i].canDeposit, vault.getAsset(assertsList[i]).active);
+        }
     }
 }

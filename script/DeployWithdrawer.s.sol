@@ -8,13 +8,13 @@ import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {ProxyUtils} from "./ProxyUtils.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors, IActors} from "script/Actors.sol";
 import {Provider} from "src/module/Provider.sol";
-import {WithdrawerConfig} from "./config/WithdrawerConfig.sol";
+import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 
-contract DeployWithdrawer is Script, MainnetActors, ProxyUtils {
+contract DeployWithdrawer is Script, MainnetActors {
     using stdJson for string;
 
     error InvalidRules();
@@ -38,7 +38,7 @@ contract DeployWithdrawer is Script, MainnetActors, ProxyUtils {
         vm.serializeAddress(label(), "provider", address(provider));
         vm.serializeAddress(label(), "implementation", address(implementation));
         vm.serializeAddress(label(), "proxy", address(withdrawer));
-        vm.serializeAddress(label(), "proxyAdmin", getProxyAdmin(address(withdrawer)));
+        vm.serializeAddress(label(), "proxyAdmin", ProxyUtils.getProxyAdmin(address(withdrawer)));
         vm.serializeAddress(label(), "timelock", MC.TIMELOCK);
 
         string memory jsonOutput = vm.serializeAddress(label(), label(), address(withdrawer));
