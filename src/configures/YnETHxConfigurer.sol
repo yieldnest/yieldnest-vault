@@ -62,9 +62,10 @@ contract YnETHxConfigurer is MainnetActors {
             vault.addAsset(MC.OETH, false);
             vault.addAsset(MC.WOETH, false);
             vault.addAsset(withdrawer, false);
+            vault.addAsset(MC.SMOKEHOUSE_WSTETH, false);
         }
 
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](27);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](31);
         uint256 ruleIndex = 0;
 
         {
@@ -82,18 +83,31 @@ contract YnETHxConfigurer is MainnetActors {
         }
 
         {
-            // approvals for wstETH and woETH
-            address[] memory assets = new address[](2);
-            assets[0] = MC.WSTETH;
-            assets[1] = MC.WOETH;
+            // approvals for wstETH
+            address[] memory strategies = new address[](3);
+            strategies[0] = MC.YNLSDE;
+            strategies[1] = withdrawer;
+            strategies[2] = MC.SMOKEHOUSE_WSTETH;
 
+            rules[ruleIndex++] = BaseRules.getApprovalRule(MC.WSTETH, strategies);
+        }
+
+        {
+            // approvals for stETH
+            address[] memory strategies = new address[](2);
+            strategies[0] = MC.WSTETH;
+            strategies[1] = withdrawer;
+
+            rules[ruleIndex++] = BaseRules.getApprovalRule(MC.STETH, strategies);
+        }
+
+        {
+            // approvals for woETH
             address[] memory strategies = new address[](2);
             strategies[0] = MC.YNLSDE;
             strategies[1] = withdrawer;
 
-            for (uint256 i = 0; i < assets.length; i++) {
-                rules[ruleIndex++] = BaseRules.getApprovalRule(assets[i], strategies);
-            }
+            rules[ruleIndex++] = BaseRules.getApprovalRule(MC.WOETH, strategies);
         }
 
         {
@@ -155,8 +169,8 @@ contract YnETHxConfigurer is MainnetActors {
 
             for (uint256 i = 0; i < assets.length; i++) {
                 if (
-                    assets[i] == MC.WETH || assets[i] == MC.WSTETH || assets[i] == MC.WOETH || assets[i] == MC.YNETH
-                        || assets[i] == MC.YNLSDE
+                    assets[i] == MC.WETH || assets[i] == MC.STETH || assets[i] == MC.WSTETH || assets[i] == MC.WOETH
+                        || assets[i] == MC.YNETH || assets[i] == MC.YNLSDE
                 ) {
                     continue;
                 }
@@ -170,6 +184,8 @@ contract YnETHxConfigurer is MainnetActors {
         }
 
         {
+            // submit eth for steth
+            rules[ruleIndex++] = StakedEtherRules.getSubmitRule(MC.STETH, address(vault));
             // wrap/unwrap wstETH
             rules[ruleIndex++] = StakedEtherRules.getWrapRule(MC.WSTETH);
             rules[ruleIndex++] = StakedEtherRules.getUnwrapRule(MC.WSTETH);
@@ -180,6 +196,13 @@ contract YnETHxConfigurer is MainnetActors {
             rules[ruleIndex++] = BaseRules.getDepositRule(MC.WOETH, address(vault));
             rules[ruleIndex++] = BaseRules.getWithdrawRule(MC.WOETH, address(vault));
             rules[ruleIndex++] = BaseRules.getRedeemRule(MC.WOETH, address(vault));
+        }
+
+        {
+            // deposit/withdraw/redeem smokehouse wsteth
+            rules[ruleIndex++] = BaseRules.getDepositRule(MC.SMOKEHOUSE_WSTETH, address(vault));
+            rules[ruleIndex++] = BaseRules.getWithdrawRule(MC.SMOKEHOUSE_WSTETH, address(vault));
+            rules[ruleIndex++] = BaseRules.getRedeemRule(MC.SMOKEHOUSE_WSTETH, address(vault));
         }
 
         if (ruleIndex != rules.length) {

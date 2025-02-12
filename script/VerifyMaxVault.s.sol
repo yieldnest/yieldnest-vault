@@ -9,6 +9,7 @@ import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {Provider} from "src/module/Provider.sol";
 import {BaseScript} from "script/BaseScript.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
 
 import {Test} from "lib/forge-std/src/Test.sol";
 
@@ -60,17 +61,28 @@ contract VerifyMaxVault is BaseScript, Test {
         // Verify processor rules
         VaultVerification.verifyRules(vault);
 
+        // verify actors  & timelock roles on vault
+        RolesVerification.verifyDefaultRoles(vault, timelock, actors);
+        RolesVerification.verifyRole(
+            vault, actors.FEE_MANAGER(), vault.FEE_MANAGER_ROLE(), true, "Fee Manager has FEE_MANAGER_ROLE"
+        );
+
         // Verify withdrawer configuration
         VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
 
         // Verify withdrawer rules
         VaultVerification.verifyWithdrawerRules(withdrawer);
 
-        // verify actors  & timelock roles
-        RolesVerification.verifyDefaultRoles(vault, timelock, actors);
+        // verify actors & timelock roles on withdrawer
+        RolesVerification.verifyDefaultRoles(withdrawer, timelock, actors);
         RolesVerification.verifyRole(
-            vault, actors.FEE_MANAGER(), vault.FEE_MANAGER_ROLE(), true, "Fee Manager has FEE_MANAGER_ROLE"
+            withdrawer, address(vault), withdrawer.ALLOCATOR_ROLE(), true, "YnETHx has ALLOCATOR_ROLE"
         );
+
+        address withdrawerProxyAdmin = ProxyUtils.getProxyAdmin(address(withdrawer));
+
+        // verify proxy roles on withdrawer
+        RolesVerification.verifyProxyRoles(address(withdrawer), withdrawerProxyAdmin, address(timelock));
 
         // verify proxy roles
         RolesVerification.verifyProxyRoles(address(vault), vaultProxyAdmin, address(timelock));
@@ -82,6 +94,7 @@ contract VerifyMaxVault is BaseScript, Test {
 
         // verify temporary roles
         RolesVerification.verifyTemporaryRoles(vault, deployer);
+        RolesVerification.verifyTemporaryRoles(withdrawer, deployer);
 
         // verify viewer
         VaultVerification.verifyViewer(viewer, vault);
@@ -89,6 +102,7 @@ contract VerifyMaxVault is BaseScript, Test {
             MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
         );
 
+        assertFalse(withdrawer.paused(), "Withdrawer should not be paused");
         assertFalse(vault.paused(), "Vault should not be paused");
     }
 

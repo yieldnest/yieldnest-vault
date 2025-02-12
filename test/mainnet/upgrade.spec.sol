@@ -76,7 +76,7 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
 
         // Test the getAssets function
         address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 10, "There should be 10 assets in the vault");
+        assertEq(assets.length, 11, "There should be 11 assets in the vault");
         // assertEq(assets[0], MC.WETH, "First asset should be WETH");
         // assertEq(assets[1], MC.BUFFER, "Second asset should be BUFFER");
         // assertEq(assets[2], MC.STETH, "Third asset should be STETH");
