@@ -6,7 +6,7 @@ import {Provider} from "src/module/Provider.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Vault} from "src/Vault.sol";
 import {TimelockController} from "src/Common.sol";
-import {MainnetActors} from "script/Actors.sol";
+import {MainnetActors, IActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {YnETHxVault} from "src/YnETHxVault.sol";
 import {IVault} from "src/interface/IVault.sol";
@@ -16,14 +16,14 @@ import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
 import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 
 import {VaultVerification} from "script/verification/VaultVerification.sol";
-
+import {RolesVerification} from "script/verification/RolesVerification.sol";
 
 contract VaultConfigureUpgradeTest is Test, MainnetActors {
-
     function test_configure() public {
         Vault vault = Vault(payable(MC.YNETHX));
         Withdrawer withdrawer;
         uint256 previousTotalAssets = vault.totalAssets();
+        TimelockController timelock = TimelockController(payable(MC.TIMELOCK));
 
         {
             vm.expectRevert();
@@ -33,8 +33,6 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
         {
             // upgrade the vault
             Vault vaultImpl = Vault(payable(new YnETHxVault()));
-
-            TimelockController timelock = TimelockController(payable(MC.TIMELOCK));
 
             // schedule a proxy upgrade transaction on the timelock
             // the traget is the proxy admin for the max Vault Proxy Contract
@@ -90,10 +88,9 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
 
             vm.startPrank(ADMIN);
             newVault.grantRole(newVault.DEFAULT_ADMIN_ROLE(), address(configurer));
-            
+
             configurer.configure(address(provider), address(withdrawer));
             vm.stopPrank();
-
         }
 
         {
@@ -113,13 +110,30 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
             );
         }
 
+        IActors actors = IActors(payable(address(this)));
+
         VaultVerification.verifyProvider(Provider(IVault(address(vault)).provider()), withdrawer);
 
         VaultVerification.verifyVaultConfiguration(vault, withdrawer);
-        
+
         VaultVerification.verifyRules(vault);
 
         VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
 
+        VaultVerification.verifyWithdrawerRules(withdrawer);
+
+        // verify actors  & timelock roles
+        RolesVerification.verifyDefaultRoles(vault, timelock, actors);
+        RolesVerification.verifyRole(
+            vault, actors.FEE_MANAGER(), vault.FEE_MANAGER_ROLE(), true, "Fee Manager has FEE_MANAGER_ROLE"
+        );
+
+        // verify proxy roles
+        RolesVerification.verifyProxyRoles(address(vault), MC.PROXY_ADMIN, address(timelock));
+
+        uint256 minDelay = 1 days;
+
+        // verify timelock roles
+        RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
     }
 }

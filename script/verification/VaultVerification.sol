@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IVault, IValidator} from "src/interface/IVault.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {Provider} from "src/module/Provider.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Vault} from "src/Vault.sol";
@@ -9,11 +9,12 @@ import {RulesVerification} from "script/verification/RulesVerification.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
-import {SafeRules} from "script/rules/SafeRules.sol";
+import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {YieldNestRules} from "script/rules/YieldNestRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
+import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 
 library VaultVerification {
     function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal view {
@@ -125,6 +126,66 @@ library VaultVerification {
         }
     }
 
+    function verifyWithdrawerRules(Withdrawer withdrawer) internal view {
+        {
+            // ynETH withdrawal queue
+            RulesVerification.verifyProcessorRule(
+                withdrawer, BaseRules.getApprovalRule(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER)
+            );
+            RulesVerification.verifyProcessorRule(
+                withdrawer, WithdrawerRules.getRequestWithdrawalRule(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER)
+            );
+
+            RulesVerification.verifyProcessorRule(
+                withdrawer,
+                WithdrawerRules.getClaimWithdrawalRule(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, address(withdrawer))
+            );
+        }
+
+        {
+            // ynLSDe withdrawal queue
+            RulesVerification.verifyProcessorRule(
+                withdrawer, BaseRules.getApprovalRule(MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER)
+            );
+            RulesVerification.verifyProcessorRule(
+                withdrawer, WithdrawerRules.getRequestWithdrawalRule(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER)
+            );
+
+            RulesVerification.verifyProcessorRule(
+                withdrawer,
+                WithdrawerRules.getClaimWithdrawalRule(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, address(withdrawer))
+            );
+        }
+
+        {
+            // wstETH withdrawal queue
+            RulesVerification.verifyProcessorRule(
+                withdrawer, BaseRules.getApprovalRule(MC.WSTETH, MC.WSTETH_WITHDRAWAL_QUEUE)
+            );
+            RulesVerification.verifyProcessorRule(
+                withdrawer,
+                WithdrawerRules.getRequestWithdrawalWstETHRule(MC.WSTETH_WITHDRAWAL_QUEUE, address(withdrawer))
+            );
+            RulesVerification.verifyProcessorRule(
+                withdrawer,
+                WithdrawerRules.getClaimWithdrawalWstETHRule(MC.WSTETH_WITHDRAWAL_QUEUE, address(withdrawer))
+            );
+        }
+
+        {
+            // wrap/unwrap wstETH
+            RulesVerification.verifyProcessorRule(withdrawer, StakedEtherRules.getWrapRule(MC.WSTETH));
+            RulesVerification.verifyProcessorRule(withdrawer, StakedEtherRules.getUnwrapRule(MC.WSTETH));
+        }
+
+        {
+            // wrap/unwrap woeth
+            RulesVerification.verifyProcessorRule(withdrawer, BaseRules.getDepositRule(MC.WOETH, address(withdrawer)));
+            RulesVerification.verifyProcessorRule(withdrawer, BaseRules.getWithdrawRule(MC.WOETH, address(withdrawer)));
+            RulesVerification.verifyProcessorRule(withdrawer, BaseRules.getRedeemRule(MC.WOETH, address(withdrawer)));
+        }
+    }
+
     function verifyRules(IVault vault) internal view {
         Withdrawer withdrawer = getWithdrawer(vault);
 
@@ -134,28 +195,18 @@ library VaultVerification {
             wethSpenders[0] = MC.EULER_WETH_22_VAULT;
             wethSpenders[1] = address(withdrawer);
 
-            SafeRules.RuleParams memory wethParams = BaseRules.getApprovalRule(MC.WETH, wethSpenders);
-            RulesVerification.verifyProcessorRule(
-                vault, wethParams.contractAddress, wethParams.funcSig, wethParams.rule
-            );
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.WETH, wethSpenders));
         }
 
         {
-            SafeRules.RuleParams memory depositParams = BaseRules.getWethDepositRule(MC.WETH);
-            RulesVerification.verifyProcessorRule(
-                vault, depositParams.contractAddress, depositParams.funcSig, depositParams.rule
-            );
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getWethDepositRule(MC.WETH));
 
-            SafeRules.RuleParams memory withdrawParams = BaseRules.getWethWithdrawRule(MC.WETH);
-            RulesVerification.verifyProcessorRule(
-                vault, withdrawParams.contractAddress, withdrawParams.funcSig, withdrawParams.rule
-            );
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getWethWithdrawRule(MC.WETH));
         }
 
         {
             // ynETH rules
-            SafeRules.RuleParams memory params = YieldNestRules.getYnETHDepositRule(MC.YNETH, address(vault));
-            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            RulesVerification.verifyProcessorRule(vault, YieldNestRules.getYnETHDepositRule(MC.YNETH, address(vault)));
         }
 
         {
@@ -164,9 +215,9 @@ library VaultVerification {
             depositAssets[0] = MC.WSTETH;
             depositAssets[1] = MC.WOETH;
 
-            SafeRules.RuleParams memory params =
-                YieldNestRules.getYnEigenDepositRule(MC.YNLSDE, depositAssets, address(vault));
-            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            RulesVerification.verifyProcessorRule(
+                vault, YieldNestRules.getYnEigenDepositRule(MC.YNLSDE, depositAssets, address(vault))
+            );
         }
         {
             // Approve rules for deposit assets
@@ -174,35 +225,30 @@ library VaultVerification {
             spenders[0] = MC.YNLSDE;
             spenders[1] = address(withdrawer);
 
-            SafeRules.RuleParams memory wstethParams = BaseRules.getApprovalRule(MC.WSTETH, spenders);
-            RulesVerification.verifyProcessorRule(
-                vault, wstethParams.contractAddress, wstethParams.funcSig, wstethParams.rule
-            );
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.WSTETH, spenders));
 
-            SafeRules.RuleParams memory woethParams = BaseRules.getApprovalRule(MC.WOETH, spenders);
-            RulesVerification.verifyProcessorRule(
-                vault, woethParams.contractAddress, woethParams.funcSig, woethParams.rule
-            );
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.WOETH, spenders));
         }
 
         // Curve LP Strategy rules
         {
             {
-                SafeRules.RuleParams memory params =
-                    BaseRules.getApprovalRule(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
-                RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+                RulesVerification.verifyProcessorRule(
+                    vault,
+                    BaseRules.getApprovalRule(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
+                );
             }
 
             {
-                SafeRules.RuleParams memory params =
-                    ConnectorRules.getConnectorDepositRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
-                RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+                RulesVerification.verifyProcessorRule(
+                    vault, ConnectorRules.getConnectorDepositRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
+                );
             }
 
             {
-                SafeRules.RuleParams memory params =
-                    ConnectorRules.getConnectorWithdrawRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
-                RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+                RulesVerification.verifyProcessorRule(
+                    vault, ConnectorRules.getConnectorWithdrawRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
+                );
             }
         }
 
@@ -223,57 +269,54 @@ library VaultVerification {
             assets[index++] = MC.SFRXETH;
 
             {
-                SafeRules.RuleParams memory params =
-                    BaseRules.getDepositAssetRule(address(withdrawer), assets, address(vault));
-                RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+                RulesVerification.verifyProcessorRule(
+                    vault, BaseRules.getDepositAssetRule(address(withdrawer), assets, address(vault))
+                );
             }
 
             {
                 // Verify withdraw rules
-                SafeRules.RuleParams memory params =
-                    BaseRules.getWithdrawAssetRule(address(withdrawer), MC.WETH, address(vault));
-                RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+                RulesVerification.verifyProcessorRule(
+                    vault, BaseRules.getWithdrawAssetRule(address(withdrawer), MC.WETH, address(vault))
+                );
             }
         }
 
         // Verify buffer rules
         {
             // Verify deposit rule
-            SafeRules.RuleParams memory params = BaseRules.getDepositRule(MC.EULER_WETH_22_VAULT, address(vault));
-            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            RulesVerification.verifyProcessorRule(
+                vault, BaseRules.getDepositRule(MC.EULER_WETH_22_VAULT, address(vault))
+            );
         }
 
         {
             // Verify withdraw rule
-            SafeRules.RuleParams memory params = BaseRules.getWithdrawRule(MC.EULER_WETH_22_VAULT, address(vault));
-            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            RulesVerification.verifyProcessorRule(
+                vault, BaseRules.getWithdrawRule(MC.EULER_WETH_22_VAULT, address(vault))
+            );
         }
 
         // Verify wstETH wrap/unwrap rules
         {
-            SafeRules.RuleParams memory params = StakedEtherRules.getWrapRule(MC.WSTETH);
-            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            RulesVerification.verifyProcessorRule(vault, StakedEtherRules.getWrapRule(MC.WSTETH));
         }
 
         {
-            SafeRules.RuleParams memory params = StakedEtherRules.getUnwrapRule(MC.WSTETH);
-            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            RulesVerification.verifyProcessorRule(vault, StakedEtherRules.getUnwrapRule(MC.WSTETH));
         }
 
         // Verify woETH deposit/withdraw/redeem rules
         {
-            SafeRules.RuleParams memory params = BaseRules.getDepositRule(MC.WOETH, address(vault));
-            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getDepositRule(MC.WOETH, address(vault)));
         }
 
         {
-            SafeRules.RuleParams memory params = BaseRules.getWithdrawRule(MC.WOETH, address(vault));
-            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getWithdrawRule(MC.WOETH, address(vault)));
         }
 
         {
-            SafeRules.RuleParams memory params = BaseRules.getRedeemRule(MC.WOETH, address(vault));
-            RulesVerification.verifyProcessorRule(vault, params.contractAddress, params.funcSig, params.rule);
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getRedeemRule(MC.WOETH, address(vault)));
         }
     }
 
@@ -286,5 +329,20 @@ library VaultVerification {
             }
         }
         revert("Withdrawer not found");
+    }
+
+    function verifyViewer(IVaultViewer viewer, IVault vault) internal view {
+        Vm vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+        vm.assertEq(address(viewer.getVault()), address(vault), "Viewer vault is correct");
+
+        IVaultViewer.AssetInfo[] memory assets = viewer.getAssets();
+        address[] memory assertsList = vault.getAssets();
+        vm.assertEq(assets.length, assertsList.length);
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            vm.assertEq(assets[i].asset, assertsList[i]);
+            vm.assertEq(assets[i].canDeposit, vault.getAsset(assertsList[i]).active);
+        }
     }
 }

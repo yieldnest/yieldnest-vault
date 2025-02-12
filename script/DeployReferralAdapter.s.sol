@@ -10,7 +10,7 @@ import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "./ProxyUtils.sol";
 
-contract DeployReferralAdapter is Script, ProxyUtils {
+contract DeployReferralAdapter is Script {
     using stdJson for string;
 
     address public deployer;
@@ -48,7 +48,7 @@ contract DeployReferralAdapter is Script, ProxyUtils {
         referralAdapter = XReferralAdapter(address(proxy));
         vm.stopBroadcast();
 
-        address proxyAdmin = getProxyAdmin(address(proxy));
+        address proxyAdmin = ProxyUtils.getProxyAdmin(address(proxy));
         saveDeployment(implementation, address(proxy), proxyAdmin);
     }
 }

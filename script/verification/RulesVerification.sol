@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IVault, IValidator} from "src/interface/IVault.sol";
-import {Provider} from "src/module/Provider.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
-import {Vault} from "src/Vault.sol";
+import {IVault} from "src/interface/IVault.sol";
 
-import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
 
 library RulesVerification {
+    function verifyProcessorRule(IVault vault_, SafeRules.RuleParams memory rule) public view {
+        verifyProcessorRule(vault_, rule.contractAddress, rule.funcSig, rule.rule);
+    }
+
     function verifyProcessorRule(
         IVault vault_,
         address contractAddress,

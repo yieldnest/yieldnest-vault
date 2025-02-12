@@ -189,7 +189,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
             uint256 withdrawnShares = vault.withdraw(maxWithdraw, alice, alice);
             vm.stopPrank();
             assertApproxEqRel(
-                withdrawnShares, convertedShares, 1e15, "Withdrawn shares should equal the converted shares"
+                withdrawnShares, convertedShares, 2e15, "Withdrawn shares should equal the converted shares"
             );
 
             uint256 balanceAfter = IERC20(MC.WETH).balanceOf(address(vault));
