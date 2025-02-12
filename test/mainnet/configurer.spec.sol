@@ -17,6 +17,7 @@ import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
 
 contract VaultConfigureUpgradeTest is Test, MainnetActors {
     function test_configure() public {
@@ -118,22 +119,34 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
 
         VaultVerification.verifyRules(vault);
 
-        VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
-
-        VaultVerification.verifyWithdrawerRules(withdrawer);
-
-        // verify actors  & timelock roles
+        // verify actors & timelock roles on vault
         RolesVerification.verifyDefaultRoles(vault, timelock, actors);
         RolesVerification.verifyRole(
             vault, actors.FEE_MANAGER(), vault.FEE_MANAGER_ROLE(), true, "Fee Manager has FEE_MANAGER_ROLE"
         );
 
-        // verify proxy roles
+        // verify proxy roles on vault
         RolesVerification.verifyProxyRoles(address(vault), MC.PROXY_ADMIN, address(timelock));
 
-        uint256 minDelay = 1 days;
+        // verify withdrawer config
+        VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
+
+        // verify withdrawer roles
+        VaultVerification.verifyWithdrawerRules(withdrawer);
+
+        // verify actors & timelock roles on withdrawer
+        RolesVerification.verifyDefaultRoles(withdrawer, timelock, actors);
+        RolesVerification.verifyRole(
+            withdrawer, address(vault), withdrawer.ALLOCATOR_ROLE(), true, "YnETHx has ALLOCATOR_ROLE"
+        );
+
+        address withdrawerProxyAdmin = ProxyUtils.getProxyAdmin(address(withdrawer));
+
+        // verify proxy roles on withdrawer
+        RolesVerification.verifyProxyRoles(address(withdrawer), withdrawerProxyAdmin, address(timelock));
 
         // verify timelock roles
+        uint256 minDelay = 1 days;
         RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
     }
 }

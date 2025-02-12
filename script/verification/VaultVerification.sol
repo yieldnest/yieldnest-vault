@@ -39,7 +39,7 @@ library VaultVerification {
             vm.assertEq(asset.decimals, 18);
         }
 
-        address[] memory inactiveAssets = new address[](7);
+        address[] memory inactiveAssets = new address[](8);
         inactiveAssets[0] = MC.EULER_WETH_22_VAULT;
         inactiveAssets[1] = MC.CURVE_LP_YNETH_YNLSDE_STRATEGY;
         inactiveAssets[2] = address(withdrawer);
@@ -47,6 +47,7 @@ library VaultVerification {
         inactiveAssets[4] = MC.WOETH;
         inactiveAssets[5] = MC.STETH;
         inactiveAssets[6] = MC.OETH;
+        inactiveAssets[7] = MC.SMOKEHOUSE_WSTETH;
 
         for (uint256 i = 0; i < inactiveAssets.length; i++) {
             IVault.AssetParams memory asset = vault.getAsset(inactiveAssets[i]);
@@ -56,8 +57,8 @@ library VaultVerification {
 
         // Verify total number of assets
         address[] memory assets = vault.getAssets();
-        // WETH, YNETH, YNLSDE, EULER_WETH_22_VAULT, CURVE_LP_YNETH_YNLSDE_STRATEGY, withdrawer, WSTETH, WOETH, STETH, OETH
-        vm.assertEq(assets.length, 10);
+        // WETH, YNETH, YNLSDE, EULER_WETH_22_VAULT, CURVE_LP_YNETH_YNLSDE_STRATEGY, withdrawer, WSTETH, WOETH, STETH, OETH, SMOKEHOUSE_WSTETH
+        vm.assertEq(assets.length, 11);
 
         // Verify buffer configuration
         vm.assertEq(vault.buffer(), MC.EULER_WETH_22_VAULT, "Buffer should be set to Euler WETH 22 vault");
@@ -85,6 +86,7 @@ library VaultVerification {
             provider.getRate(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY), 0, "Curve LP strategy rate should be greater than 0"
         );
         vm.assertGt(provider.getRate(address(withdrawer)), 0, "Withdrawer rate should be greater than 0");
+        vm.assertGt(provider.getRate(MC.SMOKEHOUSE_WSTETH), 0, "Smokehouse WSTETH rate should be greater than 0");
 
         // Base asset should always be 1:1
         vm.assertEq(provider.getRate(MC.WETH), 1e18, "WETH rate should be 1:1");
@@ -199,8 +201,8 @@ library VaultVerification {
         }
 
         {
+            // verify weth deposit/withdraw rules
             RulesVerification.verifyProcessorRule(vault, BaseRules.getWethDepositRule(MC.WETH));
-
             RulesVerification.verifyProcessorRule(vault, BaseRules.getWethWithdrawRule(MC.WETH));
         }
 
@@ -219,37 +221,46 @@ library VaultVerification {
                 vault, YieldNestRules.getYnEigenDepositRule(MC.YNLSDE, depositAssets, address(vault))
             );
         }
+
         {
-            // Approve rules for deposit assets
-            address[] memory spenders = new address[](2);
-            spenders[0] = MC.YNLSDE;
-            spenders[1] = address(withdrawer);
+            // approvals for wstETH
+            address[] memory strategies = new address[](3);
+            strategies[0] = MC.YNLSDE;
+            strategies[1] = address(withdrawer);
+            strategies[2] = MC.SMOKEHOUSE_WSTETH;
 
-            RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.WSTETH, spenders));
-
-            RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.WOETH, spenders));
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.WSTETH, strategies));
         }
 
-        // Curve LP Strategy rules
         {
-            {
-                RulesVerification.verifyProcessorRule(
-                    vault,
-                    BaseRules.getApprovalRule(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
-                );
-            }
+            // approvals for stETH
+            address[] memory strategies = new address[](2);
+            strategies[0] = MC.WSTETH;
+            strategies[1] = address(withdrawer);
 
-            {
-                RulesVerification.verifyProcessorRule(
-                    vault, ConnectorRules.getConnectorDepositRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
-                );
-            }
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.STETH, strategies));
+        }
 
-            {
-                RulesVerification.verifyProcessorRule(
-                    vault, ConnectorRules.getConnectorWithdrawRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
-                );
-            }
+        {
+            // approvals for woETH
+            address[] memory strategies = new address[](2);
+            strategies[0] = MC.YNLSDE;
+            strategies[1] = address(withdrawer);
+
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.WOETH, strategies));
+        }
+
+        {
+            // Curve LP Strategy rules
+            RulesVerification.verifyProcessorRule(
+                vault, BaseRules.getApprovalRule(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
+            );
+            RulesVerification.verifyProcessorRule(
+                vault, ConnectorRules.getConnectorDepositRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
+            );
+            RulesVerification.verifyProcessorRule(
+                vault, ConnectorRules.getConnectorWithdrawRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
+            );
         }
 
         // Withdrawer rules
@@ -268,55 +279,50 @@ library VaultVerification {
             assets[index++] = MC.METH;
             assets[index++] = MC.SFRXETH;
 
-            {
-                RulesVerification.verifyProcessorRule(
-                    vault, BaseRules.getDepositAssetRule(address(withdrawer), assets, address(vault))
-                );
-            }
-
-            {
-                // Verify withdraw rules
-                RulesVerification.verifyProcessorRule(
-                    vault, BaseRules.getWithdrawAssetRule(address(withdrawer), MC.WETH, address(vault))
-                );
-            }
-        }
-
-        // Verify buffer rules
-        {
-            // Verify deposit rule
             RulesVerification.verifyProcessorRule(
-                vault, BaseRules.getDepositRule(MC.EULER_WETH_22_VAULT, address(vault))
+                vault, BaseRules.getDepositAssetRule(address(withdrawer), assets, address(vault))
+            );
+            // Verify withdraw rules
+            RulesVerification.verifyProcessorRule(
+                vault, BaseRules.getWithdrawAssetRule(address(withdrawer), MC.WETH, address(vault))
             );
         }
 
         {
-            // Verify withdraw rule
+            // Verify buffer rules
+            RulesVerification.verifyProcessorRule(
+                vault, BaseRules.getDepositRule(MC.EULER_WETH_22_VAULT, address(vault))
+            );
             RulesVerification.verifyProcessorRule(
                 vault, BaseRules.getWithdrawRule(MC.EULER_WETH_22_VAULT, address(vault))
             );
         }
 
-        // Verify wstETH wrap/unwrap rules
         {
+            // Verify submit rule on stETH
+            RulesVerification.verifyProcessorRule(vault, StakedEtherRules.getSubmitRule(MC.STETH, address(vault)));
+            // Verify wstETH wrap/unwrap rules
             RulesVerification.verifyProcessorRule(vault, StakedEtherRules.getWrapRule(MC.WSTETH));
-        }
-
-        {
             RulesVerification.verifyProcessorRule(vault, StakedEtherRules.getUnwrapRule(MC.WSTETH));
         }
 
-        // Verify woETH deposit/withdraw/redeem rules
         {
+            // Verify woETH deposit/withdraw/redeem rules
             RulesVerification.verifyProcessorRule(vault, BaseRules.getDepositRule(MC.WOETH, address(vault)));
-        }
-
-        {
             RulesVerification.verifyProcessorRule(vault, BaseRules.getWithdrawRule(MC.WOETH, address(vault)));
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getRedeemRule(MC.WOETH, address(vault)));
         }
 
         {
-            RulesVerification.verifyProcessorRule(vault, BaseRules.getRedeemRule(MC.WOETH, address(vault)));
+            // Verify smoke house deposit/withdraw/redeem rules
+            RulesVerification.verifyProcessorRule(
+                vault, BaseRules.getApprovalRule(MC.SMOKEHOUSE_WSTETH, address(vault))
+            );
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getDepositRule(MC.SMOKEHOUSE_WSTETH, address(vault)));
+            RulesVerification.verifyProcessorRule(
+                vault, BaseRules.getWithdrawRule(MC.SMOKEHOUSE_WSTETH, address(vault))
+            );
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getRedeemRule(MC.SMOKEHOUSE_WSTETH, address(vault)));
         }
     }
 

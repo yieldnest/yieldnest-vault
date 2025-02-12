@@ -5,6 +5,22 @@ import {IVault, IValidator} from "src/interface/IVault.sol";
 import {SafeRules} from "./SafeRules.sol";
 
 library StakedEtherRules {
+    function getSubmitRule(address steth_, address referral_) internal pure returns (SafeRules.RuleParams memory) {
+        bytes4 funcSig = bytes4(keccak256("submit(address)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](1);
+
+        address[] memory allowList = new address[](1);
+        allowList[0] = referral_;
+
+        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+
+        return SafeRules.RuleParams({contractAddress: steth_, funcSig: funcSig, rule: rule});
+    }
+
     function getWrapRule(address wsteth_) internal pure returns (SafeRules.RuleParams memory) {
         bytes4 funcSig = bytes4(keccak256("wrap(uint256)"));
 
