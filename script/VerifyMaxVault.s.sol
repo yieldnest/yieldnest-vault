@@ -2,15 +2,18 @@
 pragma solidity ^0.8.24;
 
 import {IVault} from "src/BaseVault.sol";
-import {BaseVerifyScript} from "script/BaseVerifyScript.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
+import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {Provider} from "src/module/Provider.sol";
+import {BaseScript} from "script/BaseScript.sol";
+
+import {Test} from "lib/forge-std/src/Test.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script VerifyMaxVault
-contract VerifyMaxVault is BaseVerifyScript {
+contract VerifyMaxVault is BaseScript, Test {
     function symbol() public view virtual override returns (string memory) {
         return "ynETHx";
     }
@@ -48,25 +51,45 @@ contract VerifyMaxVault is BaseVerifyScript {
         Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
 
         // TODO: Add rest of assertions and verifications
-        // Verify vault configuration using VaultVerification library
-        VaultVerification.verifyVaultConfiguration(vault, withdrawer);
-
         // Verify provider configuration
         VaultVerification.verifyProvider(Provider(address(rateProvider)), withdrawer);
+
+        // Verify vault configuration using VaultVerification library
+        VaultVerification.verifyVaultConfiguration(vault, withdrawer);
 
         // Verify processor rules
         VaultVerification.verifyRules(vault);
 
-        assertFalse(vault.paused());
+        // Verify withdrawer configuration
+        VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
 
-        _verifyDefaultRoles();
-        _verifyTemporaryRoles();
+        // Verify withdrawer rules
+        VaultVerification.verifyWithdrawerRules(withdrawer);
 
-        console.log("Verifying viewer.");
-        _verifyViewer();
-        assertTrue(
-            MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH is not an underlying asset"
+        // verify actors  & timelock roles
+        RolesVerification.verifyDefaultRoles(vault, timelock, actors);
+        RolesVerification.verifyRole(
+            vault, actors.FEE_MANAGER(), vault.FEE_MANAGER_ROLE(), true, "Fee Manager has FEE_MANAGER_ROLE"
         );
+
+        // verify proxy roles
+        RolesVerification.verifyProxyRoles(address(vault), vaultProxyAdmin, address(timelock));
+        // verify viewer roles
+        RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.ADMIN());
+
+        // verify timelock roles
+        RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
+
+        // verify temporary roles
+        RolesVerification.verifyTemporaryRoles(vault, deployer);
+
+        // verify viewer
+        VaultVerification.verifyViewer(viewer, vault);
+        assertTrue(
+            MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
+        );
+
+        assertFalse(vault.paused(), "Vault should not be paused");
     }
 
     function _checkForAsset(address asset) internal view returns (bool isIncluded, uint256 index) {

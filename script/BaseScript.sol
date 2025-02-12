@@ -6,8 +6,6 @@ import {Script, stdJson} from "lib/forge-std/src/Script.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {IActors, MainnetActors} from "script/Actors.sol";
 import {L1Contracts, IContracts} from "script/Contracts.sol";
-import {VaultUtils} from "script/VaultUtils.sol";
-
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
 import {Vault} from "src/Vault.sol";
@@ -17,10 +15,9 @@ import {TransparentUpgradeableProxy} from
 
 import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
-
 import {ProxyUtils} from "script/ProxyUtils.sol";
 
-abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
+abstract contract BaseScript is Script {
     using stdJson for string;
 
     uint256 public minDelay;
@@ -79,7 +76,7 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
 
         viewer = IVaultViewer(payable(address(proxy)));
 
-        viewerProxyAdmin = getProxyAdmin(address(viewer));
+        viewerProxyAdmin = ProxyUtils.getProxyAdmin(address(viewer));
     }
 
     function _deployTimelockController() internal virtual {
@@ -92,48 +89,6 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
         address admin = actors.ADMIN();
 
         timelock = new TimelockController(minDelay, proposers, executors, admin);
-    }
-
-    function _configureDefaultRoles() internal virtual {
-        if (address(vault) == address(0) || actors.ADMIN() == address(0) || address(timelock) == address(0)) {
-            revert InvalidSetup();
-        }
-
-        // set admin roles
-        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), actors.ADMIN());
-        vault.grantRole(vault.PROCESSOR_ROLE(), actors.PROCESSOR());
-        vault.grantRole(vault.PAUSER_ROLE(), actors.PAUSER());
-        vault.grantRole(vault.UNPAUSER_ROLE(), actors.UNPAUSER());
-        vault.grantRole(vault.FEE_MANAGER_ROLE(), actors.ADMIN());
-
-        // set timelock roles
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), address(timelock));
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(timelock));
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), address(timelock));
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(timelock));
-    }
-
-    function _configureTemporaryRoles() internal virtual {
-        if (address(vault) == address(0)) {
-            revert InvalidSetup();
-        }
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), msg.sender);
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), msg.sender);
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), msg.sender);
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), msg.sender);
-        vault.grantRole(vault.UNPAUSER_ROLE(), msg.sender);
-    }
-
-    function _renounceTemporaryRoles() internal virtual {
-        if (address(vault) == address(0)) {
-            revert InvalidSetup();
-        }
-        vault.renounceRole(vault.DEFAULT_ADMIN_ROLE(), msg.sender);
-        vault.renounceRole(vault.PROCESSOR_MANAGER_ROLE(), msg.sender);
-        vault.renounceRole(vault.BUFFER_MANAGER_ROLE(), msg.sender);
-        vault.renounceRole(vault.PROVIDER_MANAGER_ROLE(), msg.sender);
-        vault.renounceRole(vault.ASSET_MANAGER_ROLE(), msg.sender);
-        vault.renounceRole(vault.UNPAUSER_ROLE(), msg.sender);
     }
 
     function _loadDeployment() internal virtual {
@@ -166,11 +121,11 @@ abstract contract BaseScript is Script, VaultUtils, ProxyUtils {
         vm.serializeAddress(symbol(), "timelock", address(timelock));
         vm.serializeAddress(symbol(), "rateProvider", address(rateProvider));
 
-        vm.serializeAddress(symbol(), "viewer-proxyAdmin", getProxyAdmin(address(viewer)));
+        vm.serializeAddress(symbol(), "viewer-proxyAdmin", ProxyUtils.getProxyAdmin(address(viewer)));
         vm.serializeAddress(symbol(), "viewer-proxy", address(viewer));
         vm.serializeAddress(symbol(), "viewer-implementation", address(viewerImplementation));
 
-        vm.serializeAddress(symbol(), string.concat(symbol(), "-proxyAdmin"), getProxyAdmin(address(vault)));
+        vm.serializeAddress(symbol(), string.concat(symbol(), "-proxyAdmin"), ProxyUtils.getProxyAdmin(address(vault)));
         vm.serializeAddress(symbol(), string.concat(symbol(), "-proxy"), address(vault));
 
         string memory jsonOutput =

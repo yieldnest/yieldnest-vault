@@ -250,9 +250,6 @@ contract WithdrawerMainnetTest is Test, MainnetActors {
         oethVault.setMaxSupplyDiff(0);
         vm.stopPrank();
 
-        uint256[] memory tokenIds = new uint256[](1);
-        tokenIds[0] = tokenId;
-
         IOETHVault.WithdrawalQueueMetadata memory queue = oethVault.withdrawalQueueMetadata();
         uint256 outstandingWithdrawals = queue.queued - queue.claimed;
         deal(MC.WETH, MC.OETH_VAULT, outstandingWithdrawals + INITIAL_BALANCE);
@@ -261,8 +258,10 @@ contract WithdrawerMainnetTest is Test, MainnetActors {
 
         // solhint-disable-next-line not-rely-on-time
         uint256 timestamp = block.timestamp;
-        vm.warp(timestamp + oethVault.CLAIM_DELAY() + 10 minutes);
+        vm.warp(timestamp + oethVault.withdrawalClaimDelay() + 10 minutes);
 
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
         vault.claimWithdrawalsWOETH(tokenIds);
 
         assertApproxEqRel(vault.totalAssets(), totalAssets, 2e15, "Total assets should match");

@@ -29,7 +29,6 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
         setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
 
-        // Grant DEFAULT_ADMIN_ROLE to setup contract
         vm.startPrank(ADMIN);
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));
         vm.stopPrank();
@@ -86,12 +85,24 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
         vm.stopPrank();
     }
 
+    function _setSTETHActive() internal {
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
+        vm.stopPrank();
+
+        uint256 index = vault.getAsset(MC.STETH).index;
+        IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
+        vault.updateAsset(index, fields);
+    }
+
     function test_Vault_Curve_swapStETHtoETH() public {
         uint256 amount = 100 ether;
 
         // Create user and give them ETH
         address user = makeAddr("user");
         deal(user, 100000 ether);
+
+        _setSTETHActive();
 
         // Convert ETH to stETH via Lido
         vm.startPrank(user);

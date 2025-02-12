@@ -14,7 +14,7 @@ import {IActors} from "script/Actors.sol";
 library WithdrawerConfig {
     error InvalidRules();
 
-    string constant WITHDRAWER_SYMBOL = "ynETHxWithdrawer";
+    string public constant WITHDRAWER_SYMBOL = "ynETHxWithdrawer";
 
     function configure(Withdrawer vault, address provider, address timelock, address deployer, IActors actors)
         internal
