@@ -8,8 +8,13 @@ import {Vault} from "src/Vault.sol";
 
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
 
 library RulesVerification {
+    function verifyProcessorRule(IVault vault_, SafeRules.RuleParams memory rule) public view {
+        verifyProcessorRule(vault_, rule.contractAddress, rule.funcSig, rule.rule);
+    }
+
     function verifyProcessorRule(
         IVault vault_,
         address contractAddress,

@@ -17,9 +17,7 @@ import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 
-
 contract VaultConfigureUpgradeTest is Test, MainnetActors {
-
     function test_configure() public {
         Vault vault = Vault(payable(MC.YNETHX));
         Withdrawer withdrawer;
@@ -90,10 +88,9 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
 
             vm.startPrank(ADMIN);
             newVault.grantRole(newVault.DEFAULT_ADMIN_ROLE(), address(configurer));
-            
+
             configurer.configure(address(provider), address(withdrawer));
             vm.stopPrank();
-
         }
 
         {
@@ -116,10 +113,11 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
         VaultVerification.verifyProvider(Provider(IVault(address(vault)).provider()), withdrawer);
 
         VaultVerification.verifyVaultConfiguration(vault, withdrawer);
-        
+
         VaultVerification.verifyRules(vault);
 
         VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
 
+        VaultVerification.verifyWithdrawerRules(withdrawer);
     }
 }

@@ -48,14 +48,20 @@ contract VerifyMaxVault is BaseVerifyScript {
         Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
 
         // TODO: Add rest of assertions and verifications
-        // Verify vault configuration using VaultVerification library
-        VaultVerification.verifyVaultConfiguration(vault, withdrawer);
-
         // Verify provider configuration
         VaultVerification.verifyProvider(Provider(address(rateProvider)), withdrawer);
 
+        // Verify vault configuration using VaultVerification library
+        VaultVerification.verifyVaultConfiguration(vault, withdrawer);
+
         // Verify processor rules
         VaultVerification.verifyRules(vault);
+
+        // Verify withdrawer configuration
+        VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
+
+        // Verify withdrawer rules
+        VaultVerification.verifyWithdrawerRules(withdrawer);
 
         assertFalse(vault.paused());
 
