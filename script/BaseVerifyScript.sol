@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IVault} from "src/BaseVault.sol";
-import {Vault} from "src/Vault.sol";
 import {IValidator} from "src/interface/IVault.sol";
 import {BaseScript} from "script/BaseScript.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
