@@ -678,6 +678,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         emit ProcessAccounting(block.timestamp, totalBaseBalance);
     }
 
+    /**
+     * @notice Computes the total assets in the vault.
+     * @return totalBaseBalance The total assets in the vault.
+     */
     function computeTotalAssets() public view virtual returns (uint256 totalBaseBalance) {
         totalBaseBalance = VaultLib.computeTotalAssets();
     }
@@ -710,7 +714,17 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /// FEES ///
+    /**
+     * @notice Returns the fee on raw assets where the fee would get added on top of the assets.
+     * @param assets The amount of assets.
+     * @return The fee on raw assets.
+     */
     function _feeOnRaw(uint256 assets) public view virtual override returns (uint256);
 
+    /**
+     * @notice Returns the fee on total assets where the fee is already included.
+     * @param assets The amount of assets.
+     * @return The fee on total assets.
+     */
     function _feeOnTotal(uint256 assets) public view virtual override returns (uint256);
 }

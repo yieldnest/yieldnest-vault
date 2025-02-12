@@ -6,16 +6,25 @@ import {IERC4626, IERC20} from "src/Common.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 
 library OriginWithdrawalLib {
-    event WOETHWithdrawalRequested(uint256 assetAmount, uint256 requestId);
-    event WOETHWithdrawalsClaimed(uint256 baseAmount, uint256[] requestIds);
-    event OETHWithdrawalRequested(uint256 assetAmount, uint256 requestId);
+    /// Events
 
+    // @notice Emitted when a withdrawal request is made
+    event WithdrawalRequested(address indexed asset, uint256 amount, uint256 requestId);
+    // @notice Emitted when withdrawals are claimed
+    event WithdrawalsClaimed(address indexed asset, uint256 baseAmount, uint256[] requestIds);
+
+    // @notice Error thrown when not enough balance to make a withdrawal request
     error NotEnoughBalance();
 
+    // @notice Storage for the origin withdrawal library
     struct OriginWithdrawalStorage {
         uint256[] requestIds;
     }
 
+    /**
+     * @notice Returns the storage for the origin withdrawal library.
+     * @return $ The storage.
+     */
     function getOriginWithdrawalStorage() public pure returns (OriginWithdrawalStorage storage $) {
         assembly {
             // keccak256("yieldnest.storage.withdraw.origin")
@@ -23,19 +32,28 @@ library OriginWithdrawalLib {
         }
     }
 
-    // Function to add a requestId to the main array
+    /**
+     * @notice Adds a requestId to the main array.
+     * @param id The requestId to add.
+     */
     function _addRequestId(uint256 id) private {
         getOriginWithdrawalStorage().requestIds.push(id);
     }
 
-    // Function to remove an array of requestIds from the main array
+    /**
+     * @notice Removes requestIds from the main array.
+     * @param idsToRemove The requestIds to remove.
+     */
     function _removeRequestIds(uint256[] calldata idsToRemove) private {
         for (uint256 i = 0; i < idsToRemove.length; i++) {
             _removeRequestId(idsToRemove[i]);
         }
     }
 
-    // Internal function to remove a single requestId
+    /**
+     * @notice Removes a requestId from the main array.
+     * @param id The requestId to remove.
+     */
     function _removeRequestId(uint256 id) private {
         uint256[] storage requestIds = getOriginWithdrawalStorage().requestIds;
 
@@ -48,10 +66,19 @@ library OriginWithdrawalLib {
         }
     }
 
-    function getWOETHRequestIds() external view returns (uint256[] memory) {
-        return getOriginWithdrawalStorage().requestIds;
+    /**
+     * @notice Returns the requestIds array.
+     * @return requestIds The requestIds array.
+     */
+    function getWOETHRequestIds() external view returns (uint256[] memory requestIds) {
+        requestIds = getOriginWithdrawalStorage().requestIds;
     }
 
+    /**
+     * @notice Requests a withdrawal of WOETH.
+     * @return requestId the requestId of the WOETH withdrawal.
+     * @dev WOETH is a wrapper around OETH. This function will first redeem WOETH for OETH, then request the OETH withdrawal.
+     */
     function requestWithdrawalWOETH(uint256 amount) public returns (uint256 requestId) {
         IERC4626 woeth = IERC4626(MC.WOETH);
         if (woeth.balanceOf(address(this)) < amount) {
@@ -61,14 +88,22 @@ library OriginWithdrawalLib {
         uint256 amountInOETH = woeth.redeem(amount, address(this), address(this));
 
         requestId = _requestWithdrawalOETH(amountInOETH);
-        emit WOETHWithdrawalRequested(amount, requestId);
+        emit WithdrawalRequested(MC.WOETH, amount, requestId);
     }
 
+    /**
+     * @notice Requests a withdrawal of OETH.
+     * @return requestId the requestId of the OETH withdrawal.
+     */
     function requestWithdrawalOETH(uint256 amount) public returns (uint256 requestId) {
         _requestWithdrawalOETH(amount);
-        emit OETHWithdrawalRequested(amount, requestId);
+        emit WithdrawalRequested(MC.OETH, amount, requestId);
     }
 
+    /**
+     * @notice Requests a withdrawal of OETH.
+     * @return requestId the requestId of the OETH withdrawal.
+     */
     function _requestWithdrawalOETH(uint256 amount) private returns (uint256 requestId) {
         IERC20 oeth = IERC20(MC.OETH);
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
@@ -82,6 +117,12 @@ library OriginWithdrawalLib {
         _addRequestId(requestId);
     }
 
+    /**
+     * @notice Claims WOETH withdrawals.
+     * @param requestIds the requestIds of the WOETH withdrawals to claim.
+     * @return amounts the amounts of WOETH claimed.
+     * @return totalAmount the total amount of WOETH claimed.
+     */
     function claimWithdrawalsWOETH(uint256[] calldata requestIds)
         public
         returns (uint256[] memory amounts, uint256 totalAmount)
@@ -91,9 +132,13 @@ library OriginWithdrawalLib {
         (amounts, totalAmount) = oethVault.claimWithdrawals(requestIds);
 
         _removeRequestIds(requestIds);
-        emit WOETHWithdrawalsClaimed(totalAmount, requestIds);
+        emit WithdrawalsClaimed(MC.WOETH, totalAmount, requestIds);
     }
 
+    /**
+     * @notice Returns the total amount of WOETH that are in queue for withdrawal.
+     * @return baseAssets amount in base units.
+     */
     function _asyncWithdrawalBalanceWOETH() internal view returns (uint256 baseAssets) {
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
 

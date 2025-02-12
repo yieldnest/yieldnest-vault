@@ -11,12 +11,20 @@ library AsyncWithdrawalLib {
     /**
      * @notice function to handle the assets that are in queue for withdrawal.
      * @param asset_ The address of the asset.
+     * @return baseAssets The amount of base assets in the queue.
      * @dev This function should return the amount in base denomination.
      */
     function asyncWithdrawalBalance(address asset_) public view returns (uint256 baseAssets) {
         baseAssets = _asyncWithdrawalBalance(asset_);
     }
 
+    /**
+     * @notice private function to handle the yieldnest assets that are in queue for withdrawal.
+     * @param queueManager_ The address of the yieldnest queue manager.
+     * @param asset_ The address of the asset.
+     * @return baseAssets The amount of base assets in the queue.
+     * @dev This function should return the amount in base denomination.
+     */
     function _asyncWithdrawalBalanceYNAsset(address queueManager_, address asset_)
         private
         view
@@ -40,6 +48,9 @@ library AsyncWithdrawalLib {
         return baseAssets;
     }
 
+    /// @notice private function to handle the wstETH assets that are in queue for withdrawal.
+    /// @return baseAssets The amount of base assets in the queue.
+    /// @dev This function should return the amount in base denomination.
     function _asyncWithdrawalBalanceWSTETH() private view returns (uint256 baseAssets) {
         IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
         uint256[] memory requestIds = queue.getWithdrawalRequests(address(this));
@@ -49,6 +60,12 @@ library AsyncWithdrawalLib {
         }
     }
 
+    /**
+     * @notice private function to handle the assets that are in queue for withdrawal.
+     * @param asset The address of the asset.
+     * @return baseAssets The amount of base assets in the queue.
+     * @dev This function should return the amount in base denomination.
+     */
     function _asyncWithdrawalBalance(address asset) private view returns (uint256 baseAssets) {
         if (asset == MC.WOETH) {
             return OriginWithdrawalLib._asyncWithdrawalBalanceWOETH();

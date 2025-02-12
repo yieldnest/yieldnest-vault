@@ -2,6 +2,7 @@
   "extends": "solhint:recommended",
   "plugins": [],
   "rules": {
+    "avoid-throw": "error",
     "avoid-suicide": "error",
     "avoid-sha3": "warn",
     "compiler-version": ["error", "^0.8.0"],
@@ -12,6 +13,9 @@
     "max-line-length": ["warn", 120],
     "no-console": "off",
     "func-name-mixedcase": "off",
-    "no-inline-assembly": "off"
+    "no-inline-assembly": "off",
+    "max-line-length": "off",
+    "explicit-types": "error",
+    "payable-fallback": "error"
   }
 }

@@ -236,6 +236,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
             assertEq(bufferAfter, bufferBefore - maxWithdraw, "Buffer balance should increase by buffer amount");
         }
     }
+
     function test_connector_deposit(uint256 amountA) public {
         vm.assume(amountA > 1000 && amountA < 100_000 ether);
 
@@ -290,7 +291,9 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
 
         assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
         assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
-        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first deposit");
+        assertApproxEqRel(
+            vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first deposit"
+        );
 
         processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
 
@@ -300,7 +303,9 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
 
         assertGe(IERC20(ASSET_B).balanceOf(address(vault)), 1000, "Asset B balance should be correct");
         assertGe(IERC20(ASSET_A).balanceOf(address(vault)), 1000, "Asset A balance should be correct");
-        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first withdraw");
+        assertApproxEqRel(
+            vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first withdraw"
+        );
 
         amountA = IERC20(ASSET_A).balanceOf(address(vault));
         amountB = IERC20(ASSET_B).balanceOf(address(vault));
@@ -317,7 +322,9 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
 
         assertApproxEqRel(shares2, shares, 1e15, "Second shares should match shares");
-        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second deposit");
+        assertApproxEqRel(
+            vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second deposit"
+        );
 
         processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
 
@@ -327,6 +334,8 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
 
         assertGe(IERC20(ASSET_B).balanceOf(address(vault)), 500, "Asset B balance should be correct");
         assertGe(IERC20(ASSET_A).balanceOf(address(vault)), 500, "Asset A balance should be correct");
-        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second withdraw");
+        assertApproxEqRel(
+            vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second withdraw"
+        );
     }
 }
