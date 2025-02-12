@@ -57,6 +57,10 @@ contract Provider is IProvider {
             return IynLSDe(asset).previewRedeem(1e18);
         }
 
+        if (asset == MC.SMOKEHOUSE_WSTETH) {
+            return IStETH(MC.STETH).getPooledEthByShares(IERC4626(asset).convertToAssets(1e18));
+        }
+
         if (asset == MC.WSTETH) {
             return IStETH(MC.STETH).getPooledEthByShares(1e18);
         }

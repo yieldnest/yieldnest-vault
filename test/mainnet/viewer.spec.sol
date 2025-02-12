@@ -47,7 +47,7 @@ contract VaultMainnetViewerTest is Test, MainnetActors {
         uint256 totalAssets = vault.totalAssets();
 
         assertEq(assetsInfo.length, assets.length);
-        assertEq(assetsInfo.length, 10);
+        assertEq(assetsInfo.length, 11);
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata asset = IERC20Metadata(assets[i]);
@@ -78,7 +78,7 @@ contract VaultMainnetViewerTest is Test, MainnetActors {
         uint256 totalAssets = vault.totalAssets();
 
         assertEq(assetsInfo.length, assets.length);
-        assertEq(assetsInfo.length, 10);
+        assertEq(assetsInfo.length, 11);
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata asset = IERC20Metadata(assets[i]);
@@ -142,7 +142,7 @@ contract VaultMainnetViewerTest is Test, MainnetActors {
             IVaultViewer.AssetInfo[] memory strategies = viewer.getStrategies();
 
             assertEq(assetsInfo.length, strategies.length);
-            assertEq(strategies.length, 10);
+            assertEq(strategies.length, 11);
         }
 
         address[] memory underlyingAssets = new address[](2);
@@ -155,7 +155,7 @@ contract VaultMainnetViewerTest is Test, MainnetActors {
         {
             IVaultViewer.AssetInfo[] memory strategies = viewer.getStrategies();
 
-            assertEq(strategies.length, 8);
+            assertEq(strategies.length, 9);
 
             assertEq(strategies[0].asset, MC.YNETH);
             assertEq(strategies[1].asset, MC.YNLSDE);

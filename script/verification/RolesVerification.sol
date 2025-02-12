@@ -22,7 +22,7 @@ library RolesVerification {
 
         bool hasRole = control.hasRole(role, account);
         console.log(hasRole ? "\u2705" : "\u274C", message, account);
-        vm.assertEq(hasRole, expected);
+        vm.assertEq(hasRole, expected, message);
     }
 
     function verifyDefaultRoles(BaseVault vault, TimelockController timelock, IActors actors) internal view {
@@ -61,11 +61,11 @@ library RolesVerification {
 
         bool isProxyAdmin = ProxyUtils.getProxyAdmin(proxy) == proxyAdmin;
         console.log(isProxyAdmin ? "\u2705" : "\u274C", "Proxy admin is correct:", proxyAdmin);
-        vm.assertTrue(isProxyAdmin);
+        vm.assertTrue(isProxyAdmin, "Proxy admin is not correct");
 
         bool isProxyAdminOwner = Ownable(ProxyUtils.getProxyAdmin(proxy)).owner() == proxyAdminOwner;
         console.log(isProxyAdminOwner ? "\u2705" : "\u274C", "Proxy admin owner is correct:", proxyAdminOwner);
-        vm.assertTrue(isProxyAdminOwner);
+        vm.assertTrue(isProxyAdminOwner, "Proxy admin owner is not correct");
     }
 
     function verifyTimelockRoles(TimelockController timelock, IActors actors, uint256 minDelay) internal view {
@@ -73,7 +73,7 @@ library RolesVerification {
 
         bool isMinDelay = timelock.getMinDelay() == minDelay;
         console.log(isMinDelay ? "\u2705" : "\u274C", "Timelock min delay is correct:", minDelay);
-        vm.assertTrue(isMinDelay);
+        vm.assertTrue(isMinDelay, "Timelock min delay is not correct");
 
         verifyRole(timelock, actors.PROPOSER_1(), timelock.PROPOSER_ROLE(), true, "Proposer 1 has PROPOSER_ROLE");
         verifyRole(timelock, actors.EXECUTOR_1(), timelock.EXECUTOR_ROLE(), true, "Executor 1 has EXECUTOR_ROLE");
