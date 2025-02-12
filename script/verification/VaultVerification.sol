@@ -315,9 +315,6 @@ library VaultVerification {
 
         {
             // Verify smoke house deposit/withdraw/redeem rules
-            RulesVerification.verifyProcessorRule(
-                vault, BaseRules.getApprovalRule(MC.SMOKEHOUSE_WSTETH, address(vault))
-            );
             RulesVerification.verifyProcessorRule(vault, BaseRules.getDepositRule(MC.SMOKEHOUSE_WSTETH, address(vault)));
             RulesVerification.verifyProcessorRule(
                 vault, BaseRules.getWithdrawRule(MC.SMOKEHOUSE_WSTETH, address(vault))

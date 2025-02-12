@@ -22,7 +22,6 @@ test = "test/mainnet"
 eth_rpc_url = "https://rpc.ankr.com/eth"
 evm_version = "cancun"
 solc_version = "0.8.24"
-fork_block_number = 21_831_791
 allow_internal_expect_revert = true
 fs_permissions = [
   { access = "read-write", path = "./deployments" },
