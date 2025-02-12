@@ -9,9 +9,10 @@ contract Vault is BaseVault {
     string public constant VAULT_VERSION = "0.2.0";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
-    /// @notice The fraction of the buffer below which flat fees apply, in basis points (1e8 = 100%).
-    /// Only used by quadratic fees
-
+    /**
+     * @notice Internal function to get the fee storage.
+     * @return $ The fee storage.
+     */
     function _getFeeStorage() internal pure returns (FeeStorage storage) {
         return VaultLib.getFeeStorage();
     }
@@ -21,6 +22,10 @@ contract Vault is BaseVault {
      * @param admin The address of the admin.
      * @param name The name of the vault.
      * @param symbol The symbol of the vault.
+     * @param decimals_ The number of decimals for the vault token.
+     * @param baseWithdrawalFee_ The base withdrawal fee in basis points (1e8 = 100%).
+     * @param countNativeAsset_ Whether the vault should count the native asset.
+     * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
      */
     function initialize(
         address admin,
@@ -34,6 +39,16 @@ contract Vault is BaseVault {
         _initialize(admin, name, symbol, decimals_, baseWithdrawalFee_, countNativeAsset_, alwaysComputeTotalAssets_);
     }
 
+    /**
+     * @notice Internal function to initialize the vault.
+     * @param admin The address of the admin.
+     * @param name The name of the vault.
+     * @param symbol The symbol of the vault.
+     * @param decimals_ The number of decimals for the vault token.
+     * @param baseWithdrawalFee_ The base withdrawal fee in basis points (1e8 = 100%).
+     * @param countNativeAsset_ Whether the vault should count the native asset.
+     * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
+     */
     function _initialize(
         address admin,
         string memory name,
@@ -60,6 +75,11 @@ contract Vault is BaseVault {
 
     //// FEES ////
 
+    /**
+     * @notice Returns the fee on raw assets where the fee would get added on top of the assets.
+     * @param assets The amount of assets.
+     * @return The fee on raw assets.
+     */
     function _feeOnRaw(uint256 assets) public view override returns (uint256) {
         FeeStorage storage fees = _getFeeStorage();
         uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;
@@ -69,8 +89,13 @@ contract Vault is BaseVault {
         return FeeMath.feeOnRaw(assets, baseWithdrawalFee_);
     }
 
-    /// @dev Calculates the fee part of an amount `assets` that already includes fees.
-    /// Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
+    /**
+     * @notice Returns the fee on total assets where the fee is already included.
+     * @param assets The amount of assets.
+     * @return The fee on total assets.
+     * @dev Calculates the fee part of an amount `assets` that already includes fees.
+     * Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
+     */
     function _feeOnTotal(uint256 assets) public view override returns (uint256) {
         FeeStorage storage fees = _getFeeStorage();
         uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;

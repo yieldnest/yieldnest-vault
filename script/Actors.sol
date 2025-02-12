@@ -1,4 +1,4 @@
-/* solhint-disable one-contract-per-file */
+/* solhint-disable one-contract-per-file, const-name-snakecase */
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
