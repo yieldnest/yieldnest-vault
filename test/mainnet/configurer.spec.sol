@@ -1,3 +1,4 @@
+```solidity
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
@@ -149,4 +150,143 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
         uint256 minDelay = 1 days;
         RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
     }
+
+    function test_deposit_ynETH() public {
+        Vault vault = Vault(payable(MC.YNETHX));
+        uint256 depositAmount = 10 ether;
+
+        // Deposit ynETH
+        deal(MC.YNETH, address(this), depositAmount);
+        IERC20(MC.YNETH).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.YNETH, depositAmount, address(this));
+
+        // Assert totalAssets is correct
+        uint256 totalAssets = vault.totalAssets();
+        assertEq(totalAssets, depositAmount, "Total assets should match deposit amount");
+    }
+
+    function test_deposit_ynLSDe() public {
+        Vault vault = Vault(payable(MC.YNETHX));
+        uint256 depositAmount = 10 ether;
+
+        // Deposit ynLSDe
+        deal(MC.YNLSDE, address(this), depositAmount);
+        IERC20(MC.YNLSDE).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.YNLSDE, depositAmount, address(this));
+
+        // Assert totalAssets is correct
+        uint256 totalAssets = vault.totalAssets();
+        assertEq(totalAssets, depositAmount, "Total assets should match deposit amount");
+    }
+
+    function test_deposit_wETH() public {
+        Vault vault = Vault(payable(MC.YNETHX));
+        uint256 depositAmount = 10 ether;
+
+        // Deposit wETH
+        deal(MC.WETH, address(this), depositAmount);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.WETH, depositAmount, address(this));
+
+        // Assert totalAssets is correct
+        uint256 totalAssets = vault.totalAssets();
+        assertEq(totalAssets, depositAmount, "Total assets should match deposit amount");
+    }
+
+    function test_donate_whitelisted_assets() public {
+        Vault vault = Vault(payable(MC.YNETHX));
+        uint256 donationAmount = 1 ether;
+
+        // Donate the 10 whitelisted assets to the vault
+        address[] memory whitelistedAssets = new address[](10);
+        whitelistedAssets[0] = MC.WETH;
+        whitelistedAssets[1] = MC.YNETH;
+        whitelistedAssets[2] = MC.YNLSDE;
+        whitelistedAssets[3] = MC.STETH;
+        whitelistedAssets[4] = MC.EULER_WETH_22_VAULT;
+        whitelistedAssets[5] = MC.CURVE_LP_YNETH_YNLSDE_STRATEGY;
+        whitelistedAssets[6] = MC.WSTETH;
+        whitelistedAssets[7] = MC.OETH;
+        whitelistedAssets[8] = MC.WOETH;
+        whitelistedAssets[9] = MC.SMOKEHOUSE_WSTETH;
+
+        for (uint256 i = 0; i < whitelistedAssets.length; i++) {
+            deal(whitelistedAssets[i], address(this), donationAmount);
+            IERC20(whitelistedAssets[i]).transfer(address(vault), donationAmount);
+        }
+
+        // Call processAccounting
+        vault.processAccounting();
+
+        // Assert totalAssets is correct
+        uint256 totalAssets = vault.totalAssets();
+        uint256 expectedTotalAssets = donationAmount * whitelistedAssets.length;
+        assertEq(totalAssets, expectedTotalAssets, "Total assets should match donation amount");
+    }
+
+    function test_allocate_to_buffer_and_withdraw() public {
+        Vault vault = Vault(payable(MC.YNETHX));
+        uint256 depositAmount = 10 ether;
+        uint256 bufferAmount = 5 ether;
+
+        // Deposit wETH
+        deal(MC.WETH, address(this), depositAmount);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.WETH, depositAmount, address(this));
+
+        // Allocate to buffer
+        address[] memory targets = new address[](2);
+        targets[0] = MC.WETH;
+        targets[1] = vault.buffer();
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), bufferAmount);
+        data[1] = abi.encodeWithSignature("deposit(uint256,address)", bufferAmount, address(vault));
+
+        vm.prank(PROCESSOR);
+        vault.processor(targets, values, data);
+
+        // Withdraw from buffer
+        vault.withdraw(bufferAmount, address(this), address(this));
+
+        // Assert totalAssets is correct
+        uint256 totalAssets = vault.totalAssets();
+        assertEq(totalAssets, depositAmount - bufferAmount, "Total assets should match deposit amount minus buffer amount");
+    }
+
+    function test_move_assets_to_withdrawer_and_process_accounting() public {
+        Vault vault = Vault(payable(MC.YNETHX));
+        Withdrawer withdrawer = Withdrawer(payable(MC.WITHDRAWER));
+        uint256 depositAmount = 10 ether;
+
+        // Deposit wETH
+        deal(MC.WETH, address(this), depositAmount);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.WETH, depositAmount, address(this));
+
+        // Move assets to withdrawer
+        address[] memory targets = new address[](1);
+        targets[0] = address(withdrawer);
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("deposit(uint256,address)", depositAmount, address(vault));
+
+        vm.prank(PROCESSOR);
+        vault.processor(targets, values, data);
+
+        // Call processAccounting on withdrawer
+        withdrawer.processAccounting();
+
+        // Assert totalAssets is correct
+        uint256 totalAssets = withdrawer.totalAssets();
+        assertEq(totalAssets, depositAmount, "Total assets should match deposit amount");
+    }
 }
+```
