@@ -3,35 +3,36 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IERC20, Math} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
-import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IWithdrawalQueueManager, IRedemptionAssetsVault} from "src/interface/IWithdrawalQueueManager.sol";
 import {IWithdrawalQueue} from "src/interface/external/lido/IWithdrawalQueue.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 
 import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
-import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 
-contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRules {
+contract WithdrawerMainnetTest is Test, MainnetActors {
     using Math for uint256;
 
     Withdrawer public vault;
     uint256 public constant INITIAL_BALANCE = 100 ether;
 
-    IProvider public provider = IProvider(MC.PROVIDER);
+    IProvider public provider;
 
     address internal constant CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
     bytes32 internal constant QUEUE_POSITION = keccak256("lido.WithdrawalQueue.queue");
 
     function setUp() public {
         SetupWithdrawer setup = new SetupWithdrawer();
-        vault = setup.setup();
+        vault = Withdrawer(setup.setup());
+
+        provider = IProvider(vault.provider());
 
         // NOTE: setup some default balances for the vault
         deal(MC.WETH, address(vault), INITIAL_BALANCE);
@@ -245,8 +246,9 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
         uint256 totalAssets = vault.totalAssets();
 
-        uint256[] memory tokenIds = new uint256[](1);
-        tokenIds[0] = tokenId;
+        vm.startPrank(oethVault.governor());
+        oethVault.setMaxSupplyDiff(0);
+        vm.stopPrank();
 
         IOETHVault.WithdrawalQueueMetadata memory queue = oethVault.withdrawalQueueMetadata();
         uint256 outstandingWithdrawals = queue.queued - queue.claimed;
@@ -256,8 +258,10 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
 
         // solhint-disable-next-line not-rely-on-time
         uint256 timestamp = block.timestamp;
-        vm.warp(timestamp + oethVault.CLAIM_DELAY() + 10 minutes);
+        vm.warp(timestamp + oethVault.withdrawalClaimDelay() + 10 minutes);
 
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = tokenId;
         vault.claimWithdrawalsWOETH(tokenIds);
 
         assertApproxEqRel(vault.totalAssets(), totalAssets, 2e15, "Total assets should match");
@@ -277,7 +281,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = vault.totalAssets();
 
-        tokenId = processRequestWithdrawalWstETH(vault, MC.WSTETH_WITHDRAWAL_QUEUE, asset_, amount);
+        tokenId = _processRequestWithdrawalWstETH(vault, MC.WSTETH_WITHDRAWAL_QUEUE, asset_, amount);
 
         IWithdrawalQueue.WithdrawalRequestStatus memory status = _getWithdrawalRequestStatusFromQueue(tokenId);
 
@@ -326,7 +330,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
         queue.finalize{value: amountOfEth}(tokenId, shareRate);
         vm.stopPrank();
 
-        processClaimWithdrawalWstETH(vault, MC.WSTETH_WITHDRAWAL_QUEUE, tokenId);
+        _processClaimWithdrawalWstETH(vault, MC.WSTETH_WITHDRAWAL_QUEUE, tokenId);
 
         assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
 
@@ -345,7 +349,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
         vault.processAccounting();
         uint256 totalAssets = vault.totalAssets();
 
-        tokenId = processRequestWithdrawal(vault, queueManager_, asset_, amount);
+        tokenId = _processRequestWithdrawal(vault, queueManager_, asset_, amount);
 
         IWithdrawalQueueManager.WithdrawalRequest memory request = queueManager.withdrawalRequest(tokenId);
 
@@ -367,7 +371,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
         queueManager.finalizeRequestsUpToIndex(tokenId + 1);
         vm.stopPrank();
 
-        processClaimWithdrawal(vault, queueManager_, tokenId);
+        _processClaimWithdrawal(vault, queueManager_, tokenId);
         IWithdrawalQueueManager.WithdrawalRequest memory request = queueManager.withdrawalRequest(tokenId);
 
         uint256 amountInBase = _convertAssetToBase(asset_, request.amount);
@@ -396,5 +400,77 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerRu
             claimed: vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 4)) != bytes32(0),
             reportTimestamp: uint40(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 5))))
         });
+    }
+
+    function _processRequestWithdrawal(IVault vault_, address contractAddress, address asset_, uint256 amount)
+        internal
+        returns (uint256 tokenId)
+    {
+        address[] memory targets = new address[](2);
+        targets[0] = asset_;
+        targets[1] = contractAddress;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", contractAddress, amount);
+        data[1] = abi.encodeWithSignature("requestWithdrawal(uint256)", amount);
+
+        bytes[] memory returnData = vault_.processor(targets, values, data);
+
+        tokenId = abi.decode(returnData[1], (uint256));
+    }
+
+    function _processClaimWithdrawal(IVault vault_, address contractAddress, uint256 tokenId) internal {
+        address[] memory targets = new address[](1);
+        targets[0] = contractAddress;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("claimWithdrawal(uint256,address)", tokenId, address(vault_));
+
+        vault_.processor(targets, values, data);
+    }
+
+    function _processRequestWithdrawalWstETH(IVault vault_, address contractAddress, address asset_, uint256 amount)
+        internal
+        returns (uint256 tokenId)
+    {
+        address[] memory targets = new address[](2);
+        targets[0] = asset_;
+        targets[1] = contractAddress;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", contractAddress, amount);
+        data[1] = abi.encodeWithSignature("requestWithdrawalsWstETH(uint256[],address)", amounts, address(vault_));
+
+        bytes[] memory returnData = vault_.processor(targets, values, data);
+
+        uint256[] memory tokenIds = abi.decode(returnData[1], (uint256[]));
+        tokenId = tokenIds[0];
+    }
+
+    function _processClaimWithdrawalWstETH(IVault vault_, address contractAddress, uint256 tokenId) internal {
+        address[] memory targets = new address[](1);
+        targets[0] = contractAddress;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("claimWithdrawal(uint256)", tokenId);
+
+        vault_.processor(targets, values, data);
     }
 }

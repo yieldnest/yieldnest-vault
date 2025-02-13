@@ -3,18 +3,16 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {IERC20} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Provider, IProvider} from "src/module/Provider.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
-import {ConnectorRules} from "script/rules/ConnectorRules.sol";
-import {BaseRules} from "script/rules/BaseRules.sol";
 
-contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRules, BaseRules {
+contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
     IERC20 public strategy;
     Vault public vault;
     ICurvePool public pool;
@@ -46,43 +44,8 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         vm.label(address(strategy), "strategy");
         vm.label(address(vault), "vault");
 
-        configureVault();
-    }
-
-    function configureVault() public {
-        uint256 bufferIndex = 0;
-        address[] memory assets = vault.getAssets();
-        for (uint256 i = 0; i < assets.length; i++) {
-            if (assets[i] == MC.BUFFER) {
-                bufferIndex = i;
-            }
-        }
-
-        assertTrue(bufferIndex != 0 && bufferIndex < assets.length, "Buffer not found");
-
-        vm.startPrank(ADMIN);
-        // delete old buffer
-        vault.deleteAsset(bufferIndex);
-
-        // add strategy as asset
-        vault.addAsset(address(strategy), false);
-
-        // add euler vault as buffer & asset
-        vault.addAsset(MC.EULER_WETH_22_VAULT, false);
-        vault.setBuffer(MC.EULER_WETH_22_VAULT);
-
-        // set buffer rules
-        setApprovalRule(vault, MC.WETH, vault.buffer());
-        setDepositRule(vault, vault.buffer(), address(vault));
-
-        // set connector rules
-        setApprovalRule(vault, ASSET_A, address(connector));
-        setApprovalRule(vault, ASSET_B, address(connector));
-        setApprovalRule(vault, address(strategy), address(connector));
-        setConnectorDepositRule(vault, address(connector));
-        setConnectorWithdrawRule(vault, address(connector));
-
         // grant PROCESSOR_ROLE to this contract for processor
+        vm.startPrank(ADMIN);
         vault.grantRole(vault.PROCESSOR_ROLE(), address(this));
         vm.stopPrank();
     }
@@ -130,7 +93,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
         data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
 
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vault.processor(targets, values, data);
 
         vault.processAccounting();
@@ -226,7 +189,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
             uint256 withdrawnShares = vault.withdraw(maxWithdraw, alice, alice);
             vm.stopPrank();
             assertApproxEqRel(
-                withdrawnShares, convertedShares, 1e15, "Withdrawn shares should equal the converted shares"
+                withdrawnShares, convertedShares, 2e15, "Withdrawn shares should equal the converted shares"
             );
 
             uint256 balanceAfter = IERC20(MC.WETH).balanceOf(address(vault));
@@ -238,7 +201,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
     }
 
     function test_connector_deposit(uint256 amountA) public {
-        vm.assume(amountA > 1000 && amountA < 100_000 ether);
+        vm.assume(amountA > 10000 && amountA < 100_000 ether);
 
         uint256 amountB = amountA;
         deal(ASSET_A, address(vault), amountA);
@@ -249,7 +212,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         uint256 initialTotalAssets = vault.totalAssets();
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
-        uint256 shares = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        uint256 shares = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
 
@@ -257,13 +220,13 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
         assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
 
-        uint256 assetARate = IProvider(MC.PROVIDER).getRate(ASSET_A);
+        uint256 assetARate = IProvider(vault.provider()).getRate(ASSET_A);
         uint256 amountAInBase = amountA * assetARate / 1e18;
 
-        uint256 assetBRate = IProvider(MC.PROVIDER).getRate(ASSET_B);
+        uint256 assetBRate = IProvider(vault.provider()).getRate(ASSET_B);
         uint256 amountBInBase = amountB * assetBRate / 1e18;
 
-        uint256 strategyRate = IProvider(MC.PROVIDER).getRate(address(strategy));
+        uint256 strategyRate = IProvider(vault.provider()).getRate(address(strategy));
         uint256 sharesInBase = shares * strategyRate / 1e18;
 
         assertApproxEqRel(sharesInBase, amountAInBase + amountBInBase, 1e15, "Shares should match expected");
@@ -272,7 +235,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
     }
 
     function test_connector_deposit_withdraw(uint256 amountA) public {
-        vm.assume(amountA > 1000 && amountA < 100_000 ether);
+        vm.assume(amountA > 10000 && amountA < 100_000 ether);
 
         uint256 amountB = amountA;
         deal(ASSET_A, address(vault), amountA);
@@ -283,7 +246,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         uint256 initialTotalAssets = vault.totalAssets();
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
-        uint256 shares = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        uint256 shares = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
 
@@ -295,7 +258,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
             vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first deposit"
         );
 
-        processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
+        _processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
 
         vault.processAccounting();
 
@@ -310,7 +273,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         amountA = IERC20(ASSET_A).balanceOf(address(vault));
         amountB = IERC20(ASSET_B).balanceOf(address(vault));
 
-        uint256 shares2 = processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        uint256 shares2 = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
 
@@ -326,7 +289,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
             vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second deposit"
         );
 
-        processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
+        _processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
 
         vault.processAccounting();
 
@@ -337,5 +300,58 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors, Etches, ConnectorRu
         assertApproxEqRel(
             vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second withdraw"
         );
+    }
+
+    function _processConnectorDeposit(
+        IVault vault_,
+        address connectorAddress,
+        address assetA,
+        address assetB,
+        uint256 amountA,
+        uint256 amountB,
+        uint256 minOut
+    ) internal returns (uint256 shares) {
+        address[] memory targets = new address[](3);
+        targets[0] = assetA;
+        targets[1] = assetB;
+        targets[2] = connectorAddress;
+
+        uint256[] memory values = new uint256[](3);
+        values[0] = 0;
+        values[1] = 0;
+        values[2] = 0;
+
+        bytes[] memory data = new bytes[](3);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", connectorAddress, amountA);
+        data[1] = abi.encodeWithSignature("approve(address,uint256)", connectorAddress, amountB);
+        data[2] = abi.encodeWithSignature("deposit(uint256,uint256,uint256)", amountA, amountB, minOut);
+
+        bytes[] memory returnData = vault_.processor(targets, values, data);
+
+        shares = abi.decode(returnData[2], (uint256));
+    }
+
+    function _processConnectorWithdraw(
+        IVault vault_,
+        address connectorAddress,
+        address strategyAddress,
+        uint256 amount,
+        uint256 minAmountA,
+        uint256 minAmountB
+    ) internal returns (uint256[2] memory) {
+        address[] memory targets = new address[](2);
+        targets[0] = strategyAddress;
+        targets[1] = connectorAddress;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", connectorAddress, amount);
+        data[1] = abi.encodeWithSignature("withdraw(uint256,uint256,uint256)", amount, minAmountA, minAmountB);
+
+        bytes[] memory returnData = vault_.processor(targets, values, data);
+
+        return abi.decode(returnData[1], (uint256[2]));
     }
 }

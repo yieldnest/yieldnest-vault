@@ -2,20 +2,24 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
+import {Provider} from "src/module/Provider.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Vault} from "src/Vault.sol";
-import {TimelockController as TLC, TransparentUpgradeableProxy as TUP} from "src/Common.sol";
+import {TimelockController, TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {Etches} from "test/mainnet/helpers/Etches.sol";
-import {ynETHxVault} from "src/ynETHxVault.sol";
+import {YnETHxVault} from "src/YnETHxVault.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
-import {BaseRules} from "script/rules/BaseRules.sol";
 
-contract SetupVault is Test, MainnetActors, Etches, BaseRules {
+import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
+
+import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
+
+contract SetupVault is Test, MainnetActors {
     function upgrade() public {
-        Vault newVault = Vault(payable(new ynETHxVault()));
+        Vault newVault = Vault(payable(new YnETHxVault()));
 
-        TLC timelock = TLC(payable(MC.TIMELOCK));
+        TimelockController timelock = TimelockController(payable(MC.TIMELOCK));
 
         // schedule a proxy upgrade transaction on the timelock
         // the traget is the proxy admin for the max Vault Proxy Contract
@@ -24,7 +28,7 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
 
         bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
 
-        bytes memory initData = abi.encodeWithSelector(ynETHxVault.initializeV2.selector, 18, 0);
+        bytes memory initData = abi.encodeWithSelector(YnETHxVault.initializeV2.selector, 18, 0);
         bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(newVault), initData);
 
         bytes32 predecessor = bytes32(0);
@@ -37,7 +41,7 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
         vm.stopPrank();
 
         bytes32 id = keccak256(abi.encode(target, value, data, predecessor, salt));
-        assert(timelock.getOperationState(id) == TLC.OperationState.Waiting);
+        assert(timelock.getOperationState(id) == TimelockController.OperationState.Waiting);
 
         assertEq(timelock.isOperationReady(id), false);
         assertEq(timelock.isOperationDone(id), false);
@@ -48,57 +52,40 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
         vm.warp(block.timestamp + 86401);
         vm.startPrank(EXECUTOR_1);
         timelock.execute(target, value, data, predecessor, salt);
+        vm.stopPrank();
 
         // Verify the transaction was executed successfully
         assertEq(timelock.isOperationReady(id), false);
         assertEq(timelock.isOperationDone(id), true);
-        assert(timelock.getOperationState(id) == TLC.OperationState.Done);
-
-        vm.stopPrank();
+        assert(timelock.getOperationState(id) == TimelockController.OperationState.Done);
 
         Vault vault = Vault(payable(MC.YNETHX));
 
         assertEq(vault.symbol(), "ynETHx");
 
-        configureMainnet(vault);
+        configure(vault);
     }
 
-    function configureMainnet(Vault vault) internal {
-        // etch to mock ETHRate provider and Buffer
-        mockAll();
+    function configure(Vault vault) internal {
+        assertTrue(vault.paused(), "Vault should be paused");
+
+        YnETHxConfigurer configurer = new YnETHxConfigurer();
+        SetupWithdrawer setup = new SetupWithdrawer();
+        Withdrawer withdrawer = setup.setup();
+        Provider provider = new Provider();
 
         vm.startPrank(ADMIN);
+        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(configurer));
 
-        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
-        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
-        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+        // the following roles are granted to the admin for testing purposes
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), ADMIN);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ADMIN);
+        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), ADMIN);
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), ADMIN);
 
-        vault.setProvider(MC.PROVIDER);
-
-        // Add assets: Base asset always first
-        vault.addAsset(MC.WETH, true);
-        vault.addAsset(MC.BUFFER, false);
-        vault.addAsset(MC.STETH, true);
-        vault.addAsset(MC.YNETH, true);
-        vault.addAsset(MC.YNLSDE, true);
-
-        setDepositRule(vault, MC.BUFFER, address(vault));
-        setDepositRule(vault, MC.YNETH, address(vault));
-        setDepositRule(vault, MC.YNLSDE, address(vault));
-        setWethDepositRule(vault, MC.WETH);
-
-        setApprovalRule(vault, address(vault), MC.BUFFER);
-        setApprovalRule(vault, MC.WETH, MC.BUFFER);
-        setApprovalRule(vault, address(vault), MC.YNETH);
-        setApprovalRule(vault, address(vault), MC.YNLSDE);
-
-        vault.setBuffer(MC.BUFFER);
-
+        configurer.configure(address(provider), address(withdrawer));
         vm.stopPrank();
+        assertFalse(vault.paused(), "Vault should not be paused");
 
         vault.processAccounting();
     }
@@ -109,7 +96,7 @@ contract SetupVault is Test, MainnetActors, Etches, BaseRules {
         bytes memory initData =
             abi.encodeWithSelector(MaxVaultViewer.initialize.selector, address(vault_), address(ADMIN));
 
-        TUP proxy = new TUP(address(implementation), ADMIN, initData);
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), ADMIN, initData);
         viewer = MaxVaultViewer(payable(address(proxy)));
 
         vm.startPrank(ADMIN);

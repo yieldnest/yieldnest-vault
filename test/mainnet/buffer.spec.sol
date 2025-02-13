@@ -12,8 +12,9 @@ import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
 
-contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors, BaseRules {
+contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
 
     function setUp() public {
@@ -24,25 +25,36 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors, BaseRul
         // Deploy mock buffer
         MockERC4626 mockBuffer = new MockERC4626(ERC20(MC.WETH), "Mock Buffer", "BUFF");
 
-        // Set mock buffer address
-        vm.startPrank(ADMIN);
-        vault.setBuffer(address(mockBuffer));
-
         // Deploy mock provider
         MockProvider mockProvider = new MockProvider();
+
+        // Configure mock provider to use ERC4626 rate for buffer
+        mockProvider.addERC4626(address(mockBuffer));
+
+        vm.startPrank(ADMIN);
+
+        // Set mock buffer address
+        vault.setBuffer(address(mockBuffer));
 
         // Set mock provider address
         vault.setProvider(address(mockProvider));
 
-        setApprovalRule(vault, MC.WETH, address(mockBuffer));
-        setDepositRule(vault, address(mockBuffer), address(vault));
-
         // Add mock buffer as an asset
         vault.addAsset(address(mockBuffer), false);
+
+        // Grant PROCESSOR_MANAGER_ROLE to this contract
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));
+
         vm.stopPrank();
 
-        // Configure mock provider to use ERC4626 rate for buffer
-        mockProvider.addERC4626(address(mockBuffer));
+        _setupRules(address(mockBuffer));
+    }
+
+    function _setupRules(address mockBuffer) internal {
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](2);
+        rules[0] = BaseRules.getApprovalRule(MC.WETH, address(mockBuffer));
+        rules[1] = BaseRules.getDepositRule(address(mockBuffer), address(vault));
+        SafeRules.setProcessorRules(vault, rules, true);
     }
 
     function totalSupplyInvariant(uint256 supply) public view {
@@ -72,7 +84,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors, BaseRul
         data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
         data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
 
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vault.processor(targets, values, data);
 
         vault.processAccounting();

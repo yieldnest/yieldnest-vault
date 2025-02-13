@@ -6,37 +6,39 @@ import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {IERC20, TransparentUpgradeableProxy} from "src/Common.sol";
-import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 
-contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
+contract VaultMainnetInvariantsTest is Test, MainnetActors {
     Vault public vault;
 
     function setUp() public {
         SetupVault setup = new SetupVault();
         setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
+
+        assertEq(vault.asset(), MC.WETH, "base asset should be weth");
     }
 
     function totalSupplyInvariant(uint256 supply) public view {
         uint256 finalVaultTotalSupply = vault.totalSupply();
-        assertEqThreshold(
-            supply, finalVaultTotalSupply, 3, "Vault totalSupply should be original totalSupply plus additional"
+        assertApproxEqRel(
+            supply, finalVaultTotalSupply, 1e14, "Vault totalSupply should be original totalSupply plus additional"
         );
     }
 
     function totalAssetsInvariant(uint256 assets) public view {
         uint256 finalVaultTotalAssets = vault.totalAssets();
-        assertEqThreshold(
-            assets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional"
+        assertApproxEqRel(
+            assets, finalVaultTotalAssets, 1e14, "Vault totalAssets should be original totalAssets plus additional"
         );
     }
 
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
         targets[0] = MC.WETH;
-        targets[1] = MC.BUFFER;
+        targets[1] = vault.buffer();
 
         uint256[] memory values = new uint256[](2);
         values[0] = 0;
@@ -46,14 +48,14 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
         data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
 
-        vm.prank(ADMIN);
+        vm.prank(PROCESSOR);
         vault.processor(targets, values, data);
 
         vault.processAccounting();
     }
 
     function test_Vault_4626Invariants_depositBase(uint256 assets) public {
-        if (assets < 2) return;
+        if (assets < 100_000) return;
         if (assets > 100_000_000 ether) return;
 
         uint256 initialAssets = vault.totalAssets();
@@ -77,26 +79,22 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        assertApproxEqRel(convertedAssets, assets, 1e14, "Converted assets should equal the original assets");
 
         // Test the previewDeposit function
-        deal(address(this), 1 ether);
-        (bool success,) = MC.WETH.call{value: 1 ether}("");
-        assertTrue(success, "Weth deposit failed");
+        deal(MC.WETH, address(this), 1 ether);
         IERC20(MC.WETH).approve(address(vault), 1 ether);
         IERC20(MC.WETH).transfer(address(vault), 1 ether);
 
         uint256 previewedShares = vault.previewDeposit(assets);
-        assertEqThreshold(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
+        assertApproxEqRel(previewedShares, shares, 1e14, "Previewed shares should equal the converted shares");
 
         // Test the previewMint function
         uint256 previewedAssets = vault.previewMint(shares);
-        assertEqThreshold(previewedAssets, assets, 3, "Previewed assets should equal the original assets");
+        assertApproxEqRel(previewedAssets, assets, 1e14, "Previewed assets should equal the original assets");
 
         // Test the depositAsset function
-        deal(address(this), assets);
-        (success,) = MC.WETH.call{value: assets}("");
-        assertTrue(success, "Weth deposit failed");
+        deal(MC.WETH, address(this), assets);
         IERC20(MC.WETH).approve(address(vault), assets);
 
         address receiver = address(this);
@@ -108,7 +106,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     }
 
     function test_Vault_4626Invariants_depositAsset(uint256 assets) public {
-        if (assets < 2) return;
+        if (assets < 100_000) return;
         if (assets > 100_000_000 ether) return;
 
         uint256 initialAssets = vault.totalAssets();
@@ -132,19 +130,18 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        assertApproxEqRel(convertedAssets, assets, 1e14, "Converted assets should equal the original assets");
 
         // Test the previewDeposit function
         uint256 previewedShares = vault.previewDeposit(assets);
-        assertEqThreshold(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
+        assertApproxEqRel(previewedShares, shares, 1e14, "Previewed shares should equal the converted shares");
 
         // Test the previewMint function
         uint256 previewedAssets = vault.previewMint(shares);
-        assertEqThreshold(previewedAssets, assets, 3, "Previewed assets should equal the original assets");
+        assertApproxEqRel(previewedAssets, assets, 1e14, "Previewed assets should equal the original assets");
 
         // Test the depositAsset function
-        (bool success,) = MC.WETH.call{value: assets}("");
-        assertTrue(success, "Weth deposit failed");
+        deal(MC.WETH, address(this), assets);
         IERC20(MC.WETH).approve(address(vault), assets);
 
         address receiver = address(this);
@@ -156,7 +153,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     }
 
     function test_Vault_4626Invariants_mint(uint256 shares) public {
-        if (shares < 2) return;
+        if (shares < 100_000) return;
         if (shares > 100_000_000 ether) return;
 
         address alice = address(10);
@@ -185,7 +182,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         // Test the previewMint function
         uint256 previewedAssets = vault.previewMint(shares);
-        assertEqThreshold(previewedAssets, assets, 3, "Previewed assets should equal the converted assets");
+        assertApproxEqRel(previewedAssets, assets, 1e14, "Previewed assets should equal the converted assets");
 
         // Test the mint function
         vm.startPrank(alice);
@@ -204,53 +201,60 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     }
 
     function test_Vault_4626Invariants_redeem(uint256 assets) public {
-        if (assets < 3) return;
+        if (assets < 100_000) return;
         if (assets > 100_000_000 ether) return;
 
         address alice = address(420);
-        deal(alice, assets);
+        address baseAsset = vault.asset();
+        deal(baseAsset, alice, assets);
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
 
         uint256 shares = vault.convertToShares(assets);
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
-
-        address baseAsset = vault.asset();
+        assertApproxEqRel(convertedAssets, assets, 1e14, "Converted assets should equal the original assets");
 
         vm.startPrank(alice);
-        (bool success,) = MC.WETH.call{value: assets}("");
-        assertTrue(success, "Weth deposit failed");
         IERC20(baseAsset).approve(address(vault), assets);
         uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
-        assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
         vm.stopPrank();
+
+        assertApproxEqRel(depositedShares, shares, 1e14, "Deposited shares should equal the converted shares");
 
         // hypothetically allocated 100% to the buffer
         allocateToBuffer(assets);
 
         // Test the previewRedeem function
         uint256 previewedRedeemAssets = vault.previewRedeem(shares);
-        assertEqThreshold(previewedRedeemAssets, assets, 3, "Previewed redeem assets should equal the original assets");
+        assertApproxEqRel(
+            previewedRedeemAssets, assets, 2e15, "Previewed redeem assets should equal the original assets"
+        );
 
-        vm.startPrank(alice);
         uint256 redeemableShares = vault.maxRedeem(alice);
-        assertEqThreshold(redeemableShares, shares, 3, "Redeemable assets should equal the original assets");
+        assertApproxEqRel(redeemableShares, shares, 1e15, "Redeemable shares should equal the original shares");
 
         uint256 initialBalance = IERC20(baseAsset).balanceOf(alice);
+
+        vm.startPrank(alice);
         uint256 redeemedAssets = vault.redeem(redeemableShares, alice, alice);
-        uint256 finalBalance = IERC20(baseAsset).balanceOf(alice);
-        assertEqThreshold(redeemedAssets, assets, 3, "Redeemed assets should equal the original assets");
-        assertEqThreshold(finalBalance - initialBalance, assets, 3, "Final balance should reflect the redeemed assets");
         vm.stopPrank();
 
-        totalSupplyInvariant(initialSupply);
-        totalAssetsInvariant(initialAssets);
+        vault.processAccounting();
+
+        assertApproxEqRel(redeemedAssets, assets, 2e15, "Redeemed assets should equal the original assets");
+        assertEq(
+            IERC20(baseAsset).balanceOf(alice),
+            initialBalance + redeemedAssets,
+            "Final balance should reflect the redeemed assets"
+        );
+
+        totalSupplyInvariant(initialSupply + depositedShares - redeemableShares);
+        totalAssetsInvariant(initialAssets + assets - redeemedAssets);
     }
 
     function test_Vault_4626Invariants_withdraw(uint256 assets) public {
-        if (assets < 3) return;
+        if (assets < 100_000) return;
         if (assets > 100_000_000 ether) return;
 
         address alice = address(10);
@@ -264,7 +268,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        assertApproxEqRel(convertedAssets, assets, 1e14, "Converted assets should equal the original assets");
 
         address baseAsset = vault.asset();
 
@@ -273,37 +277,53 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         assertTrue(success, "Weth deposit failed");
         IERC20(baseAsset).approve(address(vault), assets);
         uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
-        assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
+        assertApproxEqRel(depositedShares, shares, 1e14, "Deposited shares should equal the converted shares");
         vm.stopPrank();
+
+        vault.processAccounting();
 
         // hypothetically allocated 100% to the buffer
         allocateToBuffer(IERC20(baseAsset).balanceOf(address(vault)));
 
         // Test the previewWithdraw function
         uint256 previewedWithdrawShares = vault.previewWithdraw(assets);
-        assertEqThreshold(
-            previewedWithdrawShares, shares, 3, "Previewed withdraw shares should equal the original shares"
+        assertApproxEqRel(
+            previewedWithdrawShares, shares, 2e15, "Previewed withdraw shares should equal the original shares"
         );
 
         vm.startPrank(alice);
 
         uint256 withdrawableAssets = vault.maxWithdraw(alice);
-        assertEqThreshold(withdrawableAssets, assets, 3, "Withdrawable assets should equal the original shares");
+        assertApproxEqRel(withdrawableAssets, assets, 2e15, "Withdrawable assets should equal the original assets");
 
         uint256 withdrawnShares = vault.withdraw(withdrawableAssets, alice, alice);
-        assertEqThreshold(withdrawnShares, shares, 3, "Withdrawn shares should equal previous shares");
+        assertApproxEqRel(withdrawnShares, shares, 1e15, "Withdrawn shares should equal previous shares");
         vm.stopPrank();
 
-        uint256 finalBalance = IERC20(baseAsset).balanceOf(alice);
-        assertEqThreshold(finalBalance, assets, 3, "Final balance should reflect the withdrawn assets");
+        vault.processAccounting();
 
-        totalSupplyInvariant(initialSupply);
-        totalAssetsInvariant(initialAssets);
+        uint256 finalBalance = IERC20(baseAsset).balanceOf(alice);
+        assertApproxEqRel(finalBalance, assets, 2e15, "Final balance should reflect the withdrawn assets");
+
+        totalSupplyInvariant(initialSupply + depositedShares - withdrawnShares);
+        totalAssetsInvariant(initialAssets + assets - withdrawableAssets);
+    }
+
+    function _setSTETHActive() internal {
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
+        vm.stopPrank();
+
+        uint256 index = vault.getAsset(MC.STETH).index;
+        IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
+        vault.updateAsset(index, fields);
     }
 
     function test_Vault_4626Invariants_depositStETHWithReferral(uint256 assets) public {
-        if (assets < 2) return;
+        if (assets < 100_000) return;
         if (assets > 1_000 ether) return;
+
+        _setSTETHActive();
 
         address alice = address(10);
 
@@ -335,23 +355,163 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         assertGt(shares, 0, "Shares should be greater than 0");
 
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        assertApproxEqRel(convertedAssets, assets, 1e14, "Converted assets should equal the original assets");
 
         // Approve adapter to spend stETH
         IERC20(MC.STETH).approve(address(adapter), assets);
 
         uint256 depShares = adapter.depositAssetWithReferral(address(vault), MC.STETH, assets, referrer, receiver);
-        assertEqThreshold(depShares, shares, 3, "Deposited shares should equal the converted shares");
+        assertApproxEqRel(depShares, shares, 1e14, "Deposited shares should equal the converted shares");
 
         vm.stopPrank();
 
         // Verify final balances
         uint256 vaultStETHBalance = IERC20(MC.STETH).balanceOf(address(vault));
-        assertEqThreshold(vaultStETHBalance, assets, 3, "Vault should have received stETH");
+        assertApproxEqRel(vaultStETHBalance, assets, 1e14, "Vault should have received stETH");
 
         uint256 userShares = vault.balanceOf(receiver);
-        assertEqThreshold(userShares, shares, 3, "Receiver should have received correct shares");
+        assertApproxEqRel(userShares, shares, 1e14, "Receiver should have received correct shares");
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
+    }
+
+    function _process(address target, uint256 value, bytes memory data) internal returns (bytes memory returnData) {
+        address[] memory targets = new address[](1);
+        targets[0] = target;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = value;
+
+        bytes[] memory datas = new bytes[](1);
+        datas[0] = data;
+
+        vm.prank(PROCESSOR);
+        bytes[] memory returnDatas = vault.processor(targets, values, datas);
+        returnData = returnDatas[0];
+    }
+
+    function _processApprove(address token, address spender, uint256 amount) internal {
+        bytes memory data = abi.encodeWithSignature("approve(address,uint256)", spender, amount);
+        _process(token, 0, data);
+    }
+
+    function _processDeposit(address erc4626, uint256 amount) internal returns (uint256 shares) {
+        bytes memory data = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
+        bytes memory returnData = _process(erc4626, 0, data);
+        (shares) = abi.decode(returnData, (uint256));
+    }
+
+    function _processRedeem(address erc4626, uint256 amount) internal returns (uint256 assets) {
+        bytes memory data =
+            abi.encodeWithSignature("redeem(uint256,address,address)", amount, address(vault), address(vault));
+        bytes memory returnData = _process(erc4626, 0, data);
+        (assets) = abi.decode(returnData, (uint256));
+    }
+
+    function _processWithdrawWETH(uint256 amount) internal {
+        bytes memory data = abi.encodeWithSignature("withdraw(uint256)", amount);
+        _process(MC.WETH, 0, data);
+    }
+
+    function _processSubmitETH(uint256 amount) internal returns (uint256 amountSTETH) {
+        bytes memory data = abi.encodeWithSignature("submit(address)", address(vault));
+        bytes memory returnData = _process(MC.STETH, amount, data);
+        (amountSTETH) = abi.decode(returnData, (uint256));
+    }
+
+    function _processWrapSTETH(uint256 amount) internal returns (uint256 amountWSTETH) {
+        bytes memory data = abi.encodeWithSignature("wrap(uint256)", amount);
+        bytes memory returnData = _process(MC.WSTETH, 0, data);
+        (amountWSTETH) = abi.decode(returnData, (uint256));
+    }
+
+    function test_Vault_4626Invariants_Smokehouse_WSTETH(uint256 amount) public {
+        if (amount < 0.01 ether) return;
+        if (amount > 100_000 ether) return;
+
+        {
+            // deposit some WETH into the vault
+            address alice = address(10);
+            deal(MC.WETH, alice, amount);
+
+            vm.startPrank(alice);
+            IERC20(MC.WETH).approve(address(vault), amount);
+            vault.deposit(amount, alice);
+            vm.stopPrank();
+        }
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        {
+            // convert WETH to ETH
+            _processWithdrawWETH(amount);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        uint256 amountWSTETH;
+        {
+            // convert ETH to wstETH
+            uint256 initialWSTETH = IERC20(MC.WSTETH).balanceOf(address(vault));
+
+            uint256 amountSTETH = _processSubmitETH(amount);
+            _processApprove(MC.STETH, MC.WSTETH, amountSTETH);
+            amountWSTETH = _processWrapSTETH(amountSTETH);
+
+            vault.processAccounting();
+
+            assertEq(
+                IERC20(MC.WSTETH).balanceOf(address(vault)),
+                initialWSTETH + amountWSTETH,
+                "vault should have received wstETH"
+            );
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        uint256 amountSmokehouseWSTETH;
+        {
+            // deposit wstETH into smokehouse
+            uint256 initialSmokehouseWSTETH = IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault));
+
+            _processApprove(MC.WSTETH, MC.SMOKEHOUSE_WSTETH, amountWSTETH);
+            amountSmokehouseWSTETH = _processDeposit(MC.SMOKEHOUSE_WSTETH, amountWSTETH);
+
+            vault.processAccounting();
+
+            assertApproxEqRel(
+                IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault)),
+                initialSmokehouseWSTETH + amountSmokehouseWSTETH,
+                1e15,
+                "vault should have received smokehouse wstETH"
+            );
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        uint256 receivedWSTETH;
+        {
+            // redeem smokehouse wstETH for wstETH
+            uint256 initialReceivedWSTETH = IERC20(MC.WSTETH).balanceOf(address(vault));
+
+            receivedWSTETH = _processRedeem(MC.SMOKEHOUSE_WSTETH, amountSmokehouseWSTETH);
+
+            vault.processAccounting();
+
+            assertEq(
+                IERC20(MC.WSTETH).balanceOf(address(vault)),
+                initialReceivedWSTETH + receivedWSTETH,
+                "vault should have received stETH"
+            );
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
     }
 }

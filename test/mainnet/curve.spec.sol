@@ -8,12 +8,12 @@ import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IERC20} from "src/Common.sol";
-import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {ICurveRegistry} from "test/interface/external/curve/ICurveRegistry.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {IStETH} from "test/interface/external/lido/IStETH.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
 
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
@@ -21,7 +21,7 @@ interface IynETH {
     function approve(address spender, uint256 amount) external returns (uint256);
 }
 
-contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors, BaseRules {
+contract VaultMainnetCurveTest is Test, MainnetActors {
     Vault public vault;
 
     function setUp() public {
@@ -29,19 +29,11 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors, BaseRules {
         setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
 
-        // Grant DEFAULT_ADMIN_ROLE to setup contract
         vm.startPrank(ADMIN);
-        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));
         vm.stopPrank();
 
         configureCurveActions(vault);
-
-        // Remove DEFAULT_ADMIN_ROLE from setup contract
-        vm.startPrank(ADMIN);
-        vault.revokeRole(vault.DEFAULT_ADMIN_ROLE(), address(setup));
-        vault.revokeRole(vault.PROCESSOR_MANAGER_ROLE(), address(setup));
-        vm.stopPrank();
     }
 
     function configureCurveActions(Vault _vault) internal {
@@ -79,14 +71,28 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors, BaseRules {
                 IVault.FunctionRule({isActive: true, paramRules: exchangeRules, validator: IValidator(address(0))})
             );
         }
+        // forcing set rule for testing
         // Set approval rule to allow ethStethPool to spend stETH tokens from the vault
-        setApprovalRule(_vault, MC.STETH, ethStethPool);
+        SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(MC.STETH, ethStethPool);
+        _vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
 
         // Set approval rules for ynETH and wstETH to be spent by ynETHWstETH pool
-        setApprovalRule(_vault, MC.YNETH, ynETHWstETHPool);
-        setApprovalRule(_vault, MC.WSTETH, ynETHWstETHPool);
+        SafeRules.RuleParams memory ynEthRuleParams = BaseRules.getApprovalRule(MC.YNETH, ynETHWstETHPool);
+        _vault.setProcessorRule(ynEthRuleParams.contractAddress, ynEthRuleParams.funcSig, ynEthRuleParams.rule);
+        SafeRules.RuleParams memory wstEthRuleParams = BaseRules.getApprovalRule(MC.WSTETH, ynETHWstETHPool);
+        _vault.setProcessorRule(wstEthRuleParams.contractAddress, wstEthRuleParams.funcSig, wstEthRuleParams.rule);
 
         vm.stopPrank();
+    }
+
+    function _setSTETHActive() internal {
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
+        vm.stopPrank();
+
+        uint256 index = vault.getAsset(MC.STETH).index;
+        IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
+        vault.updateAsset(index, fields);
     }
 
     function test_Vault_Curve_swapStETHtoETH() public {
@@ -95,6 +101,8 @@ contract VaultMainnetCurveTest is Test, AssertUtils, MainnetActors, BaseRules {
         // Create user and give them ETH
         address user = makeAddr("user");
         deal(user, 100000 ether);
+
+        _setSTETHActive();
 
         // Convert ETH to stETH via Lido
         vm.startPrank(user);

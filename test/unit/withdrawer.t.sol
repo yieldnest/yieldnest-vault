@@ -163,7 +163,7 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_redeemWhilePaused() public {
-        vm.prank(ADMIN);
+        vm.prank(PAUSER);
         vault.pause();
         assertEq(vault.paused(), true);
 
@@ -173,7 +173,7 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_withdrawWhilePaused() public {
-        vm.prank(ADMIN);
+        vm.prank(PAUSER);
         vault.pause();
         assertEq(vault.paused(), true);
 
@@ -219,7 +219,7 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_maxWithdrawWhenPaused() public {
-        vm.prank(ADMIN);
+        vm.prank(PAUSER);
         vault.pause();
         assertEq(vault.paused(), true);
 
