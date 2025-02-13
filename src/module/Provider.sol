@@ -14,6 +14,8 @@ import {
 } from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
+import {IVault} from "src/interface/IVault.sol";
+
 /*
     The Provider fetches state from other contracts.
 */
@@ -26,10 +28,10 @@ contract Provider is IProvider {
     error UnsupportedAsset(address asset);
     error RateIsNegative();
 
-    function isVault(address asset) public view returns (bool) {
+    function isETHStrategyVault(address asset) public view returns (bool) {
         try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
-            // TODO: this is not ideal, as it's not forward compatible with future vault versions ...
-            return keccak256(bytes(version)) == keccak256(bytes("0.1.0"));
+            address vaultAsset = IVault(asset).asset();
+            return keccak256(bytes(version)) == keccak256(bytes("0.1.0")) && vaultAsset == MC.WETH;
         } catch {
             return false;
         }
@@ -99,7 +101,7 @@ contract Provider is IProvider {
             return uint256(strategyRate);
         }
 
-        if (isVault(asset)) {
+        if (isETHStrategyVault(asset)) {
             return IERC4626(asset).convertToAssets(1e18);
         }
 
