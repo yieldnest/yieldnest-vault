@@ -175,6 +175,33 @@ contract ProviderTest is Test, Etches {
         assertEq(rate, expectedRate, "Rate for WETH strategy should match the convertToAssets rate after deposit");
     }
 
+    function test_Provider_GetRateWstETHStrategy() public {
+        // Create and initialize a new mock strategy with WSTETH as asset
+        MockStrategy wstethStrategy = MockStrategy(payable(address(new TransparentUpgradeableProxy(
+            address(new MockStrategy()),
+            address(this),
+            ""
+        ))));
+        wstethStrategy.initialize("Mock wstETH Strategy", "mWSTETH", address(this), false);
+
+        // Grant admin role to this contract
+        wstethStrategy.grantRole(wstethStrategy.ASSET_MANAGER_ROLE(), address(this));
+        wstethStrategy.grantRole(wstethStrategy.PROVIDER_MANAGER_ROLE(), address(this));
+
+        // Add WSTETH as an asset
+        wstethStrategy.addAsset(MC.WSTETH, true);
+
+        // Set provider for the strategy
+        wstethStrategy.setProvider(address(provider));
+        
+        // Deposit 1 WSTETH into strategy
+        deal(MC.WSTETH, address(this), 1e18);
+        IERC20(MC.WSTETH).approve(address(wstethStrategy), 1e18);
+        IERC4626(wstethStrategy).deposit(1e18, address(this));
+        vm.expectRevert(abi.encodeWithSelector(Provider.UnsupportedAsset.selector, address(wstethStrategy)));
+        provider.getRate(address(wstethStrategy));
+    }
+
     function test_Provider_UnsupportedAsset() public {
         address unsupportedAsset = address(0x123);
         vm.expectRevert();
