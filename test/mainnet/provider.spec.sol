@@ -7,6 +7,13 @@ import {IERC4626} from "src/Common.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {IStETH, IMETH, IRETH, IynLSDe} from "src/interface/IProvider.sol";
+import {
+    IswETH,
+    IsfrxETH,
+    IFrxEthWethDualOracle,
+    ICurveLpConnector
+} from "src/interface/IProvider.sol";
+
 
 contract ProviderTest is Test, Etches {
     Provider public provider;
@@ -61,6 +68,59 @@ contract ProviderTest is Test, Etches {
         uint256 expectedRate = IRETH(MC.RETH).getExchangeRate();
         uint256 rate = provider.getRate(MC.RETH);
         assertEq(rate, expectedRate, "Rate for RETH should match the getExchangeRate rate");
+    }
+
+    function test_Provider_GetRateSWELL() public view {
+        uint256 expectedRate = IswETH(MC.SWELL).swETHToETHRate();
+        uint256 rate = provider.getRate(MC.SWELL);
+        assertEq(rate, expectedRate, "Rate for SWELL should match the swETHToETHRate");
+    }
+
+    function test_Provider_GetRateSFRXETH() public view {
+        uint256 frxETHPriceInETH = IFrxEthWethDualOracle(MC.FRX_ETH_WETH_DUAL_ORACLE).getCurveEmaEthPerFrxEth();
+        uint256 expectedRate = IsfrxETH(MC.SFRXETH).pricePerShare() * frxETHPriceInETH / 1e18;
+        uint256 rate = provider.getRate(MC.SFRXETH);
+        assertEq(rate, expectedRate, "Rate for SFRXETH should match the combined rate");
+    }
+
+    function test_Provider_GetRateOETH() public view {
+        uint256 rate = provider.getRate(MC.OETH);
+        assertEq(rate, 1e18, "Rate for OETH should be 1e18");
+    }
+
+    function test_Provider_GetRateWOETH() public view {
+        uint256 expectedRate = IERC4626(MC.WOETH).convertToAssets(1e18);
+        uint256 rate = provider.getRate(MC.WOETH);
+        assertEq(rate, expectedRate, "Rate for WOETH should match the convertToAssets rate");
+    }
+
+    function test_Provider_GetRateSmokehouseWSTETH() public view {
+        uint256 expectedRate = IStETH(MC.STETH).getPooledEthByShares(IERC4626(MC.SMOKEHOUSE_WSTETH).convertToAssets(1e18));
+        uint256 rate = provider.getRate(MC.SMOKEHOUSE_WSTETH);
+        assertEq(rate, expectedRate, "Rate for SMOKEHOUSE_WSTETH should match the combined rate");
+    }
+
+    function test_Provider_GetRateCurveLpStrategy() public view {
+        (int256 strategyRate,) = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR).rate();
+        uint256 expectedRate = uint256(strategyRate);
+        uint256 rate = provider.getRate(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY);
+        assertEq(rate, expectedRate, "Rate for Curve LP Strategy should match the connector rate");
+    }
+
+    function test_Provider_GetRateCurveLpStrategy_RateIsNegative() public {
+        vm.mockCall(
+            MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR,
+            abi.encodeWithSelector(ICurveLpConnector.rate.selector),
+            abi.encode(-1, 0)
+        );
+        vm.expectRevert(Provider.RateIsNegative.selector);
+        provider.getRate(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY);
+    }
+
+    function test_Provider_GetRateEulerWETH22Vault() public view {
+        uint256 expectedRate = IERC4626(MC.EULER_WETH_22_VAULT).convertToAssets(1e18);
+        uint256 rate = provider.getRate(MC.EULER_WETH_22_VAULT);
+        assertEq(rate, expectedRate, "Rate for EULER_WETH_22_VAULT should match the convertToAssets rate");
     }
 
     function test_Provider_UnsupportedAsset() public {
