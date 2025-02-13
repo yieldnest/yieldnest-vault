@@ -7,6 +7,11 @@ import {IERC4626} from "src/Common.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {IStETH, IMETH, IRETH, IynLSDe} from "src/interface/IProvider.sol";
+import {MockWETHStrategy} from "test/unit/mocks/MockWETHStrategy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {IERC20} from "src/Common.sol";
+
+
 import {
     IswETH,
     IsfrxETH,
@@ -17,10 +22,34 @@ import {
 
 contract ProviderTest is Test, Etches {
     Provider public provider;
+    address public admin = makeAddr("admin");
+    MockWETHStrategy public mockWETHStrategy;
 
     function setUp() public {
         provider = new Provider();
         mockBuffer();
+        MockWETHStrategy implementation = new MockWETHStrategy();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(implementation),
+            admin,
+            ""
+        );
+        mockWETHStrategy = MockWETHStrategy(payable(address(proxy)));
+        mockWETHStrategy.initialize(
+            "Mock WETH Strategy",
+            "mWETH",
+            admin,
+            true // alwaysComputeTotalAssets
+        );
+
+        assertEq(mockWETHStrategy.hasRole(mockWETHStrategy.DEFAULT_ADMIN_ROLE(), admin), true, "Admin should have DEFAULT_ADMIN_ROLE");
+
+        vm.startPrank(admin);
+        mockWETHStrategy.grantRole(mockWETHStrategy.PROVIDER_MANAGER_ROLE(), admin);
+        vm.stopPrank();
+
+        vm.prank(admin);
+        mockWETHStrategy.setProvider(address(provider));
     }
 
     function test_Provider_GetRateWETH() public view {
@@ -121,6 +150,24 @@ contract ProviderTest is Test, Etches {
         uint256 expectedRate = IERC4626(MC.EULER_WETH_22_VAULT).convertToAssets(1e18);
         uint256 rate = provider.getRate(MC.EULER_WETH_22_VAULT);
         assertEq(rate, expectedRate, "Rate for EULER_WETH_22_VAULT should match the convertToAssets rate");
+    }
+
+    function test_Provider_GetRateWETHStrategy() public {
+        uint256 expectedRate = IERC4626(address(mockWETHStrategy)).convertToAssets(1e18);
+        uint256 rate = provider.getRate(address(mockWETHStrategy));
+        assertEq(rate, expectedRate, "Rate for WETH strategy should match the convertToAssets rate");
+    }
+
+    function test_Provider_GetRateWETHStrategy_AfterDeposit() public {
+        
+        // Deposit 1 ETH worth of WETH into strategy
+        deal(MC.WETH, address(this), 1e18);
+        IERC20(MC.WETH).approve(address(mockWETHStrategy)   , 1e18);
+        IERC4626(mockWETHStrategy).deposit(1e18, address(this));
+
+        uint256 expectedRate = IERC4626(mockWETHStrategy).convertToAssets(1e18);
+        uint256 rate = provider.getRate(address(mockWETHStrategy));
+        assertEq(rate, expectedRate, "Rate for WETH strategy should match the convertToAssets rate after deposit");
     }
 
     function test_Provider_UnsupportedAsset() public {
