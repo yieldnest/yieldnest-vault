@@ -8,7 +8,7 @@ import {Vault} from "src/Vault.sol";
 import {TimelockController, TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {YnETHxVault} from "src/YnETHxVault.sol";
+import {YnETHx} from "src/YnETHx.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 
 import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
@@ -17,7 +17,7 @@ import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 
 contract SetupVault is Test, MainnetActors {
     function upgrade() public {
-        Vault newVault = Vault(payable(new YnETHxVault()));
+        Vault newVault = Vault(payable(new YnETHx()));
 
         TimelockController timelock = TimelockController(payable(MC.TIMELOCK));
 
@@ -28,7 +28,7 @@ contract SetupVault is Test, MainnetActors {
 
         bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
 
-        bytes memory initData = abi.encodeWithSelector(YnETHxVault.initializeV2.selector, 18, 0);
+        bytes memory initData = abi.encodeWithSelector(YnETHx.initializeV2.selector, 18, 0);
         bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(newVault), initData);
 
         bytes32 predecessor = bytes32(0);

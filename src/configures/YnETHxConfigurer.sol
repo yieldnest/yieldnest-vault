@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {MainnetActors, IActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {YnETHxVault} from "src/YnETHxVault.sol";
+import {YnETHx} from "src/YnETHx.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {YieldNestRules} from "script/rules/YieldNestRules.sol";
@@ -25,7 +25,7 @@ contract YnETHxConfigurer is MainnetActors {
     }
 
     function configure(address provider, address withdrawer) external onlyActor(ADMIN) {
-        YnETHxVault vault = YnETHxVault(payable(MC.YNETHX));
+        YnETHx vault = YnETHx(payable(MC.YNETHX));
         if (!vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), address(this))) {
             revert NotAdmin();
         }

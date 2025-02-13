@@ -8,7 +8,7 @@ import {Vault} from "src/Vault.sol";
 import {TimelockController} from "src/Common.sol";
 import {MainnetActors, IActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {YnETHxVault} from "src/YnETHxVault.sol";
+import {YnETHx} from "src/YnETHx.sol";
 import {IVault} from "src/interface/IVault.sol";
 
 import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
@@ -33,7 +33,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
 
         {
             // upgrade the vault
-            Vault vaultImpl = Vault(payable(new YnETHxVault()));
+            Vault vaultImpl = Vault(payable(new YnETHx()));
 
             // schedule a proxy upgrade transaction on the timelock
             // the traget is the proxy admin for the max Vault Proxy Contract
@@ -42,7 +42,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors {
 
             bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
 
-            bytes memory initData = abi.encodeWithSelector(YnETHxVault.initializeV2.selector, 18, 0);
+            bytes memory initData = abi.encodeWithSelector(YnETHx.initializeV2.selector, 18, 0);
             bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(vaultImpl), initData);
 
             bytes32 predecessor = bytes32(0);
