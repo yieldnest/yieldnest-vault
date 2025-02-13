@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {Vault} from "src/Vault.sol";
 import {IERC20} from "src/Common.sol";
 
-contract YnETHxVault is Vault {
+contract YnETHx is Vault {
     /**
      * @dev Storage structure for ERC4626 asset information.
      * @param _asset The ERC20 token associated with the strategy.
