@@ -13,6 +13,7 @@ import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {YieldNestRules} from "script/rules/YieldNestRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {OriginRules} from "script/rules/OriginRules.sol";
 import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 
@@ -186,6 +187,12 @@ library VaultVerification {
             RulesVerification.verifyProcessorRule(withdrawer, BaseRules.getWithdrawRule(MC.WOETH, address(withdrawer)));
             RulesVerification.verifyProcessorRule(withdrawer, BaseRules.getRedeemRule(MC.WOETH, address(withdrawer)));
         }
+
+        {
+            // mint oeth with weth
+            RulesVerification.verifyProcessorRule(withdrawer, BaseRules.getApprovalRule(MC.WETH, MC.OETH_VAULT));
+            RulesVerification.verifyProcessorRule(withdrawer, OriginRules.getMintRule(MC.OETH_VAULT, MC.WETH));
+        }
     }
 
     function verifyRules(IVault vault) internal view {
@@ -193,9 +200,10 @@ library VaultVerification {
 
         {
             // Verify WETH approvals
-            address[] memory wethSpenders = new address[](2);
+            address[] memory wethSpenders = new address[](3);
             wethSpenders[0] = MC.EULER_WETH_22_VAULT;
             wethSpenders[1] = address(withdrawer);
+            wethSpenders[2] = MC.OETH_VAULT;
 
             RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.WETH, wethSpenders));
         }
@@ -320,6 +328,11 @@ library VaultVerification {
                 vault, BaseRules.getWithdrawRule(MC.SMOKEHOUSE_WSTETH, address(vault))
             );
             RulesVerification.verifyProcessorRule(vault, BaseRules.getRedeemRule(MC.SMOKEHOUSE_WSTETH, address(vault)));
+        }
+
+        {
+            // mint oeth with weth
+            RulesVerification.verifyProcessorRule(withdrawer, OriginRules.getMintRule(MC.OETH_VAULT, MC.WETH));
         }
     }
 

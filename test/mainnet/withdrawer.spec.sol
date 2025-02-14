@@ -172,9 +172,6 @@ contract WithdrawerMainnetTest is Test, MainnetActors {
         _claimWithdrawalWOETH(tokenId);
     }
 
-    /*
-    // TODO: fix OETH tests
-    // deal(MC.OETH, address(vault), INITIAL_BALANCE) fails
     function test_Vault_RequestWithdrawal_OETH(uint256 amount) public {
         vm.assume(amount > 1000);
         vm.assume(amount < INITIAL_BALANCE / 2);
@@ -191,22 +188,46 @@ contract WithdrawerMainnetTest is Test, MainnetActors {
         _claimWithdrawalWOETH(tokenId);
     }
 
+    function _mintOETH(IVault vault_, uint256 amount) internal {
+        address[] memory targets = new address[](2);
+        targets[0] = MC.WETH;
+        targets[1] = MC.OETH_VAULT;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", MC.OETH_VAULT, amount);
+        data[1] = abi.encodeWithSignature("mint(address,uint256,uint256)", MC.WETH, amount, amount);
+
+        vault_.processor(targets, values, data);
+    }
+
     function _requestWithdrawalOETH(uint256 amount) internal returns (uint256 tokenId) {
         address asset_ = MC.OETH;
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
 
-        uint256 assets = vault.asyncWithdrawalBalance(asset_);
+        uint256 assets = vault.asyncWithdrawalBalance(MC.WOETH); // check WOETH balance for OETH
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = vault.totalAssets();
+
+        _mintOETH(vault, amount);
+
+        uint256 balance = IERC20(MC.OETH).balanceOf(address(vault));
+        assertGt(balance, 0, "OETH balance should be greater than zero");
+        assertEq(balance, amount, "OETH balance should match amount");
 
         tokenId = vault.requestWithdrawalOETH(amount);
 
         IOETHVault.WithdrawalRequest memory request = oethVault.withdrawalRequests(tokenId);
 
         uint256 amountInBase = _convertAssetToBase(asset_, amount);
-        assertApproxEqRel(request.amount, amountInBase, 1e15, "Amount should match");
+        assertEq(amountInBase, amount, "Amount should match base amount for OETH");
 
-        assets = vault.asyncWithdrawalBalance(asset_);
+        assertEq(request.amount, amountInBase, "Request amount should match");
+
+        assets = vault.asyncWithdrawalBalance(MC.WOETH); // check WOETH balance for OETH
         assertApproxEqRel(assets, amountInBase, 1e15, "Queued assets should match");
         assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
 
@@ -214,7 +235,6 @@ contract WithdrawerMainnetTest is Test, MainnetActors {
         assertEq(requestIds.length, 1, "Request ids should match");
         assertEq(requestIds[0], tokenId, "Request ids should match");
     }
-    */
 
     function _requestWithdrawalWOETH(uint256 amount) internal returns (uint256 tokenId) {
         address asset_ = MC.WOETH;

@@ -96,7 +96,7 @@ library OriginWithdrawalLib {
      * @return requestId the requestId of the OETH withdrawal.
      */
     function requestWithdrawalOETH(uint256 amount) public returns (uint256 requestId) {
-        _requestWithdrawalOETH(amount);
+        requestId = _requestWithdrawalOETH(amount);
         emit WithdrawalRequested(MC.OETH, amount, requestId);
     }
 

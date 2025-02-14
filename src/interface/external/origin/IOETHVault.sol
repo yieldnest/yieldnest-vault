@@ -28,4 +28,5 @@ interface IOETHVault {
     function withdrawalClaimDelay() external view returns (uint256);
     function governor() external view returns (address);
     function setMaxSupplyDiff(uint256 _maxSupplyDiff) external;
+    function mint(address _asset, uint256 _amount, uint256 _minimumOusdAmount) external;
 }

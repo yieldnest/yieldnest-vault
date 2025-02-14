@@ -6,6 +6,7 @@ import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {BaseRoles} from "script/roles/BaseRoles.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {OriginRules} from "script/rules/OriginRules.sol";
 import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
 import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
@@ -56,7 +57,7 @@ library WithdrawerConfig {
             vault.addAsset(MC.YNETH, true, false);
         }
 
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](14);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](16);
         uint256 ruleIndex = 0;
 
         {
@@ -97,6 +98,12 @@ library WithdrawerConfig {
             rules[ruleIndex++] = BaseRules.getDepositRule(MC.WOETH, address(vault));
             rules[ruleIndex++] = BaseRules.getWithdrawRule(MC.WOETH, address(vault));
             rules[ruleIndex++] = BaseRules.getRedeemRule(MC.WOETH, address(vault));
+        }
+
+        {
+            // mint oeth with weth
+            rules[ruleIndex++] = BaseRules.getApprovalRule(MC.WETH, MC.OETH_VAULT);
+            rules[ruleIndex++] = OriginRules.getMintRule(MC.OETH_VAULT, MC.WETH);
         }
 
         if (ruleIndex != rules.length) {
