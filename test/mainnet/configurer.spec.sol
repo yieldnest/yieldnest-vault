@@ -253,14 +253,14 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         whitelistedAssets[7] = MC.OETH;
         vm.label(MC.OETH, "OETH");
         // {
-        //  //TODO: figure out how to get OETH
-        //     IERC20(MC.WETH).approve(MC.WOETH, donationAmount);
+        //  //TODO: figure out how to get OETH this reverts
+        //     IERC20(MC.WETH).approve(MC.OETH, donationAmount);
         //    IOETHVault(MC.OETH).mint(MC.WETH, donationAmount, 1);
         // }
         whitelistedAssets[8] = MC.WOETH;
         vm.label(MC.WOETH, "WOETH");
         deal(MC.WOETH, address(this), donationAmount);
-        
+
         whitelistedAssets[9] = MC.SMOKEHOUSE_WSTETH;
         vm.label(MC.SMOKEHOUSE_WSTETH, "SMOKEHOUSE_WSTETH");
         deal(MC.SMOKEHOUSE_WSTETH, address(this), donationAmount);
