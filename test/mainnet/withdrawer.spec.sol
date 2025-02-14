@@ -188,6 +188,22 @@ contract WithdrawerMainnetTest is Test, MainnetActors {
         _claimWithdrawalWOETH(tokenId);
     }
 
+    function _mintOETH(IVault vault_, uint256 amount) internal {
+        address[] memory targets = new address[](2);
+        targets[0] = MC.WETH;
+        targets[1] = MC.OETH_VAULT;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", MC.OETH_VAULT, amount);
+        data[1] = abi.encodeWithSignature("mint(address,uint256,uint256)", MC.WETH, amount, amount);
+
+        vault_.processor(targets, values, data);
+    }
+
     function _requestWithdrawalOETH(uint256 amount) internal returns (uint256 tokenId) {
         address asset_ = MC.OETH;
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
@@ -196,10 +212,7 @@ contract WithdrawerMainnetTest is Test, MainnetActors {
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = vault.totalAssets();
 
-        vm.startPrank(address(vault));
-        IERC20(MC.WETH).approve(address(oethVault), amount);
-        oethVault.mint(MC.WETH, amount, amount);
-        vm.stopPrank();
+        _mintOETH(vault, amount);
 
         uint256 balance = IERC20(MC.OETH).balanceOf(address(vault));
         assertGt(balance, 0, "OETH balance should be greater than zero");

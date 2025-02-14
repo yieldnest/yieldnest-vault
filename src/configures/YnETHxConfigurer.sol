@@ -5,6 +5,7 @@ import {MainnetActors, IActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {YnETHx} from "src/YnETHx.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {OriginRules} from "script/rules/OriginRules.sol";
 import {ConnectorRules} from "script/rules/ConnectorRules.sol";
 import {YieldNestRules} from "script/rules/YieldNestRules.sol";
 import {BaseRoles} from "script/roles/BaseRoles.sol";
@@ -65,7 +66,7 @@ contract YnETHxConfigurer is MainnetActors {
             vault.addAsset(MC.SMOKEHOUSE_WSTETH, false);
         }
 
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](31);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](32);
         uint256 ruleIndex = 0;
 
         {
@@ -76,9 +77,10 @@ contract YnETHxConfigurer is MainnetActors {
 
         {
             // approvals for WETH
-            address[] memory strategies = new address[](2);
+            address[] memory strategies = new address[](3);
             strategies[0] = MC.EULER_WETH_22_VAULT;
             strategies[1] = withdrawer;
+            strategies[2] = MC.OETH_VAULT;
             rules[ruleIndex++] = BaseRules.getApprovalRule(MC.WETH, strategies);
         }
 
@@ -203,6 +205,11 @@ contract YnETHxConfigurer is MainnetActors {
             rules[ruleIndex++] = BaseRules.getDepositRule(MC.SMOKEHOUSE_WSTETH, address(vault));
             rules[ruleIndex++] = BaseRules.getWithdrawRule(MC.SMOKEHOUSE_WSTETH, address(vault));
             rules[ruleIndex++] = BaseRules.getRedeemRule(MC.SMOKEHOUSE_WSTETH, address(vault));
+        }
+
+        {
+            // mint oeth with weth
+            rules[ruleIndex++] = OriginRules.getMintRule(MC.OETH_VAULT, MC.WETH);
         }
 
         if (ruleIndex != rules.length) {
