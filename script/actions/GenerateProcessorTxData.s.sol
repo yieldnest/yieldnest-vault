@@ -12,14 +12,11 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {MainnetActors} from "script/Actors.sol";
 
-
 contract GenerateProcessorTxData is Script {
-
-
     function run() external {
-        uint256 DEPOSIT_AMOUNT = 118 ether;
+        uint256 DEPOSIT_AMOUNT = 400 ether;
 
-        MainnetActors    actors = new MainnetActors();
+        MainnetActors actors = new MainnetActors();
 
         console2.log("Target Multisig: %s", vm.toString(actors.PROCESSOR()));
 
@@ -30,11 +27,7 @@ contract GenerateProcessorTxData is Script {
         console2.log("Current Chain ID: %s", block.chainid);
 
         // Generate calldata for approve(address,uint256)
-        bytes memory txData = abi.encodeWithSelector(
-            ERC20.approve.selector,
-            MC.BUFFER,
-            DEPOSIT_AMOUNT
-        );
+        bytes memory txData = abi.encodeWithSelector(ERC20.approve.selector, MC.BUFFER, DEPOSIT_AMOUNT);
 
         console2.log("=== Transaction Details ===");
         console2.log("Target: %s", vm.toString(MC.WBNB));
@@ -44,11 +37,7 @@ contract GenerateProcessorTxData is Script {
         console2.logBytes(txData);
 
         // Generate calldata for deposit(uint256,address)
-        bytes memory depositData = abi.encodeWithSelector(
-            ERC4626.deposit.selector,
-            DEPOSIT_AMOUNT,
-            MC.YNBNBX
-        );
+        bytes memory depositData = abi.encodeWithSelector(ERC4626.deposit.selector, DEPOSIT_AMOUNT, MC.YNBNBX);
 
         console2.log("\n=== Deposit Transaction Details ===");
         console2.log("Target Buffer: %s", vm.toString(MC.BUFFER));

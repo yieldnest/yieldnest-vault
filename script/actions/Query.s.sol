@@ -16,36 +16,42 @@ contract Query is Script {
 
         IVault vault = IVault(MC.YNBNBX);
         uint256 totalAssets = vault.totalAssets();
-        
+
         console2.log("\n=== Vault Total Assets ===");
         console2.log("Vault: %s", vm.toString(address(vault)));
         console2.log("Total Assets: %s", totalAssets);
 
+        address wbnb = MC.WBNB;
+        uint256 wbnbBalance = IERC20Metadata(wbnb).balanceOf(address(vault));
+
+        console2.log("\n=== WBNB Balance ===");
+        console2.log("WBNB: %s", vm.toString(wbnb));
+        console2.log("Balance: %s", wbnbBalance);
+
         address asbnb = MC.ASBNB;
         uint256 asbnbBalance = IERC20Metadata(asbnb).balanceOf(address(vault));
-        
+
         console2.log("\n=== ASBNB Balance ===");
         console2.log("ASBNB: %s", vm.toString(asbnb));
         console2.log("Balance: %s", asbnbBalance);
 
         address slisbnb = MC.SLISBNB;
         uint256 slisbnbBalance = IERC20Metadata(slisbnb).balanceOf(address(vault));
-        
+
         console2.log("\n=== SLISBNB Balance ===");
         console2.log("SLISBNB: %s", vm.toString(slisbnb));
         console2.log("Balance: %s", slisbnbBalance);
 
         address ynasbnbk = MC.YNASBNBK;
         uint256 ynasbnbkBalance = IERC20Metadata(ynasbnbk).balanceOf(address(vault));
-        
+
         console2.log("\n=== YNASBNBK Balance ===");
         console2.log("YNASBNBK: %s", vm.toString(ynasbnbk));
         console2.log("Balance: %s", ynasbnbkBalance);
 
         uint256 convertedAssets = vault.convertToAssets(1e18);
-        
-        console2.log("\n=== YNBNBX Convert 1 Share to Assets ==="); 
-        console2.log("1 Share in Assets: %s", convertedAssets);
 
+        console2.log("\n=== YNBNBX Convert 1 Share to Assets ===");
+        console2.log("1 Share in Assets: %s", convertedAssets);
     }
 }
