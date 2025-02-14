@@ -7,17 +7,22 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
 import {IVault} from "src/interface/IVault.sol";
-import {IERC20, TransparentUpgradeableProxy} from "src/Common.sol";
+import {IERC20, TransparentUpgradeableProxy, IERC4626} from "src/Common.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
+import {VaultVerification} from "script/verification/VaultVerification.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
+import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 
 contract VaultMainnetInvariantsTest is Test, MainnetActors {
     Vault public vault;
+    Withdrawer public withdrawer;
 
     function setUp() public {
         SetupVault setup = new SetupVault();
         setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
 
+        withdrawer = VaultVerification.getWithdrawer(vault);
         assertEq(vault.asset(), MC.WETH, "base asset should be weth");
     }
 
@@ -401,11 +406,38 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         (shares) = abi.decode(returnData, (uint256));
     }
 
+    function _processDepositAsset(address erc4626, address asset, uint256 amount) internal returns (uint256 shares) {
+        bytes memory data =
+            abi.encodeWithSignature("depositAsset(address,uint256,address)", asset, amount, address(vault));
+        bytes memory returnData = _process(erc4626, 0, data);
+        (shares) = abi.decode(returnData, (uint256));
+    }
+
+    function _processWithdraw(address erc4626, uint256 amount) internal returns (uint256 shares) {
+        bytes memory data =
+            abi.encodeWithSignature("withdraw(uint256,address,address)", amount, address(vault), address(vault));
+        bytes memory returnData = _process(erc4626, 0, data);
+        (shares) = abi.decode(returnData, (uint256));
+    }
+
+    function _processWithdrawAsset(address erc4626, address asset, uint256 amount) internal returns (uint256 shares) {
+        bytes memory data = abi.encodeWithSignature(
+            "withdrawAsset(address,uint256,address,address)", asset, amount, address(vault), address(vault)
+        );
+        bytes memory returnData = _process(erc4626, 0, data);
+        (shares) = abi.decode(returnData, (uint256));
+    }
+
     function _processRedeem(address erc4626, uint256 amount) internal returns (uint256 assets) {
         bytes memory data =
             abi.encodeWithSignature("redeem(uint256,address,address)", amount, address(vault), address(vault));
         bytes memory returnData = _process(erc4626, 0, data);
         (assets) = abi.decode(returnData, (uint256));
+    }
+
+    function _processDepositWETH(uint256 amount) internal {
+        bytes memory data = abi.encodeWithSignature("deposit()");
+        _process(MC.WETH, amount, data);
     }
 
     function _processWithdrawWETH(uint256 amount) internal {
@@ -423,6 +455,27 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         bytes memory data = abi.encodeWithSignature("wrap(uint256)", amount);
         bytes memory returnData = _process(MC.WSTETH, 0, data);
         (amountWSTETH) = abi.decode(returnData, (uint256));
+    }
+
+    function _processUnwrapWSTETH(uint256 amount) internal returns (uint256 amountSTETH) {
+        bytes memory data = abi.encodeWithSignature("unwrap(uint256)", amount);
+        bytes memory returnData = _process(MC.WSTETH, 0, data);
+        (amountSTETH) = abi.decode(returnData, (uint256));
+    }
+
+    function _processYnETHDepositETH(uint256 amount) internal {
+        bytes memory data = abi.encodeWithSignature("depositETH(address)", address(vault));
+        _process(MC.YNETH, amount, data);
+    }
+
+    function _processYnEigenDeposit(address erc4626, address asset, uint256 amount) internal {
+        bytes memory data = abi.encodeWithSignature("deposit(address,uint256,address)", asset, amount, address(vault));
+        _process(erc4626, 0, data);
+    }
+
+    function _processMintOETH(uint256 amount) internal {
+        bytes memory data = abi.encodeWithSignature("mint(address,uint256,uint256)", MC.WETH, amount, amount);
+        _process(MC.OETH_VAULT, 0, data);
     }
 
     function test_Vault_4626Invariants_Smokehouse_WSTETH(uint256 amount) public {
@@ -509,6 +562,508 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
                 initialReceivedWSTETH + receivedWSTETH,
                 "vault should have received stETH"
             );
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        {
+            // deposit wstETH into smokehouse
+            uint256 initialSmokehouseWSTETH = IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault));
+
+            _processApprove(MC.WSTETH, MC.SMOKEHOUSE_WSTETH, receivedWSTETH);
+            amountSmokehouseWSTETH = _processDeposit(MC.SMOKEHOUSE_WSTETH, receivedWSTETH);
+
+            vault.processAccounting();
+
+            assertApproxEqRel(
+                IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault)),
+                initialSmokehouseWSTETH + amountSmokehouseWSTETH,
+                1e15,
+                "vault should have received smokehouse wstETH"
+            );
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        {
+            uint256 maxWithdraw = IERC4626(MC.SMOKEHOUSE_WSTETH).maxWithdraw(address(vault));
+            _processWithdraw(MC.SMOKEHOUSE_WSTETH, maxWithdraw);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+    }
+
+    function test_Vault_4626Invariants_WETH(uint256 amount) public {
+        vm.assume(amount > 100000);
+        vm.assume(amount < 100_000 ether);
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        {
+            deal(address(vault), amount);
+
+            // convert ETH to WETH
+            _processDepositWETH(amount);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets + amount);
+        }
+
+        initialAssets = vault.totalAssets();
+        initialSupply = vault.totalSupply();
+
+        {
+            // convert WETH to ETH
+            _processWithdrawWETH(amount);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+    }
+
+    function test_Vault_4626Invariants_Buffer(uint256 amount) public {
+        vm.assume(amount > 100000);
+        vm.assume(amount < 100_000 ether);
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        {
+            deal(address(vault), amount);
+
+            // convert ETH to WETH
+            _processDepositWETH(amount);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets + amount);
+        }
+
+        initialAssets = vault.totalAssets();
+        initialSupply = vault.totalSupply();
+
+        {
+            // deposit WETH into EULER_WETH_22_VAULT (buffer)
+            _processApprove(MC.WETH, MC.EULER_WETH_22_VAULT, amount);
+            _processDeposit(MC.EULER_WETH_22_VAULT, amount);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+    }
+
+    function test_Vault_4626Invariants_YNETH(uint256 amount) public {
+        vm.assume(amount > 100000);
+        vm.assume(amount < 100_000 ether);
+
+        deal(address(vault), amount);
+
+        vault.processAccounting();
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        {
+            // convert ETH to YNETH
+            _processYnETHDepositETH(amount);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+    }
+
+    function test_Vault_4626Invariants_YNLSDE_WSTETH(uint256 amount) public {
+        vm.assume(amount > 100000);
+        vm.assume(amount < 100_000 ether);
+
+        {
+            // deposit some WETH into the vault
+            address alice = address(10);
+            deal(MC.WETH, alice, amount);
+
+            vm.startPrank(alice);
+            IERC20(MC.WETH).approve(address(vault), amount);
+            vault.deposit(amount, alice);
+            vm.stopPrank();
+        }
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        {
+            // convert WETH to ETH
+            _processWithdrawWETH(amount);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        uint256 amountWSTETH;
+        {
+            // convert ETH to wstETH
+            uint256 initialWSTETH = IERC20(MC.WSTETH).balanceOf(address(vault));
+
+            uint256 amountSTETH = _processSubmitETH(amount);
+            _processApprove(MC.STETH, MC.WSTETH, amountSTETH);
+            amountWSTETH = _processWrapSTETH(amountSTETH);
+
+            vault.processAccounting();
+
+            assertEq(
+                IERC20(MC.WSTETH).balanceOf(address(vault)),
+                initialWSTETH + amountWSTETH,
+                "vault should have received wstETH"
+            );
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        {
+            // deposit WSETH into YNLSDE
+            _processApprove(MC.WSTETH, MC.YNLSDE, amountWSTETH);
+            _processYnEigenDeposit(MC.YNLSDE, MC.WSTETH, amountWSTETH);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+    }
+
+    function test_Vault_4626Invariants_YNLSDE_WOETH(uint256 amount) public {
+        vm.assume(amount > 100000);
+        vm.assume(amount < 100_000 ether);
+
+        {
+            // deposit some WETH into the vault
+            address alice = address(10);
+            deal(MC.WETH, alice, amount);
+
+            vm.startPrank(alice);
+            IERC20(MC.WETH).approve(address(vault), amount);
+            vault.deposit(amount, alice);
+            vm.stopPrank();
+        }
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        uint256 amountWOETH;
+        {
+            // convert ETH to woETH
+            uint256 initialWOETH = IERC20(MC.WOETH).balanceOf(address(vault));
+
+            _processApprove(MC.WETH, MC.OETH_VAULT, amount);
+            _processMintOETH(amount);
+            _processApprove(MC.OETH, MC.WOETH, amount);
+            amountWOETH = _processDeposit(MC.WOETH, amount);
+
+            vault.processAccounting();
+
+            assertEq(
+                IERC20(MC.WOETH).balanceOf(address(vault)),
+                initialWOETH + amountWOETH,
+                "vault should have received wstETH"
+            );
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        {
+            // deposit WOETH into YNLSDE
+            _processApprove(MC.WOETH, MC.YNLSDE, amountWOETH);
+            _processYnEigenDeposit(MC.YNLSDE, MC.WOETH, amountWOETH);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+    }
+
+    function test_Vault_4626Invariants_WOETH(uint256 amount) public {
+        vm.assume(amount > 100000);
+        vm.assume(amount < 100_000 ether);
+
+        {
+            // deposit some WETH into the vault
+            address alice = address(10);
+            deal(MC.WETH, alice, amount);
+
+            vm.startPrank(alice);
+            IERC20(MC.WETH).approve(address(vault), amount);
+            vault.deposit(amount, alice);
+            vm.stopPrank();
+        }
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        uint256 amountWOETH;
+        {
+            // convert ETH to woETH
+            uint256 initialWOETH = IERC20(MC.WOETH).balanceOf(address(vault));
+
+            _processApprove(MC.WETH, MC.OETH_VAULT, amount);
+            _processMintOETH(amount);
+            _processApprove(MC.OETH, MC.WOETH, amount);
+            amountWOETH = _processDeposit(MC.WOETH, amount);
+
+            vault.processAccounting();
+
+            assertEq(
+                IERC20(MC.WOETH).balanceOf(address(vault)),
+                initialWOETH + amountWOETH,
+                "vault should have received wstETH"
+            );
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        uint256 receivedOETH;
+        {
+            // unwrap woETH
+            receivedOETH = _processRedeem(MC.WOETH, amountWOETH);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        {
+            uint256 initialWOETH = IERC20(MC.WOETH).balanceOf(address(vault));
+
+            _processApprove(MC.OETH, MC.WOETH, receivedOETH);
+            amountWOETH = _processDeposit(MC.WOETH, receivedOETH);
+
+            vault.processAccounting();
+
+            assertEq(
+                IERC20(MC.WOETH).balanceOf(address(vault)),
+                initialWOETH + amountWOETH,
+                "vault should have received wstETH"
+            );
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        {
+            uint256 maxWithdraw = IERC4626(MC.WOETH).maxWithdraw(address(vault));
+            _processWithdraw(MC.WOETH, maxWithdraw);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+    }
+
+    function test_Vault_4626Invariants_Wrap_Unwrap_WSTETH(uint256 amount) public {
+        vm.assume(amount > 100000);
+        vm.assume(amount < 100_000 ether);
+
+        {
+            // deposit some WETH into the vault
+            address alice = address(10);
+            deal(MC.WETH, alice, amount);
+
+            vm.startPrank(alice);
+            IERC20(MC.WETH).approve(address(vault), amount);
+            vault.deposit(amount, alice);
+            vm.stopPrank();
+        }
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        {
+            // convert WETH to ETH
+            _processWithdrawWETH(amount);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        uint256 amountWSTETH;
+        {
+            // convert ETH to wstETH
+            uint256 initialWSTETH = IERC20(MC.WSTETH).balanceOf(address(vault));
+
+            uint256 amountSTETH = _processSubmitETH(amount);
+            _processApprove(MC.STETH, MC.WSTETH, amountSTETH);
+            amountWSTETH = _processWrapSTETH(amountSTETH);
+
+            vault.processAccounting();
+
+            assertEq(
+                IERC20(MC.WSTETH).balanceOf(address(vault)),
+                initialWSTETH + amountWSTETH,
+                "vault should have received wstETH"
+            );
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        {
+            // unwrap wstETH
+            _processUnwrapWSTETH(amountWSTETH);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+    }
+
+    function dealAsset(address asset, address account, uint256 amount) internal {
+        if (asset == MC.STETH) {
+            vm.deal(account, amount);
+
+            vm.startPrank(account);
+            (bool success,) = MC.STETH.call{value: amount}("");
+            vm.stopPrank();
+
+            assertTrue(success, "stETH deposit failed");
+            return;
+        }
+
+        if (asset == MC.OETH) {
+            deal(MC.WETH, account, amount);
+
+            vm.startPrank(account);
+            IERC20(MC.WETH).approve(MC.OETH_VAULT, amount);
+            IOETHVault(MC.OETH_VAULT).mint(MC.WETH, amount, amount);
+            vm.stopPrank();
+            return;
+        }
+
+        deal(asset, account, amount);
+    }
+
+    function test_Vault_4626Invariants_Withdrawer_Deposit(uint256 amount) public {
+        vm.assume(amount > 10000);
+        vm.assume(amount < 100_000 ether);
+
+        address alice = address(0xa11ce);
+
+        address[] memory assets = new address[](7);
+        uint256 index = 0;
+
+        assets[index++] = MC.WETH;
+        assets[index++] = MC.STETH;
+        assets[index++] = MC.WSTETH;
+        assets[index++] = MC.WOETH;
+        assets[index++] = MC.OETH;
+        assets[index++] = MC.YNLSDE;
+        assets[index++] = MC.YNETH;
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            dealAsset(assets[i], alice, amount);
+
+            uint256 donatedAmount = IERC20(assets[i]).balanceOf(alice);
+            assertApproxEqRel(donatedAmount, amount, 1e15, "Balance should match for asset");
+
+            vm.startPrank(alice);
+            IERC20(assets[i]).transfer(address(vault), donatedAmount);
+            vm.stopPrank();
+
+            vault.processAccounting();
+
+            uint256 initialAssets = vault.totalAssets();
+            uint256 initialSupply = vault.totalSupply();
+
+            _processApprove(assets[i], address(withdrawer), donatedAmount);
+            _processDepositAsset(address(withdrawer), assets[i], donatedAmount);
+
+            withdrawer.processAccounting();
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+    }
+
+    function test_Vault_4626Invariants_Withdrawer_Withdraw(uint256 amount) public {
+        vm.assume(amount > 10000);
+        vm.assume(amount < 100_000 ether);
+
+        vm.assume(amount > 100000);
+        vm.assume(amount < 100_000 ether);
+
+        {
+            // deposit some WETH into the vault
+            address alice = address(10);
+            deal(MC.WETH, alice, amount);
+
+            vm.startPrank(alice);
+            IERC20(MC.WETH).approve(address(vault), amount);
+            vault.deposit(amount, alice);
+            vm.stopPrank();
+        }
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        {
+            _processApprove(MC.WETH, address(withdrawer), amount);
+            _processDepositAsset(address(withdrawer), MC.WETH, amount);
+
+            withdrawer.processAccounting();
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        {
+            _processWithdraw(address(withdrawer), amount);
+
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        {
+            _processApprove(MC.WETH, address(withdrawer), amount);
+            _processDepositAsset(address(withdrawer), MC.WETH, amount);
+
+            withdrawer.processAccounting();
+            vault.processAccounting();
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        {
+            _processWithdrawAsset(address(withdrawer), MC.WETH, amount);
+
+            vault.processAccounting();
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);

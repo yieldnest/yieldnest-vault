@@ -48,16 +48,14 @@ library WithdrawerConfig {
             vault.addAsset(MC.STETH, true, false);
             vault.addAsset(MC.WSTETH, true, false);
             vault.addAsset(MC.METH, true, false);
-            vault.addAsset(MC.RETH, true, false);
             vault.addAsset(MC.WOETH, true, false);
             vault.addAsset(MC.OETH, true, false);
-            vault.addAsset(MC.SWELL, true, false);
             vault.addAsset(MC.SFRXETH, true, false);
             vault.addAsset(MC.YNLSDE, true, false);
             vault.addAsset(MC.YNETH, true, false);
         }
 
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](16);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](17);
         uint256 ruleIndex = 0;
 
         {
@@ -95,6 +93,7 @@ library WithdrawerConfig {
 
         {
             // wrap/unwrap woeth
+            rules[ruleIndex++] = BaseRules.getApprovalRule(MC.OETH, MC.WOETH);
             rules[ruleIndex++] = BaseRules.getDepositRule(MC.WOETH, address(vault));
             rules[ruleIndex++] = BaseRules.getWithdrawRule(MC.WOETH, address(vault));
             rules[ruleIndex++] = BaseRules.getRedeemRule(MC.WOETH, address(vault));

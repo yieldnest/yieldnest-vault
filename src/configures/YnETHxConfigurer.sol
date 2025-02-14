@@ -66,7 +66,7 @@ contract YnETHxConfigurer is MainnetActors {
             vault.addAsset(MC.SMOKEHOUSE_WSTETH, false);
         }
 
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](32);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](31);
         uint256 ruleIndex = 0;
 
         {
@@ -113,6 +113,15 @@ contract YnETHxConfigurer is MainnetActors {
         }
 
         {
+            // approvals for oETH
+            address[] memory strategies = new address[](2);
+            strategies[0] = MC.WOETH;
+            strategies[1] = withdrawer;
+
+            rules[ruleIndex++] = BaseRules.getApprovalRule(MC.OETH, strategies);
+        }
+
+        {
             // buffer deposit/withdraw WETH
             rules[ruleIndex++] = BaseRules.getDepositRule(MC.EULER_WETH_22_VAULT, address(vault));
             rules[ruleIndex++] = BaseRules.getWithdrawRule(MC.EULER_WETH_22_VAULT, address(vault));
@@ -156,7 +165,7 @@ contract YnETHxConfigurer is MainnetActors {
 
         {
             // withdrawer deposit all assets and withdraw WETH
-            address[] memory assets = new address[](10);
+            address[] memory assets = new address[](9);
             uint256 index = 0;
 
             assets[index++] = MC.WETH;
@@ -172,7 +181,7 @@ contract YnETHxConfigurer is MainnetActors {
             for (uint256 i = 0; i < assets.length; i++) {
                 if (
                     assets[i] == MC.WETH || assets[i] == MC.STETH || assets[i] == MC.WSTETH || assets[i] == MC.WOETH
-                        || assets[i] == MC.YNETH || assets[i] == MC.YNLSDE
+                        || assets[i] == MC.OETH || assets[i] == MC.YNETH || assets[i] == MC.YNLSDE
                 ) {
                     continue;
                 }

@@ -32,17 +32,17 @@ library YieldNestRules {
     {
         bytes4 funcSig = bytes4(keccak256("deposit(address,uint256,address)"));
 
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](3);
 
-        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: assetList});
+        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: assetList});
 
-        paramRules[0] =
+        paramRules[1] =
             IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         address[] memory allowList = new address[](1);
         allowList[0] = receiver;
 
-        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+        paramRules[2] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
 
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});

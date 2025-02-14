@@ -18,6 +18,8 @@ import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 
 library VaultVerification {
+    error WithdrawerNotFound(address vault);
+
     function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal view {
         Vm vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -183,6 +185,7 @@ library VaultVerification {
 
         {
             // wrap/unwrap woeth
+            RulesVerification.verifyProcessorRule(withdrawer, BaseRules.getApprovalRule(MC.OETH, MC.WOETH));
             RulesVerification.verifyProcessorRule(withdrawer, BaseRules.getDepositRule(MC.WOETH, address(withdrawer)));
             RulesVerification.verifyProcessorRule(withdrawer, BaseRules.getWithdrawRule(MC.WOETH, address(withdrawer)));
             RulesVerification.verifyProcessorRule(withdrawer, BaseRules.getRedeemRule(MC.WOETH, address(withdrawer)));
@@ -259,6 +262,15 @@ library VaultVerification {
         }
 
         {
+            // approvals for oETH
+            address[] memory strategies = new address[](2);
+            strategies[0] = MC.WOETH;
+            strategies[1] = address(withdrawer);
+
+            RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.OETH, strategies));
+        }
+
+        {
             // Curve LP Strategy rules
             RulesVerification.verifyProcessorRule(
                 vault, BaseRules.getApprovalRule(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
@@ -274,7 +286,7 @@ library VaultVerification {
         // Withdrawer rules
         {
             // Verify deposit rules for all assets
-            address[] memory assets = new address[](10);
+            address[] memory assets = new address[](9);
             uint256 index = 0;
 
             assets[index++] = MC.WETH;
@@ -344,7 +356,8 @@ library VaultVerification {
                 return Withdrawer(payable(assets[i]));
             }
         }
-        revert("Withdrawer not found");
+
+        revert WithdrawerNotFound(address(vault));
     }
 
     function verifyViewer(IVaultViewer viewer, IVault vault) internal view {
