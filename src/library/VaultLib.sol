@@ -9,6 +9,8 @@ import {Guard} from "src/module/Guard.sol";
 library VaultLib {
     using Math for uint256;
 
+    string public constant VAULT_VERSION = "0.2.0";
+
     /// @custom:storage-location erc7201:openzeppelin.storage.ERC20
     struct ERC20Storage {
         mapping(address account => uint256) balances;
