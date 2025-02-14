@@ -18,6 +18,8 @@ import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 
 library VaultVerification {
+    error WithdrawerNotFound(address vault);
+
     function verifyVaultConfiguration(Vault vault, Withdrawer withdrawer) internal view {
         Vm vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -344,7 +346,8 @@ library VaultVerification {
                 return Withdrawer(payable(assets[i]));
             }
         }
-        revert("Withdrawer not found");
+        
+        revert WithdrawerNotFound(address(vault));
     }
 
     function verifyViewer(IVaultViewer viewer, IVault vault) internal view {

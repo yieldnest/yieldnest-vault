@@ -30,9 +30,9 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
     function setUp() public {
         vault = Vault(payable(MC.YNETHX));
-         timelock = TimelockController(payable(MC.TIMELOCK));
-         uint256 previousTotalAssets = vault.totalAssets();
-       
+        timelock = TimelockController(payable(MC.TIMELOCK));
+        uint256 previousTotalAssets = vault.totalAssets();
+
         {
             vm.expectRevert();
             vault.VAULT_VERSION();
@@ -40,24 +40,22 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
         _upgradeVault();
 
-   
+        assertEq(vault.symbol(), "ynETHx");
 
-            assertEq(vault.symbol(), "ynETHx");
+        assertTrue(vault.paused(), "Vault should be paused");
 
-            assertTrue(vault.paused(), "Vault should be paused");
+        YnETHxConfigurer configurer = new YnETHxConfigurer();
+        SetupWithdrawer setup = new SetupWithdrawer();
+        withdrawer = setup.setup();
+        Provider provider = new Provider();
 
-            YnETHxConfigurer configurer = new YnETHxConfigurer();
-            SetupWithdrawer setup = new SetupWithdrawer();
-            withdrawer = setup.setup();
-            Provider provider = new Provider();
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(configurer));
 
-            vm.startPrank(ADMIN);
-            vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(configurer));
+        configurer.configure(address(provider), address(withdrawer));
+        vm.stopPrank();
 
-            configurer.configure(address(provider), address(withdrawer));
-            vm.stopPrank();
-
-                 {
+        {
             // verify the upgrade was successful
             Vault newVault = Vault(payable(MC.YNETHX));
 
@@ -76,46 +74,46 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     }
 
     function _upgradeVault() internal {
- // upgrade the vault
-            Vault vaultImpl = Vault(payable(new YnETHx()));
+        // upgrade the vault
+        Vault vaultImpl = Vault(payable(new YnETHx()));
 
-            // schedule a proxy upgrade transaction on the timelock
-            // the traget is the proxy admin for the max Vault Proxy Contract
-            address target = MC.PROXY_ADMIN;
-            uint256 value = 0;
+        // schedule a proxy upgrade transaction on the timelock
+        // the traget is the proxy admin for the max Vault Proxy Contract
+        address target = MC.PROXY_ADMIN;
+        uint256 value = 0;
 
-            bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
+        bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
 
-            bytes memory initData = abi.encodeWithSelector(YnETHx.initializeV2.selector, 18, 0);
-            bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(vaultImpl), initData);
+        bytes memory initData = abi.encodeWithSelector(YnETHx.initializeV2.selector, 18, 0);
+        bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(vaultImpl), initData);
 
-            bytes32 predecessor = bytes32(0);
-            bytes32 salt = keccak256("chad");
+        bytes32 predecessor = bytes32(0);
+        bytes32 salt = keccak256("chad");
 
-            uint256 delay = 86400;
+        uint256 delay = 86400;
 
-            vm.startPrank(PROPOSER_1);
-            timelock.schedule(target, value, data, predecessor, salt, delay);
-            vm.stopPrank();
+        vm.startPrank(PROPOSER_1);
+        timelock.schedule(target, value, data, predecessor, salt, delay);
+        vm.stopPrank();
 
-            bytes32 id = keccak256(abi.encode(target, value, data, predecessor, salt));
-            assert(timelock.getOperationState(id) == TimelockController.OperationState.Waiting);
+        bytes32 id = keccak256(abi.encode(target, value, data, predecessor, salt));
+        assert(timelock.getOperationState(id) == TimelockController.OperationState.Waiting);
 
-            assertEq(timelock.isOperationReady(id), false);
-            assertEq(timelock.isOperationDone(id), false);
-            assertEq(timelock.isOperation(id), true);
+        assertEq(timelock.isOperationReady(id), false);
+        assertEq(timelock.isOperationDone(id), false);
+        assertEq(timelock.isOperation(id), true);
 
-            //execute the transaction
-            // solhint-disable-next-line not-rely-on-time
-            vm.warp(block.timestamp + 86401);
-            vm.startPrank(EXECUTOR_1);
-            timelock.execute(target, value, data, predecessor, salt);
-            vm.stopPrank();
+        //execute the transaction
+        // solhint-disable-next-line not-rely-on-time
+        vm.warp(block.timestamp + 86401);
+        vm.startPrank(EXECUTOR_1);
+        timelock.execute(target, value, data, predecessor, salt);
+        vm.stopPrank();
 
-            // Verify the transaction was executed successfully
-            assertEq(timelock.isOperationReady(id), false);
-            assertEq(timelock.isOperationDone(id), true);
-            assert(timelock.getOperationState(id) == TimelockController.OperationState.Done);
+        // Verify the transaction was executed successfully
+        assertEq(timelock.isOperationReady(id), false);
+        assertEq(timelock.isOperationDone(id), true);
+        assert(timelock.getOperationState(id) == TimelockController.OperationState.Done);
     }
 
     function test_configure() public view {
@@ -162,19 +160,19 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     function test_deposit_ynETH() public {
         uint256 depositAmount = 1 ether;
         deal(MC.YNETH, address(this), depositAmount);
-         uint256 totalAssetBefore = vault.totalAssets();
+        uint256 totalAssetBefore = vault.totalAssets();
 
         IERC20(MC.YNETH).approve(address(vault), depositAmount);
         vault.depositAsset(MC.YNETH, depositAmount, address(this));
         vault.processAccounting();
-        
+
         uint256 totalAssets = vault.totalAssets();
         uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
-        
-           assertEqThreshold(
-            totalAssets, 
-            totalAssetBefore + (depositAmount * ynEthRate / 1e18), 
-            5,  // Keep original small threshold
+
+        assertEqThreshold(
+            totalAssets,
+            totalAssetBefore + (depositAmount * ynEthRate / 1e18),
+            5, // Keep original small threshold
             "Total assets should match deposit amount"
         );
     }
@@ -183,38 +181,48 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         uint256 totalAssetBefore = vault.totalAssets();
         uint256 depositAmount = 1 ether;
 
-        deal(MC.YNLSDE,address(this), depositAmount);
+        deal(MC.YNLSDE, address(this), depositAmount);
         // Deposit YN
-          IERC20(MC.YNLSDE).approve(address(vault), depositAmount);
+        IERC20(MC.YNLSDE).approve(address(vault), depositAmount);
         vault.depositAsset(MC.YNLSDE, depositAmount, address(this));
         vault.processAccounting();
         // Assert totalAssets is correct
         uint256 totalAssets = vault.totalAssets();
 
         uint256 ynLSDeRate = IProvider(vault.provider()).getRate(MC.YNLSDE);
-        assertEqThreshold(totalAssets, totalAssetBefore + (depositAmount * ynLSDeRate / 1e18), 5,"Total assets should match deposit amount");
+        assertEqThreshold(
+            totalAssets,
+            totalAssetBefore + (depositAmount * ynLSDeRate / 1e18),
+            5,
+            "Total assets should match deposit amount"
+        );
     }
 
     function test_deposit_wETH() public {
-     uint256 totalAssetBefore = vault.totalAssets();
+        uint256 totalAssetBefore = vault.totalAssets();
         uint256 depositAmount = 1 ether;
 
-        deal(MC.WETH,address(this), depositAmount);
+        deal(MC.WETH, address(this), depositAmount);
         // Deposit YN
-          IERC20(MC.WETH).approve(address(vault), depositAmount);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
         vault.depositAsset(MC.WETH, depositAmount, address(this));
         vault.processAccounting();
         // Assert totalAssets is correct
         uint256 totalAssets = vault.totalAssets();
 
         uint256 WETHRate = IProvider(vault.provider()).getRate(MC.WETH);
-        assertEqThreshold(totalAssets, totalAssetBefore + (depositAmount * WETHRate / 1e18), 5,"Total assets should match deposit amount");
+        assertEqThreshold(
+            totalAssets,
+            totalAssetBefore + (depositAmount * WETHRate / 1e18),
+            5,
+            "Total assets should match deposit amount"
+        );
     }
 
     function test_donate_whitlisted_Assets() public {
         uint256 donationAmount = 1 ether;
         uint256 totalAssetBefore = vault.totalAssets();
-        
+
         // Donate the 10 whitelisted assets to the vault
         address[] memory whitelistedAssets = new address[](10);
         whitelistedAssets[0] = MC.WETH;
@@ -249,7 +257,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         whitelistedAssets[6] = MC.WSTETH;
         vm.label(MC.WSTETH, "WSTETH");
         deal(MC.WSTETH, address(this), donationAmount);
-        
+
         whitelistedAssets[7] = MC.OETH;
         vm.label(MC.OETH, "OETH");
         // {
@@ -267,7 +275,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
         for (uint256 i = 0; i < whitelistedAssets.length; i++) {
             if (whitelistedAssets[i] != MC.OETH) {
-            IERC20(whitelistedAssets[i]).transfer(address(vault), donationAmount);
+                IERC20(whitelistedAssets[i]).transfer(address(vault), donationAmount);
             }
         }
 
@@ -277,8 +285,8 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         uint256 totalExpectedAssets;
         for (uint256 i = 0; i < whitelistedAssets.length; i++) {
             if (whitelistedAssets[i] != MC.OETH) {
-            uint256 rate = IProvider(vault.provider()).getRate(whitelistedAssets[i]);
-            totalExpectedAssets += donationAmount * rate / 1e18;
+                uint256 rate = IProvider(vault.provider()).getRate(whitelistedAssets[i]);
+                totalExpectedAssets += donationAmount * rate / 1e18;
             }
         }
         assertEq(totalSupply, totalAssetBefore + totalExpectedAssets, "Total assets should equal total supply");
