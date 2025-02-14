@@ -29,17 +29,34 @@ jobs:
         run: |
           forge --version
 
-      - name: Run Forge fmt
+      - name: Run Forge fmt default
+        env:
+          FOUNDRY_PROFILE: default
+        run: |
+          forge fmt --check
+        id: fmt
+
+      - name: Run Forge fmt fork tests
+        env:
+          FOUNDRY_PROFILE: mainnet
         run: |
           forge fmt --check
         id: fmt
 
       - name: Run Forge build
         run: |
-          forge build --sizes --skip DeployFactory.sol
+          forge build --sizes
         id: build
 
-      - name: Run Forge tests
+      - name: Run Forge unit tests
+        env:
+          FOUNDRY_PROFILE: default
         run: |
           forge test -vvv
         id: test
+
+      - name: Run Forge fork units
+        env:
+          FOUNDRY_PROFILE: mainnet
+        run: |
+          forge test -vvv
