@@ -67,7 +67,7 @@ library AsyncWithdrawalLib {
      * @dev This function should return the amount in base denomination.
      */
     function _asyncWithdrawalBalance(address asset) private view returns (uint256 baseAssets) {
-        if (asset == MC.WOETH) {
+        if (asset == MC.WOETH || asset == MC.OETH) {
             return OriginWithdrawalLib._asyncWithdrawalBalanceWOETH();
         }
 
