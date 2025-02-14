@@ -18,12 +18,13 @@ import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
-import {VaultLib} from "src/library/VaultLib.sol";
 
 contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
     Withdrawer public withdrawer;
     TimelockController public timelock;
+
+    string public constant VAULT_VERSION = "0.2.0";
 
     function setUp() public {
         vault = Vault(payable(MC.YNETHX));
@@ -66,7 +67,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
             assertEq(
                 keccak256(bytes(vault.VAULT_VERSION())),
-                keccak256(bytes(VaultLib.VAULT_VERSION)),
+                keccak256(bytes(VAULT_VERSION)),
                 "Vault version should be correct"
             );
         }

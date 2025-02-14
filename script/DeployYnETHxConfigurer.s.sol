@@ -30,8 +30,10 @@ contract DeployYnETHxConfigurer is Script, MainnetActors {
     YnETHxConfigurer public ynethxConfigurer;
     YnETHx public ynethxImplementation;
 
+    string public constant VAULT_VERSION = "0.2.0";
+
     function label() public view returns (string memory) {
-        return string.concat("ynETHx-", Strings.toString(block.chainid), "-", VaultLib.VAULT_VERSION);
+        return string.concat("ynETHx-", Strings.toString(block.chainid), "-", VAULT_VERSION);
     }
 
     function deploymentFilePath() internal view returns (string memory) {
