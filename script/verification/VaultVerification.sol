@@ -346,7 +346,7 @@ library VaultVerification {
                 return Withdrawer(payable(assets[i]));
             }
         }
-        
+
         revert WithdrawerNotFound(address(vault));
     }
 

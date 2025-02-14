@@ -5,7 +5,7 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {Provider} from "src/module/Provider.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Vault} from "src/Vault.sol";
-import {TimelockController, IERC20} from "src/Common.sol";
+import {TimelockController, IERC20, Math} from "src/Common.sol";
 import {MainnetActors, IActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {YnETHx} from "src/YnETHx.sol";
@@ -17,11 +17,8 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
-import {console} from "lib/forge-std/src/console.sol";
-
-interface IOETHVault {
-    function mint(address _asset, uint256 _amount, uint256 _minimumOusdAmount) external;
-}
+import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
+import {VaultLib} from "src/library/VaultLib.sol";
 
 contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
@@ -68,7 +65,9 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
             assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
             assertEq(
-                keccak256(bytes(vault.VAULT_VERSION())), keccak256(bytes("0.2.0")), "Vault version should be 0.1.2"
+                keccak256(bytes(vault.VAULT_VERSION())),
+                keccak256(bytes(VaultLib.VAULT_VERSION)),
+                "Vault version should be correct"
             );
         }
     }
@@ -157,8 +156,10 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
     }
 
-    function test_deposit_ynETH() public {
-        uint256 depositAmount = 1 ether;
+    function test_deposit_ynETH(uint256 depositAmount) public {
+        vm.assume(depositAmount > 10000);
+        vm.assume(depositAmount < 100_000 ether);
+
         deal(MC.YNETH, address(this), depositAmount);
         uint256 totalAssetBefore = vault.totalAssets();
 
@@ -169,126 +170,117 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         uint256 totalAssets = vault.totalAssets();
         uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
 
-        assertEqThreshold(
+        assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (depositAmount * ynEthRate / 1e18),
-            5, // Keep original small threshold
+            1e16, // Keep original small threshold
             "Total assets should match deposit amount"
         );
     }
 
-    function test_deposit_ynLSDe() public {
-        uint256 totalAssetBefore = vault.totalAssets();
-        uint256 depositAmount = 1 ether;
+    function test_deposit_ynLSDe(uint256 depositAmount) public {
+        vm.assume(depositAmount > 10000);
+        vm.assume(depositAmount < 100_000 ether);
 
-        deal(MC.YNLSDE, address(this), depositAmount);
+        uint256 totalAssetBefore = vault.totalAssets();
+
         // Deposit YN
+        deal(MC.YNLSDE, address(this), depositAmount);
         IERC20(MC.YNLSDE).approve(address(vault), depositAmount);
         vault.depositAsset(MC.YNLSDE, depositAmount, address(this));
+
         vault.processAccounting();
+
         // Assert totalAssets is correct
         uint256 totalAssets = vault.totalAssets();
 
         uint256 ynLSDeRate = IProvider(vault.provider()).getRate(MC.YNLSDE);
-        assertEqThreshold(
+        assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (depositAmount * ynLSDeRate / 1e18),
-            5,
+            1e16,
             "Total assets should match deposit amount"
         );
     }
 
-    function test_deposit_wETH() public {
-        uint256 totalAssetBefore = vault.totalAssets();
-        uint256 depositAmount = 1 ether;
+    function test_deposit_wETH(uint256 depositAmount) public {
+        vm.assume(depositAmount > 10000);
+        vm.assume(depositAmount < 100_000 ether);
 
-        deal(MC.WETH, address(this), depositAmount);
+        uint256 totalAssetBefore = vault.totalAssets();
+
         // Deposit YN
+        deal(MC.WETH, address(this), depositAmount);
         IERC20(MC.WETH).approve(address(vault), depositAmount);
         vault.depositAsset(MC.WETH, depositAmount, address(this));
+
         vault.processAccounting();
+
         // Assert totalAssets is correct
         uint256 totalAssets = vault.totalAssets();
 
-        uint256 WETHRate = IProvider(vault.provider()).getRate(MC.WETH);
-        assertEqThreshold(
+        uint256 wethRate = IProvider(vault.provider()).getRate(MC.WETH);
+        assertApproxEqRel(
             totalAssets,
-            totalAssetBefore + (depositAmount * WETHRate / 1e18),
-            5,
+            totalAssetBefore + (depositAmount * wethRate / 1e18),
+            1e16,
             "Total assets should match deposit amount"
         );
     }
 
-    function test_donate_whitlisted_Assets() public {
-        uint256 donationAmount = 1 ether;
-        uint256 totalAssetBefore = vault.totalAssets();
+    function dealAsset(address asset, address account, uint256 amount) internal {
+        if (asset == MC.STETH) {
+            vm.deal(account, amount);
 
-        // Donate the 10 whitelisted assets to the vault
-        address[] memory whitelistedAssets = new address[](10);
-        whitelistedAssets[0] = MC.WETH;
-        vm.label(MC.WETH, "WETH");
-        deal(MC.WETH, address(this), donationAmount * 10);
-        whitelistedAssets[1] = MC.YNETH;
-        vm.label(MC.YNETH, "YNETH");
-        deal(MC.YNETH, address(this), donationAmount);
-
-        whitelistedAssets[2] = MC.YNLSDE;
-        vm.label(MC.YNLSDE, "YNLSDE");
-        deal(MC.YNLSDE, address(this), donationAmount);
-
-        whitelistedAssets[3] = MC.STETH;
-        {
-            // Deal  to and convert to stETH
-            vm.deal(address(this), donationAmount);
-            (bool success,) = MC.STETH.call{value: donationAmount}("");
-            assertTrue(success, "stETH deposit failed");
+            vm.startPrank(account);
+            (bool success,) = MC.STETH.call{value: amount}("");
             vm.stopPrank();
-        }
-        vm.label(MC.STETH, "STETH");
 
-        whitelistedAssets[4] = MC.EULER_WETH_22_VAULT;
-        vm.label(MC.EULER_WETH_22_VAULT, "EULER_WETH_22_VAULT");
-        deal(MC.EULER_WETH_22_VAULT, address(this), donationAmount);
-
-        whitelistedAssets[5] = MC.CURVE_LP_YNETH_YNLSDE_STRATEGY;
-        vm.label(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, "CURVE_LP_YNETH_YNLSDE_STRATEGY");
-        deal(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, address(this), donationAmount);
-
-        whitelistedAssets[6] = MC.WSTETH;
-        vm.label(MC.WSTETH, "WSTETH");
-        deal(MC.WSTETH, address(this), donationAmount);
-
-        whitelistedAssets[7] = MC.OETH;
-        vm.label(MC.OETH, "OETH");
-        // {
-        //  //TODO: figure out how to get OETH this reverts
-        //     IERC20(MC.WETH).approve(MC.OETH, donationAmount);
-        //    IOETHVault(MC.OETH).mint(MC.WETH, donationAmount, 1);
-        // }
-        whitelistedAssets[8] = MC.WOETH;
-        vm.label(MC.WOETH, "WOETH");
-        deal(MC.WOETH, address(this), donationAmount);
-
-        whitelistedAssets[9] = MC.SMOKEHOUSE_WSTETH;
-        vm.label(MC.SMOKEHOUSE_WSTETH, "SMOKEHOUSE_WSTETH");
-        deal(MC.SMOKEHOUSE_WSTETH, address(this), donationAmount);
-
-        for (uint256 i = 0; i < whitelistedAssets.length; i++) {
-            if (whitelistedAssets[i] != MC.OETH) {
-                IERC20(whitelistedAssets[i]).transfer(address(vault), donationAmount);
-            }
+            assertTrue(success, "stETH deposit failed");
+            return;
         }
 
-        vault.processAccounting();
+        if (asset == MC.OETH) {
+            deal(MC.WETH, account, amount);
 
-        uint256 totalSupply = vault.totalSupply();
-        uint256 totalExpectedAssets;
-        for (uint256 i = 0; i < whitelistedAssets.length; i++) {
-            if (whitelistedAssets[i] != MC.OETH) {
-                uint256 rate = IProvider(vault.provider()).getRate(whitelistedAssets[i]);
-                totalExpectedAssets += donationAmount * rate / 1e18;
-            }
+            vm.startPrank(account);
+            IERC20(MC.WETH).approve(MC.OETH_VAULT, amount);
+            IOETHVault(MC.OETH_VAULT).mint(MC.WETH, amount, amount);
+            vm.stopPrank();
+            return;
         }
-        assertEq(totalSupply, totalAssetBefore + totalExpectedAssets, "Total assets should equal total supply");
+
+        deal(asset, account, amount);
+    }
+
+    function test_donate_assets(uint256 donationAmount) public {
+        vm.assume(donationAmount > 10000);
+        vm.assume(donationAmount < 100_000 ether);
+
+        address alice = address(0xa11ce);
+
+        address[] memory assets = vault.getAssets();
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            uint256 totalAssetBefore = vault.totalAssets();
+
+            dealAsset(assets[i], alice, donationAmount);
+
+            uint256 donatedAmount = IERC20(assets[i]).balanceOf(alice);
+            assertApproxEqRel(donatedAmount, donationAmount, 1e15, "Balance should match for asset");
+
+            vm.startPrank(alice);
+            IERC20(assets[i]).transfer(address(vault), donatedAmount);
+            vm.stopPrank();
+
+            vault.processAccounting();
+
+            uint256 rate = IProvider(vault.provider()).getRate(assets[i]);
+            uint256 baseAmount = Math.mulDiv(donatedAmount, 10 ** 18, rate, Math.Rounding.Floor);
+
+            assertApproxEqRel(
+                vault.totalAssets(), totalAssetBefore + baseAmount, 6e16, "Total assets should be correct"
+            );
+        }
     }
 }
