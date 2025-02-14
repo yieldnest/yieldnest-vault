@@ -81,7 +81,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
 
         vm.startPrank(PROCESSOR);
-        processWithrdawWeth(assets);
+        processWithdrawWeth(assets);
         processDepositYnETH(assets);
 
         uint256 ynEthBalance = IERC20(MC.YNETH).balanceOf(MC.YNETHX);
@@ -97,7 +97,7 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         );
     }
 
-    function processWithrdawWeth(uint256 assets) public {
+    function processWithdrawWeth(uint256 assets) public {
         // convert WETH to ETH
         address[] memory targets = new address[](1);
         targets[0] = MC.WETH;
