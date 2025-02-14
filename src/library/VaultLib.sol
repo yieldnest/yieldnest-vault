@@ -217,9 +217,8 @@ library VaultLib {
     {
         uint256 totalAssets = IVault(address(this)).totalAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
-        uint256 assetInBase = convertAssetToBase(asset_, assets);
-        uint256 shares = assetInBase.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
-        uint256 baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
+        uint256 baseAssets = convertAssetToBase(asset_, assets);
+        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
         return (shares, baseAssets);
     }
 
