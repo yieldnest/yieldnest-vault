@@ -11,14 +11,7 @@ import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "src/Common.sol";
 
-
-import {
-    IswETH,
-    IsfrxETH,
-    IFrxEthWethDualOracle,
-    ICurveLpConnector
-} from "src/interface/IProvider.sol";
-
+import {IswETH, IsfrxETH, IFrxEthWethDualOracle, ICurveLpConnector} from "src/interface/IProvider.sol";
 
 contract ProviderTest is Test, Etches {
     Provider public provider;
@@ -29,11 +22,7 @@ contract ProviderTest is Test, Etches {
         provider = new Provider();
         mockBuffer();
         MockStrategy implementation = new MockStrategy();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(implementation),
-            admin,
-            ""
-        );
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), admin, "");
         mockStrategy = MockStrategy(payable(address(proxy)));
         mockStrategy.initialize(
             "Mock WETH Strategy",
@@ -47,7 +36,9 @@ contract ProviderTest is Test, Etches {
         mockStrategy.addAsset(MC.WETH, true);
         vm.stopPrank();
 
-        assertEq(mockStrategy.hasRole(mockStrategy.DEFAULT_ADMIN_ROLE(), admin), true, "Admin should have DEFAULT_ADMIN_ROLE");
+        assertEq(
+            mockStrategy.hasRole(mockStrategy.DEFAULT_ADMIN_ROLE(), admin), true, "Admin should have DEFAULT_ADMIN_ROLE"
+        );
 
         vm.startPrank(admin);
         mockStrategy.grantRole(mockStrategy.PROVIDER_MANAGER_ROLE(), admin);
@@ -129,7 +120,8 @@ contract ProviderTest is Test, Etches {
     }
 
     function test_Provider_GetRateSmokehouseWSTETH() public view {
-        uint256 expectedRate = IStETH(MC.STETH).getPooledEthByShares(IERC4626(MC.SMOKEHOUSE_WSTETH).convertToAssets(1e18));
+        uint256 expectedRate =
+            IStETH(MC.STETH).getPooledEthByShares(IERC4626(MC.SMOKEHOUSE_WSTETH).convertToAssets(1e18));
         uint256 rate = provider.getRate(MC.SMOKEHOUSE_WSTETH);
         assertEq(rate, expectedRate, "Rate for SMOKEHOUSE_WSTETH should match the combined rate");
     }
@@ -157,14 +149,13 @@ contract ProviderTest is Test, Etches {
         assertEq(rate, expectedRate, "Rate for EULER_WETH_22_VAULT should match the convertToAssets rate");
     }
 
-    function test_Provider_GetRateMockStrategy() public {
+    function test_Provider_GetRateMockStrategy() public view {
         uint256 expectedRate = IERC4626(address(mockStrategy)).convertToAssets(1e18);
         uint256 rate = provider.getRate(address(mockStrategy));
         assertEq(rate, expectedRate, "Rate for WETH strategy should match the convertToAssets rate");
     }
 
     function test_Provider_GetRateMockStrategy_AfterDeposit() public {
-        
         // Deposit 1 ETH worth of WETH into strategy
         deal(MC.WETH, address(this), 1e18);
         IERC20(MC.WETH).approve(address(mockStrategy), 1e18);
@@ -177,11 +168,9 @@ contract ProviderTest is Test, Etches {
 
     function test_Provider_GetRateWstETHStrategy() public {
         // Create and initialize a new mock strategy with WSTETH as asset
-        MockStrategy wstethStrategy = MockStrategy(payable(address(new TransparentUpgradeableProxy(
-            address(new MockStrategy()),
-            address(this),
-            ""
-        ))));
+        MockStrategy wstethStrategy = MockStrategy(
+            payable(address(new TransparentUpgradeableProxy(address(new MockStrategy()), address(this), "")))
+        );
         wstethStrategy.initialize("Mock wstETH Strategy", "mWSTETH", address(this), false);
 
         // Grant admin role to this contract
@@ -193,7 +182,7 @@ contract ProviderTest is Test, Etches {
 
         // Set provider for the strategy
         wstethStrategy.setProvider(address(provider));
-        
+
         // Deposit 1 WSTETH into strategy
         deal(MC.WSTETH, address(this), 1e18);
         IERC20(MC.WSTETH).approve(address(wstethStrategy), 1e18);
