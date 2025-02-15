@@ -425,24 +425,37 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             "Total assets should match after deposit to withdrawer"
         );
 
-        // // Trigger OETH withdrawal through processor
-        // bytes[] memory withdrawData = new bytes[](1);
-        // withdrawData[0] = abi.encodeCall(
-        //     withdrawer.withdraw,
-        //     (MC.OETH, donateAmount)
-        // );
-        // vault.process(withdrawData);
-        // vm.stopPrank();
+        {   
+   
+            vm.startPrank(PROCESSOR);
+            withdrawer.requestWithdrawalOETH(donateAmount);
+            vm.stopPrank();
 
-        // // Process accounting to reflect changes
-        // vault.processAccounting();
+            assertEq(
+                IERC20(asset).balanceOf(address(withdrawer)),
+                initialWithdrawerOETH,
+                "Withdrawer OETH balance should be back to initial amount"
+            );
 
-        // // TVL should remain unchanged since OETH was donated and withdrawn
-        // assertApproxEqRel(
-        //     vault.totalAssets(),
-        //     tvlBeforeWithdraw,
-        //     1e8,
-        //     "Total assets should remain unchanged after OETH withdrawal"
-        // );
+            assertEq(
+                withdrawer.asyncWithdrawalBalance(MC.WOETH),
+                donateAmount,
+                "Async withdrawal balance for WOETH should match donated amount"
+            );
+        }
+
+
+        withdrawer.processAccounting();
+        // Process accounting to reflect changes
+        vault.processAccounting();
+
+
+        // TVL should remain unchanged since OETH was donated and withdrawn
+        assertApproxEqRel(
+            vault.totalAssets(),
+            tvlBeforeWithdraw,
+            1e8,
+            "Total assets should remain unchanged after OETH withdrawal"
+        );
     }
 }
