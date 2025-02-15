@@ -19,6 +19,7 @@ import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 
+
 contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
     Withdrawer public withdrawer;
@@ -255,19 +256,20 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     }
 
     function test_donate_assets(uint256 donationAmount) public {
-        vm.assume(donationAmount > 10000000);
+        vm.assume(donationAmount > 1e8);
         vm.assume(donationAmount < 1_000 ether);
 
         address[] memory assets = vault.getAssets();
         assertEq(assets.length, 11, "Should have 11 assets");
 
-        for (uint256 i = 3; i < assets.length; i++) {
+        for (uint256 i = 0; i < assets.length; i++) {
             _test_donate_single_asset(assets[i], donationAmount);
         }
     }
 
     function _test_donate_single_asset(address asset, uint256 donationAmount) internal {
         address alice = address(0xa11ce);
+
         uint256 totalAssetBefore = vault.totalAssets();
 
         assertEq(IERC20(asset).balanceOf(alice), 0, "Balance should be 0 before donation");
@@ -286,10 +288,10 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         vault.processAccounting();
 
         uint256 rate = IProvider(vault.provider()).getRate(asset);
-        uint256 baseAmount = Math.mulDiv(donatedAmount, 10 ** 18, rate, Math.Rounding.Floor);
+        uint256 baseAmount = Math.mulDiv(donatedAmount, rate, 10 ** 18, Math.Rounding.Floor);
 
         assertApproxEqRel(
-            vault.totalAssets(), totalAssetBefore + baseAmount, 6e15, "Total assets should be correct"
+            vault.totalAssets(), totalAssetBefore + baseAmount, 1e8, "Total assets should be correct"
         );
     }
 }
