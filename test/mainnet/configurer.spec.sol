@@ -317,16 +317,32 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
         uint256 totalAssetBefore = vault.totalAssets();
         uint256 actualAmount = IERC20(asset).balanceOf(address(this));
+        uint256 vaultRateBefore = vault.convertToAssets(1e18);
 
         IERC20(asset).approve(address(vault), actualAmount);
         vault.depositAsset(asset, actualAmount, address(this));
-        vault.processAccounting();
 
         uint256 totalAssets = vault.totalAssets();
         uint256 assetRate = IProvider(vault.provider()).getRate(asset);
+        uint256 vaultRateAfterDeposit = vault.convertToAssets(1e18);
+        
+        assertEq(vaultRateBefore, vaultRateAfterDeposit, "Vault rate should not change after deposit");
 
         assertApproxEqRel(
             totalAssets,
+            totalAssetBefore + (actualAmount * assetRate / 1e18),
+            1e8,
+            "Total assets should match deposit amount"
+        );
+
+        vault.processAccounting();
+        
+        uint256 vaultRateAfterProcessing = vault.convertToAssets(1e18);
+        assertEq(vaultRateAfterDeposit, vaultRateAfterProcessing, "Vault rate should not change after processing");
+        
+        // Verify total assets remains the same after processing accounting
+        assertApproxEqRel(
+            vault.totalAssets(),
             totalAssetBefore + (actualAmount * assetRate / 1e18),
             1e8,
             "Total assets should match deposit amount"
