@@ -294,4 +294,42 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             vault.totalAssets(), totalAssetBefore + baseAmount, 1e8, "Total assets should be correct"
         );
     }
+
+    function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {
+        vm.assume(depositAmount > 10000);
+        vm.assume(depositAmount < 100_000 ether);
+
+        address[] memory assets = vault.getAssets();
+        vm.assume(assetIndex < assets.length);
+        address asset = assets[assetIndex];
+
+        dealAsset(asset, address(this), depositAmount);
+
+        // Skip if asset is already active
+        if (!vault.getAsset(asset).active) {
+            vm.startPrank(address(timelock));
+            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({
+                active: true
+            });
+            vault.updateAsset(assetIndex, fields);
+            vm.stopPrank();
+        }
+
+        uint256 totalAssetBefore = vault.totalAssets();
+        uint256 actualAmount = IERC20(asset).balanceOf(address(this));
+
+        IERC20(asset).approve(address(vault), actualAmount);
+        vault.depositAsset(asset, actualAmount, address(this));
+        vault.processAccounting();
+
+        uint256 totalAssets = vault.totalAssets();
+        uint256 assetRate = IProvider(vault.provider()).getRate(asset);
+
+        assertApproxEqRel(
+            totalAssets,
+            totalAssetBefore + (actualAmount * assetRate / 1e18),
+            1e8,
+            "Total assets should match deposit amount"
+        );
+    }
 }
