@@ -18,6 +18,7 @@ import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
+import {BaseVault} from "src/BaseVault.sol";
 
 
 contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
@@ -347,5 +348,101 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             1e8,
             "Total assets should match deposit amount"
         );
+    }
+
+    function testDonateOETHAndWithdraw() public {
+
+        uint256 donationAmount = 100e18;
+        uint256 donateAmount;
+        address asset = MC.OETH;
+        
+        uint256 initialVaultOETH = IERC20(asset).balanceOf(address(vault));
+        uint256 initialWithdrawerOETH = IERC20(asset).balanceOf(address(withdrawer));
+        
+        address alice = makeAddr("alice");
+        {
+            dealAsset(asset, alice, donationAmount);
+
+            donateAmount = IERC20(asset).balanceOf(alice);
+
+            // The donation function does not donate the full amount. Must use the actual donated amount after.
+            assertApproxEqRel(donateAmount, donationAmount, 1e14, "Balance should match for asset");
+
+            vm.startPrank(alice);
+            IERC20(asset).transfer(address(vault), donateAmount);
+            vm.stopPrank();
+        }
+
+        vault.processAccounting();
+
+        uint256 tvlBeforeWithdraw = vault.totalAssets();
+
+        {
+            // Approve and deposit OETH to withdrawer
+            address[] memory targets = new address[](2);
+            uint256[] memory values = new uint256[](2);
+            bytes[] memory data = new bytes[](2);
+
+            targets[0] = asset;
+            values[0] = 0;
+            data[0] = abi.encodeCall(
+                IERC20.approve,
+                (address(withdrawer), donateAmount)
+            );
+
+            targets[1] = address(withdrawer);
+            values[1] = 0; 
+            data[1] = abi.encodeCall(
+                BaseVault.depositAsset,
+                (MC.OETH, donateAmount, address(vault))
+            );
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets, values, data);
+            vm.stopPrank();
+
+
+            assertEq(
+                IERC20(asset).balanceOf(address(vault)),
+                initialVaultOETH,
+                "Vault OETH balance should match initial balance"
+            );
+
+            assertEq(
+                IERC20(asset).balanceOf(address(withdrawer)),
+                initialWithdrawerOETH + donateAmount,
+                "Withdrawer OETH balance should match initial plus donated amount"
+            );
+        }
+
+
+        vault.processAccounting();
+
+        assertApproxEqRel(
+            vault.totalAssets(),
+            tvlBeforeWithdraw,
+            0,
+            "Total assets should match after deposit to withdrawer"
+        );
+
+        // // Trigger OETH withdrawal through processor
+        // bytes[] memory withdrawData = new bytes[](1);
+        // withdrawData[0] = abi.encodeCall(
+        //     withdrawer.withdraw,
+        //     (MC.OETH, donateAmount)
+        // );
+        // vault.process(withdrawData);
+        // vm.stopPrank();
+
+        // // Process accounting to reflect changes
+        // vault.processAccounting();
+
+        // // TVL should remain unchanged since OETH was donated and withdrawn
+        // assertApproxEqRel(
+        //     vault.totalAssets(),
+        //     tvlBeforeWithdraw,
+        //     1e8,
+        //     "Total assets should remain unchanged after OETH withdrawal"
+        // );
     }
 }
