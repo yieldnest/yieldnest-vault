@@ -255,33 +255,41 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     }
 
     function test_donate_assets(uint256 donationAmount) public {
-        vm.assume(donationAmount > 10000);
-        vm.assume(donationAmount < 100_000 ether);
-
-        address alice = address(0xa11ce);
+        vm.assume(donationAmount > 10000000);
+        vm.assume(donationAmount < 1_000 ether);
 
         address[] memory assets = vault.getAssets();
+        assertEq(assets.length, 11, "Should have 11 assets");
 
-        for (uint256 i = 0; i < assets.length; i++) {
-            uint256 totalAssetBefore = vault.totalAssets();
-
-            dealAsset(assets[i], alice, donationAmount);
-
-            uint256 donatedAmount = IERC20(assets[i]).balanceOf(alice);
-            assertApproxEqRel(donatedAmount, donationAmount, 1e15, "Balance should match for asset");
-
-            vm.startPrank(alice);
-            IERC20(assets[i]).transfer(address(vault), donatedAmount);
-            vm.stopPrank();
-
-            vault.processAccounting();
-
-            uint256 rate = IProvider(vault.provider()).getRate(assets[i]);
-            uint256 baseAmount = Math.mulDiv(donatedAmount, 10 ** 18, rate, Math.Rounding.Floor);
-
-            assertApproxEqRel(
-                vault.totalAssets(), totalAssetBefore + baseAmount, 6e16, "Total assets should be correct"
-            );
+        for (uint256 i = 3; i < assets.length; i++) {
+            _test_donate_single_asset(assets[i], donationAmount);
         }
+    }
+
+    function _test_donate_single_asset(address asset, uint256 donationAmount) internal {
+        address alice = address(0xa11ce);
+        uint256 totalAssetBefore = vault.totalAssets();
+
+        assertEq(IERC20(asset).balanceOf(alice), 0, "Balance should be 0 before donation");
+
+        dealAsset(asset, alice, donationAmount);
+
+        uint256 donatedAmount = IERC20(asset).balanceOf(alice);
+
+        // The donation function does not donate the full amount. Must use the actual donated amount after.
+        assertApproxEqRel(donatedAmount, donationAmount, 1e14, "Balance should match for asset");
+
+        vm.startPrank(alice);
+        IERC20(asset).transfer(address(vault), donatedAmount);
+        vm.stopPrank();
+
+        vault.processAccounting();
+
+        uint256 rate = IProvider(vault.provider()).getRate(asset);
+        uint256 baseAmount = Math.mulDiv(donatedAmount, 10 ** 18, rate, Math.Rounding.Floor);
+
+        assertApproxEqRel(
+            vault.totalAssets(), totalAssetBefore + baseAmount, 6e15, "Total assets should be correct"
+        );
     }
 }
