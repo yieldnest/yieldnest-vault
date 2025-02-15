@@ -425,10 +425,11 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             "Total assets should match after deposit to withdrawer"
         );
 
+        uint256 tokenId;
         {   
    
             vm.startPrank(PROCESSOR);
-            withdrawer.requestWithdrawalOETH(donateAmount);
+            tokenId = withdrawer.requestWithdrawalOETH(donateAmount);
             vm.stopPrank();
 
             assertEq(
@@ -440,6 +441,13 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             assertEq(
                 withdrawer.asyncWithdrawalBalance(MC.WOETH),
                 donateAmount,
+                "Async withdrawal balance for WOETH should match donated amount"
+            );
+
+            // OETH withdrawn balance is 0 as the withdrawn balance is associated with WOETH
+            assertEq(
+                withdrawer.asyncWithdrawalBalance(MC.OETH),
+                0,
                 "Async withdrawal balance for WOETH should match donated amount"
             );
         }
@@ -456,6 +464,58 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             tvlBeforeWithdraw,
             1e8,
             "Total assets should remain unchanged after OETH withdrawal"
+        );
+
+        {
+
+            IERC20 weth = IERC20(MC.WETH);
+            IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
+
+            uint256 withdrawerWethBefore = weth.balanceOf(address(withdrawer));
+
+            vm.startPrank(oethVault.governor());
+            oethVault.setMaxSupplyDiff(0);
+            vm.stopPrank();
+
+            {
+                IOETHVault.WithdrawalQueueMetadata memory queue = oethVault.withdrawalQueueMetadata();
+                uint256 outstandingWithdrawals = queue.queued - queue.claimed;
+                deal(MC.WETH, MC.OETH_VAULT, outstandingWithdrawals + donateAmount);
+
+                assertEq(weth.balanceOf(MC.OETH_VAULT), donateAmount + outstandingWithdrawals, "WETH balance should match");
+
+                // solhint-disable-next-line not-rely-on-time
+                uint256 timestamp = block.timestamp;
+                vm.warp(timestamp + oethVault.withdrawalClaimDelay() + 10 minutes);
+
+                uint256[] memory tokenIds = new uint256[](1);
+                tokenIds[0] = tokenId;
+                
+                vm.prank(PROCESSOR);
+                withdrawer.claimWithdrawalsWOETH(tokenIds);
+            }
+
+            assertEq(
+                IERC20(MC.WETH).balanceOf(address(withdrawer)),
+                donateAmount + withdrawerWethBefore,
+                "WETH balance of withdrawer should match donated amount"
+            );
+
+            assertEq(
+                IERC20(asset).balanceOf(address(vault)),
+                initialVaultOETH,
+                "Vault OETH balance should match initial balance"
+            );
+        }
+
+        // Process accounting and verify total assets remain unchanged
+        vault.processAccounting();
+        withdrawer.processAccounting();
+        assertApproxEqRel(
+            vault.totalAssets(),
+            tvlBeforeWithdraw,
+            1e8,
+            "Total assets should remain unchanged after processing accounting"
         );
     }
 }
