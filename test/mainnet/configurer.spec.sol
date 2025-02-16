@@ -24,7 +24,6 @@ import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 
-
 contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
     Withdrawer public withdrawer;
@@ -662,12 +661,19 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         // Record total assets after deposits but before connector deposit
         uint256 totalAssetsAfterDeposits = vault.totalAssets();
 
+        // Verify balances
+        assertApproxEqRel(
+            vault.totalAssets(),
+            vaultTotalAssetsBefore + depositAmount * 2,
+            1e14,
+            "Vault total assets should increase by deposit amount"
+        );
 
         // Deposit equal amounts to ynETH and ynLSDe
         {
-            address[] memory targets = new address[](4);
-            uint256[] memory values = new uint256[](4);
-            bytes[] memory data = new bytes[](4);
+            address[] memory targets = new address[](3);
+            uint256[] memory values = new uint256[](3);
+            bytes[] memory data = new bytes[](3);
 
             // Approve and deposit to ynETH
             targets[0] = MC.YNETH;
@@ -681,21 +687,24 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             // Deposit to connector
             targets[2] = MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR;
             values[2] = 0;
-            data[2] = abi.encodeCall(ICurveLpConnector.deposit, (depositAmount, depositAmount, 0));
+
+            data[2] = abi.encodeWithSignature("deposit(uint256,uint256,uint256)", depositAmount, depositAmount, 0);
+            // data[2] =  abi.encodeCall(ICurveLpConnector.deposit, (depositAmount, depositAmount, 0));
 
             vm.startPrank(PROCESSOR);
             vault.processor(targets, values, data);
             vm.stopPrank();
         }
 
-        // // Process accounting
-        // vault.processAccounting();
+        // Process accounting
+        vault.processAccounting();
 
-        // // Verify balances
-        // assertEq(
-        //     vault.totalAssets(),
-        //     vaultTotalAssetsBefore + depositAmount,
-        //     "Vault total assets should increase by deposit amount"
-        // );
+        // Verify balances
+        assertApproxEqRel(
+            vault.totalAssets(),
+            vaultTotalAssetsBefore + depositAmount * 2,
+            1e14,
+            "Vault total assets should increase by deposit amount"
+        );
     }
 }
