@@ -639,7 +639,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     }
 
     function testDepositYnETHAndYnLSDeToConnector() public {
-        uint256 depositAmount = 1e18;
+        uint256 depositAmount = 1000e18;
         uint256 vaultTotalAssetsBefore = vault.totalAssets();
 
         address alice = makeAddr("alice");
@@ -660,13 +660,18 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
         // Record total assets after deposits but before connector deposit
         uint256 totalAssetsAfterDeposits = vault.totalAssets();
+        // Calculate TVL in terms of ynETH and ynLSDe rates
+        uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
+        uint256 ynLsdeRate = IProvider(vault.provider()).getRate(MC.YNLSDE);
 
-        // Verify balances
+        uint256 ynEthValueInBase = depositAmount * ynEthRate / 1e18;
+        uint256 ynLsdeValueInBase = depositAmount * ynLsdeRate / 1e18;
+
         assertApproxEqRel(
-            vault.totalAssets(),
-            vaultTotalAssetsBefore + depositAmount * 2,
+            totalAssetsAfterDeposits - vaultTotalAssetsBefore,
+            ynEthValueInBase + ynLsdeValueInBase,
             1e14,
-            "Vault total assets should increase by deposit amount"
+            "Total assets increase should match sum of ynETH and ynLSDe values"
         );
 
         // Deposit equal amounts to ynETH and ynLSDe
@@ -701,10 +706,10 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
         // Verify balances
         assertApproxEqRel(
-            vault.totalAssets(),
-            vaultTotalAssetsBefore + depositAmount * 2,
+            totalAssetsAfterDeposits - vaultTotalAssetsBefore,
+            ynEthValueInBase + ynLsdeValueInBase,
             1e14,
-            "Vault total assets should increase by deposit amount"
+            "Total assets increase should match sum of ynETH and ynLSDe values"
         );
     }
 }
