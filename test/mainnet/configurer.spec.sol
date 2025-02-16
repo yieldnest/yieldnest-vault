@@ -188,7 +188,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
         uint256 totalAssetBefore = vault.totalAssets();
 
-        // Deposit YN
+        // Deposit YNLSDE
         deal(MC.YNLSDE, address(this), depositAmount);
         IERC20(MC.YNLSDE).approve(address(vault), depositAmount);
         vault.depositAsset(MC.YNLSDE, depositAmount, address(this));
