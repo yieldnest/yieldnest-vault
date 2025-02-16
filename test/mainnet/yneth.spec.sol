@@ -13,7 +13,6 @@ import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
 
-
 contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
 

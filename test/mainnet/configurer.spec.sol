@@ -22,7 +22,6 @@ import {BaseVault} from "src/BaseVault.sol";
 import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
 import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
 
-
 contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
     Withdrawer public withdrawer;
@@ -293,9 +292,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         uint256 rate = IProvider(vault.provider()).getRate(asset);
         uint256 baseAmount = Math.mulDiv(donatedAmount, rate, 10 ** 18, Math.Rounding.Floor);
 
-        assertApproxEqRel(
-            vault.totalAssets(), totalAssetBefore + baseAmount, 1e8, "Total assets should be correct"
-        );
+        assertApproxEqRel(vault.totalAssets(), totalAssetBefore + baseAmount, 1e8, "Total assets should be correct");
     }
 
     function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {
@@ -311,9 +308,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         // Skip if asset is already active
         if (!vault.getAsset(asset).active) {
             vm.startPrank(address(timelock));
-            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({
-                active: true
-            });
+            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
             vault.updateAsset(assetIndex, fields);
             vm.stopPrank();
         }
@@ -328,7 +323,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         uint256 totalAssets = vault.totalAssets();
         uint256 assetRate = IProvider(vault.provider()).getRate(asset);
         uint256 vaultRateAfterDeposit = vault.convertToAssets(1e18);
-        
+
         assertEq(vaultRateBefore, vaultRateAfterDeposit, "Vault rate should not change after deposit");
 
         assertApproxEqRel(
@@ -339,10 +334,10 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         );
 
         vault.processAccounting();
-        
+
         uint256 vaultRateAfterProcessing = vault.convertToAssets(1e18);
         assertEq(vaultRateAfterDeposit, vaultRateAfterProcessing, "Vault rate should not change after processing");
-        
+
         // Verify total assets remains the same after processing accounting
         assertApproxEqRel(
             vault.totalAssets(),
@@ -353,14 +348,13 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     }
 
     function testDonateOETHAndWithdraw() public {
-
         uint256 donationAmount = 100e18;
         uint256 donateAmount;
         address asset = MC.OETH;
-        
+
         uint256 initialVaultOETH = IERC20(asset).balanceOf(address(vault));
         uint256 initialWithdrawerOETH = IERC20(asset).balanceOf(address(withdrawer));
-        
+
         address alice = makeAddr("alice");
         {
             dealAsset(asset, alice, donationAmount);
@@ -387,22 +381,15 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
             targets[0] = asset;
             values[0] = 0;
-            data[0] = abi.encodeCall(
-                IERC20.approve,
-                (address(withdrawer), donateAmount)
-            );
+            data[0] = abi.encodeCall(IERC20.approve, (address(withdrawer), donateAmount));
 
             targets[1] = address(withdrawer);
-            values[1] = 0; 
-            data[1] = abi.encodeCall(
-                BaseVault.depositAsset,
-                (MC.OETH, donateAmount, address(vault))
-            );
+            values[1] = 0;
+            data[1] = abi.encodeCall(BaseVault.depositAsset, (MC.OETH, donateAmount, address(vault)));
 
             vm.startPrank(PROCESSOR);
             vault.processor(targets, values, data);
             vm.stopPrank();
-
 
             assertEq(
                 IERC20(asset).balanceOf(address(vault)),
@@ -417,19 +404,14 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             );
         }
 
-
         vault.processAccounting();
 
         assertApproxEqRel(
-            vault.totalAssets(),
-            tvlBeforeWithdraw,
-            0,
-            "Total assets should match after deposit to withdrawer"
+            vault.totalAssets(), tvlBeforeWithdraw, 0, "Total assets should match after deposit to withdrawer"
         );
 
         uint256 tokenId;
-        {   
-   
+        {
             vm.startPrank(PROCESSOR);
             tokenId = withdrawer.requestWithdrawalOETH(donateAmount);
             vm.stopPrank();
@@ -454,22 +436,16 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             );
         }
 
-
         withdrawer.processAccounting();
         // Process accounting to reflect changes
         vault.processAccounting();
 
-
         // TVL should remain unchanged since OETH was donated and withdrawn
         assertApproxEqRel(
-            vault.totalAssets(),
-            tvlBeforeWithdraw,
-            1e8,
-            "Total assets should remain unchanged after OETH withdrawal"
+            vault.totalAssets(), tvlBeforeWithdraw, 1e8, "Total assets should remain unchanged after OETH withdrawal"
         );
 
         {
-
             IERC20 weth = IERC20(MC.WETH);
             IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
 
@@ -484,7 +460,9 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
                 uint256 outstandingWithdrawals = queue.queued - queue.claimed;
                 deal(MC.WETH, MC.OETH_VAULT, outstandingWithdrawals + donateAmount);
 
-                assertEq(weth.balanceOf(MC.OETH_VAULT), donateAmount + outstandingWithdrawals, "WETH balance should match");
+                assertEq(
+                    weth.balanceOf(MC.OETH_VAULT), donateAmount + outstandingWithdrawals, "WETH balance should match"
+                );
 
                 // solhint-disable-next-line not-rely-on-time
                 uint256 timestamp = block.timestamp;
@@ -492,7 +470,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
                 uint256[] memory tokenIds = new uint256[](1);
                 tokenIds[0] = tokenId;
-                
+
                 vm.prank(PROCESSOR);
                 withdrawer.claimWithdrawalsWOETH(tokenIds);
             }
@@ -553,17 +531,11 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
             targets[0] = MC.WETH;
             values[0] = 0;
-            data[0] = abi.encodeCall(
-                IWETH.withdraw,
-                (depositAmount)
-            );
+            data[0] = abi.encodeCall(IWETH.withdraw, (depositAmount));
 
             targets[1] = address(MC.YNETH);
             values[1] = depositAmount;
-            data[1] = abi.encodeCall(
-                IynETH.depositETH,
-                (address(vault))
-            );
+            data[1] = abi.encodeCall(IynETH.depositETH, (address(vault)));
 
             vm.startPrank(PROCESSOR);
             vault.processor(targets, values, data);
