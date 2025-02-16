@@ -21,6 +21,8 @@ import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {BaseVault} from "src/BaseVault.sol";
 import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
 import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 
 contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
@@ -177,7 +179,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (depositAmount * ynEthRate / 1e18),
-            1e16, // Keep original small threshold
+            1e8,
             "Total assets should match deposit amount"
         );
     }
@@ -202,7 +204,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (depositAmount * ynLSDeRate / 1e18),
-            1e16,
+            1e8,
             "Total assets should match deposit amount"
         );
     }
@@ -227,7 +229,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (depositAmount * wethRate / 1e18),
-            1e16,
+            1e8,
             "Total assets should match deposit amount"
         );
     }
@@ -563,6 +565,151 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             ynEthBalanceBefore + (depositAmount * 1e18) / ynEthRate,
             1e8,
             "ynETH balance should match expected amount based on rate"
+        );
+    }
+
+    function test_depositAndWithdrawFromBuffer() public {
+        uint256 depositAmount = 100 ether;
+
+        address alice = makeAddr("alice");
+        deal(MC.WETH, alice, 1000 ether);
+
+        // Get initial balances
+        uint256 aliceWethBalanceBefore = IERC20(MC.WETH).balanceOf(alice);
+        uint256 vaultTotalAssetsBefore = vault.totalAssets();
+
+        // Approve and deposit WETH
+        vm.startPrank(alice);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        // Verify deposit
+        assertEq(
+            IERC20(MC.WETH).balanceOf(alice),
+            aliceWethBalanceBefore - depositAmount,
+            "User WETH balance should decrease"
+        );
+        assertEq(vault.totalAssets(), vaultTotalAssetsBefore + depositAmount, "Vault total assets should increase");
+
+        // Allocate to buffer (Euler vault)
+        {
+            address[] memory targets = new address[](2);
+            uint256[] memory values = new uint256[](2);
+            bytes[] memory data = new bytes[](2);
+
+            targets[0] = MC.WETH;
+            values[0] = 0;
+            data[0] = abi.encodeCall(IERC20.approve, (MC.EULER_WETH_22_VAULT, depositAmount));
+
+            targets[1] = MC.EULER_WETH_22_VAULT;
+            values[1] = 0;
+            data[1] = abi.encodeCall(IERC4626.deposit, (depositAmount, address(vault)));
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets, values, data);
+            vm.stopPrank();
+        }
+
+        // Process accounting
+        vault.processAccounting();
+
+        // User withdraws max amount
+        vm.startPrank(alice);
+        uint256 maxWithdraw = vault.maxWithdraw(alice);
+        vault.withdraw(maxWithdraw, alice, alice);
+        vm.stopPrank();
+        // Calculate withdrawal fee
+        uint256 fee = depositAmount * vault.baseWithdrawalFee() / 1e8;
+        uint256 amountAfterFee = depositAmount - fee;
+
+        // Verify withdrawal
+        assertApproxEqAbs(
+            IERC20(MC.WETH).balanceOf(alice),
+            aliceWethBalanceBefore - depositAmount + amountAfterFee,
+            1e14, // withdrawal fee precision error is at 0.001% of amount
+            "User should receive original WETH amount back minus fee"
+        );
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            vaultTotalAssetsBefore + fee,
+            1e14, // withdrawal fee precision error is at 0.001% of amount
+            "Vault total assets should include withdrawal fee"
+        );
+    }
+
+    function testDepositYnETHAndYnLSDeToConnector() public {
+        uint256 depositAmount = 1000e18;
+        uint256 vaultTotalAssetsBefore = vault.totalAssets();
+
+        address alice = makeAddr("alice");
+        {
+            deal(MC.YNETH, alice, depositAmount);
+            deal(MC.YNLSDE, alice, depositAmount);
+
+            // Alice deposits equal amounts of ynETH and ynLSDe
+            vm.startPrank(alice);
+            IERC20(MC.YNETH).approve(address(vault), depositAmount);
+            IERC20(MC.YNLSDE).approve(address(vault), depositAmount);
+            vault.depositAsset(MC.YNETH, depositAmount, alice);
+            vault.depositAsset(MC.YNLSDE, depositAmount, alice);
+            vm.stopPrank();
+
+            vault.processAccounting();
+        }
+
+        // Record total assets after deposits but before connector deposit
+        uint256 totalAssetsAfterDeposits = vault.totalAssets();
+        // Calculate TVL in terms of ynETH and ynLSDe rates
+        uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
+        uint256 ynLsdeRate = IProvider(vault.provider()).getRate(MC.YNLSDE);
+
+        uint256 ynEthValueInBase = depositAmount * ynEthRate / 1e18;
+        uint256 ynLsdeValueInBase = depositAmount * ynLsdeRate / 1e18;
+
+        assertApproxEqRel(
+            totalAssetsAfterDeposits - vaultTotalAssetsBefore,
+            ynEthValueInBase + ynLsdeValueInBase,
+            1e14,
+            "Total assets increase should match sum of ynETH and ynLSDe values"
+        );
+
+        // Deposit equal amounts to ynETH and ynLSDe
+        {
+            address[] memory targets = new address[](3);
+            uint256[] memory values = new uint256[](3);
+            bytes[] memory data = new bytes[](3);
+
+            // Approve and deposit to ynETH
+            targets[0] = MC.YNETH;
+            values[0] = 0;
+            data[0] = abi.encodeCall(IERC20.approve, (MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, depositAmount));
+
+            targets[1] = MC.YNLSDE;
+            values[1] = 0;
+            data[1] = abi.encodeCall(IERC20.approve, (MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, depositAmount));
+
+            // Deposit to connector
+            targets[2] = MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR;
+            values[2] = 0;
+
+            data[2] = abi.encodeWithSignature("deposit(uint256,uint256,uint256)", depositAmount, depositAmount, 0);
+            // data[2] =  abi.encodeCall(ICurveLpConnector.deposit, (depositAmount, depositAmount, 0));
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets, values, data);
+            vm.stopPrank();
+        }
+
+        // Process accounting
+        vault.processAccounting();
+
+        // Verify balances
+        assertApproxEqRel(
+            totalAssetsAfterDeposits - vaultTotalAssetsBefore,
+            ynEthValueInBase + ynLsdeValueInBase,
+            1e12,
+            "Total assets increase should match sum of ynETH and ynLSDe values"
         );
     }
 }
