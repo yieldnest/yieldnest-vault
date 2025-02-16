@@ -204,7 +204,6 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         vm.assume(amountA > 100000000 && amountA < 100_000 ether);
 
         uint256 amountB = amountA;
-        address alice = makeAddr("alice");
         deal(ASSET_A, alice, amountA);
         deal(ASSET_B, alice, amountB);
 
@@ -249,7 +248,6 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         vm.assume(amountA > 100000000 && amountA < 100_000 ether);
 
         uint256 amountB = amountA;
-        address alice = makeAddr("alice");
         deal(ASSET_A, alice, amountA);
         deal(ASSET_B, alice, amountB);
 
@@ -293,18 +291,21 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
 
         // IMPORTANT: this may not be true due to slippage if the pool is not balanced
         // This test may break in the future in which case asset-ratio based withdrawals should be used
+        // The higher tolerance is due to the fact that the pool may not balanced
         assertApproxEqRel(
             IERC20(ASSET_B).balanceOf(address(vault)),
             amountB,
-            1e14,
+            1e16,
             "Asset B balance should be roughly equal to amountA"
         );
         assertApproxEqRel(
             IERC20(ASSET_A).balanceOf(address(vault)),
             amountA,
-            1e14,
+            1e16,
             "Asset A balance should be roughly equal to amountA"
         );
+
+        // TOTAL ASSETS must stay roughly the same after withdrawals
         assertApproxEqRel(
             vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after first withdraw"
         );
@@ -343,13 +344,13 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         assertApproxEqRel(
             IERC20(ASSET_B).balanceOf(address(vault)),
             amountB,
-            1e14,
+            1e16,
             "Asset B balance should be roughly equal to amountA"
         );
         assertApproxEqRel(
             IERC20(ASSET_A).balanceOf(address(vault)),
             amountA,
-            1e14,
+            1e16,
             "Asset A balance should be roughly equal to amountA"
         );
         assertApproxEqRel(
