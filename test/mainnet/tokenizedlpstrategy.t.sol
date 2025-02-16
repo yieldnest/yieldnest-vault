@@ -249,10 +249,21 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         vm.assume(amountA > 100000000 && amountA < 100_000 ether);
 
         uint256 amountB = amountA;
-        deal(ASSET_A, address(vault), amountA);
-        deal(ASSET_B, address(vault), amountB);
+        address alice = makeAddr("alice");
+        deal(ASSET_A, alice, amountA);
+        deal(ASSET_B, alice, amountB);
+
+        vm.startPrank(alice);
+        IERC20(ASSET_A).approve(address(vault), amountA);
+        IERC20(ASSET_B).approve(address(vault), amountB);
+        vault.depositAsset(ASSET_A, amountA, alice);
+        vault.depositAsset(ASSET_B, amountB, alice);
+        vm.stopPrank();
 
         vault.processAccounting();
+
+        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), amountA, "Asset A balance should match deposit");
+        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), amountB, "Asset B balance should match deposit");
 
         uint256 initialTotalAssets = vault.totalAssets();
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
