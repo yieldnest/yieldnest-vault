@@ -268,6 +268,8 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         uint256 initialTotalAssets = vault.totalAssets();
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
+        // ============= DEPOSIT #1 =============
+
         uint256 shares = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
@@ -280,17 +282,34 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
             vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after first deposit"
         );
 
+        // ============= WITHDRAW #1 =============
+
+        // Withdraw all shares with minimum amounts of 1000 for each asset to protect against slippage
         _processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
 
         vault.processAccounting();
 
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
-        assertGe(IERC20(ASSET_B).balanceOf(address(vault)), 1000, "Asset B balance should be correct");
-        assertGe(IERC20(ASSET_A).balanceOf(address(vault)), 1000, "Asset A balance should be correct");
+        // IMPORTANT: this may not be true due to slippage if the pool is not balanced
+        // This test may break in the future in which case asset-ratio based withdrawals should be used
+        assertApproxEqRel(
+            IERC20(ASSET_B).balanceOf(address(vault)),
+            amountB,
+            1e14,
+            "Asset B balance should be roughly equal to amountA"
+        );
+        assertApproxEqRel(
+            IERC20(ASSET_A).balanceOf(address(vault)),
+            amountA,
+            1e14,
+            "Asset A balance should be roughly equal to amountA"
+        );
         assertApproxEqRel(
             vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after first withdraw"
         );
+
+        // ============= DEPOSIT #2 =============
 
         amountA = IERC20(ASSET_A).balanceOf(address(vault));
         amountB = IERC20(ASSET_B).balanceOf(address(vault));
@@ -311,14 +330,28 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
             vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after second deposit"
         );
 
+        // ============= WITHDRAW #2 =============
+
         _processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
 
         vault.processAccounting();
 
         assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
 
-        assertGe(IERC20(ASSET_B).balanceOf(address(vault)), 500, "Asset B balance should be correct");
-        assertGe(IERC20(ASSET_A).balanceOf(address(vault)), 500, "Asset A balance should be correct");
+        // IMPORTANT: this may not be true due to slippage if the pool is not balanced
+        // This test may break in the future in which case asset-ratio based withdrawals should be used
+        assertApproxEqRel(
+            IERC20(ASSET_B).balanceOf(address(vault)),
+            amountB,
+            1e14,
+            "Asset B balance should be roughly equal to amountA"
+        );
+        assertApproxEqRel(
+            IERC20(ASSET_A).balanceOf(address(vault)),
+            amountA,
+            1e14,
+            "Asset A balance should be roughly equal to amountA"
+        );
         assertApproxEqRel(
             vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after second withdraw"
         );
