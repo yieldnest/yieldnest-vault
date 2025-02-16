@@ -19,6 +19,8 @@ import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {BaseVault} from "src/BaseVault.sol";
+import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
+import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
 
 
 contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
@@ -511,11 +513,84 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         // Process accounting and verify total assets remain unchanged
         vault.processAccounting();
         withdrawer.processAccounting();
+
         assertApproxEqRel(
             vault.totalAssets(),
             tvlBeforeWithdraw,
             1e8,
             "Total assets should remain unchanged after processing accounting"
+        );
+    }
+
+    function test_depositWETH_allocateToYnETH(uint256 depositAmount) public {
+        vm.assume(depositAmount > 10000);
+        vm.assume(depositAmount < 100_000 ether);
+
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 vaultBalanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
+        uint256 ynEthBalanceBefore = IERC20(MC.YNETH).balanceOf(address(vault));
+
+        // Deposit WETH to vault
+        deal(MC.WETH, address(this), depositAmount);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.WETH, depositAmount, address(this));
+
+        // Process accounting
+        vault.processAccounting();
+        withdrawer.processAccounting();
+
+        // Verify WETH was transferred to withdrawer
+        assertEq(
+            IERC20(MC.WETH).balanceOf(address(vault)),
+            vaultBalanceBefore + depositAmount,
+            "WETH should be transferred to vault"
+        );
+
+        {
+            address[] memory targets = new address[](2);
+            uint256[] memory values = new uint256[](2);
+            bytes[] memory data = new bytes[](2);
+
+            targets[0] = MC.WETH;
+            values[0] = 0;
+            data[0] = abi.encodeCall(
+                IWETH.withdraw,
+                (depositAmount)
+            );
+
+            targets[1] = address(MC.YNETH);
+            values[1] = depositAmount;
+            data[1] = abi.encodeCall(
+                IynETH.depositETH,
+                (address(vault))
+            );
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets, values, data);
+            vm.stopPrank();
+        }
+
+        // Process accounting
+        vault.processAccounting();
+        withdrawer.processAccounting();
+
+        // Get ynETH rate
+        uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
+
+        // Verify total assets increased by correct amount
+        assertApproxEqRel(
+            vault.totalAssets(),
+            totalAssetsBefore + depositAmount,
+            1e8,
+            "Total assets should match deposit amount converted to ynETH"
+        );
+
+        // Verify ynETH balance matches expected amount based on rate
+        assertApproxEqRel(
+            IERC20(MC.YNETH).balanceOf(address(vault)),
+            ynEthBalanceBefore + (depositAmount * 1e18) / ynEthRate,
+            1e8,
+            "ynETH balance should match expected amount based on rate"
         );
     }
 }
