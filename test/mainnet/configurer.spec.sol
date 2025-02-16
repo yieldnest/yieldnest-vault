@@ -21,6 +21,7 @@ import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {BaseVault} from "src/BaseVault.sol";
 import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
 import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
@@ -563,6 +564,76 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             ynEthBalanceBefore + (depositAmount * 1e18) / ynEthRate,
             1e8,
             "ynETH balance should match expected amount based on rate"
+        );
+    }
+
+    function test_depositAndWithdrawFromBuffer() public {
+        uint256 depositAmount = 100 ether;
+
+        address alice = makeAddr("alice");
+        deal(MC.WETH, alice, 1000 ether);
+
+        // Get initial balances
+        uint256 aliceWethBalanceBefore = IERC20(MC.WETH).balanceOf(alice);
+        uint256 vaultTotalAssetsBefore = vault.totalAssets();
+
+        // Approve and deposit WETH
+        vm.startPrank(alice);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        // Verify deposit
+        assertEq(
+            IERC20(MC.WETH).balanceOf(alice),
+            aliceWethBalanceBefore - depositAmount,
+            "User WETH balance should decrease"
+        );
+        assertEq(vault.totalAssets(), vaultTotalAssetsBefore + depositAmount, "Vault total assets should increase");
+
+        // Allocate to buffer (Euler vault)
+        {
+            address[] memory targets = new address[](2);
+            uint256[] memory values = new uint256[](2);
+            bytes[] memory data = new bytes[](2);
+
+            targets[0] = MC.WETH;
+            values[0] = 0;
+            data[0] = abi.encodeCall(IERC20.approve, (MC.EULER_WETH_22_VAULT, depositAmount));
+
+            targets[1] = MC.EULER_WETH_22_VAULT;
+            values[1] = 0;
+            data[1] = abi.encodeCall(IERC4626.deposit, (depositAmount, address(vault)));
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets, values, data);
+            vm.stopPrank();
+        }
+
+        // Process accounting
+        vault.processAccounting();
+
+        // User withdraws max amount
+        vm.startPrank(alice);
+        uint256 maxWithdraw = vault.maxWithdraw(alice);
+        vault.withdraw(maxWithdraw, alice, alice);
+        vm.stopPrank();
+        // Calculate withdrawal fee
+        uint256 fee = depositAmount * vault.baseWithdrawalFee() / 1e8;
+        uint256 amountAfterFee = depositAmount - fee;
+
+        // Verify withdrawal
+        assertApproxEqAbs(
+            IERC20(MC.WETH).balanceOf(alice),
+            aliceWethBalanceBefore - depositAmount + amountAfterFee,
+            1e14, // withdrawal fee precision error is at 0.001% of amount
+            "User should receive original WETH amount back minus fee"
+        );
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            vaultTotalAssetsBefore + fee,
+            1e14, // withdrawal fee precision error is at 0.001% of amount
+            "Vault total assets should include withdrawal fee"
         );
     }
 }
