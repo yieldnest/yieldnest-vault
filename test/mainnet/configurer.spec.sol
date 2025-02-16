@@ -179,7 +179,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (depositAmount * ynEthRate / 1e18),
-            1e16, // Keep original small threshold
+            1e8,
             "Total assets should match deposit amount"
         );
     }
@@ -204,7 +204,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (depositAmount * ynLSDeRate / 1e18),
-            1e16,
+            1e8,
             "Total assets should match deposit amount"
         );
     }
@@ -229,7 +229,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (depositAmount * wethRate / 1e18),
-            1e16,
+            1e8,
             "Total assets should match deposit amount"
         );
     }
