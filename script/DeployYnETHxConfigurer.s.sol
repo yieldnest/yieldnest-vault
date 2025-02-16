@@ -16,6 +16,7 @@ import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
 import {YnETHx} from "src/YnETHx.sol";
 import {VaultLib} from "src/library/VaultLib.sol";
+import {WithdrawerConfigurer} from "src/configures/WithdrawerConfigurer.sol";
 
 contract DeployYnETHxConfigurer is Script, MainnetActors {
     using stdJson for string;
@@ -100,7 +101,11 @@ contract DeployYnETHxConfigurer is Script, MainnetActors {
 
         provider = new Provider();
 
-        WithdrawerConfig.configure(withdrawer, address(provider), MC.TIMELOCK, deployer, IActors(address(this)));
+        MainnetActors actors = new MainnetActors();
+
+        WithdrawerConfigurer configurer = new WithdrawerConfigurer();
+
+        configurer.configure(withdrawer, address(provider), MC.TIMELOCK, IActors(address(actors)));
 
         ynethxConfigurer = new YnETHxConfigurer();
 
