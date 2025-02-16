@@ -11,12 +11,7 @@ import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IValidator} from "src/interface/IValidator.sol";
-
-interface IynETH {
-    function depositETH(address receiver) external payable returns (uint256);
-    function balanceOf(address owner) external returns (uint256);
-    function approve(address spender, uint256 amount) external returns (uint256);
-}
+import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
 
 contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
