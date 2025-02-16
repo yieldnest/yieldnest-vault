@@ -277,7 +277,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
         assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
         assertApproxEqRel(
-            vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first deposit"
+            vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after first deposit"
         );
 
         _processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
@@ -289,7 +289,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         assertGe(IERC20(ASSET_B).balanceOf(address(vault)), 1000, "Asset B balance should be correct");
         assertGe(IERC20(ASSET_A).balanceOf(address(vault)), 1000, "Asset A balance should be correct");
         assertApproxEqRel(
-            vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after first withdraw"
+            vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after first withdraw"
         );
 
         amountA = IERC20(ASSET_A).balanceOf(address(vault));
@@ -299,16 +299,16 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
 
         vault.processAccounting();
 
-        assertApproxEqRel(shares2, shares, 1e15, "Second shares should match shares");
+        assertApproxEqRel(shares2, shares, 1e12, "Second shares should match shares");
 
         assertEq(strategy.balanceOf(address(vault)), shares2, "Strategy balance should match shares");
 
         assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
         assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
 
-        assertApproxEqRel(shares2, shares, 1e15, "Second shares should match shares");
+        assertApproxEqRel(shares2, shares, 1e12, "Second shares should match shares");
         assertApproxEqRel(
-            vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second deposit"
+            vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after second deposit"
         );
 
         _processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
@@ -320,7 +320,7 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         assertGe(IERC20(ASSET_B).balanceOf(address(vault)), 500, "Asset B balance should be correct");
         assertGe(IERC20(ASSET_A).balanceOf(address(vault)), 500, "Asset A balance should be correct");
         assertApproxEqRel(
-            vault.totalAssets(), initialTotalAssets, 1e16, "Total assets should not change after second withdraw"
+            vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after second withdraw"
         );
     }
 
