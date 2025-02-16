@@ -708,7 +708,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssetsAfterDeposits - vaultTotalAssetsBefore,
             ynEthValueInBase + ynLsdeValueInBase,
-            1e14,
+            1e12,
             "Total assets increase should match sum of ynETH and ynLSDe values"
         );
     }
