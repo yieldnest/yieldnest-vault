@@ -80,6 +80,7 @@ contract DeployYnETHxConfigurer is Script, MainnetActors {
         vm.serializeAddress(upgradeJsonLabel, "target", target);
         vm.serializeUint(upgradeJsonLabel, "value", value);
         vm.serializeBytes(upgradeJsonLabel, "data", data);
+        vm.serializeBytes(upgradeJsonLabel, "initData", initData);
         vm.serializeBytes32(upgradeJsonLabel, "predecessor", predecessor);
         vm.serializeBytes32(upgradeJsonLabel, "salt", salt);
 
