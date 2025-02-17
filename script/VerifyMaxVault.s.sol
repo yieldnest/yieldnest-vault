@@ -97,11 +97,12 @@ contract VerifyMaxVault is BaseScript, Test {
         RolesVerification.verifyTemporaryRoles(vault, deployer);
         RolesVerification.verifyTemporaryRoles(withdrawer, deployer);
 
+        // FIXME: TODO: reenable this once viewer is deployed
         // verify viewer
-        VaultVerification.verifyViewer(viewer, vault);
-        assertTrue(
-            MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
-        );
+        // VaultVerification.verifyViewer(viewer, vault);
+        // assertTrue(
+        //     MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
+        // );
 
         assertFalse(withdrawer.paused(), "Withdrawer should not be paused");
         assertFalse(vault.paused(), "Vault should not be paused");
