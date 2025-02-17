@@ -106,6 +106,26 @@ contract VerifyMaxVault is BaseScript, Test {
 
         assertFalse(withdrawer.paused(), "Withdrawer should not be paused");
         assertFalse(vault.paused(), "Vault should not be paused");
+
+        console.log("==============================================");
+        console.log("MANUAL VERIFICATION REQUIRED");
+        console.log("==============================================");
+        console.log("Verify total assets and vault rate are reasonable:");
+        console.log("- Total assets should be the same as the previous total assets");
+        console.log("- Vault rate should be the same as the previous vault rate (vault.convertToAssets(1e18)");
+        console.log("==============================================");
+
+        console.log("==============================================");
+        console.log("TOTAL ASSETS AND VAULT RATE:");
+        console.log("==============================================");
+
+        uint256 totalAssets = vault.totalAssets();
+        console.log("Total assets:", totalAssets);
+
+        // Print rate by converting 1e18 shares to assets
+        uint256 oneShare = 1e18;
+        uint256 assetAmount = vault.convertToAssets(oneShare);
+        console.log("Vault rate (1 share in assets):", assetAmount);
     }
 
     function _checkForAsset(address asset) internal view returns (bool isIncluded, uint256 index) {
