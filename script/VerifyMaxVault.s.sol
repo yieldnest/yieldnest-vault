@@ -87,7 +87,8 @@ contract VerifyMaxVault is BaseScript, Test {
         // verify proxy roles
         RolesVerification.verifyProxyRoles(address(vault), vaultProxyAdmin, address(timelock));
         // verify viewer roles
-        RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.ADMIN());
+        // FIXME: TODO: reenable this once viewer is deployed
+        //RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.ADMIN());
 
         // verify timelock roles
         RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
