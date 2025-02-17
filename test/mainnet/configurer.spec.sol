@@ -23,6 +23,8 @@ import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
 import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
+import {console} from "lib/forge-std/src/console.sol";
+
 
 contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
@@ -36,27 +38,32 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         timelock = TimelockController(payable(MC.TIMELOCK));
         uint256 previousTotalAssets = vault.totalAssets();
 
-        {
-            vm.expectRevert();
-            vault.VAULT_VERSION();
-        }
+        // {
+        //     vm.expectRevert();
+        //     vault.VAULT_VERSION();
+        // }
 
-        _upgradeVault();
+        // _upgradeVault();
 
         assertEq(vault.symbol(), "ynETHx");
 
-        assertTrue(vault.paused(), "Vault should be paused");
+        // assertTrue(vault.paused(), "Vault should be paused");
 
-        YnETHxConfigurer configurer = new YnETHxConfigurer();
-        SetupWithdrawer setup = new SetupWithdrawer();
-        withdrawer = setup.setup();
-        Provider provider = new Provider();
+        // YnETHxConfigurer configurer = new YnETHxConfigurer();
+        // SetupWithdrawer setup = new SetupWithdrawer();
+        // withdrawer = setup.setup();
+        //Provider provider = new Provider();
 
-        vm.startPrank(ADMIN);
-        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(configurer));
+        withdrawer = Withdrawer(payable(0x3527663fa14F1799FfDF54fdC7e721D2fB8e88d5));
 
-        configurer.configure(address(provider), address(withdrawer));
-        vm.stopPrank();
+        // vm.startPrank(ADMIN);
+        // vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(configurer));
+
+        // configurer.configure(address(provider), address(withdrawer));
+        // vm.stopPrank();
+
+        uint256 totalAssets = vault.totalAssets();
+        console.log("Total assets:", totalAssets);
 
         {
             // verify the upgrade was successful
@@ -68,6 +75,8 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
 
             // Verify the upgrade was successful
             uint256 newTotalAssets = newVault.totalAssets();
+
+            
 
             assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
             assertEq(

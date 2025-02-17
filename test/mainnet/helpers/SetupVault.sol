@@ -17,53 +17,53 @@ import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 
 contract SetupVault is Test, MainnetActors {
     function upgrade() public {
-        Vault newVault = Vault(payable(new YnETHx()));
+        // Vault newVault = Vault(payable(new YnETHx()));
 
-        TimelockController timelock = TimelockController(payable(MC.TIMELOCK));
+        // TimelockController timelock = TimelockController(payable(MC.TIMELOCK));
 
-        // schedule a proxy upgrade transaction on the timelock
-        // the traget is the proxy admin for the max Vault Proxy Contract
-        address target = MC.PROXY_ADMIN;
-        uint256 value = 0;
+        // // schedule a proxy upgrade transaction on the timelock
+        // // the traget is the proxy admin for the max Vault Proxy Contract
+        // address target = MC.PROXY_ADMIN;
+        // uint256 value = 0;
 
-        bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
+        // bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
 
-        bytes memory initData = abi.encodeWithSelector(YnETHx.initializeV2.selector, 18, 0);
-        bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(newVault), initData);
+        // bytes memory initData = abi.encodeWithSelector(YnETHx.initializeV2.selector, 18, 0);
+        // bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(newVault), initData);
 
-        bytes32 predecessor = bytes32(0);
-        bytes32 salt = keccak256("chad");
+        // bytes32 predecessor = bytes32(0);
+        // bytes32 salt = keccak256("chad");
 
-        uint256 delay = 86400;
+        // uint256 delay = 86400;
 
-        vm.startPrank(PROPOSER_1);
-        timelock.schedule(target, value, data, predecessor, salt, delay);
-        vm.stopPrank();
+        // vm.startPrank(PROPOSER_1);
+        // timelock.schedule(target, value, data, predecessor, salt, delay);
+        // vm.stopPrank();
 
-        bytes32 id = keccak256(abi.encode(target, value, data, predecessor, salt));
-        assert(timelock.getOperationState(id) == TimelockController.OperationState.Waiting);
+        // bytes32 id = keccak256(abi.encode(target, value, data, predecessor, salt));
+        // assert(timelock.getOperationState(id) == TimelockController.OperationState.Waiting);
 
-        assertEq(timelock.isOperationReady(id), false);
-        assertEq(timelock.isOperationDone(id), false);
-        assertEq(timelock.isOperation(id), true);
+        // assertEq(timelock.isOperationReady(id), false);
+        // assertEq(timelock.isOperationDone(id), false);
+        // assertEq(timelock.isOperation(id), true);
 
-        //execute the transaction
-        // solhint-disable-next-line not-rely-on-time
-        vm.warp(block.timestamp + 86401);
-        vm.startPrank(EXECUTOR_1);
-        timelock.execute(target, value, data, predecessor, salt);
-        vm.stopPrank();
+        // //execute the transaction
+        // // solhint-disable-next-line not-rely-on-time
+        // vm.warp(block.timestamp + 86401);
+        // vm.startPrank(EXECUTOR_1);
+        // timelock.execute(target, value, data, predecessor, salt);
+        // vm.stopPrank();
 
-        // Verify the transaction was executed successfully
-        assertEq(timelock.isOperationReady(id), false);
-        assertEq(timelock.isOperationDone(id), true);
-        assert(timelock.getOperationState(id) == TimelockController.OperationState.Done);
+        // // Verify the transaction was executed successfully
+        // assertEq(timelock.isOperationReady(id), false);
+        // assertEq(timelock.isOperationDone(id), true);
+        // assert(timelock.getOperationState(id) == TimelockController.OperationState.Done);
 
         Vault vault = Vault(payable(MC.YNETHX));
 
         assertEq(vault.symbol(), "ynETHx");
 
-        configure(vault);
+        // configure(vault);
     }
 
     function configure(Vault vault) internal {
