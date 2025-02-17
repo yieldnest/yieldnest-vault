@@ -122,6 +122,8 @@ contract VerifyMaxVault is BaseScript, Test {
         uint256 totalAssets = vault.totalAssets();
         console.log("Total assets:", totalAssets);
 
+        assertApproxEqAbs(totalAssets, 720 ether, 1e18, "Total assets should be roughly 720 ETH");
+
         // Print rate by converting 1e18 shares to assets
         uint256 oneShare = 1e18;
         uint256 assetAmount = vault.convertToAssets(oneShare);

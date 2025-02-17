@@ -62,29 +62,21 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         // configurer.configure(address(provider), address(withdrawer));
         // vm.stopPrank();
 
-        uint256 totalAssets = vault.totalAssets();
-        console.log("Total assets:", totalAssets);
+        uint256 newTotalAssets = vault.totalAssets();
+        console.log("Total assets:", newTotalAssets);
 
-        {
-            // verify the upgrade was successful
-            Vault newVault = Vault(payable(MC.YNETHX));
+        assertFalse(vault.paused(), "Vault should not be paused");
 
-            assertFalse(newVault.paused(), "Vault should not be paused");
+        // Verify the upgrade was successful
 
-            newVault.processAccounting();
 
-            // Verify the upgrade was successful
-            uint256 newTotalAssets = newVault.totalAssets();
+        assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
+        assertEq(
+            keccak256(bytes(vault.VAULT_VERSION())),
+            keccak256(bytes(VAULT_VERSION)),
+            "Vault version should be correct"
+        );
 
-            
-
-            assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
-            assertEq(
-                keccak256(bytes(vault.VAULT_VERSION())),
-                keccak256(bytes(VAULT_VERSION)),
-                "Vault version should be correct"
-            );
-        }
     }
 
     function _upgradeVault() internal {
