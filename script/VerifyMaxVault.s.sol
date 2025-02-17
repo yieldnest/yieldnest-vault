@@ -20,9 +20,9 @@ contract VerifyMaxVault is BaseScript, Test {
     }
 
     function run() public {
-        _loadDeployment();
         _setup();
-
+        _loadDeployment();
+        assertNotEq(msg.sender, deployer, "msg.sender should not be deploye as this is a verifier script.");
         verify();
     }
 
