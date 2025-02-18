@@ -29,7 +29,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
     function totalSupplyInvariant(uint256 supply) public view {
         uint256 finalVaultTotalSupply = vault.totalSupply();
         assertApproxEqRel(
-            supply, finalVaultTotalSupply, 1, "Vault totalSupply should be original totalSupply plus additional"
+            supply, finalVaultTotalSupply, 0, "Vault totalSupply should be original totalSupply plus additional"
         );
     }
 
