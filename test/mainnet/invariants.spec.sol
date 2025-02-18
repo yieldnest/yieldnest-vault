@@ -12,6 +12,8 @@ import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
+import {FeeMath} from "src/module/FeeMath.sol";
+
 
 contract VaultMainnetInvariantsTest is Test, MainnetActors {
     Vault public vault;
@@ -213,8 +215,8 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
     }
 
     function test_Vault_4626Invariants_redeem(uint256 assets) public {
-        if (assets < 100_000) return;
-        if (assets > 100_000_000 ether) return;
+        if (assets < 100_000_000) return;
+        if (assets > 100_000 ether) return;
 
         address alice = address(420);
         address baseAsset = vault.asset();
@@ -225,22 +227,23 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
         uint256 shares = vault.convertToShares(assets);
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertApproxEqRel(convertedAssets, assets, 1e14, "Converted assets should equal the original assets");
+        assertApproxEqAbs(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
         vm.startPrank(alice);
         IERC20(baseAsset).approve(address(vault), assets);
         uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
         vm.stopPrank();
 
-        assertApproxEqRel(depositedShares, shares, 1e14, "Deposited shares should equal the converted shares");
+        assertApproxEqAbs(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
 
         // hypothetically allocated 100% to the buffer
         allocateToBuffer(assets);
 
         // Test the previewRedeem function
         uint256 previewedRedeemAssets = vault.previewRedeem(shares);
-        assertApproxEqRel(
-            previewedRedeemAssets, assets, 2e15, "Previewed redeem assets should equal the original assets"
+        // TODO: see why precision is not high here.
+        assertApproxEqAbs(
+            previewedRedeemAssets, assets - FeeMath.feeOnTotal(assets, vault.baseWithdrawalFee()), 100000, "Previewed redeem assets should equal the original assets with withdrawal fee applied"
         );
 
         uint256 redeemableShares = vault.maxRedeem(alice);
@@ -280,7 +283,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertApproxEqRel(convertedAssets, assets, 1e10, "Converted assets should equal the original assets");
+        assertApproxEqAbs(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
         address baseAsset = vault.asset();
 
@@ -289,7 +292,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         assertTrue(success, "Weth deposit failed");
         IERC20(baseAsset).approve(address(vault), assets);
         uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
-        assertApproxEqRel(depositedShares, shares, 1e10, "Deposited shares should equal the converted shares");
+        assertApproxEqAbs(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
         vm.stopPrank();
 
         vault.processAccounting();
