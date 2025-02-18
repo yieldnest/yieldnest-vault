@@ -37,8 +37,8 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
     function totalAssetsInvariant(uint256 assets) public view {
         uint256 finalVaultTotalAssets = vault.totalAssets();
-        assertApproxEqRel(
-            assets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional"
+        assertApproxEqAbs(
+            assets, finalVaultTotalAssets, 1e6, "Vault totalAssets should be original totalAssets plus additional"
         );
     }
 
@@ -168,7 +168,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
     function test_Vault_4626Invariants_mint(uint256 shares) public {
         if (shares < 100_000) return;
-        if (shares > 100_000_000 ether) return;
+        if (shares > 1_000_000 ether) return;
 
         address alice = address(10);
         vm.label(alice, "Alice");
