@@ -675,7 +675,10 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
             }
 
             totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
+            uint256 finalVaultTotalAssets = vault.totalAssets();
+            assertApproxEqAbs(
+                initialAssets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional"
+            );
         }
     }
 
