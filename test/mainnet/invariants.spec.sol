@@ -42,13 +42,6 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         );
     }
 
-    function totalAssetsInvariant(uint256 assets, uint256 delta) public view {
-        uint256 finalVaultTotalAssets = vault.totalAssets();
-        assertApproxEqRel(
-            assets, finalVaultTotalAssets, delta, "Vault totalAssets should be original totalAssets plus additional"
-        );
-    }
-
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
         targets[0] = MC.WETH;
@@ -975,9 +968,12 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         deal(asset, account, amount);
     }
 
-    function test_Vault_4626Invariants_Withdrawer_Deposit(uint256 amount) public {
+    function test_Vault_4626Invariants_Withdrawer_Deposit(uint256 amount, uint8 i) public {
         vm.assume(amount > 1_000_000_000);
         vm.assume(amount < 100_000 ether);
+
+        uint256 assetCount = 7;
+        vm.assume(i < assetCount);
 
         address alice = address(0xa11ce);
 
@@ -992,31 +988,29 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         assets[index++] = MC.YNLSDE;
         assets[index++] = MC.YNETH;
 
-        for (uint256 i = 0; i < assets.length; i++) {
-            dealAsset(assets[i], alice, amount);
+        dealAsset(assets[i], alice, amount);
 
-            uint256 donatedAmount = IERC20(assets[i]).balanceOf(alice);
-            assertApproxEqRel(donatedAmount, amount, 1e15, "Balance should match for asset");
+        uint256 donatedAmount = IERC20(assets[i]).balanceOf(alice);
+        assertApproxEqRel(donatedAmount, amount, 1e15, "Balance should match for asset");
 
-            vm.startPrank(alice);
-            IERC20(assets[i]).transfer(address(vault), donatedAmount);
-            vm.stopPrank();
+        vm.startPrank(alice);
+        IERC20(assets[i]).transfer(address(vault), donatedAmount);
+        vm.stopPrank();
 
-            vault.processAccounting();
-            withdrawer.processAccounting();
+        vault.processAccounting();
+        withdrawer.processAccounting();
 
-            uint256 initialAssets = vault.totalAssets();
-            uint256 initialSupply = vault.totalSupply();
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
 
-            _processApprove(assets[i], address(withdrawer), donatedAmount);
-            _processDepositAsset(address(withdrawer), assets[i], donatedAmount);
+        _processApprove(assets[i], address(withdrawer), donatedAmount);
+        _processDepositAsset(address(withdrawer), assets[i], donatedAmount);
 
-            withdrawer.processAccounting();
-            vault.processAccounting();
+        withdrawer.processAccounting();
+        vault.processAccounting();
 
-            totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets, 1e14);
-        }
+        totalSupplyInvariant(initialSupply);
+        totalAssetsInvariant(initialAssets);
     }
 
     function test_Vault_4626Invariants_Withdrawer_Withdraw(uint256 amount) public {
@@ -1127,7 +1121,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         }
 
         totalSupplyInvariant(initialSupply + depositedShares);
-        totalAssetsInvariant(initialAssets + amount, 3);
+        totalAssetsInvariant(initialAssets + amount);
 
 
         //  // Allocate to ynETH
