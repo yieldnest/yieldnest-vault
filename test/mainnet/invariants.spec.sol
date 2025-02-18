@@ -34,6 +34,8 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
     function totalAssetsInvariant(uint256 assets) public view {
         uint256 finalVaultTotalAssets = vault.totalAssets();
+        // The reason why this error occurs is because of the size of the donations
+        // where tests donate asset amounts that are very large relative to the original totalAssets
         assertApproxEqAbs(
             assets, finalVaultTotalAssets, 1e6, "Vault totalAssets should be original totalAssets plus additional"
         );
