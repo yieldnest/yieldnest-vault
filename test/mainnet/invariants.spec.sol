@@ -547,10 +547,10 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
             vault.processAccounting();
 
-            assertApproxEqRel(
+            assertApproxEqAbs(
                 IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault)),
                 initialSmokehouseWSTETH + amountSmokehouseWSTETH,
-                1e15,
+                3,
                 "vault should have received smokehouse wstETH"
             );
 
@@ -586,10 +586,10 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
             vault.processAccounting();
 
-            assertApproxEqRel(
+            assertApproxEqAbs(
                 IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault)),
                 initialSmokehouseWSTETH + amountSmokehouseWSTETH,
-                1e15,
+                3,
                 "vault should have received smokehouse wstETH"
             );
 
