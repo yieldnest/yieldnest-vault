@@ -1077,18 +1077,16 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
     function testProcessAccountingBetweenOperations(
         uint256 amount,
-        bool processAfterDeposit
+        bool processAfterDeposit,
         // bool processAfterWithdraw,
-        // bool processAfterAllocate
+        bool processAfterAllocate
     ) public {
         vm.assume(amount > 0.1 ether && amount < 100 ether);
 
         // uint256 amount = 30286446403452457539;
         bool processAfterWithdraw = true;
-        bool processAfterAllocate = true;
         address alice = address(10);
         vm.label(alice, "Alice");
-
 
         {
             deal(alice, 100000 ether);
@@ -1099,15 +1097,17 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
             vm.stopPrank();
         }
 
-
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
 
 
+        uint256 initialDepositedAmount = amount * 2;
+
+
         // Initial setup
         vm.startPrank(alice);
-        IERC20(MC.WETH).approve(address(vault), amount);
-        uint256 depositedShares = vault.deposit(amount, alice);
+        IERC20(MC.WETH).approve(address(vault), initialDepositedAmount);
+        uint256 depositedShares = vault.deposit(initialDepositedAmount, alice);
         vm.stopPrank();
 
         // Send WETH to buffer
@@ -1121,23 +1121,21 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         }
 
         totalSupplyInvariant(initialSupply + depositedShares);
-        totalAssetsInvariant(initialAssets + amount);
+        totalAssetsInvariant(initialAssets + initialDepositedAmount);
 
 
-        //  // Allocate to ynETH
-        // _processApprove(MC.WETH, address(withdrawer), amount);
-        // _processWithdrawWETH(amount);
-        // _processDepositAsset(address(withdrawer), MC.WETH, amount);
-        // _processAllocate(address(withdrawer), MC.YNETH, amount);
+         // Allocate to ynETH
+        _processWithdrawWETH(amount);
+        _processYnETHDepositETH(amount);
 
-        // if (processAfterAllocate) {
-        //     withdrawer.processAccounting();
-        //     vault.processAccounting();
+        if (processAfterAllocate) {
+            withdrawer.processAccounting();
+            vault.processAccounting();
 
-        // }
+        }
 
-        // totalSupplyInvariant(initialSupply + depositedShares);
-        // totalAssetsInvariant(initialAssets + amount);
+        totalSupplyInvariant(initialSupply + depositedShares);
+        totalAssetsInvariant(initialAssets + initialDepositedAmount);
 
         // uint256 withdrawableAssets = vault.maxWithdraw(alice);
 
