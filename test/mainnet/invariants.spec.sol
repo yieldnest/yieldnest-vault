@@ -370,22 +370,22 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         assertGt(shares, 0, "Shares should be greater than 0");
 
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertApproxEqRel(convertedAssets, assets, 1e14, "Converted assets should equal the original assets");
+        assertApproxEqAbs(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
         // Approve adapter to spend stETH
         IERC20(MC.STETH).approve(address(adapter), assets);
 
         uint256 depShares = adapter.depositAssetWithReferral(address(vault), MC.STETH, assets, referrer, receiver);
-        assertApproxEqRel(depShares, shares, 1e14, "Deposited shares should equal the converted shares");
+        assertApproxEqAbs(depShares, shares, 3, "Deposited shares should equal the converted shares");
 
         vm.stopPrank();
 
         // Verify final balances
         uint256 vaultStETHBalance = IERC20(MC.STETH).balanceOf(address(vault));
-        assertApproxEqRel(vaultStETHBalance, assets, 1e14, "Vault should have received stETH");
+        assertApproxEqAbs(vaultStETHBalance, assets, 3, "Vault should have received stETH");
 
         uint256 userShares = vault.balanceOf(receiver);
-        assertApproxEqRel(userShares, shares, 1e14, "Receiver should have received correct shares");
+        assertApproxEqAbs(userShares, shares, 3, "Receiver should have received correct shares");
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
     }
