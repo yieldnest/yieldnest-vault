@@ -14,6 +14,12 @@ import {IwstETH} from "test/interface/external/lido/IwstETH.sol";
 import {IERC20} from "src/Common.sol";
 
 contract TestHelper is Test {
+    BaseVault private _vault;
+
+    function _initVault(BaseVault vault_) internal {
+        _vault = vault_;
+    }
+
     function dealAsset(address asset, address account, uint256 amount) internal returns (uint256) {
         if (asset == MC.OETH) {
             deal(MC.WETH, account, amount);
@@ -23,6 +29,16 @@ contract TestHelper is Test {
             IOETHVault(MC.OETH_VAULT).mint(MC.WETH, amount, amount);
             vm.stopPrank();
             return amount;
+        }
+
+        if (asset == MC.WOETH) {
+            amount = dealAsset(MC.OETH, account, amount);
+
+            vm.startPrank(account);
+            IERC20(MC.OETH).approve(MC.WOETH, amount);
+            uint256 amount_ = IERC4626(MC.WOETH).deposit(amount, account);
+            vm.stopPrank();
+            return amount_;
         }
 
         if (asset == MC.YNETH) {
@@ -68,5 +84,36 @@ contract TestHelper is Test {
         deal(asset, account, amount);
 
         return amount;
+    }
+
+    // used only for totalAssets invariance
+    function customAssertEq(uint256 a, uint256 b, string memory message) private pure {
+        if (a < 1e14) {
+            // 1e4 in 1e18 is 0 for a < 1e14
+            // threshold is 1 wei for a < 1e14
+            assertApproxEqAbs(a, b, 1, message);
+        } else if (a < 1e2 ether) {
+            // 1e4 / 1e18 = 1e-14 (= 1e-12 percent)
+            // 1e4 / 1e18 at 1e14 wei = 1 wei (lower bound)
+            // 1e4 / 1e18 at 1e2 ether (or 1e20 wei) = 1e6 wei (higher bound)
+            assertApproxEqRel(a, b, 1e4, message);
+        } else {
+            // threshold is 1e6 wei for a >= 1e2 ether
+            assertApproxEqAbs(a, b, 1e6, message);
+        }
+    }
+
+    function totalSupplyInvariant(uint256 supply) public view {
+        assertTrue(address(_vault) != address(0));
+        uint256 finalVaultTotalSupply = _vault.totalSupply();
+        assertEq(supply, finalVaultTotalSupply, "Vault totalSupply should be original totalSupply plus additional");
+    }
+
+    function totalAssetsInvariant(uint256 assets) public view {
+        assertTrue(address(_vault) != address(0));
+        uint256 finalVaultTotalAssets = _vault.totalAssets();
+        customAssertEq(
+            assets, finalVaultTotalAssets, "Vault totalAssets should be original totalAssets plus additional"
+        );
     }
 }

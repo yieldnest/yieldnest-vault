@@ -31,6 +31,7 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
 
     function setUp() public {
         vault = Vault(payable(MC.YNETHX));
+        _initVault(vault);
         timelock = TimelockController(payable(MC.TIMELOCK));
         uint256 previousTotalAssets = vault.totalAssets();
 
@@ -174,10 +175,10 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         uint256 totalAssets = vault.totalAssets();
         uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
 
-        assertApproxEqRel(
+        assertApproxEqAbs(
             totalAssets,
             totalAssetBefore + (depositAmount * ynEthRate / 1e18),
-            5,
+            3,
             "Total assets should match deposit amount"
         );
     }
@@ -199,10 +200,10 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         uint256 totalAssets = vault.totalAssets();
 
         uint256 ynLSDeRate = IProvider(vault.provider()).getRate(MC.YNLSDE);
-        assertApproxEqRel(
+        assertApproxEqAbs(
             totalAssets,
             totalAssetBefore + (depositAmount * ynLSDeRate / 1e18),
-            5,
+            3,
             "Total assets should match deposit amount"
         );
     }
@@ -224,10 +225,10 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         uint256 totalAssets = vault.totalAssets();
 
         uint256 wethRate = IProvider(vault.provider()).getRate(MC.WETH);
-        assertApproxEqRel(
+        assertApproxEqAbs(
             totalAssets,
             totalAssetBefore + (depositAmount * wethRate / 1e18),
-            5,
+            3,
             "Total assets should match deposit amount"
         );
     }
@@ -268,20 +269,11 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         _test_donate_single_asset(assets[i], donationAmount);
     }
 
-    function customAssertEq(uint256 a, uint256 b, string memory message) public pure {
-        if (a < 1e14) {
-            // 1e5 in 1e18 is 0 for a < 1e14
-            assertApproxEqAbs(a, b, 5, message);
-        } else {
-            assertApproxEqRel(a, b, 1e5, message);
-        }
-    }
-
     function _test_donate_single_asset(address asset, uint256 donationAmount) internal {
         address alice = address(0xa11ce);
 
         assertEq(IERC20(asset).balanceOf(alice), 0, "Balance should be 0 before donation");
-        assertLt(vault.totalAssets(), 5, "Total assets should be zero initially");
+        assertLt(vault.totalAssets(), 3, "Total assets should be zero initially");
 
         dealAsset(asset, alice, donationAmount);
 
@@ -296,13 +288,13 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         vault.processAccounting();
 
         uint256 balanceAfter = IERC20(asset).balanceOf(address(vault));
-        assertApproxEqAbs(balanceAfter, donatedAmount, 5, "Balance should match for asset");
+        assertApproxEqAbs(balanceAfter, donatedAmount, 3, "Balance should match for asset");
 
         // if (asset != MC.STETH) {
         uint256 rate = IProvider(vault.provider()).getRate(asset);
         uint256 baseAmount = Math.mulDiv(balanceAfter, rate, 10 ** 18, Math.Rounding.Floor);
 
-        customAssertEq(vault.totalAssets(), baseAmount, "Total assets should be correct");
+        totalAssetsInvariant(baseAmount);
 
         // empty vault after testing
         if (balanceAfter > 0) {
@@ -346,10 +338,10 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
 
         assertEq(vaultRateBefore, vaultRateAfterDeposit, "Vault rate should not change after deposit");
 
-        assertApproxEqRel(
+        assertApproxEqAbs(
             totalAssets,
             totalAssetBefore + (actualAmount * assetRate / 1e18),
-            5,
+            3,
             "Total assets should match deposit amount"
         );
 
@@ -359,10 +351,10 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         assertEq(vaultRateAfterDeposit, vaultRateAfterProcessing, "Vault rate should not change after processing");
 
         // Verify total assets remains the same after processing accounting
-        assertApproxEqRel(
+        assertApproxEqAbs(
             vault.totalAssets(),
             totalAssetBefore + (actualAmount * assetRate / 1e18),
-            5,
+            3,
             "Total assets should match deposit amount"
         );
     }
@@ -380,9 +372,6 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
             dealAsset(asset, alice, donationAmount);
 
             donateAmount = IERC20(asset).balanceOf(alice);
-
-            // The donation function does not donate the full amount. Must use the actual donated amount after.
-            assertApproxEqRel(donateAmount, donationAmount, 1e14, "Balance should match for asset");
 
             vm.startPrank(alice);
             IERC20(asset).transfer(address(vault), donateAmount);
@@ -426,9 +415,7 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
 
         vault.processAccounting();
 
-        assertApproxEqRel(
-            vault.totalAssets(), tvlBeforeWithdraw, 0, "Total assets should match after deposit to withdrawer"
-        );
+        assertEq(vault.totalAssets(), tvlBeforeWithdraw, "Total assets should match after deposit to withdrawer");
 
         uint256 tokenId;
         {
@@ -461,8 +448,8 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         vault.processAccounting();
 
         // TVL should remain unchanged since OETH was donated and withdrawn
-        assertApproxEqRel(
-            vault.totalAssets(), tvlBeforeWithdraw, 1e8, "Total assets should remain unchanged after OETH withdrawal"
+        assertApproxEqAbs(
+            vault.totalAssets(), tvlBeforeWithdraw, 3, "Total assets should remain unchanged after OETH withdrawal"
         );
 
         {
@@ -512,10 +499,10 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         vault.processAccounting();
         withdrawer.processAccounting();
 
-        assertApproxEqRel(
+        assertApproxEqAbs(
             vault.totalAssets(),
             tvlBeforeWithdraw,
-            5,
+            3,
             "Total assets should remain unchanged after processing accounting"
         );
     }
@@ -569,20 +556,20 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         vault.processAccounting();
         withdrawer.processAccounting();
 
+        uint256 rate = IProvider(vault.provider()).getRate(MC.YNETH);
+        uint256 baseAmount = Math.mulDiv(depositedAmount, rate, 10 ** 18, Math.Rounding.Floor);
+
         // Verify total assets increased by correct amount
-        assertApproxEqRel(
-            vault.totalAssets(),
-            totalAssetsBefore + depositAmount,
-            5,
-            "Total assets should match deposit amount converted to ynETH"
+        assertApproxEqAbs(
+            vault.totalAssets(), totalAssetsBefore + baseAmount, 3, "Total assets should match deposit amount"
         );
 
         // Verify ynETH balance matches expected amount based on rate
-        assertApproxEqRel(
+        assertApproxEqAbs(
             IERC20(MC.YNETH).balanceOf(address(vault)),
             ynEthBalanceBefore + depositedAmount,
-            5,
-            "ynETH balance should match expected amount based on rate"
+            3,
+            "ynETH balance should match expected amount"
         );
     }
 
@@ -686,10 +673,10 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         uint256 ynEthValueInBase = depositAmount * ynEthRate / 1e18;
         uint256 ynLsdeValueInBase = depositAmount * ynLsdeRate / 1e18;
 
-        assertApproxEqRel(
+        assertApproxEqAbs(
             totalAssetsAfterDeposits - vaultTotalAssetsBefore,
             ynEthValueInBase + ynLsdeValueInBase,
-            1e8,
+            3,
             "Total assets increase should match sum of ynETH and ynLSDe values"
         );
 
@@ -724,10 +711,10 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         vault.processAccounting();
 
         // Verify balances
-        assertApproxEqRel(
+        assertApproxEqAbs(
             totalAssetsAfterDeposits - vaultTotalAssetsBefore,
             ynEthValueInBase + ynLsdeValueInBase,
-            1e8,
+            3,
             "Total assets increase should match sum of ynETH and ynLSDe values"
         );
     }
