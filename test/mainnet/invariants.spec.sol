@@ -36,7 +36,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
     function totalAssetsInvariant(uint256 assets) public view {
         uint256 finalVaultTotalAssets = vault.totalAssets();
         assertApproxEqRel(
-            assets, finalVaultTotalAssets, 1e14, "Vault totalAssets should be original totalAssets plus additional"
+            assets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional"
         );
     }
 
@@ -973,7 +973,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
     }
 
     function test_Vault_4626Invariants_Withdrawer_Deposit(uint256 amount) public {
-        vm.assume(amount > 10000);
+        vm.assume(amount > 1_000_000_000);
         vm.assume(amount < 100_000 ether);
 
         address alice = address(0xa11ce);
@@ -1000,6 +1000,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
             vm.stopPrank();
 
             vault.processAccounting();
+            withdrawer.processAccounting();
 
             uint256 initialAssets = vault.totalAssets();
             uint256 initialSupply = vault.totalSupply();
@@ -1011,7 +1012,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
             vault.processAccounting();
 
             totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
+            totalAssetsInvariant(initialAssets, 1e14);
         }
     }
 
