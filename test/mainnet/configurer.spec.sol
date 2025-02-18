@@ -179,7 +179,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (depositAmount * ynEthRate / 1e18),
-            1e8,
+            5,
             "Total assets should match deposit amount"
         );
     }
@@ -204,7 +204,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (depositAmount * ynLSDeRate / 1e18),
-            1e8,
+            5,
             "Total assets should match deposit amount"
         );
     }
@@ -229,7 +229,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (depositAmount * wethRate / 1e18),
-            1e8,
+            5,
             "Total assets should match deposit amount"
         );
     }
@@ -279,11 +279,11 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertEq(IERC20(asset).balanceOf(alice), 0, "Balance should be 0 before donation");
 
         dealAsset(asset, alice, donationAmount);
-
+        uint256 balanceBefore = IERC20(asset).balanceOf(address(vault));
         uint256 donatedAmount = IERC20(asset).balanceOf(alice);
 
         // The donation function does not donate the full amount. Must use the actual donated amount after.
-        assertApproxEqRel(donatedAmount, donationAmount, 1e14, "Balance should match for asset");
+        assertApproxEqRel(donatedAmount, donationAmount, 5, "Balance should match for asset");
 
         vm.startPrank(alice);
         IERC20(asset).transfer(address(vault), donatedAmount);
@@ -292,11 +292,15 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         vault.processAccounting();
 
         uint256 rate = IProvider(vault.provider()).getRate(asset);
-        uint256 baseAmount = Math.mulDiv(donatedAmount, rate, 10 ** 18, Math.Rounding.Floor);
+        // Get the balance of the asset inside the vault
+        uint256 balanceOfAsset = IERC20(asset).balanceOf(address(vault));
+
+        uint256 totalBaseAmount = Math.mulDiv(balanceOfAsset, rate, 10 ** 18, Math.Rounding.Floor);
+        uint256 baseDonatedAmount = Math.mulDiv(donatedAmount, rate, 10 ** 18, Math.Rounding.Floor);
 
         // Reason why the error occurs is because processAccounting takes the whole balance of the asset
         // inside the vault and converts that to base while this test just converts the extra donated amount
-        assertApproxEqRel(vault.totalAssets(), totalAssetBefore + baseAmount, 1e12, "Total assets should be correct");
+        assertApproxEqRel(vault.totalAssets(), totalBaseAmount + baseDonatedAmount, 5, "Total assets should be correct");
     }
 
     function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {
@@ -333,7 +337,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssets,
             totalAssetBefore + (actualAmount * assetRate / 1e18),
-            1e8,
+            5,
             "Total assets should match deposit amount"
         );
 
@@ -346,7 +350,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             vault.totalAssets(),
             totalAssetBefore + (actualAmount * assetRate / 1e18),
-            1e8,
+            5,
             "Total assets should match deposit amount"
         );
     }
@@ -499,7 +503,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             vault.totalAssets(),
             tvlBeforeWithdraw,
-            1e8,
+            5,
             "Total assets should remain unchanged after processing accounting"
         );
     }
@@ -557,7 +561,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             vault.totalAssets(),
             totalAssetsBefore + depositAmount,
-            1e8,
+            5,
             "Total assets should match deposit amount converted to ynETH"
         );
 
@@ -565,7 +569,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             IERC20(MC.YNETH).balanceOf(address(vault)),
             ynEthBalanceBefore + (depositAmount * 1e18) / ynEthRate,
-            1e8,
+            5,
             "ynETH balance should match expected amount based on rate"
         );
     }
@@ -629,6 +633,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqAbs(
             IERC20(MC.WETH).balanceOf(alice),
             aliceWethBalanceBefore - depositAmount + amountAfterFee,
+            // todo: fix this down to at least 1e8 margin of error
             1e14, // withdrawal fee precision error is at 0.001% of amount
             "User should receive original WETH amount back minus fee"
         );
@@ -672,7 +677,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssetsAfterDeposits - vaultTotalAssetsBefore,
             ynEthValueInBase + ynLsdeValueInBase,
-            1e14,
+            1e8,
             "Total assets increase should match sum of ynETH and ynLSDe values"
         );
 
@@ -710,7 +715,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         assertApproxEqRel(
             totalAssetsAfterDeposits - vaultTotalAssetsBefore,
             ynEthValueInBase + ynLsdeValueInBase,
-            1e12,
+            1e8,
             "Total assets increase should match sum of ynETH and ynLSDe values"
         );
     }
