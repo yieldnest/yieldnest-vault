@@ -250,7 +250,12 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
         vault.processAccounting();
 
-        assertApproxEqRel(redeemedAssets, assets, 2e15, "Redeemed assets should equal the original assets");
+        assertApproxEqAbs(
+            redeemedAssets,
+            assets - FeeMath.feeOnTotal(assets, vault.baseWithdrawalFee()),
+            100000,
+            "Redeemed assets should equal the original assets minus withdrawal fee"
+        );
         assertEq(
             IERC20(baseAsset).balanceOf(alice),
             initialBalance + redeemedAssets,
@@ -292,6 +297,8 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
         // hypothetically allocated 100% to the buffer
         allocateToBuffer(IERC20(baseAsset).balanceOf(address(vault)));
+
+        // FIXME TODO: fill errors on the assertions below
 
         // Test the previewWithdraw function
         uint256 previewedWithdrawShares = vault.previewWithdraw(assets);
