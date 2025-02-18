@@ -601,7 +601,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         }
     }
 
-    function test_Vault_4626Invariants_WETH(uint256 amount) public {
+    function test_Vault_4626Invariants_WETH_Donation(uint256 amount, bool processAfterWithdraw) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
@@ -614,6 +614,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
             // convert ETH to WETH
             _processDepositWETH(amount);
 
+            // process accounting to update for the donation
             vault.processAccounting();
 
             totalSupplyInvariant(initialSupply);
@@ -627,7 +628,51 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
             // convert WETH to ETH
             _processWithdrawWETH(amount);
 
-            vault.processAccounting();
+            if (processAfterWithdraw) {
+                vault.processAccounting();
+            }
+
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+    }
+
+    function test_Vault_4626Invariants_WETH_Deposit(uint256 amount, bool processAfterDeposit, bool processAfterWithdraw) public {
+        vm.assume(amount > 100000);
+        vm.assume(amount < 100_000 ether);
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+        {
+            address alice = address(10);
+            deal(alice, amount);
+
+            vm.startPrank(alice);
+            (bool success,) = MC.WETH.call{value: amount}("");
+            assertTrue(success, "WETH deposit failed");
+            IERC20(MC.WETH).approve(address(vault), amount);
+            uint256 depositeShares = vault.deposit(amount, alice);
+            vm.stopPrank();
+
+            if (processAfterDeposit) {
+                vault.processAccounting();
+            }
+
+            totalSupplyInvariant(initialSupply + depositeShares);
+            totalAssetsInvariant(initialAssets + amount);
+        }
+
+        initialAssets = vault.totalAssets();
+        initialSupply = vault.totalSupply();
+
+        {
+            // convert WETH to ETH
+            _processWithdrawWETH(amount);
+
+            if (processAfterWithdraw) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
@@ -1098,9 +1143,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
 
-
         uint256 initialDepositedAmount = amount * 2;
-
 
         // Initial setup
         vm.startPrank(alice);
