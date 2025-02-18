@@ -14,7 +14,6 @@ import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 
-
 contract VaultMainnetInvariantsTest is Test, MainnetActors {
     Vault public vault;
     Withdrawer public withdrawer;
@@ -30,9 +29,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
     function totalSupplyInvariant(uint256 supply) public view {
         uint256 finalVaultTotalSupply = vault.totalSupply();
-        assertEq(
-            supply, finalVaultTotalSupply, "Vault totalSupply should be original totalSupply plus additional"
-        );
+        assertEq(supply, finalVaultTotalSupply, "Vault totalSupply should be original totalSupply plus additional");
     }
 
     function totalAssetsInvariant(uint256 assets) public view {
@@ -236,7 +233,10 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         uint256 previewedRedeemAssets = vault.previewRedeem(shares);
         // TODO: see why precision is not high here.
         assertApproxEqAbs(
-            previewedRedeemAssets, assets - FeeMath.feeOnTotal(assets, vault.baseWithdrawalFee()), 100000, "Previewed redeem assets should equal the original assets with withdrawal fee applied"
+            previewedRedeemAssets,
+            assets - FeeMath.feeOnTotal(assets, vault.baseWithdrawalFee()),
+            100000,
+            "Previewed redeem assets should equal the original assets with withdrawal fee applied"
         );
 
         uint256 redeemableShares = vault.maxRedeem(alice);
@@ -637,7 +637,9 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         }
     }
 
-    function test_Vault_4626Invariants_WETH_Deposit(uint256 amount, bool processAfterDeposit, bool processAfterWithdraw) public {
+    function test_Vault_4626Invariants_WETH_Deposit(uint256 amount, bool processAfterDeposit, bool processAfterWithdraw)
+        public
+    {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
@@ -677,7 +679,10 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
             totalSupplyInvariant(initialSupply);
             uint256 finalVaultTotalAssets = vault.totalAssets();
             assertApproxEqAbs(
-                initialAssets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional"
+                initialAssets,
+                finalVaultTotalAssets,
+                3,
+                "Vault totalAssets should be original totalAssets plus additional"
             );
         }
     }
@@ -1161,21 +1166,18 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         if (processAfterDeposit) {
             withdrawer.processAccounting();
             vault.processAccounting();
-
         }
 
         totalSupplyInvariant(initialSupply + depositedShares);
         totalAssetsInvariant(initialAssets + initialDepositedAmount);
 
-
-         // Allocate to ynETH
+        // Allocate to ynETH
         _processWithdrawWETH(amount);
         _processYnETHDepositETH(amount);
 
         if (processAfterAllocate) {
             withdrawer.processAccounting();
             vault.processAccounting();
-
         }
 
         totalSupplyInvariant(initialSupply + depositedShares);
@@ -1184,7 +1186,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         uint256 withdrawableAssets = vault.maxWithdraw(alice);
 
         vm.startPrank(alice);
-        uint256 burnedShares =vault.withdraw(withdrawableAssets, alice, alice);
+        uint256 burnedShares = vault.withdraw(withdrawableAssets, alice, alice);
         vm.stopPrank();
 
         if (processAfterWithdraw) {
