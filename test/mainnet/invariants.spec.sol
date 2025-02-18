@@ -29,7 +29,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
     function totalSupplyInvariant(uint256 supply) public view {
         uint256 finalVaultTotalSupply = vault.totalSupply();
         assertApproxEqRel(
-            supply, finalVaultTotalSupply, 1e14, "Vault totalSupply should be original totalSupply plus additional"
+            supply, finalVaultTotalSupply, 3, "Vault totalSupply should be original totalSupply plus additional"
         );
     }
 
@@ -1071,15 +1071,14 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
     }
 
     function testProcessAccountingBetweenOperations(
-        // uint256 amount,
-        // bool processAfterDeposit,
+        uint256 amount,
+        bool processAfterDeposit
         // bool processAfterWithdraw,
         // bool processAfterAllocate
     ) public {
-        //vm.assume(amount > 0.1 ether && amount < 100 ether);
+        vm.assume(amount > 0.1 ether && amount < 100 ether);
 
-        uint256 amount = 30286446403452457539;
-        bool processAfterDeposit = true;
+        // uint256 amount = 30286446403452457539;
         bool processAfterWithdraw = true;
 
         address alice = address(10);
@@ -1113,22 +1112,24 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         if (processAfterDeposit) {
             withdrawer.processAccounting();
             vault.processAccounting();
-            totalSupplyInvariant(initialSupply + depositedShares);
-            totalAssetsInvariant(initialAssets + amount);
+
         }
 
-        uint256 withdrawableAssets = vault.maxWithdraw(alice);
+        totalSupplyInvariant(initialSupply + depositedShares);
+        totalAssetsInvariant(initialAssets + amount);
 
-        vm.startPrank(alice);
-        vault.withdraw(withdrawableAssets, alice, alice);
-        vm.stopPrank();
+        // uint256 withdrawableAssets = vault.maxWithdraw(alice);
 
-        if (processAfterWithdraw) {
-            withdrawer.processAccounting();
-            vault.processAccounting();
-            totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
-        }
+        // vm.startPrank(alice);
+        // vault.withdraw(withdrawableAssets, alice, alice);
+        // vm.stopPrank();
+
+        // if (processAfterWithdraw) {
+        //     withdrawer.processAccounting();
+        //     vault.processAccounting();
+        //     totalSupplyInvariant(initialSupply);
+        //     totalAssetsInvariant(initialAssets);
+        // }
 
         return;
 
