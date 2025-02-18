@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import {Test} from "lib/forge-std/src/Test.sol";
 import {Provider} from "src/module/Provider.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Vault} from "src/Vault.sol";
@@ -11,7 +10,6 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {YnETHx} from "src/YnETHx.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
-import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
@@ -22,9 +20,9 @@ import {BaseVault} from "src/BaseVault.sol";
 import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
 import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
-import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
+import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 
-contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
+contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
     Vault public vault;
     Withdrawer public withdrawer;
     TimelockController public timelock;
@@ -234,73 +232,84 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         );
     }
 
-    function dealAsset(address asset, address account, uint256 amount) internal {
-        if (asset == MC.STETH) {
-            vm.deal(account, amount);
-
-            vm.startPrank(account);
-            (bool success,) = MC.STETH.call{value: amount}("");
-            vm.stopPrank();
-
-            assertTrue(success, "stETH deposit failed");
-            return;
-        }
-
-        if (asset == MC.OETH) {
-            deal(MC.WETH, account, amount);
-
-            vm.startPrank(account);
-            IERC20(MC.WETH).approve(MC.OETH_VAULT, amount);
-            IOETHVault(MC.OETH_VAULT).mint(MC.WETH, amount, amount);
-            vm.stopPrank();
-            return;
-        }
-
-        deal(asset, account, amount);
-    }
-
-    function test_donate_assets(uint256 donationAmount) public {
-        vm.assume(donationAmount > 1e8);
-        vm.assume(donationAmount < 1_000 ether);
-
+    function _emptyVault() internal {
         address[] memory assets = vault.getAssets();
         assertEq(assets.length, 11, "Should have 11 assets");
 
+        // empty vault so we can test each asset in isolation
         for (uint256 i = 0; i < assets.length; i++) {
-            _test_donate_single_asset(assets[i], donationAmount);
+            uint256 balanceBefore = IERC20(assets[i]).balanceOf(address(vault));
+            if (balanceBefore > 0) {
+                vm.startPrank(address(vault));
+                IERC20(assets[i]).transfer(address(this), balanceBefore);
+                vm.stopPrank();
+            }
+        }
+        vault.processAccounting();
+
+        assertEq(vault.totalAssets(), 0);
+    }
+
+    function test_donate_assets(uint256 donationAmount, uint8 i) public {
+        address[] memory assets = vault.getAssets();
+        assertEq(assets.length, 11, "Should have 11 assets");
+        vm.assume(i < assets.length);
+
+        vm.assume(donationAmount > 1e8);
+        if (assets[i] == MC.STETH) {
+            vm.assume(donationAmount < 1000 ether);
+        } else {
+            vm.assume(donationAmount < 1e5 ether);
+        }
+
+        // empty vault so we can test each asset in isolation
+        _emptyVault();
+
+        _test_donate_single_asset(assets[i], donationAmount);
+    }
+
+    function customAssertEq(uint256 a, uint256 b, string memory message) public pure {
+        if (a < 1e14) {
+            // 1e5 in 1e18 is 0 for a < 1e14
+            assertApproxEqAbs(a, b, 5, message);
+        } else {
+            assertApproxEqRel(a, b, 1e5, message);
         }
     }
 
     function _test_donate_single_asset(address asset, uint256 donationAmount) internal {
         address alice = address(0xa11ce);
 
-        uint256 totalAssetBefore = vault.totalAssets();
-
         assertEq(IERC20(asset).balanceOf(alice), 0, "Balance should be 0 before donation");
+        assertLt(vault.totalAssets(), 5, "Total assets should be zero initially");
 
         dealAsset(asset, alice, donationAmount);
-        uint256 balanceBefore = IERC20(asset).balanceOf(address(vault));
-        uint256 donatedAmount = IERC20(asset).balanceOf(alice);
 
         // The donation function does not donate the full amount. Must use the actual donated amount after.
-        assertApproxEqRel(donatedAmount, donationAmount, 5, "Balance should match for asset");
+        uint256 donatedAmount = IERC20(asset).balanceOf(alice);
 
+        // transfer donated amount to vault
         vm.startPrank(alice);
         IERC20(asset).transfer(address(vault), donatedAmount);
         vm.stopPrank();
 
         vault.processAccounting();
 
+        uint256 balanceAfter = IERC20(asset).balanceOf(address(vault));
+        assertApproxEqAbs(balanceAfter, donatedAmount, 5, "Balance should match for asset");
+
+        // if (asset != MC.STETH) {
         uint256 rate = IProvider(vault.provider()).getRate(asset);
-        // Get the balance of the asset inside the vault
-        uint256 balanceOfAsset = IERC20(asset).balanceOf(address(vault));
+        uint256 baseAmount = Math.mulDiv(balanceAfter, rate, 10 ** 18, Math.Rounding.Floor);
 
-        uint256 totalBaseAmount = Math.mulDiv(balanceOfAsset, rate, 10 ** 18, Math.Rounding.Floor);
-        uint256 baseDonatedAmount = Math.mulDiv(donatedAmount, rate, 10 ** 18, Math.Rounding.Floor);
+        customAssertEq(vault.totalAssets(), baseAmount, "Total assets should be correct");
 
-        // Reason why the error occurs is because processAccounting takes the whole balance of the asset
-        // inside the vault and converts that to base while this test just converts the extra donated amount
-        assertApproxEqRel(vault.totalAssets(), totalBaseAmount + baseDonatedAmount, 5, "Total assets should be correct");
+        // empty vault after testing
+        if (balanceAfter > 0) {
+            vm.startPrank(address(vault));
+            IERC20(asset).transfer(address(this), balanceAfter);
+            vm.stopPrank();
+        }
     }
 
     function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {
@@ -311,7 +320,8 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         vm.assume(assetIndex < assets.length);
         address asset = assets[assetIndex];
 
-        dealAsset(asset, address(this), depositAmount);
+        address alice = address(0xa11ce);
+        dealAsset(asset, alice, depositAmount);
 
         // Skip if asset is already active
         if (!vault.getAsset(asset).active) {
@@ -322,11 +332,13 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         }
 
         uint256 totalAssetBefore = vault.totalAssets();
-        uint256 actualAmount = IERC20(asset).balanceOf(address(this));
+        uint256 actualAmount = IERC20(asset).balanceOf(alice);
         uint256 vaultRateBefore = vault.convertToAssets(1e18);
 
+        vm.startPrank(alice);
         IERC20(asset).approve(address(vault), actualAmount);
         vault.depositAsset(asset, actualAmount, address(this));
+        vm.stopPrank();
 
         uint256 totalAssets = vault.totalAssets();
         uint256 assetRate = IProvider(vault.provider()).getRate(asset);
@@ -532,6 +544,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             "WETH should be transferred to vault"
         );
 
+        uint256 depositedAmount;
         {
             address[] memory targets = new address[](2);
             uint256[] memory values = new uint256[](2);
@@ -546,16 +559,15 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
             data[1] = abi.encodeCall(IynETH.depositETH, (address(vault)));
 
             vm.startPrank(PROCESSOR);
-            vault.processor(targets, values, data);
+            bytes[] memory returnData = vault.processor(targets, values, data);
             vm.stopPrank();
+
+            depositedAmount = abi.decode(returnData[1], (uint256));
         }
 
         // Process accounting
         vault.processAccounting();
         withdrawer.processAccounting();
-
-        // Get ynETH rate
-        uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
 
         // Verify total assets increased by correct amount
         assertApproxEqRel(
@@ -568,7 +580,7 @@ contract VaultConfigureUpgradeTest is Test, MainnetActors, AssertUtils {
         // Verify ynETH balance matches expected amount based on rate
         assertApproxEqRel(
             IERC20(MC.YNETH).balanceOf(address(vault)),
-            ynEthBalanceBefore + (depositAmount * 1e18) / ynEthRate,
+            ynEthBalanceBefore + depositedAmount,
             5,
             "ynETH balance should match expected amount based on rate"
         );

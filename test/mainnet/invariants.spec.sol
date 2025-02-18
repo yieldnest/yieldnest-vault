@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import {Test} from "lib/forge-std/src/Test.sol";
 import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
@@ -11,10 +10,11 @@ import {IERC20, TransparentUpgradeableProxy, IERC4626} from "src/Common.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
-import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 
-contract VaultMainnetInvariantsTest is Test, MainnetActors {
+contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
     Vault public vault;
     Withdrawer public withdrawer;
 
@@ -32,10 +32,19 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         assertEq(supply, finalVaultTotalSupply, "Vault totalSupply should be original totalSupply plus additional");
     }
 
+    function customAssertEq(uint256 a, uint256 b, string memory message) public pure {
+        if (a < 1e14) {
+            // 5 in 1e18 is 0 for a < 1e14
+            assertApproxEqAbs(a, b, 5, message);
+        } else {
+            assertApproxEqRel(a, b, 5, message);
+        }
+    }
+
     function totalAssetsInvariant(uint256 assets) public view {
         uint256 finalVaultTotalAssets = vault.totalAssets();
-        assertApproxEqAbs(
-            assets, finalVaultTotalAssets, 1e6, "Vault totalAssets should be original totalAssets plus additional"
+        customAssertEq(
+            assets, finalVaultTotalAssets, "Vault totalAssets should be original totalAssets plus additional"
         );
     }
 
@@ -240,7 +249,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         );
 
         uint256 redeemableShares = vault.maxRedeem(alice);
-        assertApproxEqRel(redeemableShares, shares, 1e15, "Redeemable shares should equal the original shares");
+        customAssertEq(redeemableShares, shares, "Redeemable shares should equal the original shares");
 
         uint256 initialBalance = IERC20(baseAsset).balanceOf(alice);
 
@@ -1003,37 +1012,12 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         }
     }
 
-    function dealAsset(address asset, address account, uint256 amount) internal {
-        if (asset == MC.STETH) {
-            vm.deal(account, amount);
-
-            vm.startPrank(account);
-            (bool success,) = MC.STETH.call{value: amount}("");
-            vm.stopPrank();
-
-            assertTrue(success, "stETH deposit failed");
-            return;
-        }
-
-        if (asset == MC.OETH) {
-            deal(MC.WETH, account, amount);
-
-            vm.startPrank(account);
-            IERC20(MC.WETH).approve(MC.OETH_VAULT, amount);
-            IOETHVault(MC.OETH_VAULT).mint(MC.WETH, amount, amount);
-            vm.stopPrank();
-            return;
-        }
-
-        deal(asset, account, amount);
-    }
-
     function test_Vault_4626Invariants_Withdrawer_Deposit(uint256 amount, uint8 i) public {
-        vm.assume(amount > 1_000_000_000);
-        vm.assume(amount < 100_000 ether);
+        vm.assume(amount > 1e8);
+        vm.assume(amount < 1e5 ether);
 
-        uint256 assetCount = 7;
-        vm.assume(i < assetCount);
+        uint256 assetcount = 7;
+        vm.assume(i < assetcount);
 
         address alice = address(0xa11ce);
 
@@ -1050,8 +1034,8 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
         dealAsset(assets[i], alice, amount);
 
+        // dealt asset is not equal to shares obtained for stETH, ynETH, ynLSDe
         uint256 donatedAmount = IERC20(assets[i]).balanceOf(alice);
-        assertApproxEqRel(donatedAmount, amount, 1e15, "Balance should match for asset");
 
         vm.startPrank(alice);
         IERC20(assets[i]).transfer(address(vault), donatedAmount);
