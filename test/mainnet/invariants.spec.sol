@@ -142,15 +142,15 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
-        assertApproxEqRel(convertedAssets, assets, 1e14, "Converted assets should equal the original assets");
+        assertApproxEqAbs(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
         // Test the previewDeposit function
         uint256 previewedShares = vault.previewDeposit(assets);
-        assertApproxEqRel(previewedShares, shares, 1e14, "Previewed shares should equal the converted shares");
+        assertApproxEqAbs(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
 
         // Test the previewMint function
         uint256 previewedAssets = vault.previewMint(shares);
-        assertApproxEqRel(previewedAssets, assets, 1e14, "Previewed assets should equal the original assets");
+        assertApproxEqAbs(previewedAssets, assets, 3, "Previewed assets should equal the original assets");
 
         // Test the depositAsset function
         deal(MC.WETH, address(this), assets);
