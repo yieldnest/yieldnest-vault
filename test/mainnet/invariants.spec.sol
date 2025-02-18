@@ -1069,4 +1069,82 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
             totalAssetsInvariant(initialAssets);
         }
     }
+
+    function testProcessAccountingBetweenOperations(
+        // uint256 amount,
+        // bool processAfterDeposit,
+        // bool processAfterWithdraw,
+        // bool processAfterAllocate
+    ) public {
+        //vm.assume(amount > 0.1 ether && amount < 100 ether);
+
+        uint256 amount = 30286446403452457539;
+        bool processAfterDeposit = true;
+        bool processAfterWithdraw = true;
+
+        address alice = address(10);
+        vm.label(alice, "Alice");
+
+
+        {
+            deal(alice, 100000 ether);
+
+            vm.startPrank(alice);
+            (bool success,) = MC.WETH.call{value: 100000 ether}("");
+            assertTrue(success, "WETH deposit failed");
+            vm.stopPrank();
+        }
+
+
+        uint256 initialAssets = vault.totalAssets();
+        uint256 initialSupply = vault.totalSupply();
+
+
+        // Initial setup
+        vm.startPrank(alice);
+        IERC20(MC.WETH).approve(address(vault), amount);
+        uint256 depositedShares = vault.deposit(amount, alice);
+        vm.stopPrank();
+
+        // Send WETH to buffer
+        _processApprove(MC.WETH, address(vault.buffer()), amount);
+        _processDeposit(address(vault.buffer()), amount);
+
+        if (processAfterDeposit) {
+            withdrawer.processAccounting();
+            vault.processAccounting();
+            totalSupplyInvariant(initialSupply + depositedShares);
+            totalAssetsInvariant(initialAssets + amount);
+        }
+
+        uint256 withdrawableAssets = vault.maxWithdraw(alice);
+
+        vm.startPrank(alice);
+        vault.withdraw(withdrawableAssets, alice, alice);
+        vm.stopPrank();
+
+        if (processAfterWithdraw) {
+            withdrawer.processAccounting();
+            vault.processAccounting();
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
+
+        return;
+
+        // // Allocate to ynETH
+        // _processApprove(MC.WETH, address(withdrawer), amount);
+        // _processWithdrawWETH(amount);
+        // _processDepositAsset(address(withdrawer), MC.WETH, amount);
+        // _processAllocate(address(withdrawer), MC.YNETH, amount);
+
+        // if (processAfterAllocate) {
+        //     withdrawer.processAccounting();
+        //     vault.processAccounting();
+        //     totalSupplyInvariant(initialSupply);
+        //     totalAssetsInvariant(initialAssets);
+        // }
+
+
+    }
 }
