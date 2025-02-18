@@ -67,7 +67,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
     }
 
     function test_Vault_4626Invariants_depositBase(uint256 assets) public {
-        if (assets < 100_000_000) return;
+        if (assets < 100_000) return;
         if (assets > 100_000_000 ether) return;
 
         uint256 initialAssets = vault.totalAssets();
@@ -99,11 +99,11 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         IERC20(MC.WETH).transfer(address(vault), 1 ether);
 
         uint256 previewedShares = vault.previewDeposit(assets);
-        assertApproxEqRel(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
+        assertApproxEqAbs(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
 
         // Test the previewMint function
         uint256 previewedAssets = vault.previewMint(shares);
-        assertApproxEqRel(previewedAssets, assets, 3, "Previewed assets should equal the original assets");
+        assertApproxEqAbs(previewedAssets, assets, 3, "Previewed assets should equal the original assets");
 
         // Test the depositAsset function
         deal(MC.WETH, address(this), assets);
