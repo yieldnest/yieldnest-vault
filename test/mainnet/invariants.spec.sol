@@ -194,7 +194,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
         // Test the previewMint function
         uint256 previewedAssets = vault.previewMint(shares);
-        assertApproxEqRel(previewedAssets, assets, 1e14, "Previewed assets should equal the converted assets");
+        assertApproxEqAbs(previewedAssets, assets, 3, "Previewed assets should equal the converted assets");
 
         // Test the mint function
         vm.startPrank(alice);
