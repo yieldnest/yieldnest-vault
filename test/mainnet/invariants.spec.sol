@@ -1078,13 +1078,11 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
     function testProcessAccountingBetweenOperations(
         uint256 amount,
         bool processAfterDeposit,
-        // bool processAfterWithdraw,
+        bool processAfterWithdraw,
         bool processAfterAllocate
     ) public {
         vm.assume(amount > 0.1 ether && amount < 100 ether);
 
-        // uint256 amount = 30286446403452457539;
-        bool processAfterWithdraw = true;
         address alice = address(10);
         vm.label(alice, "Alice");
 
@@ -1137,19 +1135,18 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         totalSupplyInvariant(initialSupply + depositedShares);
         totalAssetsInvariant(initialAssets + initialDepositedAmount);
 
-        // uint256 withdrawableAssets = vault.maxWithdraw(alice);
+        uint256 withdrawableAssets = vault.maxWithdraw(alice);
 
-        // vm.startPrank(alice);
-        // vault.withdraw(withdrawableAssets, alice, alice);
-        // vm.stopPrank();
+        vm.startPrank(alice);
+        uint256 burnedShares =vault.withdraw(withdrawableAssets, alice, alice);
+        vm.stopPrank();
 
-        // if (processAfterWithdraw) {
-        //     withdrawer.processAccounting();
-        //     vault.processAccounting();
-        //     totalSupplyInvariant(initialSupply);
-        //     totalAssetsInvariant(initialAssets);
-        // }
+        if (processAfterWithdraw) {
+            withdrawer.processAccounting();
+            vault.processAccounting();
+        }
 
-        return;
+        totalSupplyInvariant(initialSupply + depositedShares - burnedShares);
+        totalAssetsInvariant(initialAssets + initialDepositedAmount - withdrawableAssets);
     }
 }
