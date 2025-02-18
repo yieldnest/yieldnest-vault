@@ -284,7 +284,7 @@ contract WithdrawerMainnetTest is Test, MainnetActors {
         tokenIds[0] = tokenId;
         vault.claimWithdrawalsWOETH(tokenIds);
 
-        assertApproxEqRel(vault.totalAssets(), totalAssets, 2e15, "Total assets should match");
+        assertApproxEqAbs(vault.totalAssets(), totalAssets, 3, "Total assets should match");
 
         uint256 assets = vault.asyncWithdrawalBalance(asset_);
         assertEq(assets, 0, "Queued assets should match");
