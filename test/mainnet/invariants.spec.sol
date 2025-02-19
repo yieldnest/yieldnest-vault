@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import {Test} from "lib/forge-std/src/Test.sol";
 import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
@@ -11,10 +10,10 @@ import {IERC20, TransparentUpgradeableProxy, IERC4626} from "src/Common.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
-import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
-import {FeeMath} from "src/module/FeeMath.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 
-contract VaultMainnetInvariantsTest is Test, MainnetActors {
+contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
     Vault public vault;
     Withdrawer public withdrawer;
 
@@ -22,21 +21,12 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         SetupVault setup = new SetupVault();
         setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
+        _initVault(vault);
 
         withdrawer = VaultVerification.getWithdrawer(vault);
         assertEq(vault.asset(), MC.WETH, "base asset should be weth");
-    }
 
-    function totalSupplyInvariant(uint256 supply) public view {
-        uint256 finalVaultTotalSupply = vault.totalSupply();
-        assertEq(supply, finalVaultTotalSupply, "Vault totalSupply should be original totalSupply plus additional");
-    }
-
-    function totalAssetsInvariant(uint256 assets) public view {
-        uint256 finalVaultTotalAssets = vault.totalAssets();
-        assertApproxEqAbs(
-            assets, finalVaultTotalAssets, 1e6, "Vault totalAssets should be original totalAssets plus additional"
-        );
+        assertEq(vault.baseWithdrawalFee(), 1e5, "base withdrawal fee should be zero");
     }
 
     function allocateToBuffer(uint256 amount) public {
@@ -230,30 +220,33 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         allocateToBuffer(assets);
 
         // Test the previewRedeem function
-        uint256 previewedRedeemAssets = vault.previewRedeem(shares);
-        // TODO: see why precision is not high here.
+        uint256 previewedRedeemAssets = vault.previewRedeem(depositedShares);
+        convertedAssets = vault.convertToAssets(depositedShares);
+
         assertApproxEqAbs(
             previewedRedeemAssets,
-            assets - FeeMath.feeOnTotal(assets, vault.baseWithdrawalFee()),
-            100000,
+            convertedAssets - vault._feeOnTotal(convertedAssets),
+            3,
             "Previewed redeem assets should equal the original assets with withdrawal fee applied"
         );
 
         uint256 redeemableShares = vault.maxRedeem(alice);
-        assertApproxEqRel(redeemableShares, shares, 1e15, "Redeemable shares should equal the original shares");
+        assertEq(redeemableShares, depositedShares, "Redeemable shares should equal the original shares");
 
         uint256 initialBalance = IERC20(baseAsset).balanceOf(alice);
+
+        convertedAssets = vault.convertToAssets(redeemableShares);
 
         vm.startPrank(alice);
         uint256 redeemedAssets = vault.redeem(redeemableShares, alice, alice);
         vm.stopPrank();
 
-        vault.processAccounting();
+        assertEq(redeemedAssets, previewedRedeemAssets, "Redeemed assets should equal the preview");
 
         assertApproxEqAbs(
             redeemedAssets,
-            assets - FeeMath.feeOnTotal(assets, vault.baseWithdrawalFee()),
-            100000,
+            convertedAssets - vault._feeOnTotal(convertedAssets),
+            3,
             "Redeemed assets should equal the original assets minus withdrawal fee"
         );
         assertEq(
@@ -261,6 +254,8 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
             initialBalance + redeemedAssets,
             "Final balance should reflect the redeemed assets"
         );
+
+        vault.processAccounting();
 
         totalSupplyInvariant(initialSupply + depositedShares - redeemableShares);
         totalAssetsInvariant(initialAssets + assets - redeemedAssets);
@@ -271,7 +266,7 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         if (assets > 100_000_000 ether) return;
 
         address alice = address(10);
-        deal(alice, assets);
+        deal(MC.WETH, alice, assets);
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
@@ -286,8 +281,6 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         address baseAsset = vault.asset();
 
         vm.startPrank(alice);
-        (bool success,) = MC.WETH.call{value: assets}("");
-        assertTrue(success, "Weth deposit failed");
         IERC20(baseAsset).approve(address(vault), assets);
         uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
         assertApproxEqAbs(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
@@ -298,27 +291,33 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         // hypothetically allocated 100% to the buffer
         allocateToBuffer(IERC20(baseAsset).balanceOf(address(vault)));
 
-        // FIXME TODO: fill errors on the assertions below
+        uint256 sharesWithFee = vault.convertToShares(assets + vault._feeOnRaw(assets));
 
         // Test the previewWithdraw function
         uint256 previewedWithdrawShares = vault.previewWithdraw(assets);
-        assertApproxEqRel(
-            previewedWithdrawShares, shares, 2e15, "Previewed withdraw shares should equal the original shares"
+        assertApproxEqAbs(
+            previewedWithdrawShares, sharesWithFee, 3, "Previewed withdraw shares should equal the original shares"
         );
 
         vm.startPrank(alice);
 
+        convertedAssets = vault.convertToAssets(depositedShares);
         uint256 withdrawableAssets = vault.maxWithdraw(alice);
-        assertApproxEqRel(withdrawableAssets, assets, 2e15, "Withdrawable assets should equal the original assets");
+        assertApproxEqAbs(
+            withdrawableAssets,
+            convertedAssets - vault._feeOnTotal(convertedAssets),
+            3,
+            "Withdrawable assets should equal the original assets"
+        );
 
         uint256 withdrawnShares = vault.withdraw(withdrawableAssets, alice, alice);
-        assertApproxEqRel(withdrawnShares, shares, 1e15, "Withdrawn shares should equal previous shares");
+        assertApproxEqAbs(withdrawnShares, depositedShares, 3, "Withdrawn shares should equal previous shares");
         vm.stopPrank();
 
         vault.processAccounting();
 
         uint256 finalBalance = IERC20(baseAsset).balanceOf(alice);
-        assertApproxEqRel(finalBalance, assets, 2e15, "Final balance should reflect the withdrawn assets");
+        assertApproxEqAbs(finalBalance, withdrawableAssets, 3, "Final balance should reflect the withdrawn assets");
 
         totalSupplyInvariant(initialSupply + depositedShares - withdrawnShares);
         totalAssetsInvariant(initialAssets + assets - withdrawableAssets);
@@ -1003,37 +1002,12 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
         }
     }
 
-    function dealAsset(address asset, address account, uint256 amount) internal {
-        if (asset == MC.STETH) {
-            vm.deal(account, amount);
-
-            vm.startPrank(account);
-            (bool success,) = MC.STETH.call{value: amount}("");
-            vm.stopPrank();
-
-            assertTrue(success, "stETH deposit failed");
-            return;
-        }
-
-        if (asset == MC.OETH) {
-            deal(MC.WETH, account, amount);
-
-            vm.startPrank(account);
-            IERC20(MC.WETH).approve(MC.OETH_VAULT, amount);
-            IOETHVault(MC.OETH_VAULT).mint(MC.WETH, amount, amount);
-            vm.stopPrank();
-            return;
-        }
-
-        deal(asset, account, amount);
-    }
-
     function test_Vault_4626Invariants_Withdrawer_Deposit(uint256 amount, uint8 i) public {
-        vm.assume(amount > 1_000_000_000);
-        vm.assume(amount < 100_000 ether);
+        vm.assume(amount > 1e8);
+        vm.assume(amount < 1e5 ether);
 
-        uint256 assetCount = 7;
-        vm.assume(i < assetCount);
+        uint256 assetcount = 7;
+        vm.assume(i < assetcount);
 
         address alice = address(0xa11ce);
 
@@ -1050,8 +1024,8 @@ contract VaultMainnetInvariantsTest is Test, MainnetActors {
 
         dealAsset(assets[i], alice, amount);
 
+        // dealt asset is not equal to shares obtained for stETH, ynETH, ynLSDe
         uint256 donatedAmount = IERC20(assets[i]).balanceOf(alice);
-        assertApproxEqRel(donatedAmount, amount, 1e15, "Balance should match for asset");
 
         vm.startPrank(alice);
         IERC20(assets[i]).transfer(address(vault), donatedAmount);
