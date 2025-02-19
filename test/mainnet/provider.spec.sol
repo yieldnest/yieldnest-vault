@@ -10,6 +10,7 @@ import {IStETH, IMETH, IRETH, IynLSDe} from "src/interface/IProvider.sol";
 import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "src/Common.sol";
+import {Vault} from "src/Vault.sol";
 
 import {IswETH, IsfrxETH, IFrxEthWethDualOracle, ICurveLpConnector} from "src/interface/IProvider.sol";
 
@@ -19,8 +20,8 @@ contract ProviderTest is Test, Etches {
     MockStrategy public mockStrategy;
 
     function setUp() public {
-        provider = new Provider();
-        mockBuffer();
+        provider = Provider(Vault(payable(MC.YNETHX)).provider());
+
         MockStrategy implementation = new MockStrategy();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), admin, "");
         mockStrategy = MockStrategy(payable(address(proxy)));
