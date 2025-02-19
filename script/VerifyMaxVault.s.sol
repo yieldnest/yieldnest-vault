@@ -116,6 +116,13 @@ contract VerifyMaxVault is BaseScript, Test {
         //     MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
         // );
 
+        // Verify configurer does not have DEFAULT_ADMIN_ROLE
+        assertFalse(
+            vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B),
+            "✅ Configurer should not have DEFAULT_ADMIN_ROLE"
+        );
+        console.log("ROLE CHECK: OK for 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B");
+
         assertFalse(withdrawer.paused(), "Withdrawer should not be paused");
         assertFalse(vault.paused(), "Vault should not be paused");
 
