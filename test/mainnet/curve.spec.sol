@@ -32,6 +32,9 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
         vm.stopPrank();
 
         configureCurveActions(vault);
+
+        // Process accounting to ensure vault is in sync
+        vault.processAccounting();
     }
 
     function configureCurveActions(Vault _vault) internal {
@@ -137,6 +140,7 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
             swapAmount,
             minOut
         );
+        uint256 ethBalanceBefore = address(vault).balance;
 
         {
             address[] memory targets = new address[](2);
@@ -157,13 +161,25 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
         }
 
         // Assert stETH balance is 0 and ETH balance matches expected amount
-        assertApproxEqAbs(IERC20(MC.STETH).balanceOf(address(vault)), amount - swapAmount, 2);
-        assertApproxEqAbs(address(vault).balance, minOut, 2);
+        assertApproxEqAbs(
+            IERC20(MC.STETH).balanceOf(address(vault)),
+            amount - swapAmount,
+            2,
+            "stETH balance should decrease by swap amount"
+        );
+        assertApproxEqAbs(
+            address(vault).balance - ethBalanceBefore, minOut, 2, "ETH balance should increase by minOut amount"
+        );
 
         vault.processAccounting();
 
         // Assert total assets remains unchanged after swap
-        assertApproxEqAbs(vault.totalAssets(), totalAssetsBefore, delta);
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            totalAssetsBefore,
+            delta,
+            "Total assets should remain unchanged after swap within delta"
+        );
     }
 
     function test_Vault_Curve_swapETHToStETH() public {
@@ -192,6 +208,7 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
             swapAmount,
             minOut
         );
+        uint256 ethBalanceBefore = address(vault).balance;
 
         {
             address[] memory targets = new address[](1);
@@ -209,7 +226,17 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
         }
 
         // Assert ETH balance is reduced and stETH balance matches expected amount
-        assertApproxEqAbs(address(vault).balance, amount - swapAmount, 2);
-        assertApproxEqAbs(IERC20(MC.STETH).balanceOf(address(vault)), minOut, 2);
+        assertApproxEqAbs(
+            address(vault).balance,
+            ethBalanceBefore - swapAmount,
+            2,
+            "Vault ETH balance should be reduced by swap amount"
+        );
+        assertApproxEqAbs(
+            IERC20(MC.STETH).balanceOf(address(vault)),
+            minOut,
+            2,
+            "Vault stETH balance should match expected output amount"
+        );
     }
 }
