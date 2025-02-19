@@ -21,7 +21,7 @@ contract WithdrawerMainnetTest is TestHelper, MainnetActors {
     using Math for uint256;
 
     Withdrawer public vault;
-    uint256 public constant INITIAL_BALANCE = 1e5 ether;
+    uint256 public constant INITIAL_BALANCE = 100_000 ether;
 
     IProvider public provider;
 
