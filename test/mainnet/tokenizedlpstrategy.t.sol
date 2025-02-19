@@ -25,8 +25,6 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
     address public alice = address(0xa11c3);
 
     function setUp() public {
-        SetupVault setup = new SetupVault();
-        setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
         connector = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
 

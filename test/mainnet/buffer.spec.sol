@@ -18,8 +18,6 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
 
     function setUp() public {
-        SetupVault setup = new SetupVault();
-        setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
 
         // Deploy mock buffer
@@ -31,7 +29,7 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         // Configure mock provider to use ERC4626 rate for buffer
         mockProvider.addERC4626(address(mockBuffer));
 
-        vm.startPrank(ADMIN);
+        vm.startPrank(MC.TIMELOCK);
 
         // Set mock buffer address
         vault.setBuffer(address(mockBuffer));
@@ -42,9 +40,11 @@ contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
         // Add mock buffer as an asset
         vault.addAsset(address(mockBuffer), false);
 
-        // Grant PROCESSOR_MANAGER_ROLE to this contract
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));
+        vm.stopPrank();
 
+        // Grant PROCESSOR_MANAGER_ROLE to this contract
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));
         vm.stopPrank();
 
         _setupRules(address(mockBuffer));

@@ -20,8 +20,6 @@ contract VaultMainnetViewerTest is Test, MainnetActors {
         vault = Vault(payable(MC.YNETHX));
 
         SetupVault setupVault = new SetupVault();
-        setupVault.upgrade();
-
         viewer = setupVault.deployViewer(vault);
     }
 

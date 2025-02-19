@@ -17,11 +17,9 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
 
     function setUp() public {
-        SetupVault setup = new SetupVault();
-        setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
 
-        vm.startPrank(ADMIN);
+        vm.startPrank(MC.TIMELOCK);
         setWethWithdrawRule();
         setYnETHDepositETHRule();
         vm.stopPrank();

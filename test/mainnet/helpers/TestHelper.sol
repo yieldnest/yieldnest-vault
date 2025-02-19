@@ -24,8 +24,8 @@ contract TestHelper is Test {
     /// @param account The account to receive the asset
     /// @param amount The amount of ETH to convert
     /// @return The actual amount of asset received after conversion
-    function dealAsset(address asset, address account, uint256 amount) internal returns (uint256) {
 
+    function dealAsset(address asset, address account, uint256 amount) internal returns (uint256) {
         if (asset == MC.WETH) {
             deal(account, amount);
 

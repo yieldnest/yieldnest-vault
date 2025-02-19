@@ -25,8 +25,6 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
     Vault public vault;
 
     function setUp() public {
-        SetupVault setup = new SetupVault();
-        setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
 
         vm.startPrank(ADMIN);
@@ -37,7 +35,7 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
     }
 
     function configureCurveActions(Vault _vault) internal {
-        vm.startPrank(ADMIN);
+        vm.startPrank(MC.TIMELOCK);
 
         // Get ethSteth pool from registry
         ICurveRegistry registry = ICurveRegistry(MC.CURVE_REGISTRY);

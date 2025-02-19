@@ -18,8 +18,6 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
     Withdrawer public withdrawer;
 
     function setUp() public {
-        SetupVault setup = new SetupVault();
-        setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
         _initVault(vault);
 
