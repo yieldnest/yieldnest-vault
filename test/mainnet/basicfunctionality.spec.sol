@@ -9,8 +9,6 @@ import {MainnetActors, IActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {YnETHx} from "src/YnETHx.sol";
 import {IVault} from "src/interface/IVault.sol";
-import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
-import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";

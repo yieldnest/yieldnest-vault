@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
