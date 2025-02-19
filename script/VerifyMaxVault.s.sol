@@ -29,6 +29,12 @@ contract VerifyMaxVault is BaseScript, Test {
     function verify() public view {
         assertNotEq(address(vault), address(0), "vault is not set");
 
+        console.log("==============================================");
+        console.log("=          VERIFYING VAULT SETUP            =");
+        console.log("==============================================");
+        console.log("Verifying vault at:       ", address(vault));
+        console.log("==============================================");
+
         assertEq(vault.name(), "ynETH MAX", "name is invalid");
         assertEq(vault.symbol(), "ynETHx", "symbol is invalid");
         assertEq(vault.decimals(), 18, "decimals is invalid");
@@ -50,6 +56,12 @@ contract VerifyMaxVault is BaseScript, Test {
 
         // Get withdrawer from vault assets
         Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
+
+        console.log("==============================================");
+        console.log("=        VERIFYING WITHDRAWER SETUP         =");
+        console.log("==============================================");
+        console.log("Verifying withdrawer at:   ", address(withdrawer));
+        console.log("==============================================");
 
         // TODO: Add rest of assertions and verifications
         // Verify provider configuration
