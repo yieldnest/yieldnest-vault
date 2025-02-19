@@ -17,6 +17,15 @@ import {Vm} from "lib/forge-std/src/Vm.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 
+/**
+ * @notice Tests for the Withdrawer contract
+ *
+ * This test suite verifies the Withdrawer contract's functionality in isolation with a fresh deployment.
+ * Unlike other test suites that test integration with the main vault, these tests focus solely on the
+ * Withdrawer contract's core withdrawal functionality. By testing in isolation, we can verify the
+ * withdrawal logic works correctly without any dependencies on the main vault's state or behavior.
+ *
+ */
 contract WithdrawerMainnetTest is TestHelper, MainnetActors {
     using Math for uint256;
 
