@@ -34,6 +34,9 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         withdrawer = VaultVerification.getWithdrawer(vault);
 
         timelock = TimelockController(payable(MC.TIMELOCK));
+
+        // Process accounting to ensure vault is in sync
+        vault.processAccounting();
     }
 
     function test_configure() public view {

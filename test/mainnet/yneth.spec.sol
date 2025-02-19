@@ -23,6 +23,9 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
         setWethWithdrawRule();
         setYnETHDepositETHRule();
         vm.stopPrank();
+
+        // Process accounting to ensure vault is in sync
+        vault.processAccounting();
     }
 
     function allocateToBuffer(uint256 amount) public {

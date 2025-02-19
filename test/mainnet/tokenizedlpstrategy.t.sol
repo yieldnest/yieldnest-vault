@@ -46,6 +46,9 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         vm.startPrank(ADMIN);
         vault.grantRole(vault.PROCESSOR_ROLE(), address(this));
         vm.stopPrank();
+
+        // Process accounting to ensure vault is in sync
+        vault.processAccounting();
     }
 
     function test_processAccounting() public {

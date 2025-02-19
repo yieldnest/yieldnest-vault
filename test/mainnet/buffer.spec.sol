@@ -14,7 +14,7 @@ import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 
-contract VaultMainnetInvariantsTest is Test, AssertUtils, MainnetActors {
+contract VaultBufferInvariantsTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
 
     function setUp() public {
