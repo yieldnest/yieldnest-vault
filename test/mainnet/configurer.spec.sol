@@ -233,24 +233,6 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         );
     }
 
-    function _emptyVault() internal {
-        address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 11, "Should have 11 assets");
-
-        // empty vault so we can test each asset in isolation
-        for (uint256 i = 0; i < assets.length; i++) {
-            uint256 balanceBefore = IERC20(assets[i]).balanceOf(address(vault));
-            if (balanceBefore > 0) {
-                vm.startPrank(address(vault));
-                IERC20(assets[i]).transfer(address(this), balanceBefore);
-                vm.stopPrank();
-            }
-        }
-        vault.processAccounting();
-
-        assertEq(vault.totalAssets(), 0);
-    }
-
     function test_donate_assets(uint256 donationAmount, uint8 i) public {
         address[] memory assets = vault.getAssets();
         assertEq(assets.length, 11, "Should have 11 assets");
@@ -263,8 +245,7 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
             vm.assume(donationAmount < 1e5 ether);
         }
 
-        // empty vault so we can test each asset in isolation
-        _emptyVault();
+        vault.processAccounting();
 
         _test_donate_single_asset(assets[i], donationAmount);
     }
@@ -272,8 +253,9 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
     function _test_donate_single_asset(address asset, uint256 donationAmount) internal {
         address alice = address(0xa11ce);
 
+        uint256 balanceBefore = IERC20(asset).balanceOf(address(vault));
+
         assertEq(IERC20(asset).balanceOf(alice), 0, "Balance should be 0 before donation");
-        assertLt(vault.totalAssets(), 3, "Total assets should be zero initially");
 
         dealAsset(asset, alice, donationAmount);
 
@@ -288,19 +270,25 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         vault.processAccounting();
 
         uint256 balanceAfter = IERC20(asset).balanceOf(address(vault));
-        assertApproxEqAbs(balanceAfter, donatedAmount, 3, "Balance should match for asset");
+        assertApproxEqAbs(balanceAfter, balanceBefore + donatedAmount, 3, "Balance should match for asset");
 
-        // if (asset != MC.STETH) {
-        uint256 rate = IProvider(vault.provider()).getRate(asset);
-        uint256 baseAmount = Math.mulDiv(balanceAfter, rate, 10 ** 18, Math.Rounding.Floor);
+        totalAssetsInvariant(_computeTotalAssets());
+    }
 
-        totalAssetsInvariant(baseAmount);
+    function _convertAssetToBase(address asset_, uint256 assets) internal view returns (uint256 baseAssets) {
+        uint256 rate = IProvider(vault.provider()).getRate(asset_);
+        baseAssets = Math.mulDiv(assets, rate, 10 ** (vault.getAsset(asset_).decimals), Math.Rounding.Floor);
+    }
 
-        // empty vault after testing
-        if (balanceAfter > 0) {
-            vm.startPrank(address(vault));
-            IERC20(asset).transfer(address(this), balanceAfter);
-            vm.stopPrank();
+    function _computeTotalAssets() internal view returns (uint256 totalAssets) {
+        address[] memory assets = vault.getAssets();
+
+        totalAssets = address(vault).balance;
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            uint256 balance = IERC20(assets[i]).balanceOf(address(vault));
+            if (balance == 0) continue;
+            totalAssets += _convertAssetToBase(assets[i], balance);
         }
     }
 
