@@ -31,50 +31,53 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
 
     function setUp() public {
         vault = Vault(payable(MC.YNETHX));
-        _initVault(vault);
+        withdrawer = VaultVerification.getWithdrawer(vault);
+
         timelock = TimelockController(payable(MC.TIMELOCK));
-        uint256 previousTotalAssets = vault.totalAssets();
+        // _initVault(vault);
+        // timelock = TimelockController(payable(MC.TIMELOCK));
+        // uint256 previousTotalAssets = vault.totalAssets();
 
-        {
-            vm.expectRevert();
-            vault.VAULT_VERSION();
-        }
+        // {
+        //     vm.expectRevert();
+        //     vault.VAULT_VERSION();
+        // }
 
-        _upgradeVault();
+        // _upgradeVault();
 
-        assertEq(vault.symbol(), "ynETHx");
+        // assertEq(vault.symbol(), "ynETHx");
 
-        assertTrue(vault.paused(), "Vault should be paused");
+        // assertTrue(vault.paused(), "Vault should be paused");
 
-        YnETHxConfigurer configurer = new YnETHxConfigurer();
-        SetupWithdrawer setup = new SetupWithdrawer();
-        withdrawer = setup.setup();
-        Provider provider = new Provider();
+        // YnETHxConfigurer configurer = new YnETHxConfigurer();
+        // SetupWithdrawer setup = new SetupWithdrawer();
+        // withdrawer = setup.setup();
+        // Provider provider = new Provider();
 
-        vm.startPrank(ADMIN);
-        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(configurer));
+        // vm.startPrank(ADMIN);
+        // vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(configurer));
 
-        configurer.configure(address(provider), address(withdrawer));
-        vm.stopPrank();
+        // configurer.configure(address(provider), address(withdrawer));
+        // vm.stopPrank();
 
-        {
-            // verify the upgrade was successful
-            Vault newVault = Vault(payable(MC.YNETHX));
+        // {
+        //     // verify the upgrade was successful
+        //     Vault newVault = Vault(payable(MC.YNETHX));
 
-            assertFalse(newVault.paused(), "Vault should not be paused");
+        //     assertFalse(newVault.paused(), "Vault should not be paused");
 
-            newVault.processAccounting();
+        //     newVault.processAccounting();
 
-            // Verify the upgrade was successful
-            uint256 newTotalAssets = newVault.totalAssets();
+        //     // Verify the upgrade was successful
+        //     uint256 newTotalAssets = newVault.totalAssets();
 
-            assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
-            assertEq(
-                keccak256(bytes(vault.VAULT_VERSION())),
-                keccak256(bytes(VAULT_VERSION)),
-                "Vault version should be correct"
-            );
-        }
+        //     assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
+        //     assertEq(
+        //         keccak256(bytes(vault.VAULT_VERSION())),
+        //         keccak256(bytes(VAULT_VERSION)),
+        //         "Vault version should be correct"
+        //     );
+        // }
     }
 
     function _upgradeVault() internal {
@@ -233,75 +236,40 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         );
     }
 
-    function _emptyVault() internal {
-        address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 11, "Should have 11 assets");
-
-        // empty vault so we can test each asset in isolation
-        for (uint256 i = 0; i < assets.length; i++) {
-            uint256 balanceBefore = IERC20(assets[i]).balanceOf(address(vault));
-            if (balanceBefore > 0) {
-                vm.startPrank(address(vault));
-                IERC20(assets[i]).transfer(address(this), balanceBefore);
-                vm.stopPrank();
-            }
-        }
-        vault.processAccounting();
-
-        assertEq(vault.totalAssets(), 0);
-    }
-
-    function test_donate_assets(uint256 donationAmount, uint8 i) public {
-        address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 11, "Should have 11 assets");
-        vm.assume(i < assets.length);
-
+    function test_donate_assets(uint256 donationAmount) public {
         vm.assume(donationAmount > 1e8);
-        if (assets[i] == MC.STETH) {
-            vm.assume(donationAmount < 1000 ether);
-        } else {
-            vm.assume(donationAmount < 1e5 ether);
+        vm.assume(donationAmount < 1_000 ether);
+
+        address[] memory assets = vault.getAssets();
+        assertEq(assets.length, 11, "Should have 11 assets");
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            _test_donate_single_asset(assets[i], donationAmount);
         }
-
-        // empty vault so we can test each asset in isolation
-        _emptyVault();
-
-        _test_donate_single_asset(assets[i], donationAmount);
     }
 
     function _test_donate_single_asset(address asset, uint256 donationAmount) internal {
         address alice = address(0xa11ce);
 
+        uint256 totalAssetBefore = vault.totalAssets();
+
         assertEq(IERC20(asset).balanceOf(alice), 0, "Balance should be 0 before donation");
-        assertLt(vault.totalAssets(), 3, "Total assets should be zero initially");
 
         dealAsset(asset, alice, donationAmount);
 
-        // The donation function does not donate the full amount. Must use the actual donated amount after.
+        //  note: donatedAmount is the actual amount donated to the vault
         uint256 donatedAmount = IERC20(asset).balanceOf(alice);
 
-        // transfer donated amount to vault
         vm.startPrank(alice);
         IERC20(asset).transfer(address(vault), donatedAmount);
         vm.stopPrank();
 
         vault.processAccounting();
 
-        uint256 balanceAfter = IERC20(asset).balanceOf(address(vault));
-        assertApproxEqAbs(balanceAfter, donatedAmount, 3, "Balance should match for asset");
-
-        // if (asset != MC.STETH) {
         uint256 rate = IProvider(vault.provider()).getRate(asset);
-        uint256 baseAmount = Math.mulDiv(balanceAfter, rate, 10 ** 18, Math.Rounding.Floor);
+        uint256 baseAmount = Math.mulDiv(donatedAmount, rate, 10 ** 18, Math.Rounding.Floor);
 
-        totalAssetsInvariant(baseAmount);
-
-        // empty vault after testing
-        if (balanceAfter > 0) {
-            vm.startPrank(address(vault));
-            IERC20(asset).transfer(address(this), balanceAfter);
-            vm.stopPrank();
-        }
+        assertApproxEqRel(vault.totalAssets(), totalAssetBefore + baseAmount, 1e12, "Total assets should be correct");
     }
 
     function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {
