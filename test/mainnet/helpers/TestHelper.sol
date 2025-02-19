@@ -130,4 +130,14 @@ contract TestHelper is Test {
             assets, finalVaultTotalAssets, "Vault totalAssets should be original totalAssets plus additional"
         );
     }
+
+    function dealMore(address receiver, uint256 amount) public {
+        // First deal ETH to an intermediate address
+        address intermediary = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp)))));
+        deal(intermediary, amount);
+
+        // Have intermediary send to final receiver
+        vm.prank(intermediary);
+        payable(receiver).transfer(amount);
+    }
 }

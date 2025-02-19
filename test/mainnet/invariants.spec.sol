@@ -616,7 +616,7 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         uint256 initialSupply = vault.totalSupply();
 
         {
-            deal(address(vault), amount);
+            dealMore(address(vault), amount);
 
             // convert ETH to WETH
             _processDepositWETH(amount);
@@ -704,7 +704,7 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         uint256 initialSupply = vault.totalSupply();
 
         {
-            deal(address(vault), amount);
+            dealMore(address(vault), amount);
 
             // convert ETH to WETH
             _processDepositWETH(amount);
@@ -715,19 +715,19 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             totalAssetsInvariant(initialAssets + amount);
         }
 
-        // initialAssets = vault.totalAssets();
-        // initialSupply = vault.totalSupply();
+        initialAssets = vault.totalAssets();
+        initialSupply = vault.totalSupply();
 
-        // {
-        //     // deposit WETH into EULER_WETH_22_VAULT (buffer)
-        //     _processApprove(MC.WETH, MC.EULER_WETH_22_VAULT, amount);
-        //     _processDeposit(MC.EULER_WETH_22_VAULT, amount);
+        {
+            // deposit WETH into EULER_WETH_22_VAULT (buffer)
+            _processApprove(MC.WETH, MC.EULER_WETH_22_VAULT, amount);
+            _processDeposit(MC.EULER_WETH_22_VAULT, amount);
 
-        //     vault.processAccounting();
+            vault.processAccounting();
 
-        //     totalSupplyInvariant(initialSupply);
-        //     totalAssetsInvariant(initialAssets);
-        // }
+            totalSupplyInvariant(initialSupply);
+            totalAssetsInvariant(initialAssets);
+        }
     }
 
     function test_Vault_4626Invariants_YNETH(uint256 amount) public {
