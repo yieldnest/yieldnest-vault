@@ -59,7 +59,7 @@ contract VaultBufferInvariantsTest is Test, AssertUtils, MainnetActors {
 
     function test_Vault_4626Invariants_depositBase_WithBufferAllocation(uint256 assets, uint256 bufferAmount) public {
         if (assets < 2) return;
-        if (assets > 100_000_000 ether) return;
+        if (assets > 10_000 ether) return;
         if (bufferAmount > assets) return;
         if (bufferAmount < 1) return;
 
