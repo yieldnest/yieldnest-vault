@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
@@ -17,14 +16,10 @@ contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
 
     function setUp() public {
-        SetupVault setup = new SetupVault();
-        setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
 
-        vm.startPrank(ADMIN);
-        setWethWithdrawRule();
-        setYnETHDepositETHRule();
-        vm.stopPrank();
+        // Process accounting to ensure vault is in sync
+        vault.processAccounting();
     }
 
     function allocateToBuffer(uint256 amount) public {

@@ -21,7 +21,7 @@ library RolesVerification {
         Vm vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
         bool hasRole = control.hasRole(role, account);
-        console.log(hasRole ? "\u2705" : "\u274C", message, account);
+        console.log(hasRole == expected ? "\u2705" : "\u274C", message, account);
         vm.assertEq(hasRole, expected, message);
     }
 

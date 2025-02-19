@@ -6,7 +6,6 @@ import {Vault} from "src/Vault.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IERC20} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Provider, IProvider} from "src/module/Provider.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
@@ -25,8 +24,6 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
     address public alice = address(0xa11c3);
 
     function setUp() public {
-        SetupVault setup = new SetupVault();
-        setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
         connector = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
 
@@ -48,6 +45,9 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         vm.startPrank(ADMIN);
         vault.grantRole(vault.PROCESSOR_ROLE(), address(this));
         vm.stopPrank();
+
+        // Process accounting to ensure vault is in sync
+        vault.processAccounting();
     }
 
     function test_processAccounting() public {

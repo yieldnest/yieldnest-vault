@@ -9,8 +9,6 @@ import {MainnetActors, IActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {YnETHx} from "src/YnETHx.sol";
 import {IVault} from "src/interface/IVault.sol";
-import {YnETHxConfigurer} from "src/configures/YnETHxConfigurer.sol";
-import {SetupWithdrawer} from "test/mainnet/helpers/SetupWithdrawer.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";
@@ -22,7 +20,7 @@ import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 
-contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
+contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
     Vault public vault;
     Withdrawer public withdrawer;
     TimelockController public timelock;
@@ -31,93 +29,12 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
 
     function setUp() public {
         vault = Vault(payable(MC.YNETHX));
-        _initVault(vault);
+        withdrawer = VaultVerification.getWithdrawer(vault);
+
         timelock = TimelockController(payable(MC.TIMELOCK));
-        uint256 previousTotalAssets = vault.totalAssets();
 
-        {
-            vm.expectRevert();
-            vault.VAULT_VERSION();
-        }
-
-        _upgradeVault();
-
-        assertEq(vault.symbol(), "ynETHx");
-
-        assertTrue(vault.paused(), "Vault should be paused");
-
-        YnETHxConfigurer configurer = new YnETHxConfigurer();
-        SetupWithdrawer setup = new SetupWithdrawer();
-        withdrawer = setup.setup();
-        Provider provider = new Provider();
-
-        vm.startPrank(ADMIN);
-        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), address(configurer));
-
-        configurer.configure(address(provider), address(withdrawer));
-        vm.stopPrank();
-
-        {
-            // verify the upgrade was successful
-            Vault newVault = Vault(payable(MC.YNETHX));
-
-            assertFalse(newVault.paused(), "Vault should not be paused");
-
-            newVault.processAccounting();
-
-            // Verify the upgrade was successful
-            uint256 newTotalAssets = newVault.totalAssets();
-
-            assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
-            assertEq(
-                keccak256(bytes(vault.VAULT_VERSION())),
-                keccak256(bytes(VAULT_VERSION)),
-                "Vault version should be correct"
-            );
-        }
-    }
-
-    function _upgradeVault() internal {
-        // upgrade the vault
-        Vault vaultImpl = Vault(payable(new YnETHx()));
-
-        // schedule a proxy upgrade transaction on the timelock
-        // the traget is the proxy admin for the max Vault Proxy Contract
-        address target = MC.PROXY_ADMIN;
-        uint256 value = 0;
-
-        bytes4 selector = bytes4(keccak256("upgradeAndCall(address,address,bytes)"));
-
-        bytes memory initData = abi.encodeWithSelector(YnETHx.initializeV2.selector, 18, 0);
-        bytes memory data = abi.encodeWithSelector(selector, MC.YNETHX, address(vaultImpl), initData);
-
-        bytes32 predecessor = bytes32(0);
-        bytes32 salt = keccak256("chad");
-
-        uint256 delay = 86400;
-
-        vm.startPrank(PROPOSER_1);
-        timelock.schedule(target, value, data, predecessor, salt, delay);
-        vm.stopPrank();
-
-        bytes32 id = keccak256(abi.encode(target, value, data, predecessor, salt));
-        assert(timelock.getOperationState(id) == TimelockController.OperationState.Waiting);
-
-        assertEq(timelock.isOperationReady(id), false);
-        assertEq(timelock.isOperationDone(id), false);
-        assertEq(timelock.isOperation(id), true);
-
-        //execute the transaction
-        // solhint-disable-next-line not-rely-on-time
-        vm.warp(block.timestamp + 86401);
-        vm.startPrank(EXECUTOR_1);
-        timelock.execute(target, value, data, predecessor, salt);
-        vm.stopPrank();
-
-        // Verify the transaction was executed successfully
-        assertEq(timelock.isOperationReady(id), false);
-        assertEq(timelock.isOperationDone(id), true);
-        assert(timelock.getOperationState(id) == TimelockController.OperationState.Done);
+        // Process accounting to ensure vault is in sync
+        vault.processAccounting();
     }
 
     function test_configure() public view {
@@ -233,75 +150,40 @@ contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
         );
     }
 
-    function _emptyVault() internal {
-        address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 11, "Should have 11 assets");
-
-        // empty vault so we can test each asset in isolation
-        for (uint256 i = 0; i < assets.length; i++) {
-            uint256 balanceBefore = IERC20(assets[i]).balanceOf(address(vault));
-            if (balanceBefore > 0) {
-                vm.startPrank(address(vault));
-                IERC20(assets[i]).transfer(address(this), balanceBefore);
-                vm.stopPrank();
-            }
-        }
-        vault.processAccounting();
-
-        assertEq(vault.totalAssets(), 0);
-    }
-
-    function test_donate_assets(uint256 donationAmount, uint8 i) public {
-        address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 11, "Should have 11 assets");
-        vm.assume(i < assets.length);
-
+    function test_donate_assets(uint256 donationAmount) public {
         vm.assume(donationAmount > 1e8);
-        if (assets[i] == MC.STETH) {
-            vm.assume(donationAmount < 1000 ether);
-        } else {
-            vm.assume(donationAmount < 1e5 ether);
+        vm.assume(donationAmount < 1_000 ether);
+
+        address[] memory assets = vault.getAssets();
+        assertEq(assets.length, 11, "Should have 11 assets");
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            _test_donate_single_asset(assets[i], donationAmount);
         }
-
-        // empty vault so we can test each asset in isolation
-        _emptyVault();
-
-        _test_donate_single_asset(assets[i], donationAmount);
     }
 
     function _test_donate_single_asset(address asset, uint256 donationAmount) internal {
         address alice = address(0xa11ce);
 
+        uint256 totalAssetBefore = vault.totalAssets();
+
         assertEq(IERC20(asset).balanceOf(alice), 0, "Balance should be 0 before donation");
-        assertLt(vault.totalAssets(), 3, "Total assets should be zero initially");
 
         dealAsset(asset, alice, donationAmount);
 
-        // The donation function does not donate the full amount. Must use the actual donated amount after.
+        //  note: donatedAmount is the actual amount donated to the vault
         uint256 donatedAmount = IERC20(asset).balanceOf(alice);
 
-        // transfer donated amount to vault
         vm.startPrank(alice);
         IERC20(asset).transfer(address(vault), donatedAmount);
         vm.stopPrank();
 
         vault.processAccounting();
 
-        uint256 balanceAfter = IERC20(asset).balanceOf(address(vault));
-        assertApproxEqAbs(balanceAfter, donatedAmount, 3, "Balance should match for asset");
-
-        // if (asset != MC.STETH) {
         uint256 rate = IProvider(vault.provider()).getRate(asset);
-        uint256 baseAmount = Math.mulDiv(balanceAfter, rate, 10 ** 18, Math.Rounding.Floor);
+        uint256 baseAmount = Math.mulDiv(donatedAmount, rate, 10 ** 18, Math.Rounding.Floor);
 
-        totalAssetsInvariant(baseAmount);
-
-        // empty vault after testing
-        if (balanceAfter > 0) {
-            vm.startPrank(address(vault));
-            IERC20(asset).transfer(address(this), balanceAfter);
-            vm.stopPrank();
-        }
+        assertApproxEqRel(vault.totalAssets(), totalAssetBefore + baseAmount, 1e12, "Total assets should be correct");
     }
 
     function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {

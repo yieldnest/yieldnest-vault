@@ -19,10 +19,24 @@ contract TestHelper is Test {
     function _initVault(BaseVault vault_) internal {
         _vault = vault_;
     }
+    /// @notice Deals assets to an account by converting ETH to the desired asset
+    /// @param asset The asset to deal
+    /// @param account The account to receive the asset
+    /// @param amount The amount of ETH to convert
+    /// @return The actual amount of asset received after conversion
 
     function dealAsset(address asset, address account, uint256 amount) internal returns (uint256) {
+        if (asset == MC.WETH) {
+            deal(account, amount);
+
+            vm.startPrank(account);
+            IWETH(MC.WETH).deposit{value: amount}();
+            vm.stopPrank();
+            return amount;
+        }
+
         if (asset == MC.OETH) {
-            deal(MC.WETH, account, amount);
+            dealAsset(MC.WETH, account, amount);
 
             vm.startPrank(account);
             IERC20(MC.WETH).approve(MC.OETH_VAULT, amount);
@@ -115,5 +129,15 @@ contract TestHelper is Test {
         customAssertEq(
             assets, finalVaultTotalAssets, "Vault totalAssets should be original totalAssets plus additional"
         );
+    }
+
+    function dealMore(address receiver, uint256 amount) public {
+        // First deal ETH to an intermediate address
+        address intermediary = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp)))));
+        deal(intermediary, amount);
+
+        // Have intermediary send to final receiver
+        vm.prank(intermediary);
+        payable(receiver).transfer(amount);
     }
 }

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {Vault} from "src/Vault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
@@ -10,6 +9,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {IERC20Metadata, Math} from "src/Common.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract VaultMainnetViewerTest is Test, MainnetActors {
     Vault public vault;
@@ -19,10 +19,21 @@ contract VaultMainnetViewerTest is Test, MainnetActors {
     function setUp() public {
         vault = Vault(payable(MC.YNETHX));
 
-        SetupVault setupVault = new SetupVault();
-        setupVault.upgrade();
+        viewer = deployViewer(vault);
+    }
 
-        viewer = setupVault.deployViewer(vault);
+    function deployViewer(Vault vault_) internal returns (MaxVaultViewer _viewer) {
+        MaxVaultViewer implementation = new MaxVaultViewer();
+
+        bytes memory initData =
+            abi.encodeWithSelector(MaxVaultViewer.initialize.selector, address(vault_), address(ADMIN));
+
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), ADMIN, initData);
+        _viewer = MaxVaultViewer(payable(address(proxy)));
+
+        vm.startPrank(ADMIN);
+        _viewer.grantRole(_viewer.UPDATER_ROLE(), ADMIN);
+        vm.stopPrank();
     }
 
     function test_Vault_Viewer_getVault() public view {

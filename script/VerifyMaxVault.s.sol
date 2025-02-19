@@ -20,14 +20,20 @@ contract VerifyMaxVault is BaseScript, Test {
     }
 
     function run() public {
-        _loadDeployment();
         _setup();
-
+        _loadDeployment();
+        assertNotEq(msg.sender, deployer, "msg.sender should not be deploye as this is a verifier script.");
         verify();
     }
 
     function verify() public view {
         assertNotEq(address(vault), address(0), "vault is not set");
+
+        console.log("==============================================");
+        console.log("=          VERIFYING VAULT SETUP            =");
+        console.log("==============================================");
+        console.log("Verifying vault at:       ", address(vault));
+        console.log("==============================================");
 
         assertEq(vault.name(), "ynETH MAX", "name is invalid");
         assertEq(vault.symbol(), "ynETHx", "symbol is invalid");
@@ -50,6 +56,12 @@ contract VerifyMaxVault is BaseScript, Test {
 
         // Get withdrawer from vault assets
         Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
+
+        console.log("==============================================");
+        console.log("=        VERIFYING WITHDRAWER SETUP         =");
+        console.log("==============================================");
+        console.log("Verifying withdrawer at:   ", address(withdrawer));
+        console.log("==============================================");
 
         // TODO: Add rest of assertions and verifications
         // Verify provider configuration
@@ -87,7 +99,8 @@ contract VerifyMaxVault is BaseScript, Test {
         // verify proxy roles
         RolesVerification.verifyProxyRoles(address(vault), vaultProxyAdmin, address(timelock));
         // verify viewer roles
-        RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.ADMIN());
+        // FIXME: TODO: reenable this once viewer is deployed
+        //RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.ADMIN());
 
         // verify timelock roles
         RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
@@ -96,14 +109,44 @@ contract VerifyMaxVault is BaseScript, Test {
         RolesVerification.verifyTemporaryRoles(vault, deployer);
         RolesVerification.verifyTemporaryRoles(withdrawer, deployer);
 
+        // FIXME: TODO: reenable this once viewer is deployed
         // verify viewer
-        VaultVerification.verifyViewer(viewer, vault);
-        assertTrue(
-            MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
+        // VaultVerification.verifyViewer(viewer, vault);
+        // assertTrue(
+        //     MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
+        // );
+
+        // Verify configurer does not have DEFAULT_ADMIN_ROLE
+        assertFalse(
+            vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B),
+            "Configurer should not have DEFAULT_ADMIN_ROLE"
+        );
+        console.log(
+            "\u2705 Configurer ROLE CHECK - should not have DEFAULT_ADMIN_ROLE: OK for 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B"
         );
 
         assertFalse(withdrawer.paused(), "Withdrawer should not be paused");
         assertFalse(vault.paused(), "Vault should not be paused");
+
+        console.log("==============================================");
+        console.log("MANUAL VERIFICATION REQUIRED");
+        console.log("==============================================");
+        console.log("Verify total assets and vault rate are reasonable:");
+        console.log("- Total assets should be the same as the previous total assets");
+        console.log("- Vault rate should be the same as the previous vault rate (vault.convertToAssets(1e18)");
+        console.log("==============================================");
+
+        console.log("==============================================");
+        console.log("TOTAL ASSETS AND VAULT RATE:");
+        console.log("==============================================");
+
+        uint256 totalAssets = vault.totalAssets();
+        console.log("Total assets:", totalAssets);
+
+        // Print rate by converting 1e18 shares to assets
+        uint256 oneShare = 1e18;
+        uint256 assetAmount = vault.convertToAssets(oneShare);
+        console.log("Vault rate (1 share in assets):", assetAmount);
     }
 
     function _checkForAsset(address asset) internal view returns (bool isIncluded, uint256 index) {

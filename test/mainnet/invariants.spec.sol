@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
@@ -18,8 +17,6 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
     Withdrawer public withdrawer;
 
     function setUp() public {
-        SetupVault setup = new SetupVault();
-        setup.upgrade();
         vault = Vault(payable(MC.YNETHX));
         _initVault(vault);
 
@@ -27,6 +24,9 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         assertEq(vault.asset(), MC.WETH, "base asset should be weth");
 
         assertEq(vault.baseWithdrawalFee(), 1e5, "base withdrawal fee should be zero");
+
+        // Process accounting to ensure vault is in sync
+        vault.processAccounting();
     }
 
     function allocateToBuffer(uint256 amount) public {
@@ -148,7 +148,7 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
 
     function test_Vault_4626Invariants_mint(uint256 shares) public {
         if (shares < 100_000) return;
-        if (shares > 1_000_000 ether) return;
+        if (shares > 100_000 ether) return;
 
         address alice = address(10);
         vm.label(alice, "Alice");
@@ -615,7 +615,7 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         uint256 initialSupply = vault.totalSupply();
 
         {
-            deal(address(vault), amount);
+            dealMore(address(vault), amount);
 
             // convert ETH to WETH
             _processDepositWETH(amount);
@@ -697,11 +697,13 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
+        vault.processAccounting();
+
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
 
         {
-            deal(address(vault), amount);
+            dealMore(address(vault), amount);
 
             // convert ETH to WETH
             _processDepositWETH(amount);

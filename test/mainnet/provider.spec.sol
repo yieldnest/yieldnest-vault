@@ -10,6 +10,7 @@ import {IStETH, IMETH, IRETH, IynLSDe} from "src/interface/IProvider.sol";
 import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "src/Common.sol";
+import {Vault} from "src/Vault.sol";
 
 import {IswETH, IsfrxETH, IFrxEthWethDualOracle, ICurveLpConnector} from "src/interface/IProvider.sol";
 
@@ -17,10 +18,12 @@ contract ProviderTest is Test, Etches {
     Provider public provider;
     address public admin = makeAddr("admin");
     MockStrategy public mockStrategy;
+    Vault public vault;
 
     function setUp() public {
-        provider = new Provider();
-        mockBuffer();
+        vault = Vault(payable(MC.YNETHX));
+        provider = Provider(vault.provider());
+
         MockStrategy implementation = new MockStrategy();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), admin, "");
         mockStrategy = MockStrategy(payable(address(proxy)));
@@ -72,8 +75,8 @@ contract ProviderTest is Test, Etches {
     }
 
     function test_Provider_GetRateBUFFER() public view {
-        uint256 expectedRate = IERC4626(MC.BUFFER).convertToAssets(1e18);
-        uint256 rate = provider.getRate(MC.BUFFER);
+        uint256 expectedRate = IERC4626(vault.buffer()).convertToAssets(1e18);
+        uint256 rate = provider.getRate(vault.buffer());
         assertEq(rate, expectedRate, "Rate for BUFFER should match the convertToAssets rate");
     }
 
