@@ -22,7 +22,7 @@ import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 
-contract VaultConfigureUpgradeTest is TestHelper, MainnetActors {
+contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
     Vault public vault;
     Withdrawer public withdrawer;
     TimelockController public timelock;
