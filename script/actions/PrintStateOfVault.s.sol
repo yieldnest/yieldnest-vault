@@ -6,9 +6,11 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Vault} from "src/Vault.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {IERC20} from "src/Common.sol";
+import {Provider} from "src/module/Provider.sol";
 
 contract PrintStateOfVault is Script {
     function logEthValue(string memory label, uint256 value) internal view {
+        console.log("  Wei:  ", value);
         uint256 eth = value / 1e18;
         uint256 decimals = value % 1e18;
         string memory decimalStr = vm.toString(decimals);
@@ -24,37 +26,40 @@ contract PrintStateOfVault is Script {
     function run() external {
         // Get vault instance
         Vault vault = Vault(payable(MC.YNETHX));
-        
+
         // Get key metrics
         uint256 totalAssets = vault.totalAssets();
         uint256 totalSupply = vault.totalSupply();
         uint256 oneShareInAssets = vault.convertToAssets(1e18);
-        
+
         // Get buffer balance
         address buffer = vault.buffer();
         uint256 bufferBalance = IERC20(buffer).balanceOf(address(vault));
         // Convert buffer balance to ETH amount using provider
-        uint256 bufferBalanceInEth = vault.convertToAssets(bufferBalance);
-        
+        uint256 bufferBalanceInEth = bufferBalance * Provider(vault.provider()).getRate(buffer) / 1e18;
+
         // Print results
         console.log("\n=== Vault State ===\n");
         console.log("Total Assets");
-        console.log("  Wei:  ", totalAssets);
         logEthValue("Total Assets", totalAssets);
         console.log("");
 
         console.log("Total Supply");
-        console.log("  Wei:  ", totalSupply);
+        logEthValue("Total Supply", totalSupply);
         console.log("");
 
         console.log("Share Price");
-        console.log("  Wei:  ", oneShareInAssets);
         logEthValue("Share Price", oneShareInAssets);
         console.log("");
 
-        console.log("Buffer Balance");
-        console.log("  Wei:  ", bufferBalance);
-        logEthValue("Buffer Balance", bufferBalanceInEth);
+        console.log("Buffer ETH Value");
+        logEthValue("Buffer ETH Value", bufferBalanceInEth);
         console.log("\n==================\n");
+
+        // Get WETH balance
+        uint256 wethBalance = IERC20(MC.WETH).balanceOf(address(vault));
+        console.log("\nWETH Balance");
+        logEthValue("WETH Balance", wethBalance);
+        console.log("");
     }
 }

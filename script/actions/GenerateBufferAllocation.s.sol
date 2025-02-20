@@ -6,7 +6,6 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Vault} from "src/Vault.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
-
 contract GenerateBufferAllocation is Script {
     function run() external {
         // Get vault instance to access buffer address
@@ -18,8 +17,8 @@ contract GenerateBufferAllocation is Script {
 
         // Generate targets array
         address[] memory targets = new address[](2);
-        targets[0] = MC.WETH;        // WETH contract for approval
-        targets[1] = buffer;         // Buffer contract for deposit
+        targets[0] = MC.WETH; // WETH contract for approval
+        targets[1] = buffer; // Buffer contract for deposit
 
         // Generate values array (no ETH sent with calls)
         uint256[] memory values = new uint256[](2);
@@ -28,24 +27,12 @@ contract GenerateBufferAllocation is Script {
 
         // Generate calldata array
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature(
-            "approve(address,uint256)",
-            buffer,
-            amount
-        );
-        data[1] = abi.encodeWithSignature(
-            "deposit(uint256,address)",
-            amount,
-            address(vault)
-        );
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", buffer, amount);
+        data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
 
         // Print out the encoded processor call
-        bytes memory processorCall = abi.encodeWithSignature(
-            "processor(address[],uint256[],bytes[])",
-            targets,
-            values,
-            data
-        );
+        bytes memory processorCall =
+            abi.encodeWithSignature("processor(address[],uint256[],bytes[])", targets, values, data);
 
         console.logBytes(processorCall);
     }
