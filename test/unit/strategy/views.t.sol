@@ -10,11 +10,13 @@ import {Math} from "src/Common.sol";
 import {IERC20, IERC20Metadata} from "src/Common.sol";
 import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {MainnetActors} from "script/Actors.sol";
+import {SetupStrategy} from "test/unit/helpers/SetupStrategy.sol";
 
-contract StrategyViewsUnitTest is Test, Etches {
+contract StrategyViewsUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
 
-    MockStrategy public mockStrategy;
+    MockStrategy public strategy;
     MockProvider public provider;
     WETH9 public weth;
 
@@ -22,31 +24,8 @@ contract StrategyViewsUnitTest is Test, Etches {
     uint256 public constant INITIAL_BALANCE = 100_000 ether;
 
     function setUp() public {
-        weth = WETH9(payable(MC.WETH));
-        mockWETH9();
-        provider = new MockProvider();
-        provider.setRate(address(weth), 1e18);
-
-        MockStrategy implementation = new MockStrategy();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
-
-        mockStrategy = MockStrategy(payable(address(proxy)));
-        mockStrategy.initialize("Mock Strategy", "MS", address(this), true);
-
-        mockStrategy.grantRole(mockStrategy.ALLOCATOR_MANAGER_ROLE(), address(this));
-        mockStrategy.grantRole(mockStrategy.ALLOCATOR_ROLE(), address(this));
-        mockStrategy.grantRole(mockStrategy.ASSET_MANAGER_ROLE(), address(this));
-        mockStrategy.grantRole(mockStrategy.PROVIDER_MANAGER_ROLE(), address(this));
-
-        mockStrategy.setProvider(address(provider));
-
-        // Add WETH as an asset to the strategy
-        mockStrategy.addAsset(
-            address(weth), // asset
-            18, // decimals
-            true, // depositable
-            true // withdrawable
-        );
+        SetupStrategy setupStrategy = new SetupStrategy();
+        (strategy, weth) = setupStrategy.setup();
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
@@ -55,36 +34,42 @@ contract StrategyViewsUnitTest is Test, Etches {
 
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
-        weth.approve(address(mockStrategy), type(uint256).max);
+        weth.approve(address(strategy), type(uint256).max);
     }
 
     function test_Strategy_GetHasAllocator() public {
-        mockStrategy.setHasAllocator(true);
-        assertEq(mockStrategy.getHasAllocator(), true, "Mock strategy should have allocators");
+        vm.prank(ALLOCATOR_MANAGER);
+        strategy.setHasAllocator(true);
+        assertEq(strategy.getHasAllocator(), true, "Mock strategy should have allocators");
     }
 
     function test_Strategy_GetAssetWithdrawable() public {
-        mockStrategy.setAssetWithdrawable(MC.WETH, true);
-        assertEq(mockStrategy.getAssetWithdrawable(MC.WETH), true, "Mock strategy should have WETH withdrawable");
+        vm.prank(ASSET_MANAGER);
+        strategy.setAssetWithdrawable(MC.WETH, true);
+        assertEq(strategy.getAssetWithdrawable(MC.WETH), true, "Mock strategy should have WETH withdrawable");
     }
 
     function test_Strategy_MaxRedeem() public {
-        assertEq(mockStrategy.maxRedeem(address(alice)), 0, "Alice should have max redeem of 0");
+        assertEq(strategy.maxRedeem(address(alice)), 0, "Alice should have max redeem of 0");
         vm.prank(alice);
-        mockStrategy.deposit(INITIAL_BALANCE, alice);
+        strategy.deposit(INITIAL_BALANCE, alice);
         assertEq(
-            mockStrategy.maxRedeem(address(alice)),
-            INITIAL_BALANCE,
-            "Alice should have max redeem of INITIAL_BALANCE WETH"
+            strategy.maxRedeem(address(alice)), INITIAL_BALANCE, "Alice should have max redeem of INITIAL_BALANCE WETH"
         );
     }
 
+    function test_Stategy_MaxRedeem_Paused() public {
+        vm.prank(PAUSER);
+        strategy.pause();
+        assertEq(strategy.maxRedeem(address(alice)), 0, "Paused  should have max redeem of 0");
+    }
+
     function test_Strategy_MaxWithdraw() public {
-        assertEq(mockStrategy.maxWithdraw(address(alice)), 0, "Alice should have max withdraw of 0");
+        assertEq(strategy.maxWithdraw(address(alice)), 0, "Alice should have max withdraw of 0");
         vm.prank(alice);
-        mockStrategy.deposit(INITIAL_BALANCE, alice);
+        strategy.deposit(INITIAL_BALANCE, alice);
         assertEq(
-            mockStrategy.maxWithdraw(address(alice)),
+            strategy.maxWithdraw(address(alice)),
             INITIAL_BALANCE,
             "Alice should have max withdraw of INITIAL_BALANCE WETH"
         );
@@ -92,7 +77,7 @@ contract StrategyViewsUnitTest is Test, Etches {
 
     function test_Strategy_PreviewMintAsset() public {
         assertEq(
-            mockStrategy.previewMintAsset(address(weth), INITIAL_BALANCE),
+            strategy.previewMintAsset(address(weth), INITIAL_BALANCE),
             INITIAL_BALANCE,
             "Alice should have preview mint of INITIAL_BALANCE WETH"
         );
