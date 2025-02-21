@@ -17,7 +17,6 @@ contract StrategyViewsUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
 
     MockStrategy public strategy;
-    MockProvider public provider;
     WETH9 public weth;
 
     address public alice = address(0x1);
