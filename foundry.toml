@@ -19,6 +19,7 @@ src = "src"
 out = "out"
 libs = ["lib"]
 test = "test/mainnet"
+fork_block_number=21892735
 eth_rpc_url = "eth_mainnet"
 evm_version = "cancun"
 solc_version = "0.8.24"
