@@ -5,11 +5,12 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
-import {IERC20} from "src/Common.sol";
+import {IERC20, Math} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 
@@ -37,7 +38,7 @@ contract VaultBufferInvariantsTest is Test, AssertUtils, MainnetActors {
         );
     }
 
-    function allocateToBuffer(uint256 amount) public {
+    function allocateToBuffer(uint256 amount) public returns (uint256 bufferShares) {
         address[] memory targets = new address[](2);
         targets[0] = MC.WETH;
         targets[1] = vault.buffer();
@@ -51,18 +52,18 @@ contract VaultBufferInvariantsTest is Test, AssertUtils, MainnetActors {
         data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
 
         vm.prank(PROCESSOR);
-        vault.processor(targets, values, data);
+        bytes[] memory returnData = vault.processor(targets, values, data);
+
+        bufferShares = abi.decode(returnData[1], (uint256));
 
         vault.processAccounting();
     }
 
-    function skip_test_Vault_4626Invariants_depositBase_WithBufferAllocation(uint256 assets, uint256 bufferAmount)
-        public
-    {
-        if (assets < 2) return;
-        if (assets > 10_000 ether) return;
-        if (bufferAmount > assets) return;
-        if (bufferAmount < 1) return;
+    function test_Vault_4626Invariants_depositBase_WithBufferAllocation(uint256 assets, uint256 bufferAmount) public {
+        vm.assume(assets > 1000_000);
+        vm.assume(assets < 100_000 ether);
+        vm.assume(bufferAmount < assets);
+        vm.assume(bufferAmount > 1000_000);
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
@@ -102,22 +103,37 @@ contract VaultBufferInvariantsTest is Test, AssertUtils, MainnetActors {
             assertEq(depositedShares, shares, "Deposited shares should equal the converted shares");
         }
 
+        vault.processAccounting();
+
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
 
+        initialAssets = vault.totalAssets();
+        initialSupply = vault.totalSupply();
+
+        uint256 bufferShares;
         {
             // allocate to buffer
             uint256 balanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
             uint256 bufferBefore = IERC20(MC.WETH).balanceOf(vault.buffer());
-            allocateToBuffer(bufferAmount);
+
+            bufferShares = allocateToBuffer(bufferAmount);
+
             uint256 balanceAfter = IERC20(MC.WETH).balanceOf(address(vault));
             uint256 bufferAfter = IERC20(MC.WETH).balanceOf(vault.buffer());
             assertEq(balanceBefore - balanceAfter, bufferAmount, "WETH balance should decrease by buffer amount");
             assertEq(bufferAfter - bufferBefore, bufferAmount, "Buffer balance should increase by buffer amount");
         }
 
-        totalSupplyInvariant(initialSupply + shares);
-        totalAssetsInvariant(initialAssets + assets);
+        assertGt(bufferShares, 0, "Buffer shares should be greater than 0");
+
+        uint256 bufferRate = IProvider(vault.provider()).getRate(vault.buffer());
+        uint256 bufferAssets = Math.mulDiv(bufferShares, bufferRate, 1e18, Math.Rounding.Floor);
+
+        assertApproxEqRel(bufferAssets, bufferAmount, 1e12, "Buffer assets should equal buffer amount");
+
+        totalSupplyInvariant(initialSupply);
+        totalAssetsInvariant(initialAssets - bufferAmount + bufferAssets);
     }
 
     function testDonationToBuffer_withoutBufferAllocation() public {

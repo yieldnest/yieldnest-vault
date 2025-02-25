@@ -7,7 +7,6 @@ import {Vault} from "src/Vault.sol";
 import {TimelockController, IERC20, Math} from "src/Common.sol";
 import {MainnetActors, IActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {YnETHx} from "src/YnETHx.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";

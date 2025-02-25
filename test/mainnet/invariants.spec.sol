@@ -693,9 +693,11 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         }
     }
 
-    function test_Vault_4626Invariants_Buffer(uint256 amount) public {
+    function test_Vault_4626Invariants_Buffer(uint256 amount, bool processAfterWETH, bool processAfterBuffer) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
+
+        deal(address(vault), amount);
 
         vault.processAccounting();
 
@@ -703,15 +705,15 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         uint256 initialSupply = vault.totalSupply();
 
         {
-            dealMore(address(vault), amount);
-
             // convert ETH to WETH
             _processDepositWETH(amount);
 
-            vault.processAccounting();
+            if (processAfterWETH) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets + amount);
+            totalAssetsInvariant(initialAssets);
         }
 
         initialAssets = vault.totalAssets();
@@ -722,14 +724,16 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             _processApprove(MC.WETH, MC.EULER_WETH_22_VAULT, amount);
             _processDeposit(MC.EULER_WETH_22_VAULT, amount);
 
-            vault.processAccounting();
+            if (processAfterBuffer) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
         }
     }
 
-    function test_Vault_4626Invariants_YNETH(uint256 amount) public {
+    function test_Vault_4626Invariants_YNETH(uint256 amount, bool process) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
@@ -744,14 +748,21 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             // convert ETH to YNETH
             _processYnETHDepositETH(amount);
 
-            vault.processAccounting();
+            if (process) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
         }
     }
 
-    function test_Vault_4626Invariants_YNLSDE_WSTETH(uint256 amount) public {
+    function test_Vault_4626Invariants_YNLSDE_WSTETH(
+        uint256 amount,
+        bool processAfterWETH,
+        bool processAfterWSTETH,
+        bool processAfterYnLSDE
+    ) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
@@ -773,7 +784,9 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             // convert WETH to ETH
             _processWithdrawWETH(amount);
 
-            vault.processAccounting();
+            if (processAfterWETH) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
@@ -788,7 +801,9 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             _processApprove(MC.STETH, MC.WSTETH, amountSTETH);
             amountWSTETH = _processWrapSTETH(amountSTETH);
 
-            vault.processAccounting();
+            if (processAfterWSTETH) {
+                vault.processAccounting();
+            }
 
             assertEq(
                 IERC20(MC.WSTETH).balanceOf(address(vault)),
@@ -805,14 +820,18 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             _processApprove(MC.WSTETH, MC.YNLSDE, amountWSTETH);
             _processYnEigenDeposit(MC.YNLSDE, MC.WSTETH, amountWSTETH);
 
-            vault.processAccounting();
+            if (processAfterYnLSDE) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
         }
     }
 
-    function test_Vault_4626Invariants_YNLSDE_WOETH(uint256 amount) public {
+    function test_Vault_4626Invariants_YNLSDE_WOETH(uint256 amount, bool processAfterWOETH, bool processAfterYnLSDE)
+        public
+    {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
@@ -840,7 +859,9 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             _processApprove(MC.OETH, MC.WOETH, amount);
             amountWOETH = _processDeposit(MC.WOETH, amount);
 
-            vault.processAccounting();
+            if (processAfterWOETH) {
+                vault.processAccounting();
+            }
 
             assertEq(
                 IERC20(MC.WOETH).balanceOf(address(vault)),
@@ -857,14 +878,22 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             _processApprove(MC.WOETH, MC.YNLSDE, amountWOETH);
             _processYnEigenDeposit(MC.YNLSDE, MC.WOETH, amountWOETH);
 
-            vault.processAccounting();
+            if (processAfterYnLSDE) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
         }
     }
 
-    function test_Vault_4626Invariants_WOETH(uint256 amount) public {
+    function test_Vault_4626Invariants_WOETH(
+        uint256 amount,
+        bool processAfterFirstDeposit,
+        bool processAfterRedeem,
+        bool processAfterSecondDeposit,
+        bool processAfterWithdraw
+    ) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
@@ -892,7 +921,9 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             _processApprove(MC.OETH, MC.WOETH, amount);
             amountWOETH = _processDeposit(MC.WOETH, amount);
 
-            vault.processAccounting();
+            if (processAfterFirstDeposit) {
+                vault.processAccounting();
+            }
 
             assertEq(
                 IERC20(MC.WOETH).balanceOf(address(vault)),
@@ -909,7 +940,9 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             // unwrap woETH
             receivedOETH = _processRedeem(MC.WOETH, amountWOETH);
 
-            vault.processAccounting();
+            if (processAfterRedeem) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
@@ -921,7 +954,9 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             _processApprove(MC.OETH, MC.WOETH, receivedOETH);
             amountWOETH = _processDeposit(MC.WOETH, receivedOETH);
 
-            vault.processAccounting();
+            if (processAfterSecondDeposit) {
+                vault.processAccounting();
+            }
 
             assertEq(
                 IERC20(MC.WOETH).balanceOf(address(vault)),
@@ -937,14 +972,21 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             uint256 maxWithdraw = IERC4626(MC.WOETH).maxWithdraw(address(vault));
             _processWithdraw(MC.WOETH, maxWithdraw);
 
-            vault.processAccounting();
+            if (processAfterWithdraw) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
         }
     }
 
-    function test_Vault_4626Invariants_Wrap_Unwrap_WSTETH(uint256 amount) public {
+    function test_Vault_4626Invariants_Wrap_Unwrap_WSTETH(
+        uint256 amount,
+        bool processAfterWETH,
+        bool processAfterWrap,
+        bool processAfterUnwrap
+    ) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
@@ -966,7 +1008,9 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             // convert WETH to ETH
             _processWithdrawWETH(amount);
 
-            vault.processAccounting();
+            if (processAfterWETH) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
@@ -981,7 +1025,9 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             _processApprove(MC.STETH, MC.WSTETH, amountSTETH);
             amountWSTETH = _processWrapSTETH(amountSTETH);
 
-            vault.processAccounting();
+            if (processAfterWrap) {
+                vault.processAccounting();
+            }
 
             assertEq(
                 IERC20(MC.WSTETH).balanceOf(address(vault)),
@@ -997,14 +1043,16 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             // unwrap wstETH
             _processUnwrapWSTETH(amountWSTETH);
 
-            vault.processAccounting();
+            if (processAfterUnwrap) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
         }
     }
 
-    function test_Vault_4626Invariants_Withdrawer_Deposit(uint256 amount, uint8 i) public {
+    function test_Vault_4626Invariants_Withdrawer_Deposit(uint256 amount, uint8 i, bool process) public {
         vm.assume(amount > 1e8);
         vm.assume(amount < 1e5 ether);
 
@@ -1042,14 +1090,22 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         _processApprove(assets[i], address(withdrawer), donatedAmount);
         _processDepositAsset(address(withdrawer), assets[i], donatedAmount);
 
-        withdrawer.processAccounting();
-        vault.processAccounting();
+        if (process) {
+            withdrawer.processAccounting();
+            vault.processAccounting();
+        }
 
         totalSupplyInvariant(initialSupply);
         totalAssetsInvariant(initialAssets);
     }
 
-    function test_Vault_4626Invariants_Withdrawer_Withdraw(uint256 amount) public {
+    function test_Vault_4626Invariants_Withdrawer_Withdraw(
+        uint256 amount,
+        bool processAfterDeposit,
+        bool processAfterWithdraw,
+        bool processAfterSecondDeposit,
+        bool processAfterWithdrawAsset
+    ) public {
         vm.assume(amount > 10000);
         vm.assume(amount < 100_000 ether);
 
@@ -1074,8 +1130,10 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             _processApprove(MC.WETH, address(withdrawer), amount);
             _processDepositAsset(address(withdrawer), MC.WETH, amount);
 
-            withdrawer.processAccounting();
-            vault.processAccounting();
+            if (processAfterDeposit) {
+                withdrawer.processAccounting();
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
@@ -1084,7 +1142,9 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         {
             _processWithdraw(address(withdrawer), amount);
 
-            vault.processAccounting();
+            if (processAfterWithdraw) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
@@ -1094,8 +1154,10 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             _processApprove(MC.WETH, address(withdrawer), amount);
             _processDepositAsset(address(withdrawer), MC.WETH, amount);
 
-            withdrawer.processAccounting();
-            vault.processAccounting();
+            if (processAfterSecondDeposit) {
+                withdrawer.processAccounting();
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
@@ -1104,7 +1166,9 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         {
             _processWithdrawAsset(address(withdrawer), MC.WETH, amount);
 
-            vault.processAccounting();
+            if (processAfterWithdrawAsset) {
+                vault.processAccounting();
+            }
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
