@@ -61,5 +61,23 @@ contract PrintStateOfVault is Script {
         console.log("\nWETH Balance");
         logEthValue("WETH Balance", wethBalance);
         console.log("");
+
+        // Get LP token balance
+        uint256 lpBalance = IERC20(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY).balanceOf(address(vault));
+        console.log("\nLP Token Balance");
+        logEthValue("LP Token Balance", lpBalance);
+        console.log("");
+
+        // Get ynETH balance
+        uint256 ynethBalance = IERC20(MC.YNETH).balanceOf(address(vault));
+        console.log("\nynETH Balance");
+        logEthValue("ynETH Balance", ynethBalance);
+        console.log("");
+
+        // Get ynLSDe balance
+        uint256 ynlsdeBalance = IERC20(MC.YNLSDE).balanceOf(address(vault));
+        console.log("\nynLSDe Balance");
+        logEthValue("ynLSDe Balance", ynlsdeBalance);
+        console.log("");
     }
 }
