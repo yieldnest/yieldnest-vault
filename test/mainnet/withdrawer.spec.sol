@@ -296,6 +296,8 @@ contract WithdrawerMainnetTest is TestHelper, MainnetActors {
         tokenIds[0] = tokenId;
         vault.claimWithdrawalsWOETH(tokenIds);
 
+        vault.processAccounting();
+
         totalAssetsInvariant(totalAssets);
 
         uint256 assets = vault.asyncWithdrawalBalance(asset_);
@@ -366,6 +368,8 @@ contract WithdrawerMainnetTest is TestHelper, MainnetActors {
 
         _processClaimWithdrawalWstETH(vault, MC.WSTETH_WITHDRAWAL_QUEUE, tokenId);
 
+        vault.processAccounting();
+
         totalAssetsInvariant(totalAssets);
 
         uint256 assets = vault.asyncWithdrawalBalance(asset_);
@@ -410,6 +414,8 @@ contract WithdrawerMainnetTest is TestHelper, MainnetActors {
         vm.stopPrank();
 
         _processClaimWithdrawal(vault, queueManager_, tokenId);
+
+        vault.processAccounting();
 
         totalAssetsInvariant(totalAssets);
 

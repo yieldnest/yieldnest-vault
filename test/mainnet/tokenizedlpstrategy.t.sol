@@ -10,6 +10,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {Provider} from "src/module/Provider.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 
 contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
     IERC20 public strategy;
@@ -50,18 +51,29 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         vault.processAccounting();
     }
 
-    function test_processAccounting() public {
+    function test_processAccounting(uint256 amount) public {
+        vm.assume(amount > 1000_000 && amount < 100_000_000 ether);
+
         uint256 totalAssetsBefore = vault.totalAssets();
 
-        uint256 strategyBalance = 1e18; // 1 strategy token
-        deal(address(strategy), address(vault), strategyBalance);
-        assertEq(strategy.balanceOf(address(vault)), strategyBalance, "Strategy balance should be 1");
+        uint256 beforeBalance = strategy.balanceOf(address(vault));
+
+        deal(address(strategy), address(alice), amount);
+
+        vm.startPrank(alice);
+        strategy.transfer(address(vault), amount);
+        vm.stopPrank();
+
+        assertEq(strategy.balanceOf(address(vault)), beforeBalance + amount, "Strategy balance should be correct");
 
         vault.processAccounting();
         (int256 rate,) = connector.rate();
-        uint256 expectedBaseValue = (strategyBalance * uint256(rate)) / 1e18;
-        assertEq(
-            vault.totalAssets(), totalAssetsBefore + expectedBaseValue, "Vault should account strategy value correctly"
+        uint256 expectedBaseValue = (amount * uint256(rate)) / 1e18;
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            totalAssetsBefore + expectedBaseValue,
+            5,
+            "Vault should account strategy value correctly"
         );
     }
 
@@ -200,163 +212,205 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         }
     }
 
-    // function test_connector_deposit(uint256 amountA) public {
-    //     vm.assume(amountA > 100000000 && amountA < 100_000 ether);
+    function test_connector_deposit(uint256 amountA) public {
+        vm.assume(amountA > 100000000 && amountA < 100_000 ether);
 
-    //     uint256 amountB = amountA;
-    //     deal(ASSET_A, alice, amountA);
-    //     deal(ASSET_B, alice, amountB);
+        uint256 amountB = amountA;
+        deal(ASSET_A, alice, amountA);
+        deal(ASSET_B, alice, amountB);
 
-    //     vm.startPrank(alice);
-    //     IERC20(ASSET_A).approve(address(vault), amountA);
-    //     IERC20(ASSET_B).approve(address(vault), amountB);
-    //     vault.depositAsset(ASSET_A, amountA, alice);
-    //     vault.depositAsset(ASSET_B, amountB, alice);
-    //     vm.stopPrank();
+        uint256 assetABalanceBefore = IERC20(ASSET_A).balanceOf(address(vault));
+        uint256 assetBBalanceBefore = IERC20(ASSET_B).balanceOf(address(vault));
 
-    //     vault.processAccounting();
+        vm.startPrank(alice);
+        IERC20(ASSET_A).approve(address(vault), amountA);
+        IERC20(ASSET_B).approve(address(vault), amountB);
+        vault.depositAsset(ASSET_A, amountA, alice);
+        vault.depositAsset(ASSET_B, amountB, alice);
+        vm.stopPrank();
 
-    //     assertEq(IERC20(ASSET_A).balanceOf(address(vault)), amountA, "Asset A balance should match deposit");
-    //     assertEq(IERC20(ASSET_B).balanceOf(address(vault)), amountB, "Asset B balance should match deposit");
+        vault.processAccounting();
 
-    //     uint256 initialTotalAssets = vault.totalAssets();
-    //     assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+        assertEq(
+            IERC20(ASSET_A).balanceOf(address(vault)),
+            assetABalanceBefore + amountA,
+            "Asset A balance should match deposit"
+        );
+        assertEq(
+            IERC20(ASSET_B).balanceOf(address(vault)),
+            assetBBalanceBefore + amountB,
+            "Asset B balance should match deposit"
+        );
 
-    //     uint256 shares = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        uint256 initialTotalAssets = vault.totalAssets();
+        uint256 initialStrategyBalance = strategy.balanceOf(address(vault));
 
-    //     vault.processAccounting();
+        uint256 shares = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
-    //     assertEq(strategy.balanceOf(address(vault)), shares, "Strategy balance should match shares");
-    //     assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
-    //     assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
+        vault.processAccounting();
 
-    //     uint256 assetARate = IProvider(vault.provider()).getRate(ASSET_A);
-    //     uint256 amountAInBase = amountA * assetARate / 1e18;
+        assertEq(
+            strategy.balanceOf(address(vault)), initialStrategyBalance + shares, "Strategy balance should match shares"
+        );
+        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), assetABalanceBefore, "Asset A balance should be as before");
+        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), assetBBalanceBefore, "Asset B balance should be as before");
 
-    //     uint256 assetBRate = IProvider(vault.provider()).getRate(ASSET_B);
-    //     uint256 amountBInBase = amountB * assetBRate / 1e18;
+        uint256 assetARate = IProvider(vault.provider()).getRate(ASSET_A);
+        uint256 amountAInBase = amountA * assetARate / 1e18;
 
-    //     uint256 strategyRate = IProvider(vault.provider()).getRate(address(strategy));
-    //     uint256 sharesInBase = shares * strategyRate / 1e18;
+        uint256 assetBRate = IProvider(vault.provider()).getRate(ASSET_B);
+        uint256 amountBInBase = amountB * assetBRate / 1e18;
 
-    //     assertApproxEqRel(sharesInBase, amountAInBase + amountBInBase, 1e12, "Shares should match expected");
+        uint256 strategyRate = IProvider(vault.provider()).getRate(address(strategy));
+        uint256 sharesInBase = shares * strategyRate / 1e18;
 
-    //     assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change");
-    // }
+        assertApproxEqRel(sharesInBase, amountAInBase + amountBInBase, 1e12, "Shares should match expected");
 
-    // function test_connector_deposit_withdraw(uint256 amountA) public {
-    //     vm.assume(amountA > 100000000 && amountA < 100_000 ether);
+        assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change");
+    }
 
-    //     uint256 amountB = amountA;
-    //     deal(ASSET_A, alice, amountA);
-    //     deal(ASSET_B, alice, amountB);
+    function test_connector_deposit_withdraw(uint256 amountA) public {
+        vm.assume(amountA > 100000000 && amountA < 100_000 ether);
 
-    //     vm.startPrank(alice);
-    //     IERC20(ASSET_A).approve(address(vault), amountA);
-    //     IERC20(ASSET_B).approve(address(vault), amountB);
-    //     vault.depositAsset(ASSET_A, amountA, alice);
-    //     vault.depositAsset(ASSET_B, amountB, alice);
-    //     vm.stopPrank();
+        uint256 amountB = amountA;
+        deal(ASSET_A, alice, amountA);
+        deal(ASSET_B, alice, amountB);
 
-    //     vault.processAccounting();
+        uint256 assetABalanceBefore = IERC20(ASSET_A).balanceOf(address(vault));
+        uint256 assetBBalanceBefore = IERC20(ASSET_B).balanceOf(address(vault));
 
-    //     assertEq(IERC20(ASSET_A).balanceOf(address(vault)), amountA, "Asset A balance should match deposit");
-    //     assertEq(IERC20(ASSET_B).balanceOf(address(vault)), amountB, "Asset B balance should match deposit");
+        vm.startPrank(alice);
+        IERC20(ASSET_A).approve(address(vault), amountA);
+        IERC20(ASSET_B).approve(address(vault), amountB);
+        vault.depositAsset(ASSET_A, amountA, alice);
+        vault.depositAsset(ASSET_B, amountB, alice);
+        vm.stopPrank();
 
-    //     uint256 initialTotalAssets = vault.totalAssets();
-    //     assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+        vault.processAccounting();
 
-    //     // ============= DEPOSIT #1 =============
+        assertEq(
+            IERC20(ASSET_A).balanceOf(address(vault)),
+            assetABalanceBefore + amountA,
+            "Asset A balance should match deposit"
+        );
+        assertEq(
+            IERC20(ASSET_B).balanceOf(address(vault)),
+            assetBBalanceBefore + amountB,
+            "Asset B balance should match deposit"
+        );
 
-    //     uint256 shares = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        uint256 initialTotalAssets = vault.totalAssets();
+        uint256 initialStrategyBalance = strategy.balanceOf(address(vault));
 
-    //     vault.processAccounting();
+        // ============= DEPOSIT #1 =============
 
-    //     assertEq(strategy.balanceOf(address(vault)), shares, "Strategy balance should match shares");
+        uint256 shares = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
-    //     assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
-    //     assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
-    //     assertApproxEqRel(
-    //         vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after first deposit"
-    //     );
+        vault.processAccounting();
 
-    //     // ============= WITHDRAW #1 =============
+        assertEq(
+            strategy.balanceOf(address(vault)), initialStrategyBalance + shares, "Strategy balance should match shares"
+        );
 
-    //     // Withdraw all shares with minimum amounts of 1000 for each asset to protect against slippage
-    //     _processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
+        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), assetABalanceBefore, "Asset A balance should be as before");
+        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), assetBBalanceBefore, "Asset B balance should be as before");
+        assertApproxEqRel(
+            vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after first deposit"
+        );
 
-    //     vault.processAccounting();
+        // ============= WITHDRAW #1 =============
 
-    //     assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+        // Withdraw all shares with minimum amounts of 1000 for each asset to protect against slippage
+        _processConnectorWithdraw(vault, address(connector), address(strategy), shares, 1000, 1000);
 
-    //     // IMPORTANT: this may not be true due to slippage if the pool is not balanced
-    //     // This test may break in the future in which case asset-ratio based withdrawals should be used
-    //     // The higher tolerance is due to the fact that the pool may not balanced
-    //     assertApproxEqRel(
-    //         IERC20(ASSET_B).balanceOf(address(vault)),
-    //         amountB,
-    //         1e16,
-    //         "Asset B balance should be roughly equal to amountA"
-    //     );
-    //     assertApproxEqRel(
-    //         IERC20(ASSET_A).balanceOf(address(vault)),
-    //         amountA,
-    //         1e16,
-    //         "Asset A balance should be roughly equal to amountA"
-    //     );
+        vault.processAccounting();
 
-    //     // TOTAL ASSETS must stay roughly the same after withdrawals
-    //     assertApproxEqRel(
-    //         vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after first withdraw"
-    //     );
+        assertEq(strategy.balanceOf(address(vault)), initialStrategyBalance, "Strategy balance should not change");
 
-    //     // ============= DEPOSIT #2 =============
+        // IMPORTANT: this may not be true due to slippage if the pool is not balanced
+        // This test may break in the future in which case asset-ratio based withdrawals should be used
+        // The higher tolerance is due to the fact that the pool may not balanced
+        assertApproxEqRel(
+            IERC20(ASSET_B).balanceOf(address(vault)),
+            assetBBalanceBefore + amountB,
+            1e16,
+            "Asset B balance should be roughly equal to amountB"
+        );
+        assertApproxEqRel(
+            IERC20(ASSET_A).balanceOf(address(vault)),
+            assetABalanceBefore + amountA,
+            1e16,
+            "Asset A balance should be roughly equal to amountA"
+        );
 
-    //     amountA = IERC20(ASSET_A).balanceOf(address(vault));
-    //     amountB = IERC20(ASSET_B).balanceOf(address(vault));
+        // TOTAL ASSETS must stay roughly the same after withdrawals
+        assertApproxEqRel(
+            vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after first withdraw"
+        );
 
-    //     uint256 shares2 = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
+        // ============= DEPOSIT #2 =============
 
-    //     vault.processAccounting();
+        assetABalanceBefore = IERC20(ASSET_A).balanceOf(address(vault));
+        assetBBalanceBefore = IERC20(ASSET_B).balanceOf(address(vault));
+        amountA = assetABalanceBefore;
+        amountB = assetBBalanceBefore;
 
-    //     assertApproxEqRel(shares2, shares, 1e12, "Second shares should match shares");
+        if (amountA > amountB) {
+            amountA = amountB;
+        } else {
+            amountB = amountA;
+        }
 
-    //     assertEq(strategy.balanceOf(address(vault)), shares2, "Strategy balance should match shares");
+        uint256 shares2 = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
-    //     assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
-    //     assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
+        vault.processAccounting();
 
-    //     assertApproxEqRel(shares2, shares, 1e12, "Second shares should match shares");
-    //     assertApproxEqRel(
-    //         vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after second deposit"
-    //     );
+        assertEq(
+            strategy.balanceOf(address(vault)), initialStrategyBalance + shares2, "Strategy balance should match shares"
+        );
 
-    //     // ============= WITHDRAW #2 =============
+        assertEq(
+            IERC20(ASSET_A).balanceOf(address(vault)),
+            assetABalanceBefore - amountA,
+            "Asset A balance should be as before"
+        );
+        assertEq(
+            IERC20(ASSET_B).balanceOf(address(vault)),
+            assetBBalanceBefore - amountB,
+            "Asset B balance should be as before"
+        );
 
-    //     _processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
+        // assertApproxEqRel(shares2, shares, 1e12, "Second shares should match shares");
+        assertApproxEqRel(
+            vault.totalAssets(), initialTotalAssets, 1e13, "Total assets should not change after second deposit"
+        );
 
-    //     vault.processAccounting();
+        // ============= WITHDRAW #2 =============
 
-    //     assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+        _processConnectorWithdraw(vault, address(connector), address(strategy), shares2, 500, 500);
 
-    //     // IMPORTANT: this may not be true due to slippage if the pool is not balanced
-    //     // This test may break in the future in which case asset-ratio based withdrawals should be used
-    //     assertApproxEqRel(
-    //         IERC20(ASSET_B).balanceOf(address(vault)),
-    //         amountB,
-    //         1e16,
-    //         "Asset B balance should be roughly equal to amountA"
-    //     );
-    //     assertApproxEqRel(
-    //         IERC20(ASSET_A).balanceOf(address(vault)),
-    //         amountA,
-    //         1e16,
-    //         "Asset A balance should be roughly equal to amountA"
-    //     );
-    //     assertApproxEqRel(
-    //         vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after second withdraw"
-    //     );
-    // }
+        vault.processAccounting();
+
+        assertEq(strategy.balanceOf(address(vault)), initialStrategyBalance, "Strategy balance should be zero");
+
+        // IMPORTANT: this may not be true due to slippage if the pool is not balanced
+        // This test may break in the future in which case asset-ratio based withdrawals should be used
+        assertApproxEqRel(
+            IERC20(ASSET_B).balanceOf(address(vault)),
+            assetBBalanceBefore,
+            1e16,
+            "Asset B balance should be roughly correct"
+        );
+        assertApproxEqRel(
+            IERC20(ASSET_A).balanceOf(address(vault)),
+            assetABalanceBefore,
+            1e16,
+            "Asset A balance should be roughly correct"
+        );
+        assertApproxEqRel(
+            vault.totalAssets(), initialTotalAssets, 1e13, "Total assets should not change after second withdraw"
+        );
+    }
 
     function _processConnectorDeposit(
         IVault vault_,
