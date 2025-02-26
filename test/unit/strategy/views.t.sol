@@ -74,7 +74,7 @@ contract StrategyViewsUnitTest is Test, Etches, MainnetActors {
         );
     }
 
-    function test_Strategy_PreviewMintAsset() public {
+    function test_Strategy_PreviewMintAsset() public view {
         assertEq(
             strategy.previewMintAsset(address(weth), INITIAL_BALANCE),
             INITIAL_BALANCE,

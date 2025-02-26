@@ -41,6 +41,11 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
         weth.approve(address(vault), type(uint256).max);
     }
 
+    function test_Vault_fees() external view {
+        assertEq(vault._feeOnRaw(1e18), 0);
+        assertEq(vault._feeOnTotal(1e18), 0);
+    }
+
     function test_Vault_previewWithdraw(uint256 assets, bool alwaysComputeTotalAssets) external {
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
@@ -82,6 +87,8 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
             totalAssetsAfter + assets,
             "Total assets should be total assets after plus assets withdrawn"
         );
+
+        assertEq(vault.computeTotalAssets(), totalAssetsAfter, "Total assets should match after withdraw");
     }
 
     function test_Vault_previewRedeem(uint256 shares, bool alwaysComputeTotalAssets) external {

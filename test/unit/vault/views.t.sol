@@ -57,6 +57,15 @@ contract VaultViewsUnitTest is Test, Etches {
         assertEq(count, true, "Count native asset should be true");
     }
 
+    function test_Vault_alwaysComputeTotalAssets() public view {
+        assertEq(vault.alwaysComputeTotalAssets(), true, "Always compute total assets should be false");
+    }
+
+    function test_Vault_feeOnTotal() public view {
+        uint256 fee = vault._feeOnTotal(1e18);
+        assertEq(fee, 0, "Fee on total should be zero");
+    }
+
     function test_Vault_getAssets() public view {
         address[] memory assets = vault.getAssets();
 
