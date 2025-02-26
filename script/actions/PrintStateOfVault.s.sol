@@ -79,5 +79,15 @@ contract PrintStateOfVault is Script {
         console.log("\nynLSDe Balance");
         logEthValue("ynLSDe Balance", ynlsdeBalance);
         console.log("");
+
+        uint256 stethBalance = IERC20(MC.STETH).balanceOf(address(vault));
+        console.log("\nstETH balance");
+        logEthValue("stETH balance", stethBalance);
+        console.log("");
+
+        uint256 wstethBalance = IERC20(MC.WSTETH).balanceOf(address(vault));
+        console.log("\nwstETH balance");
+        logEthValue("wstETH balance", wstethBalance);
+        console.log("");        
     }
 }

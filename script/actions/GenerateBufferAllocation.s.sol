@@ -13,7 +13,7 @@ contract GenerateBufferAllocation is Script {
         address buffer = vault.buffer();
 
         // Amount to allocate (example amount - adjust as needed)
-        uint256 amount = 250 ether;
+        uint256 amount = 107 ether;
 
         // Generate targets array
         address[] memory targets = new address[](2);
