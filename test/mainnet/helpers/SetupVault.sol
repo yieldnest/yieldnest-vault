@@ -11,9 +11,10 @@ import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 
 import {Etches} from "test/mainnet/helpers/Etches.sol";
-import {VaultUtils} from "script/VaultUtils.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
 
-contract SetupVault is Test, MainnetActors, Etches, VaultUtils {
+contract SetupVault is Test, MainnetActors, Etches {
     function deploy() public returns (Vault) {
         // Deploy implementation contract
         Vault implementation = new Vault();
@@ -32,9 +33,6 @@ contract SetupVault is Test, MainnetActors, Etches, VaultUtils {
 
         configureMainnet(vault);
 
-        vm.prank(ADMIN);
-        vault.unpause();
-
         return vault;
     }
 
@@ -52,6 +50,10 @@ contract SetupVault is Test, MainnetActors, Etches, VaultUtils {
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
 
+        // test cannot unpause vault without provider
+        vm.expectRevert();
+        vault.unpause();
+
         vault.setProvider(MC.PROVIDER);
 
         // Add assets: Base asset always first
@@ -61,16 +63,26 @@ contract SetupVault is Test, MainnetActors, Etches, VaultUtils {
         vault.addAsset(MC.BNBX, true);
         vault.addAsset(MC.SLISBNB, true);
 
-        setDepositRule(vault, MC.BUFFER);
-        setDepositRule(vault, MC.YNBNBK);
-        setWethDepositRule(vault, MC.WBNB);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](5);
+        uint256 i = 0;
 
-        setApprovalRule(vault, address(vault), MC.BUFFER);
-        setApprovalRule(vault, MC.WBNB, MC.BUFFER);
-        setApprovalRule(vault, address(vault), MC.YNBNBK);
-        setApprovalRule(vault, MC.SLISBNB, MC.YNBNBK);
+        // configure processor rules
+        rules[i++] = BaseRules.getDepositRule(MC.BUFFER, address(vault));
+        rules[i++] = BaseRules.getDepositRule(MC.YNBNBK, address(vault));
+        rules[i++] = BaseRules.getWethDepositRule(MC.WBNB);
+        rules[i++] = BaseRules.getApprovalRule(MC.WBNB, MC.BUFFER);
+        rules[i++] = BaseRules.getApprovalRule(MC.SLISBNB, MC.YNBNBK);
+
+        if (i != rules.length) {
+            revert("rules length mismatch");
+        }
+
+        SafeRules.setProcessorRules(vault, rules, false);
 
         vault.setBuffer(MC.BUFFER);
+
+        // Unpause the vault
+        vault.unpause();
 
         vm.stopPrank();
 

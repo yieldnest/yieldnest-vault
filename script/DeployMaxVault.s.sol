@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Vault} from "src/Vault.sol";
 import {Provider, IProvider} from "src/module/Provider.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {TestProvider} from "test/module/TestProvider.sol";
 
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
@@ -13,9 +14,14 @@ import {TransparentUpgradeableProxy} from
 
 import {FeeMath} from "src/module/FeeMath.sol";
 import {BaseScript} from "script/BaseScript.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
+import {BaseRoles} from "script/roles/BaseRoles.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script DeployMaxVault
 contract DeployMaxVault is BaseScript {
+    error InvalidRules();
+
     function symbol() public pure override returns (string memory) {
         return "ynBNBx";
     }
@@ -111,40 +117,40 @@ contract DeployMaxVault is BaseScript {
     }
 
     function configureVault() internal {
-        _configureDefaultRoles();
-        _configureTemporaryRoles();
+        BaseRoles.configureDefaultRolesForMaxVault(vault, address(timelock), actors);
+        BaseRoles.configureTemporaryRolesForMaxVault(vault, deployer);
 
         // set provider
         vault.setProvider(address(rateProvider));
 
         // add assets
         vault.addAsset(contracts.WBNB(), true);
+        vault.addAsset(contracts.YNWBNBK(), false);
 
-        // TODO: confirm if these values are correct
-        if (contracts.YNWBNBK() != address(0x0b)) {
-            vault.addAsset(contracts.YNWBNBK(), false);
-        }
-
-        if (contracts.YNCLISBNBK() != address(0x0c)) {
+        // ynclisbnbk only for bnb mainnet
+        if (block.chainid == 56) {
             vault.addAsset(contracts.YNCLISBNBK(), false);
         }
 
         // buffer or ynwbnbk
-        if (contracts.YNWBNBK() != address(0x0b)) {
-            vault.setBuffer(contracts.YNWBNBK());
+        vault.setBuffer(contracts.YNWBNBK());
 
-            setDepositRule(vault, contracts.YNWBNBK());
-            setWithdrawRule(vault, contracts.YNWBNBK());
-            setDepositAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
-            setWithdrawAssetRule(vault, contracts.YNWBNBK(), contracts.WBNB());
-        }
+        uint256 rulesLength = block.chainid == 56 ? 11 : 7;
+        uint256 i = 0;
 
-        // ynclisbnbk
-        if (contracts.YNCLISBNBK() != address(0x0c)) {
-            setDepositRule(vault, contracts.YNCLISBNBK());
-            setWithdrawRule(vault, contracts.YNCLISBNBK());
-            setDepositAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
-            setWithdrawAssetRule(vault, contracts.YNCLISBNBK(), contracts.WBNB());
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](rulesLength);
+
+        rules[i++] = BaseRules.getDepositRule(contracts.YNWBNBK(), address(vault));
+        rules[i++] = BaseRules.getWithdrawRule(contracts.YNWBNBK(), address(vault));
+        rules[i++] = BaseRules.getDepositAssetRule(contracts.YNWBNBK(), contracts.WBNB(), address(vault));
+        rules[i++] = BaseRules.getWithdrawAssetRule(contracts.YNWBNBK(), contracts.WBNB(), address(vault));
+
+        // ynclisbnbk only for bnb mainnet
+        if (block.chainid == 56) {
+            rules[i++] = BaseRules.getDepositRule(contracts.YNCLISBNBK(), address(vault));
+            rules[i++] = BaseRules.getWithdrawRule(contracts.YNCLISBNBK(), address(vault));
+            rules[i++] = BaseRules.getDepositAssetRule(contracts.YNCLISBNBK(), contracts.WBNB(), address(vault));
+            rules[i++] = BaseRules.getWithdrawAssetRule(contracts.YNCLISBNBK(), contracts.WBNB(), address(vault));
         }
 
         // approval rules
@@ -152,19 +158,25 @@ contract DeployMaxVault is BaseScript {
             address[] memory underlyingVaults = new address[](2);
             underlyingVaults[0] = contracts.YNWBNBK();
             underlyingVaults[1] = contracts.YNCLISBNBK();
-            setApprovalRule(vault, contracts.WBNB(), underlyingVaults);
+            rules[i++] = BaseRules.getApprovalRule(contracts.WBNB(), underlyingVaults);
         } else if (block.chainid == 97) {
-            setApprovalRule(vault, contracts.WBNB(), contracts.YNWBNBK());
+            rules[i++] = BaseRules.getApprovalRule(contracts.WBNB(), contracts.YNWBNBK());
         }
 
         // wbnb
-        setWethDepositRule(vault, contracts.WBNB());
-        setWethWithdrawRule(vault, contracts.WBNB());
+        rules[i++] = BaseRules.getWethDepositRule(contracts.WBNB());
+        rules[i++] = BaseRules.getWethWithdrawRule(contracts.WBNB());
+
+        if (i != rulesLength) {
+            revert InvalidRules();
+        }
+
+        SafeRules.setProcessorRules(vault, rules, false);
 
         vault.unpause();
 
         vault.processAccounting();
 
-        _renounceTemporaryRoles();
+        BaseRoles.renounceTemporaryRoles(vault, deployer);
     }
 }

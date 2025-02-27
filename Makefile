@@ -7,3 +7,8 @@ cover		:;	forge coverage --watch --report lcov && genhtml lcov.info --branch-cov
 show		:;	npx http-server ./coverage
 
 fmt     :;  FOUNDRY_PROFILE=default forge fmt && FOUNDRY_PROFILE=mainnet forge fmt
+
+lint    :;  solhint --fix --noPrompt src/**/*.sol && \
+	solhint --fix --noPrompt --config ./.solhint.test.json script/**/*.sol && \
+	solhint --fix --noPrompt --config ./.solhint.test.json test/**/*.sol
+

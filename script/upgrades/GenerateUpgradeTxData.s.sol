@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {BscContracts, ChapelContracts, IContracts} from "script/Contracts.sol";
-
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
 import {BaseScript} from "script/BaseScript.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
 
 /**
  * @title GenerateVaultUpgradeTxData
@@ -66,7 +65,7 @@ contract GenerateVaultUpgradeTxData is BaseScript {
 
         address proxyAddress = address(vault);
         ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(proxyAddress);
-        address proxyAdmin = getProxyAdmin(address(proxy));
+        address proxyAdmin = ProxyUtils.getProxyAdmin(address(proxy));
         require(vaultProxyAdmin == proxyAdmin, "ProxyAdmin mismatch");
 
         bytes memory data = ""; // Empty data for now, can be customized if needed

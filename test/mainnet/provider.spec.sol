@@ -7,7 +7,6 @@ import {IERC4626} from "src/Common.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {IBNBXStakeManagerV2} from "src/interface/external/stader/IBNBXStakeManagerV2.sol";
-import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
 
 contract ProviderTest is Test, Etches {
     Provider public provider;

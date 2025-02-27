@@ -4,68 +4,30 @@ pragma solidity ^0.8.24;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
-import {Etches} from "test/mainnet/helpers/Etches.sol";
-import {MainnetActors} from "script/Actors.sol";
+import {MainnetActors, IActors} from "script/Actors.sol";
+import {Provider} from "src/module/Provider.sol";
+import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
+import {WithdrawerConfigurer} from "src/configures/WithdrawerConfigurer.sol";
+import {Etches} from "test/mainnet/helpers/Etches.sol";
 
-contract SetupWithdrawer is Test, MainnetActors, Etches, WithdrawerUtils {
+contract SetupWithdrawer is Test, MainnetActors, Etches {
+    error InvalidRules();
+
     function setup() public returns (Withdrawer vault) {
-        Withdrawer vaultImplementation = new Withdrawer();
-
-        // Deploy the proxy
-        TransparentUpgradeableProxy vaultProxy =
-            new TransparentUpgradeableProxy(address(vaultImplementation), ADMIN, "");
-
-        vault = Withdrawer(payable(address(vaultProxy)));
-
-        string memory name = "YieldNest Withdrawer";
-        string memory symbol = "ynWithdrawer";
-        uint8 decimals_ = 18;
-        bool countNativeAsset_ = true;
-        bool alwaysComputeTotalAssets_ = false;
-
-        vm.startPrank(ADMIN);
-        vault.initialize(ADMIN, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
-        vm.stopPrank();
-
-        configureWithdrawer(vault);
-    }
-
-    function configureWithdrawer(Withdrawer vault) internal {
-        mockProvider();
+        // vm.etch(MC.SLIS_BNB_STAKE_HUB, code);
         mockStakeHub();
 
-        vm.startPrank(ADMIN);
+        Withdrawer implementation = new Withdrawer();
 
-        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
-        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
-        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
-        vault.grantRole(vault.ALLOCATOR_MANAGER_ROLE(), ALLOCATOR_MANAGER);
+        Provider provider = new Provider();
 
-        // test cannot unpause vault without provider
-        vm.expectRevert();
-        vault.unpause();
+        // Deploy the proxy
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), MC.TIMELOCK, "");
 
-        // set the rate provider contract
-        vault.setProvider(MC.PROVIDER);
+        vault = Withdrawer(payable(address(proxy)));
 
-        // Add assets: Base asset always first
-        vault.addAsset(MC.WBNB, true);
-        vault.addAsset(MC.YNBNBK, true);
-        vault.addAsset(MC.BNBX, true);
-        vault.addAsset(MC.SLISBNB, true);
-
-        // setup processor rules for the withdrawer
-        setApprovalRule(vault, MC.SLISBNB, MC.SLIS_BNB_STAKE_MANAGER);
-        setRequestWithdrawRule(vault, MC.SLIS_BNB_STAKE_MANAGER);
-        setClaimWithdrawRule(vault, MC.SLIS_BNB_STAKE_MANAGER);
-
-        // Unpause the vault
-        vault.unpause();
-        vm.stopPrank();
+        WithdrawerConfigurer configurer = new WithdrawerConfigurer();
+        configurer.configure(vault, address(provider), MC.TIMELOCK, IActors(address(this)));
     }
 }

@@ -10,12 +10,15 @@ import {Etches} from "test/unit/helpers/Etches.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IValidator} from "src/interface/IValidator.sol";
-import {VaultUtils} from "script/VaultUtils.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
 
-contract SetupVault is Test, Etches, MainnetActors, VaultUtils {
+contract SetupVault is Test, Etches, MainnetActors {
+    error InvalidRules();
+
     function setup() public returns (Vault vault, WETH9 weth) {
         string memory name = "YieldNest MAX";
-        string memory symbol = "ynMAx";
+        string memory symbol = "ynMAX";
 
         Vault vaultImplementation = new Vault();
 
@@ -47,11 +50,12 @@ contract SetupVault is Test, Etches, MainnetActors, VaultUtils {
         vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
         vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
         vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
 
-        // test cannot unpause vault withtout buffer
+        // test cannot unpause vault without buffer
         vm.expectRevert();
         vault.unpause();
 
@@ -64,17 +68,23 @@ contract SetupVault is Test, Etches, MainnetActors, VaultUtils {
         vault.addAsset(MC.STETH, true);
         vault.addAsset(MC.YNETH, true);
 
-        // configure processor rules
-        setDepositRule(vault, MC.BUFFER);
-        setDepositRule(vault, MC.YNETH);
-        setWethDepositRule(vault, MC.WETH);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](5);
+        uint256 i = 0;
 
-        setApprovalRule(vault, address(vault), MC.BUFFER);
-        setApprovalRule(vault, MC.WETH, MC.BUFFER);
-        setApprovalRule(vault, address(vault), MC.YNETH);
+        // configure processor rules
+        rules[i++] = BaseRules.getDepositRule(MC.BUFFER, address(vault));
+        rules[i++] = BaseRules.getDepositRule(MC.YNETH, address(vault));
+        rules[i++] = BaseRules.getWethDepositRule(MC.WETH);
+        rules[i++] = BaseRules.getWethWithdrawRule(MC.WETH);
+        rules[i++] = BaseRules.getApprovalRule(MC.WETH, MC.BUFFER);
+
+        if (i != rules.length) {
+            revert("rules length mismatch");
+        }
+
+        SafeRules.setProcessorRules(vault, rules, false);
 
         // add strategies
-
         vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault
@@ -84,7 +94,6 @@ contract SetupVault is Test, Etches, MainnetActors, VaultUtils {
 
     function configureMainnet(Vault vault) internal {
         // etch to mock the mainnet contracts
-
         mockAll();
 
         string memory name = "YieldNest ETH MAX";
@@ -106,6 +115,7 @@ contract SetupVault is Test, Etches, MainnetActors, VaultUtils {
         vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
         vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
         vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
@@ -117,11 +127,21 @@ contract SetupVault is Test, Etches, MainnetActors, VaultUtils {
         vault.addAsset(MC.STETH, true);
         vault.addAsset(MC.BUFFER, false);
 
-        setDepositRule(vault, MC.BUFFER);
-        setWethDepositRule(vault, MC.WETH);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](4);
+        uint256 i = 0;
 
-        setApprovalRule(vault, address(vault), MC.BUFFER);
-        setApprovalRule(vault, MC.WETH, MC.BUFFER);
+        // configure processor rules
+        rules[i++] = BaseRules.getDepositRule(MC.BUFFER, address(vault));
+        rules[i++] = BaseRules.getWethDepositRule(MC.WETH);
+        rules[i++] = BaseRules.getWethWithdrawRule(MC.WETH);
+        rules[i++] = BaseRules.getApprovalRule(MC.WETH, MC.BUFFER);
+
+        if (i != rules.length) {
+            revert("rules length mismatch");
+        }
+
+        SafeRules.setProcessorRules(vault, rules, false);
+
         vault.setBuffer(MC.BUFFER);
 
         // Unpause the vault

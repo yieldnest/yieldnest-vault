@@ -1,7 +1,7 @@
 {
   "admin": "0x721688652DEa9Cabec70BD99411EAEAB9485d436",
   "deployer": "0xa1E340bd1e3ea09B3981164BBB4AfeDdF0e7bA0D",
-  "rateProvider": ""0xcff9D39E1C8e675868A3105b619a987cAA147d59,
+  "rateProvider": "0xcff9D39E1C8e675868A3105b619a987cAA147d59",
   "symbol": "ynBNBx",
   "timelock": "0x2F3fEdd2F6EC681D9Cc2ecC688d8C7286Eca1F40",
   "viewer-implementation": "0x4C90845D124bf72E1349f0aD27c33c46034cCe49",

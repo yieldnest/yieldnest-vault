@@ -8,9 +8,10 @@ contract Withdrawer is BaseWithdrawer {
     /**
      * @notice function to handle the assets that are in queue for withdrawal.
      * @param asset_ The address of the asset.
+     * @return baseAssets The amount of base assets in the queue.
      * @dev This function should return the amount in base denomination.
      */
-    function asyncWithdrawalBalance(address asset_) public view virtual override returns (uint256) {
-        return AsyncWithdrawalLib.asyncWithdrawalBalance(asset_);
+    function asyncWithdrawalBalance(address asset_) public view virtual override returns (uint256 baseAssets) {
+        baseAssets = AsyncWithdrawalLib.asyncWithdrawalBalance(asset_);
     }
 }

@@ -10,6 +10,10 @@ interface IContracts {
     function YNWBNBK() external view returns (address);
     function YNBNBK() external view returns (address);
     function YNCLISBNBK() external view returns (address);
+    function YNASBNBK() external view returns (address);
+
+    function YNBNBX() external view returns (address);
+    function TIMELOCK() external view returns (address);
 }
 
 library MainnetContracts {
@@ -28,6 +32,7 @@ library MainnetContracts {
 
     // max vault
     address public constant YNBNBX = 0x32C830f5c34122C6afB8aE87ABA541B7900a2C5F;
+    address public constant TIMELOCK = 0x2F3fEdd2F6EC681D9Cc2ecC688d8C7286Eca1F40;
 
     // bnb vault
     address public constant YNBNBK = 0x304B5845b9114182ECb4495Be4C91a273b74B509;
@@ -52,10 +57,14 @@ library TestnetContracts {
     address public constant SLISBNB = 0xCc752dC4ae72386986d011c2B485be0DAd98C744;
     address public constant BNBX = 0x6cd3f51A92d022030d6e75760200c051caA7152A;
 
+    address public constant YNBNBX = 0x6164f96Fa28147508d3545c38B61eD0BD7c5DF03;
+    address public constant TIMELOCK = 0x0672980063d35393084989754f14f7E90F4AB3aD;
+
     // bnb vault
     address public constant YNBNBK = 0x7e87787C22117374Fad2E3E2E8C6159f0875F92e;
     address public constant YNWBNBK = 0xAe35b540eFC98c7866A983eaB3B88a0a47614CA1;
-    address public constant YNCLISBNBK = address(0x0c); // TODO: update with deployed address
+    address public constant YNCLISBNBK = address(0x0c); // NOTE: not supported on testnet
+    address public constant YNASBNBK = address(0x0a); // NOTE: not supported on testnet
 
     address public constant PROVIDER = address(0x0d); // TODO: Update with deployed Provider
     address public constant BUFFER = YNWBNBK;
@@ -85,6 +94,18 @@ contract ChapelContracts is IContracts {
     function YNCLISBNBK() external pure override returns (address) {
         return TestnetContracts.YNCLISBNBK;
     }
+
+    function YNASBNBK() external pure override returns (address) {
+        return TestnetContracts.YNASBNBK;
+    }
+
+    function YNBNBX() external pure override returns (address) {
+        return TestnetContracts.YNBNBX;
+    }
+
+    function TIMELOCK() external pure override returns (address) {
+        return TestnetContracts.TIMELOCK;
+    }
 }
 
 contract BscContracts is IContracts {
@@ -110,5 +131,17 @@ contract BscContracts is IContracts {
 
     function YNCLISBNBK() external pure override returns (address) {
         return MainnetContracts.YNCLISBNBK;
+    }
+
+    function YNASBNBK() external pure override returns (address) {
+        return MainnetContracts.YNASBNBK;
+    }
+
+    function YNBNBX() external pure override returns (address) {
+        return MainnetContracts.YNBNBX;
+    }
+
+    function TIMELOCK() external pure override returns (address) {
+        return MainnetContracts.TIMELOCK;
     }
 }

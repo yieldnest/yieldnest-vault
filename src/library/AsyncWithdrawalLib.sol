@@ -8,12 +8,18 @@ library AsyncWithdrawalLib {
     /**
      * @notice function to handle the assets that are in queue for withdrawal.
      * @param asset_ The address of the asset.
+     * @return baseAssets The amount of base assets in the queue.
      * @dev This function should return the amount in base denomination.
      */
     function asyncWithdrawalBalance(address asset_) public view returns (uint256 baseAssets) {
         baseAssets = _asyncWithdrawalBalance(asset_);
     }
 
+    /**
+     * @notice private function to handle the slisBNB assets that are in queue for withdrawal.
+     * @return baseAssets The amount of base assets in the queue.
+     * @dev This function should return the amount in base denomination.
+     */
     function _asyncWithdrawalBalanceSLISBNB() private view returns (uint256 baseAssets) {
         ISlisBnbStakeManager stakeManager = ISlisBnbStakeManager(MC.SLIS_BNB_STAKE_MANAGER);
 
@@ -31,6 +37,12 @@ library AsyncWithdrawalLib {
         baseAssets = stakeManager.convertSnBnbToBnb(withdrawalValue);
     }
 
+    /**
+     * @notice private function to handle the assets that are in queue for withdrawal.
+     * @param asset The address of the asset.
+     * @return baseAssets The amount of base assets in the queue.
+     * @dev This function should return the amount in base denomination.
+     */
     function _asyncWithdrawalBalance(address asset) private view returns (uint256 baseAssets) {
         if (asset == MC.SLISBNB) {
             return _asyncWithdrawalBalanceSLISBNB();

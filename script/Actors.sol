@@ -6,9 +6,7 @@ interface IActors {
     function ADMIN() external view returns (address);
     function UNAUTHORIZED() external view returns (address);
     function PROPOSER_1() external view returns (address);
-    function PROPOSER_2() external view returns (address);
     function EXECUTOR_1() external view returns (address);
-    function EXECUTOR_2() external view returns (address);
 
     /// @dev timelock
     function PROVIDER_MANAGER() external view returns (address);
@@ -41,9 +39,7 @@ contract TestnetActors is IActors {
     address public constant UNAUTHORIZED = address(0);
     address public constant PROCESSOR = YnSecurityCouncil;
     address public constant PROPOSER_1 = YnSecurityCouncil;
-    address public constant PROPOSER_2 = YnSecurityCouncil;
     address public constant EXECUTOR_1 = YnSecurityCouncil;
-    address public constant EXECUTOR_2 = YnSecurityCouncil;
 
     address public constant ALLOCATOR_MANAGER = YnSecurityCouncil;
     address public constant FEE_MANAGER = YnSecurityCouncil;
@@ -69,8 +65,6 @@ contract MainnetActors is IActors {
     address public constant PROCESSOR = YNProcessor;
     address public constant EXECUTOR_1 = YnSecurityCouncil;
     address public constant PROPOSER_1 = YnSecurityCouncil;
-    address public constant EXECUTOR_2 = YnSecurityCouncil;
-    address public constant PROPOSER_2 = YnSecurityCouncil;
 
     address public constant ALLOCATOR_MANAGER = YnSecurityCouncil;
     address public constant FEE_MANAGER = YnSecurityCouncil;

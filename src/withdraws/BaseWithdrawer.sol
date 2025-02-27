@@ -6,6 +6,15 @@ import {VaultLib} from "src/library/VaultLib.sol";
 import {IVault} from "src/interface/IVault.sol";
 
 abstract contract BaseWithdrawer is BaseStrategy {
+    /**
+     * @notice Initializes the strategy.
+     * @param admin The address of the admin.
+     * @param name The name of the vault.
+     * @param symbol The symbol of the vault.
+     * @param decimals_ The number of decimals for the vault token.
+     * @param countNativeAsset_ Whether the vault should count the native asset.
+     * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
+     */
     function initialize(
         address admin,
         string memory name,
@@ -17,6 +26,15 @@ abstract contract BaseWithdrawer is BaseStrategy {
         _initialize(admin, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
     }
 
+    /**
+     * @notice Internal function to initialize the strategy.
+     * @param admin The address of the admin.
+     * @param name The name of the vault.
+     * @param symbol The symbol of the vault.
+     * @param decimals_ The number of decimals for the vault token.
+     * @param countNativeAsset_ Whether the vault should count the native asset.
+     * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
+     */
     function _initialize(
         address admin,
         string memory name,
@@ -37,17 +55,26 @@ abstract contract BaseWithdrawer is BaseStrategy {
         vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
     }
 
+    /**
+     * @notice Returns the fee on raw assets where the fee would get added on top of the assets.
+     * @return The fee on raw assets.
+     */
     function _feeOnRaw(uint256) public pure override returns (uint256) {
         return 0;
     }
 
+    /**
+     * @notice Returns the fee on total assets where the fee is already included.
+     * @return The fee on total assets.
+     */
     function _feeOnTotal(uint256) public pure override returns (uint256) {
         return 0;
     }
 
     /**
      * @notice Internal function to compute the total assets. Must handle the assets that are in queue for withdrawal.
-     * @dev This function should return the amount in base denomination.
+     * @return totalBaseBalance The total assets in base units.
+     * @dev This function should return the amount in base units.
      */
     function computeTotalAssets() public view override returns (uint256 totalBaseBalance) {
         totalBaseBalance = super.computeTotalAssets();
@@ -65,9 +92,10 @@ abstract contract BaseWithdrawer is BaseStrategy {
     }
 
     /**
-     * @notice function to handle the assets that are in queue for withdrawal.
+     * @notice function to returns the amount of assets in base units that are in queue for withdrawal.
      * @param asset_ The address of the asset.
-     * @dev This function should return the amount in base denomination.
+     * @return baseAssets The amount of assets in base units.
+     * @dev This function should return the amount in base units.
      */
     function asyncWithdrawalBalance(address asset_) public view virtual returns (uint256 baseAssets);
 }
