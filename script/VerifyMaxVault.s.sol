@@ -107,7 +107,7 @@ contract VerifyMaxVault is BaseScript, Test {
         RolesVerification.verifyTemporaryRoles(vault, deployer);
         RolesVerification.verifyTemporaryRoles(withdrawer, deployer);
 
-        VaultVerification.verifyViewer(viewer, vault);
+        VaultVerification.verifyViewer(MaxVaultViewer(address(viewer)), vault);
         assertTrue(
             MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
         );

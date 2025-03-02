@@ -16,6 +16,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {OriginRules} from "script/rules/OriginRules.sol";
 import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
+import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 
 library VaultVerification {
     error WithdrawerNotFound(address vault);
@@ -360,7 +361,7 @@ library VaultVerification {
         revert WithdrawerNotFound(address(vault));
     }
 
-    function verifyViewer(IVaultViewer viewer, IVault vault) internal view {
+    function verifyViewer(MaxVaultViewer viewer, IVault vault) internal view {
         Vm vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
         vm.assertEq(address(viewer.getVault()), address(vault), "Viewer vault is correct");
