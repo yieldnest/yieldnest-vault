@@ -60,10 +60,9 @@ abstract contract BaseScript is Script {
         timelock = TimelockController(payable(address(vm.parseJsonAddress(jsonInput, ".timelock"))));
         rateProvider = IProvider(payable(address(vm.parseJsonAddress(jsonInput, ".rateProvider"))));
 
-        // FIXME: TODO: reenable this once viewer is deployed
-        //viewer = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-proxy"))));
-        // viewerImplementation = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-implementation"))));
-        //viewerProxyAdmin = address(vm.parseJsonAddress(jsonInput, ".viewer-proxyAdmin"));
+        viewer = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-proxy"))));
+        viewerImplementation = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-implementation"))));
+        viewerProxyAdmin = address(vm.parseJsonAddress(jsonInput, ".viewer-proxyAdmin"));
 
         vault = Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxy")))));
         implementation =

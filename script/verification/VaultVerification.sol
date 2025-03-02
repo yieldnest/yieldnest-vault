@@ -373,5 +373,12 @@ library VaultVerification {
             vm.assertEq(assets[i].asset, assertsList[i]);
             vm.assertEq(assets[i].canDeposit, vault.getAsset(assertsList[i]).active);
         }
+
+        // Verify strategies are correct
+        IVaultViewer.AssetInfo[] memory strategies = viewer.getStrategies();
+        vm.assertEq(strategies.length, 3);
+        vm.assertEq(strategies[0].asset, MC.EULER_WETH_22_VAULT);
+        vm.assertEq(strategies[1].asset, MC.CURVE_LP_YNETH_YNLSDE_STRATEGY);
+        vm.assertEq(strategies[2].asset, MC.SMOKEHOUSE_WSTETH);
     }
 }

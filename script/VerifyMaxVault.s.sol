@@ -63,7 +63,6 @@ contract VerifyMaxVault is BaseScript, Test {
         console.log("Verifying withdrawer at:   ", address(withdrawer));
         console.log("==============================================");
 
-        // TODO: Add rest of assertions and verifications
         // Verify provider configuration
         VaultVerification.verifyProvider(Provider(address(rateProvider)), withdrawer);
 
@@ -99,8 +98,7 @@ contract VerifyMaxVault is BaseScript, Test {
         // verify proxy roles
         RolesVerification.verifyProxyRoles(address(vault), vaultProxyAdmin, address(timelock));
         // verify viewer roles
-        // FIXME: TODO: reenable this once viewer is deployed
-        //RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.ADMIN());
+        RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.UPDATER());
 
         // verify timelock roles
         RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
@@ -109,12 +107,10 @@ contract VerifyMaxVault is BaseScript, Test {
         RolesVerification.verifyTemporaryRoles(vault, deployer);
         RolesVerification.verifyTemporaryRoles(withdrawer, deployer);
 
-        // FIXME: TODO: reenable this once viewer is deployed
-        // verify viewer
-        // VaultVerification.verifyViewer(viewer, vault);
-        // assertTrue(
-        //     MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
-        // );
+        VaultVerification.verifyViewer(viewer, vault);
+        assertTrue(
+            MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
+        );
 
         // Verify configurer does not have DEFAULT_ADMIN_ROLE
         assertFalse(
