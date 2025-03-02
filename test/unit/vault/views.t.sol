@@ -58,7 +58,7 @@ contract VaultViewsUnitTest is Test, Etches {
     }
 
     function test_Vault_alwaysComputeTotalAssets() public view {
-        assertEq(vault.alwaysComputeTotalAssets(), true, "Always compute total assets should be false");
+        assertEq(vault.alwaysComputeTotalAssets(), false, "Always compute total assets should be false");
     }
 
     function test_Vault_feeOnTotal() public view {
