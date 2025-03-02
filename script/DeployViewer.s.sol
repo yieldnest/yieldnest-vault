@@ -54,7 +54,7 @@ contract DeployViewer is Script, MainnetActors {
         bytes memory initData = abi.encodeWithSelector(MaxVaultViewer.initialize.selector, address(vault), deployer);
 
         TransparentUpgradeableProxy proxy =
-            new TransparentUpgradeableProxy(address(viewerImplementation), ADMIN, initData);
+            new TransparentUpgradeableProxy(address(viewerImplementation), UPDATER, initData);
 
         viewer = MaxVaultViewer(payable(address(proxy)));
 
@@ -62,19 +62,21 @@ contract DeployViewer is Script, MainnetActors {
         viewer.grantRole(viewer.UPDATER_ROLE(), deployer);
 
         // setup underlying assets
-        address[] memory underlyingAssets = new address[](5);
+        address[] memory underlyingAssets = new address[](7);
         underlyingAssets[0] = MC.WETH;
-        underlyingAssets[1] = MC.STETH;
-        underlyingAssets[2] = MC.WSTETH;
-        underlyingAssets[3] = MC.OETH;
-        underlyingAssets[4] = MC.WOETH;
+        underlyingAssets[1] = MC.YNETH;
+        underlyingAssets[2] = MC.YNLSDE;
+        underlyingAssets[3] = MC.STETH;
+        underlyingAssets[4] = MC.WSTETH;
+        underlyingAssets[5] = MC.OETH;
+        underlyingAssets[6] = MC.WOETH;
 
         // NOTE: the following call will fail if ynETHx vault is not upgraded
         viewer.addUnderlyingAssets(underlyingAssets);
 
         // grant roles to admin
-        viewer.grantRole(viewer.UPDATER_ROLE(), ADMIN);
-        viewer.grantRole(viewer.DEFAULT_ADMIN_ROLE(), ADMIN);
+        viewer.grantRole(viewer.UPDATER_ROLE(), UPDATER);
+        viewer.grantRole(viewer.DEFAULT_ADMIN_ROLE(), UPDATER);
 
         // renounce roles from deployer
         viewer.renounceRole(viewer.DEFAULT_ADMIN_ROLE(), deployer);
