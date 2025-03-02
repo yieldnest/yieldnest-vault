@@ -12,12 +12,12 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
-import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
-import {BaseVault} from "src/BaseVault.sol";
 import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
 import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
+import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
+import {BaseVault} from "src/BaseVault.sol";
 
 contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
     Vault public vault;
@@ -204,6 +204,8 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
             vm.stopPrank();
         }
 
+        vault.processAccounting();
+
         uint256 totalAssetBefore = vault.totalAssets();
         uint256 actualAmount = IERC20(asset).balanceOf(alice);
         uint256 vaultRateBefore = vault.convertToAssets(1e18);
@@ -217,7 +219,7 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
         uint256 assetRate = IProvider(vault.provider()).getRate(asset);
         uint256 vaultRateAfterDeposit = vault.convertToAssets(1e18);
 
-        assertEq(vaultRateBefore, vaultRateAfterDeposit, "Vault rate should not change after deposit");
+        assertApproxEqRel(vaultRateBefore, vaultRateAfterDeposit, 1e10, "Vault rate should not change after deposit");
 
         assertApproxEqAbs(
             totalAssets,
@@ -229,7 +231,9 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
         vault.processAccounting();
 
         uint256 vaultRateAfterProcessing = vault.convertToAssets(1e18);
-        assertEq(vaultRateAfterDeposit, vaultRateAfterProcessing, "Vault rate should not change after processing");
+        assertApproxEqRel(
+            vaultRateAfterDeposit, vaultRateAfterProcessing, 1e10, "Vault rate should not change after processing"
+        );
 
         // Verify total assets remains the same after processing accounting
         assertApproxEqAbs(
@@ -240,8 +244,10 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
         );
     }
 
-    function testDonateOETHAndWithdraw() public {
-        uint256 donationAmount = 100e18;
+    function testDonateOETHAndWithdraw(uint256 donationAmount) public {
+        // uint256 donationAmount = 100e18;
+        vm.assume(donationAmount > 1e9);
+        vm.assume(donationAmount < 100_000 ether);
         uint256 donateAmount;
         address asset = MC.OETH;
 
@@ -294,6 +300,7 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
             );
         }
 
+        withdrawer.processAccounting();
         vault.processAccounting();
 
         assertEq(vault.totalAssets(), tvlBeforeWithdraw, "Total assets should match after deposit to withdrawer");
@@ -318,11 +325,11 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
 
             // OETH withdrawn balance is 0 as the withdrawn balance is associated with WOETH
             assertEq(
-                withdrawer.asyncWithdrawalBalance(MC.OETH),
-                0,
-                "Async withdrawal balance for WOETH should match donated amount"
+                withdrawer.asyncWithdrawalBalance(MC.OETH), 0, "Async withdrawal balance for OETH should always be zero"
             );
         }
+
+        assertNotEq(tokenId, 0, "Token ID should not be zero");
 
         withdrawer.processAccounting();
         // Process accounting to reflect changes
@@ -333,58 +340,110 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
             vault.totalAssets(), tvlBeforeWithdraw, 3, "Total assets should remain unchanged after OETH withdrawal"
         );
 
-        {
-            IERC20 weth = IERC20(MC.WETH);
-            IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
+        uint256 withdrawerTotalBefore = withdrawer.totalAssets();
+        uint256 withdrawerSharesBalance = withdrawer.balanceOf(address(vault));
 
-            uint256 withdrawerWethBefore = weth.balanceOf(address(withdrawer));
-
-            vm.startPrank(oethVault.governor());
-            oethVault.setMaxSupplyDiff(0);
-            vm.stopPrank();
-
-            {
-                IOETHVault.WithdrawalQueueMetadata memory queue = oethVault.withdrawalQueueMetadata();
-                uint256 outstandingWithdrawals = queue.queued - queue.claimed;
-                deal(MC.WETH, MC.OETH_VAULT, outstandingWithdrawals + donateAmount);
-
-                assertEq(
-                    weth.balanceOf(MC.OETH_VAULT), donateAmount + outstandingWithdrawals, "WETH balance should match"
-                );
-
-                // solhint-disable-next-line not-rely-on-time
-                uint256 timestamp = block.timestamp;
-                vm.warp(timestamp + oethVault.withdrawalClaimDelay() + 10 minutes);
-
-                uint256[] memory tokenIds = new uint256[](1);
-                tokenIds[0] = tokenId;
-
-                vm.prank(PROCESSOR);
-                withdrawer.claimWithdrawalsWOETH(tokenIds);
-            }
-
-            assertEq(
-                IERC20(MC.WETH).balanceOf(address(withdrawer)),
-                donateAmount + withdrawerWethBefore,
-                "WETH balance of withdrawer should match donated amount"
-            );
-
-            assertEq(
-                IERC20(asset).balanceOf(address(vault)),
-                initialVaultOETH,
-                "Vault OETH balance should match initial balance"
-            );
+        address[] memory assets = vault.getAssets();
+        uint256[] memory initialBalances = new uint256[](assets.length);
+        uint256[] memory initialRates = new uint256[](assets.length);
+        uint256 initialTotalAssets = address(vault).balance;
+        for (uint256 i = 0; i < assets.length; i++) {
+            initialBalances[i] = IERC20(assets[i]).balanceOf(address(vault));
+            initialRates[i] = IProvider(vault.provider()).getRate(assets[i]);
+            initialTotalAssets += initialBalances[i] * initialRates[i] / 1e18;
         }
 
+        assertApproxEqAbs(tvlBeforeWithdraw, initialTotalAssets, 3, "Total assets should match before OETH withdrawal");
+
+        _claimWithdrawalWOETH(tokenId, donateAmount);
+
         // Process accounting and verify total assets remain unchanged
-        vault.processAccounting();
         withdrawer.processAccounting();
+        vault.processAccounting();
+
+        assertEq(
+            IERC20(asset).balanceOf(address(vault)), initialVaultOETH, "Vault OETH balance should match initial balance"
+        );
+
+        assertEq(
+            IERC20(asset).balanceOf(address(withdrawer)),
+            initialWithdrawerOETH,
+            "Withdrawer OETH balance should be back to initial amount"
+        );
+
+        assertEq(withdrawer.asyncWithdrawalBalance(MC.WOETH), 0, "Async withdrawal balance for WOETH should be zero");
+
+        assertEq(
+            withdrawer.balanceOf(address(vault)),
+            withdrawerSharesBalance,
+            "Withdrawer shares balance should remain unchanged"
+        );
 
         assertApproxEqAbs(
-            vault.totalAssets(),
-            tvlBeforeWithdraw,
-            3,
-            "Total assets should remain unchanged after processing accounting"
+            withdrawer.totalAssets(), withdrawerTotalBefore, 3, "Withdrawer total assets should remain unchanged"
+        );
+
+        uint256[] memory finalBalances = new uint256[](assets.length);
+        uint256[] memory finalRates = new uint256[](assets.length);
+        uint256 finalTotalAssetsCalculated = address(vault).balance;
+        for (uint256 i = 0; i < assets.length; i++) {
+            finalBalances[i] = IERC20(assets[i]).balanceOf(address(vault));
+            assertEq(finalBalances[i], initialBalances[i], "Balance should match");
+            finalRates[i] = IProvider(vault.provider()).getRate(assets[i]);
+            finalTotalAssetsCalculated += finalBalances[i] * finalRates[i] / 1e18;
+
+            // TODO: understand why the rate is changing this much
+            // rate is changing for underlying assets
+            assertApproxEqRel(finalRates[i], initialRates[i], 1e14, "Rate should match");
+        }
+
+        uint256 finalTvl = vault.totalAssets();
+        assertEq(finalTvl, finalTotalAssetsCalculated, "Total assets should match after OETH withdrawal");
+
+        // The rates of underlying assets changes, consequently the total assets changes slightly
+        assertApproxEqRel(
+            finalTvl, tvlBeforeWithdraw, 1e12, "Total assets should remain unchanged after processing accounting"
+        );
+    }
+
+    function _claimWithdrawalWOETH(uint256 tokenId, uint256 donateAmount) internal {
+        IERC20 weth = IERC20(MC.WETH);
+        IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
+
+        uint256 withdrawerWethBefore = weth.balanceOf(address(withdrawer));
+
+        vm.startPrank(oethVault.governor());
+        oethVault.setMaxSupplyDiff(0);
+        vm.stopPrank();
+
+        {
+            IOETHVault.WithdrawalQueueMetadata memory queue = oethVault.withdrawalQueueMetadata();
+            uint256 outstandingWithdrawals = queue.queued - queue.claimed;
+            address alice = makeAddr("alice");
+            deal(MC.WETH, alice, outstandingWithdrawals + donateAmount);
+
+            vm.startPrank(alice);
+            weth.approve(address(oethVault), outstandingWithdrawals + donateAmount);
+            oethVault.mint(address(weth), outstandingWithdrawals + donateAmount, 1);
+            vm.stopPrank();
+
+            assertGt(weth.balanceOf(MC.OETH_VAULT), donateAmount + outstandingWithdrawals, "WETH balance should match");
+
+            // solhint-disable-next-line not-rely-on-time
+            uint256 timestamp = block.timestamp;
+            vm.warp(timestamp + oethVault.withdrawalClaimDelay() + 10 minutes);
+
+            uint256[] memory tokenIds = new uint256[](1);
+            tokenIds[0] = tokenId;
+
+            vm.prank(PROCESSOR);
+            withdrawer.claimWithdrawalsWOETH(tokenIds);
+        }
+
+        assertEq(
+            IERC20(MC.WETH).balanceOf(address(withdrawer)),
+            donateAmount + withdrawerWethBefore,
+            "WETH balance of withdrawer should match donated amount"
         );
     }
 

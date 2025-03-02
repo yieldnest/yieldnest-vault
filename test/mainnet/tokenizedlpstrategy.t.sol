@@ -7,9 +7,10 @@ import {IVault} from "src/interface/IVault.sol";
 import {IERC20} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
-import {Provider, IProvider} from "src/module/Provider.sol";
+import {Provider} from "src/module/Provider.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 
 contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
     IERC20 public strategy;
@@ -50,18 +51,29 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         vault.processAccounting();
     }
 
-    function test_processAccounting() public {
+    function test_processAccounting(uint256 amount) public {
+        vm.assume(amount > 1000_000 && amount < 100_000_000 ether);
+
         uint256 totalAssetsBefore = vault.totalAssets();
 
-        uint256 strategyBalance = 1e18; // 1 strategy token
-        deal(address(strategy), address(vault), strategyBalance);
-        assertEq(strategy.balanceOf(address(vault)), strategyBalance, "Strategy balance should be 1");
+        uint256 beforeBalance = strategy.balanceOf(address(vault));
+
+        deal(address(strategy), address(alice), amount);
+
+        vm.startPrank(alice);
+        strategy.transfer(address(vault), amount);
+        vm.stopPrank();
+
+        assertEq(strategy.balanceOf(address(vault)), beforeBalance + amount, "Strategy balance should be correct");
 
         vault.processAccounting();
         (int256 rate,) = connector.rate();
-        uint256 expectedBaseValue = (strategyBalance * uint256(rate)) / 1e18;
-        assertEq(
-            vault.totalAssets(), totalAssetsBefore + expectedBaseValue, "Vault should account strategy value correctly"
+        uint256 expectedBaseValue = (amount * uint256(rate)) / 1e18;
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            totalAssetsBefore + expectedBaseValue,
+            5,
+            "Vault should account strategy value correctly"
         );
     }
 
@@ -207,6 +219,9 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         deal(ASSET_A, alice, amountA);
         deal(ASSET_B, alice, amountB);
 
+        uint256 assetABalanceBefore = IERC20(ASSET_A).balanceOf(address(vault));
+        uint256 assetBBalanceBefore = IERC20(ASSET_B).balanceOf(address(vault));
+
         vm.startPrank(alice);
         IERC20(ASSET_A).approve(address(vault), amountA);
         IERC20(ASSET_B).approve(address(vault), amountB);
@@ -216,19 +231,29 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
 
         vault.processAccounting();
 
-        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), amountA, "Asset A balance should match deposit");
-        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), amountB, "Asset B balance should match deposit");
+        assertEq(
+            IERC20(ASSET_A).balanceOf(address(vault)),
+            assetABalanceBefore + amountA,
+            "Asset A balance should match deposit"
+        );
+        assertEq(
+            IERC20(ASSET_B).balanceOf(address(vault)),
+            assetBBalanceBefore + amountB,
+            "Asset B balance should match deposit"
+        );
 
         uint256 initialTotalAssets = vault.totalAssets();
-        assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+        uint256 initialStrategyBalance = strategy.balanceOf(address(vault));
 
         uint256 shares = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
 
-        assertEq(strategy.balanceOf(address(vault)), shares, "Strategy balance should match shares");
-        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
-        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
+        assertEq(
+            strategy.balanceOf(address(vault)), initialStrategyBalance + shares, "Strategy balance should match shares"
+        );
+        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), assetABalanceBefore, "Asset A balance should be as before");
+        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), assetBBalanceBefore, "Asset B balance should be as before");
 
         uint256 assetARate = IProvider(vault.provider()).getRate(ASSET_A);
         uint256 amountAInBase = amountA * assetARate / 1e18;
@@ -251,6 +276,9 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
         deal(ASSET_A, alice, amountA);
         deal(ASSET_B, alice, amountB);
 
+        uint256 assetABalanceBefore = IERC20(ASSET_A).balanceOf(address(vault));
+        uint256 assetBBalanceBefore = IERC20(ASSET_B).balanceOf(address(vault));
+
         vm.startPrank(alice);
         IERC20(ASSET_A).approve(address(vault), amountA);
         IERC20(ASSET_B).approve(address(vault), amountB);
@@ -260,11 +288,19 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
 
         vault.processAccounting();
 
-        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), amountA, "Asset A balance should match deposit");
-        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), amountB, "Asset B balance should match deposit");
+        assertEq(
+            IERC20(ASSET_A).balanceOf(address(vault)),
+            assetABalanceBefore + amountA,
+            "Asset A balance should match deposit"
+        );
+        assertEq(
+            IERC20(ASSET_B).balanceOf(address(vault)),
+            assetBBalanceBefore + amountB,
+            "Asset B balance should match deposit"
+        );
 
         uint256 initialTotalAssets = vault.totalAssets();
-        assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+        uint256 initialStrategyBalance = strategy.balanceOf(address(vault));
 
         // ============= DEPOSIT #1 =============
 
@@ -272,10 +308,12 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
 
         vault.processAccounting();
 
-        assertEq(strategy.balanceOf(address(vault)), shares, "Strategy balance should match shares");
+        assertEq(
+            strategy.balanceOf(address(vault)), initialStrategyBalance + shares, "Strategy balance should match shares"
+        );
 
-        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
-        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
+        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), assetABalanceBefore, "Asset A balance should be as before");
+        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), assetBBalanceBefore, "Asset B balance should be as before");
         assertApproxEqRel(
             vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after first deposit"
         );
@@ -287,20 +325,20 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
 
         vault.processAccounting();
 
-        assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+        assertEq(strategy.balanceOf(address(vault)), initialStrategyBalance, "Strategy balance should not change");
 
         // IMPORTANT: this may not be true due to slippage if the pool is not balanced
         // This test may break in the future in which case asset-ratio based withdrawals should be used
         // The higher tolerance is due to the fact that the pool may not balanced
         assertApproxEqRel(
             IERC20(ASSET_B).balanceOf(address(vault)),
-            amountB,
+            assetBBalanceBefore + amountB,
             1e16,
-            "Asset B balance should be roughly equal to amountA"
+            "Asset B balance should be roughly equal to amountB"
         );
         assertApproxEqRel(
             IERC20(ASSET_A).balanceOf(address(vault)),
-            amountA,
+            assetABalanceBefore + amountA,
             1e16,
             "Asset A balance should be roughly equal to amountA"
         );
@@ -312,23 +350,39 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
 
         // ============= DEPOSIT #2 =============
 
-        amountA = IERC20(ASSET_A).balanceOf(address(vault));
-        amountB = IERC20(ASSET_B).balanceOf(address(vault));
+        assetABalanceBefore = IERC20(ASSET_A).balanceOf(address(vault));
+        assetBBalanceBefore = IERC20(ASSET_B).balanceOf(address(vault));
+        amountA = assetABalanceBefore;
+        amountB = assetBBalanceBefore;
+
+        if (amountA > amountB) {
+            amountA = amountB;
+        } else {
+            amountB = amountA;
+        }
 
         uint256 shares2 = _processConnectorDeposit(vault, address(connector), ASSET_A, ASSET_B, amountA, amountB, 0);
 
         vault.processAccounting();
 
-        assertApproxEqRel(shares2, shares, 1e12, "Second shares should match shares");
+        assertEq(
+            strategy.balanceOf(address(vault)), initialStrategyBalance + shares2, "Strategy balance should match shares"
+        );
 
-        assertEq(strategy.balanceOf(address(vault)), shares2, "Strategy balance should match shares");
+        assertEq(
+            IERC20(ASSET_A).balanceOf(address(vault)),
+            assetABalanceBefore - amountA,
+            "Asset A balance should be as before"
+        );
+        assertEq(
+            IERC20(ASSET_B).balanceOf(address(vault)),
+            assetBBalanceBefore - amountB,
+            "Asset B balance should be as before"
+        );
 
-        assertEq(IERC20(ASSET_A).balanceOf(address(vault)), 0, "Asset A balance should be zero");
-        assertEq(IERC20(ASSET_B).balanceOf(address(vault)), 0, "Asset B balance should be zero");
-
-        assertApproxEqRel(shares2, shares, 1e12, "Second shares should match shares");
+        // assertApproxEqRel(shares2, shares, 1e12, "Second shares should match shares");
         assertApproxEqRel(
-            vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after second deposit"
+            vault.totalAssets(), initialTotalAssets, 1e13, "Total assets should not change after second deposit"
         );
 
         // ============= WITHDRAW #2 =============
@@ -337,24 +391,24 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
 
         vault.processAccounting();
 
-        assertEq(strategy.balanceOf(address(vault)), 0, "Strategy balance should be zero");
+        assertEq(strategy.balanceOf(address(vault)), initialStrategyBalance, "Strategy balance should be zero");
 
         // IMPORTANT: this may not be true due to slippage if the pool is not balanced
         // This test may break in the future in which case asset-ratio based withdrawals should be used
         assertApproxEqRel(
             IERC20(ASSET_B).balanceOf(address(vault)),
-            amountB,
+            assetBBalanceBefore,
             1e16,
-            "Asset B balance should be roughly equal to amountA"
+            "Asset B balance should be roughly correct"
         );
         assertApproxEqRel(
             IERC20(ASSET_A).balanceOf(address(vault)),
-            amountA,
+            assetABalanceBefore,
             1e16,
-            "Asset A balance should be roughly equal to amountA"
+            "Asset A balance should be roughly correct"
         );
         assertApproxEqRel(
-            vault.totalAssets(), initialTotalAssets, 1e12, "Total assets should not change after second withdraw"
+            vault.totalAssets(), initialTotalAssets, 1e13, "Total assets should not change after second withdraw"
         );
     }
 

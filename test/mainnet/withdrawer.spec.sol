@@ -16,6 +16,7 @@ import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessC
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
+import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
 
 /**
  * @notice Tests for the Withdrawer contract
@@ -219,6 +220,8 @@ contract WithdrawerMainnetTest is TestHelper, MainnetActors {
     }
 
     function _requestWithdrawalOETH(uint256 amount) internal returns (uint256 tokenId) {
+        vm.expectRevert(OriginWithdrawalLib.NotEnoughBalance.selector);
+        vault.requestWithdrawalOETH(amount);
         amount = _donate_single_asset(MC.OETH, amount);
 
         address asset_ = MC.OETH;
@@ -247,6 +250,8 @@ contract WithdrawerMainnetTest is TestHelper, MainnetActors {
     }
 
     function _requestWithdrawalWOETH(uint256 amount) internal returns (uint256 tokenId) {
+        vm.expectRevert(OriginWithdrawalLib.NotEnoughBalance.selector);
+        vault.requestWithdrawalWOETH(amount);
         uint256 donatedAmount = _donate_single_asset(MC.WOETH, amount);
 
         address asset_ = MC.WOETH;

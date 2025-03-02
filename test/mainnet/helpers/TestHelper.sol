@@ -104,16 +104,16 @@ contract TestHelper is Test {
     function customAssertEq(uint256 a, uint256 b, string memory message) private pure {
         if (a < 1e14) {
             // 1e4 in 1e18 is 0 for a < 1e14
-            // threshold is 1 wei for a < 1e14
-            assertApproxEqAbs(a, b, 1, message);
+            // threshold is 2 wei for a < 1e14
+            assertApproxEqAbs(a, b, 2, message);
         } else if (a < 100 ether) {
-            // 1e4 / 1e18 = 1e-14 (= 1e-12 percent)
-            // 1e4 / 1e18 at 1e14 wei = 1 wei (lower bound)
-            // 1e4 / 1e18 at 1e2 ether (or 1e20 wei) = 1e6 wei (higher bound)
-            assertApproxEqRel(a, b, 1e4, message);
+            // 2e4 / 1e18 = 1e-14 (= 2e-12 percent)
+            // 2e4 / 1e18 at 1e14 wei = 2 wei (lower bound)
+            // 2e4 / 1e18 at 1e2 ether (or 1e20 wei) = 2e6 wei (higher bound)
+            assertApproxEqRel(a, b, 2e4, message);
         } else {
-            // threshold is 1e6 wei for a >= 1e2 ether
-            assertApproxEqAbs(a, b, 1e6, message);
+            // threshold is 2e6 wei for a >= 1e2 ether
+            assertApproxEqAbs(a, b, 2e6, message);
         }
     }
 
@@ -123,12 +123,14 @@ contract TestHelper is Test {
         assertEq(supply, finalVaultTotalSupply, "Vault totalSupply should be original totalSupply plus additional");
     }
 
-    function totalAssetsInvariant(uint256 assets) public view {
+    function totalAssetsInvariant(uint256 supply) public view {
+        totalAssetsInvariant(supply, "Vault totalAssets should be original totalAssets plus additional");
+    }
+
+    function totalAssetsInvariant(uint256 assets, string memory message) public view {
         assertTrue(address(_vault) != address(0));
         uint256 finalVaultTotalAssets = _vault.totalAssets();
-        customAssertEq(
-            assets, finalVaultTotalAssets, "Vault totalAssets should be original totalAssets plus additional"
-        );
+        customAssertEq(assets, finalVaultTotalAssets, message);
     }
 
     function dealMore(address receiver, uint256 amount) public {

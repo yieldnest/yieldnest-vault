@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import {MainnetActors, IActors} from "script/Actors.sol";
+import {IActors} from "script/Actors.sol";
 import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 

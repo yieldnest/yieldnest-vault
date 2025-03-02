@@ -5,20 +5,27 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
 import {IVault} from "src/interface/IVault.sol";
-import {IERC20, TransparentUpgradeableProxy, IERC4626} from "src/Common.sol";
+import {IERC20, TransparentUpgradeableProxy, IERC4626, Math} from "src/Common.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 
 contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
+    using Math for uint256;
+
     Vault public vault;
     Withdrawer public withdrawer;
+
+    IProvider public provider;
 
     function setUp() public {
         vault = Vault(payable(MC.YNETHX));
         _initVault(vault);
+
+        provider = IProvider(vault.provider());
 
         withdrawer = VaultVerification.getWithdrawer(vault);
         assertEq(vault.asset(), MC.WETH, "base asset should be weth");
@@ -46,6 +53,16 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         vault.processor(targets, values, data);
 
         vault.processAccounting();
+    }
+
+    function _convertAssetToBase(address asset_, uint256 assets) internal view returns (uint256) {
+        uint256 rate = provider.getRate(asset_);
+        return assets.mulDiv(rate, 10 ** 18, Math.Rounding.Floor);
+    }
+
+    function _convertBaseToAsset(address asset_, uint256 assets) internal view returns (uint256) {
+        uint256 rate = provider.getRate(asset_);
+        return assets.mulDiv(10 ** 18, rate, Math.Rounding.Floor);
     }
 
     function test_Vault_4626Invariants_depositBase(uint256 assets) public {
@@ -870,7 +887,10 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             );
 
             totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
+            // changing by 1e12 since underlying asset rates are changing
+            assertApproxEqRel(
+                vault.totalAssets(), initialAssets, 1e12, "vault should have received woETH after deposit"
+            );
         }
 
         {
@@ -883,7 +903,10 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             }
 
             totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
+            // changing by 1e12 since underlying asset rates are changing
+            assertApproxEqRel(
+                vault.totalAssets(), initialAssets, 1e12, "vault should have received ynLSDe after deposit"
+            );
         }
     }
 
@@ -908,6 +931,8 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             vm.stopPrank();
         }
 
+        vault.processAccounting();
+
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
 
@@ -928,11 +953,15 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             assertEq(
                 IERC20(MC.WOETH).balanceOf(address(vault)),
                 initialWOETH + amountWOETH,
-                "vault should have received wstETH"
+                "vault should have received woETH"
+            );
+
+            // changing by 1e12 since underlying asset rates are changing
+            assertApproxEqRel(
+                vault.totalAssets(), initialAssets, 1e12, "vault should have received woETH after deposit"
             );
 
             totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
         }
 
         uint256 receivedOETH;
@@ -945,7 +974,8 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             }
 
             totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
+            // changing by 1e12 since underlying asset rates are changing
+            assertApproxEqRel(vault.totalAssets(), initialAssets, 1e12, "vault should have received oETH after redeem");
         }
 
         {
@@ -961,11 +991,12 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             assertEq(
                 IERC20(MC.WOETH).balanceOf(address(vault)),
                 initialWOETH + amountWOETH,
-                "vault should have received wstETH"
+                "vault should have received woETH"
             );
 
             totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
+            // changing by 1e12 since underlying asset rates are changing
+            assertApproxEqRel(vault.totalAssets(), initialAssets, 1e12, "vault should have received woETH second time");
         }
 
         {
@@ -977,7 +1008,10 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
             }
 
             totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
+            // changing by 1e12 since underlying asset rates are changing
+            assertApproxEqRel(
+                vault.totalAssets(), initialAssets, 1e12, "vault should have received oETH after withdraw"
+            );
         }
     }
 

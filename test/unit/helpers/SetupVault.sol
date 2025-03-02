@@ -21,12 +21,13 @@ contract SetupVault is Test, Etches, MainnetActors {
         Vault vaultImplementation = new PublicViewsVault();
 
         // Deploy the proxy
-        bytes memory initData =
-            abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18, 0, true, true);
-
-        TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
+        TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, "");
 
         vault = Vault(payable(address(vaultProxy)));
+
+        // Initialize the vault
+        vault.initialize(ADMIN, name, symbol, 18, 0, true, false);
+
         weth = WETH9(payable(MC.WETH));
 
         if (block.chainid == 31337) {
