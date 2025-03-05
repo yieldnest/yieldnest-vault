@@ -2,11 +2,15 @@ name: CI
 
 on:
   push:
-  pull_request:
-  workflow_dispatch:
+    branches:
+      - eth-max-vault
+      - bnb-max-vault
+  pull_request:  # Runs on all branches
+  workflow_dispatch:  # Manual trigger
 
 env:
   FOUNDRY_PROFILE: ci
+  BSCSCAN_API_KEY: not-empty-for-compile
 
 jobs:
   check:
@@ -29,17 +33,35 @@ jobs:
         run: |
           forge --version
 
-      - name: Run Forge fmt
+      - name: Run Forge fmt default
+        env:
+          FOUNDRY_PROFILE: default
         run: |
           forge fmt --check
-        id: fmt
+        id: fmt_default
+
+      - name: Run Forge fmt mainnet tests
+        env:
+          FOUNDRY_PROFILE: mainnet
+        run: |
+          forge fmt --check
+        id: fmt_mainnet
 
       - name: Run Forge build
         run: |
-          forge build --sizes --skip DeployFactory.sol
+          forge build --sizes
         id: build
 
-      - name: Run Forge tests
+      - name: Run Forge unit tests
+        env:
+          FOUNDRY_PROFILE: default
         run: |
           forge test -vvv
-        id: test
+        id: test_unit
+
+      - name: Run Forge mainnet units
+        env:
+          FOUNDRY_PROFILE: mainnet
+        run: |
+          forge test -vvv
+        id: test_mainnet

@@ -118,7 +118,8 @@ interface IVault is IERC4626 {
     function setProvider(address provider) external;
     function setBuffer(address buffer) external;
     function setProcessorRule(address target, bytes4 functionSig, FunctionRule memory rule) external;
-
+    function setProcessorRules(address[] memory targets, bytes4[] memory functionSigs, FunctionRule[] memory rules)
+        external;
     function addAsset(address asset_, bool active_) external;
     function pause() external;
     function unpause() external;

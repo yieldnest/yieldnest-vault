@@ -19,7 +19,7 @@ library VaultLib {
     }
 
     /**
-     * @notice Internal function to get the ERC20 storage.
+     * @notice Get the ERC20 storage.
      * @return $ The ERC20 storage.
      */
     function getERC20Storage() public pure returns (ERC20Storage storage $) {
@@ -30,7 +30,7 @@ library VaultLib {
     }
 
     /**
-     * @notice Internal function to get the vault storage.
+     * @notice Get the vault storage.
      * @return $ The vault storage.
      */
     function getVaultStorage() public pure returns (IVault.VaultStorage storage $) {
@@ -41,7 +41,7 @@ library VaultLib {
     }
 
     /**
-     * @notice Internal function to get the asset storage.
+     * @notice Get the asset storage.
      * @return $ The asset storage.
      */
     function getAssetStorage() public pure returns (IVault.AssetStorage storage $) {
@@ -52,7 +52,7 @@ library VaultLib {
     }
 
     /**
-     * @notice Internal function to get the processor storage.
+     * @notice Get the processor storage.
      * @return $ The processor storage.
      */
     function getProcessorStorage() public pure returns (IVault.ProcessorStorage storage $) {
@@ -63,7 +63,7 @@ library VaultLib {
     }
 
     /**
-     * @notice Internal function to get the fee storage.
+     * @notice Get the fee storage.
      * @return $ The fee storage.
      */
     function getFeeStorage() public pure returns (IVault.FeeStorage storage $) {
@@ -73,6 +73,11 @@ library VaultLib {
         }
     }
 
+    /**
+     * @notice Adds a new asset to the vault.
+     * @param asset_ The address of the asset.
+     * @param active_ Whether the asset is active or not.
+     */
     function addAsset(address asset_, uint8 decimals_, bool active_) public {
         if (asset_ == address(0)) {
             revert IVault.ZeroAddress();
@@ -95,6 +100,11 @@ library VaultLib {
         emit IVault.NewAsset(asset_, decimals_, index);
     }
 
+    /**
+     * @notice Updates an existing asset's parameters in the vault.
+     * @param index The index of the asset to update.
+     * @param fields The AssetUpdateFields struct containing the updated fields.
+     */
     function updateAsset(uint256 index, IVault.AssetUpdateFields calldata fields) public {
         IVault.AssetStorage storage assetStorage = getAssetStorage();
         if (index >= assetStorage.list.length) {
@@ -107,6 +117,10 @@ library VaultLib {
         emit IVault.UpdateAsset(index, asset_, fields);
     }
 
+    /**
+     * @notice Deletes an existing asset from the vault.
+     * @param index The index of the asset to delete.
+     */
     function deleteAsset(uint256 index) public {
         if (index == 0) revert IVault.DefaultAsset();
         IVault.AssetStorage storage assetStorage = getAssetStorage();
@@ -124,18 +138,34 @@ library VaultLib {
         emit IVault.DeleteAsset(index, asset_);
     }
 
-    function convertAssetToBase(address asset_, uint256 assets) public view returns (uint256) {
+    /**
+     * @notice Converts an asset amount to base units.
+     * @param asset_ The address of the asset.
+     * @param assets The amount of the asset.
+     * @return baseAssets The equivalent amount in base units.
+     */
+    function convertAssetToBase(address asset_, uint256 assets) public view returns (uint256 baseAssets) {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
         uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
-        return assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals), Math.Rounding.Floor);
+        baseAssets = assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals), Math.Rounding.Floor);
     }
 
-    function convertBaseToAsset(address asset_, uint256 assets) public view returns (uint256) {
+    /**
+     * @notice Converts a base amount to asset units.
+     * @param asset_ The address of the asset.
+     * @param baseAssets The amount of the assets in base units.
+     * @return assets The equivalent amount in asset units.
+     */
+    function convertBaseToAsset(address asset_, uint256 baseAssets) public view returns (uint256 assets) {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
         uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
-        return assets.mulDiv(10 ** (getAssetStorage().assets[asset_].decimals), rate, Math.Rounding.Floor);
+        assets = baseAssets.mulDiv(10 ** (getAssetStorage().assets[asset_].decimals), rate, Math.Rounding.Floor);
     }
 
+    /**
+     * @notice Adds a given amount of base assets to the total assets.
+     * @param baseAssets The amount of base assets to add.
+     */
     function addTotalAssets(uint256 baseAssets) public {
         IVault.VaultStorage storage vaultStorage = getVaultStorage();
         if (!vaultStorage.alwaysComputeTotalAssets) {
@@ -143,6 +173,10 @@ library VaultLib {
         }
     }
 
+    /**
+     * @notice Subtracts a given amount of base assets from the total assets.
+     * @param baseAssets The amount of base assets to subtract.
+     */
     function subTotalAssets(uint256 baseAssets) public {
         IVault.VaultStorage storage vaultStorage = getVaultStorage();
         if (!vaultStorage.alwaysComputeTotalAssets) {
@@ -150,18 +184,32 @@ library VaultLib {
         }
     }
 
+    /**
+     * @notice Converts a given amount of shares to assets.
+     * @param asset_ The address of the asset.
+     * @param shares The amount of shares to convert.
+     * @param rounding The rounding direction.
+     * @return assets The amount of assets.
+     * @return baseAssets The amount of base assets.
+     */
     function convertToAssets(address asset_, uint256 shares, Math.Rounding rounding)
         public
         view
-        returns (uint256, uint256)
+        returns (uint256 assets, uint256 baseAssets)
     {
         uint256 totalAssets = IVault(address(this)).totalAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
-        uint256 baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
-        uint256 assets = convertBaseToAsset(asset_, baseAssets);
-        return (assets, baseAssets);
+        baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
+        assets = convertBaseToAsset(asset_, baseAssets);
     }
 
+    /**
+     * @notice Converts a given amount of assets to shares.
+     * @param asset_ The address of the asset.
+     * @param assets The amount of assets to convert.
+     * @param rounding The rounding direction.
+     * @return (shares, baseAssets) The equivalent amount of shares.
+     */
     function convertToShares(address asset_, uint256 assets, Math.Rounding rounding)
         public
         view
@@ -174,11 +222,21 @@ library VaultLib {
         return (shares, baseAssets);
     }
 
+    /**
+     * @notice Sets the processor rule for a given contract address and function signature.
+     * @param target The address of the target contract.
+     * @param functionSig The function signature.
+     * @param rule The function rule.
+     */
     function setProcessorRule(address target, bytes4 functionSig, IVault.FunctionRule calldata rule) public {
         getProcessorStorage().rules[target][functionSig] = rule;
         emit IVault.SetProcessorRule(target, functionSig, rule);
     }
 
+    /**
+     * @notice Sets the provider.
+     * @param provider_ The address of the provider.
+     */
     function setProvider(address provider_) public {
         if (provider_ == address(0)) {
             revert IVault.ZeroAddress();
@@ -187,6 +245,10 @@ library VaultLib {
         emit IVault.SetProvider(provider_);
     }
 
+    /**
+     * @notice Sets the buffer strategy.
+     * @param buffer_ The address of the buffer strategy.
+     */
     function setBuffer(address buffer_) public {
         if (buffer_ == address(0)) {
             revert IVault.ZeroAddress();
@@ -196,6 +258,10 @@ library VaultLib {
         emit IVault.SetBuffer(buffer_);
     }
 
+    /**
+     * @notice Computes the total assets in the vault.
+     * @return totalBaseBalance The total base balance of the vault.
+     */
     function computeTotalAssets() public view returns (uint256 totalBaseBalance) {
         IVault.VaultStorage storage vaultStorage = getVaultStorage();
 
@@ -213,6 +279,13 @@ library VaultLib {
         }
     }
 
+    /**
+     * @notice Processes a series of calls to target contracts.
+     * @param targets The addresses of the target contracts.
+     * @param values The values to send with the calls.
+     * @param data The calldata for the calls.
+     * @return returnData The return data from the calls.
+     */
     function processor(address[] calldata targets, uint256[] memory values, bytes[] calldata data)
         public
         returns (bytes[] memory returnData)

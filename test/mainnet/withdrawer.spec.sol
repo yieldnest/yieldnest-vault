@@ -14,9 +14,8 @@ import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeMa
 import {MockStakeHub} from "test/mainnet/mocks/MockStakeHub.sol";
 
 import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
-import {WithdrawerUtils} from "script/WithdrawerUtils.sol";
 
-contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUtils {
+contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
     using Math for uint256;
 
     Withdrawer public vault;
@@ -24,7 +23,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
 
     address public constant SLIS_ADMIN = 0x5C0F11c927216E4D780E2a219b06632Fb027274E;
 
-    IProvider public provider = IProvider(MC.PROVIDER);
+    IProvider public provider;
 
     function setUp() public {
         SetupWithdrawer setup = new SetupWithdrawer();
@@ -40,6 +39,8 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         vm.startPrank(ADMIN);
         vault.grantRole(vault.PROCESSOR_ROLE(), address(this));
         vm.stopPrank();
+
+        provider = IProvider(vault.provider());
 
         _mockSlisValidator();
     }
@@ -65,6 +66,8 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
     }
 
     function test_Vault_views() public {
+        assertEq(vault.countNativeAsset(), true, "Native asset should be counted");
+        assertEq(vault.alwaysComputeTotalAssets(), false, "Always compute total assets should be true");
         assertEq(vault.asset(), MC.WETH, "Asset address should match");
 
         uint256 totalAssets = INITIAL_BALANCE; // WBNB
@@ -99,7 +102,7 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         vault.processAccounting();
         uint256 totalAssets = vault.totalAssets();
 
-        processRequestWithdraw(vault, stakeManager_, asset_, amount);
+        _processRequestWithdraw(vault, stakeManager_, asset_, amount);
 
         ISlisBnbStakeManager.WithdrawalRequest[] memory requests =
             stakeManager.getUserWithdrawalRequests(address(vault));
@@ -136,11 +139,42 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors, WithdrawerUt
         (bool _isClaimable,) = stakeManager.getUserRequestStatus(address(vault), tokenId);
         assertEq(_isClaimable, true, "Claimable should be true");
 
-        processClaimWithdraw(vault, stakeManager_, tokenId);
+        _processClaimWithdraw(vault, stakeManager_, tokenId);
 
         assertApproxEqRel(vault.totalAssets(), totalAssets, 1e15, "Total assets should match");
 
         uint256 assets = vault.asyncWithdrawalBalance(asset_);
         assertEq(assets, 0, "Queued assets should match");
+    }
+
+    function _processRequestWithdraw(Withdrawer vault_, address contractAddress, address asset_, uint256 amount)
+        internal
+    {
+        address[] memory targets = new address[](2);
+        targets[0] = asset_;
+        targets[1] = contractAddress;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", contractAddress, amount);
+        data[1] = abi.encodeWithSignature("requestWithdraw(uint256)", amount);
+
+        vault_.processor(targets, values, data);
+    }
+
+    function _processClaimWithdraw(Withdrawer vault_, address contractAddress, uint256 tokenId) internal {
+        address[] memory targets = new address[](1);
+        targets[0] = contractAddress;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("claimWithdraw(uint256)", tokenId);
+
+        vault_.processor(targets, values, data);
     }
 }

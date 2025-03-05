@@ -238,12 +238,12 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         deal(alice, depositAmountSTETH);
         (success,) = MC.STETH.call{value: depositAmountSTETH}("");
         require(success, "Steth transfer failed");
-        aliceStEthDepositAmount = IERC20(steth).balanceOf(alice);
+        uint256 aliceStEthDonateAmount = IERC20(steth).balanceOf(alice);
 
         uint256 rate = IProvider(MC.PROVIDER).getRate(MC.STETH);
-        expectedTotalAssets += (aliceStEthDepositAmount * rate) / (10 ** 18);
+        expectedTotalAssets += (aliceStEthDonateAmount * rate) / (10 ** 18);
 
-        IERC20(steth).transfer(address(vault), aliceStEthDepositAmount);
+        IERC20(steth).transfer(address(vault), aliceStEthDonateAmount);
 
         vault.processAccounting();
 

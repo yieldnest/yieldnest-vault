@@ -8,7 +8,6 @@ import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
-import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {MockERC20} from "test/unit/mocks/MockERC20.sol";
 
@@ -28,9 +27,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         (vault, weth) = setupVault.setup();
 
         // Give Alice some tokens
-        deal(alice, INITIAL_BALANCE);
-        weth.deposit{value: INITIAL_BALANCE}();
-        weth.transfer(alice, INITIAL_BALANCE);
+        deal(address(weth), alice, INITIAL_BALANCE);
 
         // Approve vault to spend Alice's tokens
         vm.prank(alice);

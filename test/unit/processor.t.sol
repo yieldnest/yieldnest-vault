@@ -233,7 +233,8 @@ contract VaultProcessUnitTest is Test, MainnetActors, Etches {
         values[0] = 0;
 
         bytes[] memory data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 10000000 ether, address(vault)); // Invalid function signature
+        // Invalid function signature
+        data[0] = abi.encodeWithSignature("deposit(uint256,address)", 10000000 ether, address(vault));
 
         // Expect the processor call to fail with and send return data
         vm.prank(PROCESSOR);

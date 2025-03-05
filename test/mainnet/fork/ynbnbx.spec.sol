@@ -7,22 +7,24 @@ import {MainnetActors} from "script/Actors.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {Vault} from "src/Vault.sol";
-import {ProxyAdmin} from "src/Common.sol";
+import {ProxyAdmin, Math} from "src/Common.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
-import {VaultUtils} from "script/VaultUtils.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {Vault} from "src/Vault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 
-contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
+contract YnBNBxForkTest is Test, MainnetActors {
     Vault public vault;
     IERC20 public wbnb;
 
     function setUp() public {
         vault = Vault(payable(MainnetContracts.YNBNBX));
         wbnb = IERC20(MainnetContracts.WBNB);
+
+        // verify alwaysComputeTotalAssets is true
+        assertTrue(vault.alwaysComputeTotalAssets(), "alwaysComputeTotalAssets should be true");
     }
 
     function testDepositAndStake() public {
@@ -201,7 +203,7 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
 
     function testUpgradeVaultWithTimelock(address vaultAddress, Vault newImplementation) internal {
         // Get proxy admin
-        ProxyAdmin proxyAdmin = ProxyAdmin(getProxyAdmin(vaultAddress));
+        ProxyAdmin proxyAdmin = ProxyAdmin(ProxyUtils.getProxyAdmin(vaultAddress));
 
         TimelockController timelock = TimelockController(payable(proxyAdmin.owner()));
 
@@ -226,7 +228,7 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
 
         // Verify upgrade was successful
         assertEq(
-            getImplementation(vaultAddress),
+            ProxyUtils.getImplementation(vaultAddress),
             address(newImplementation),
             "Implementation address should match new implementation"
         );
@@ -436,10 +438,13 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
         uint256 bufferBefore = IERC4626(vault.buffer()).totalAssets();
         uint256 vaultAssetsBefore = vault.totalAssets();
         uint256 vaultSharesBefore = vault.totalSupply();
+        uint256 oldRate = vault.convertToAssets(1e18);
 
         // Record buffer shares in vault before donation
         uint256 bufferSharesBefore = IERC4626(vault.buffer()).balanceOf(address(vault));
         uint256 bufferTotalSupplyBefore = IERC4626(vault.buffer()).totalSupply();
+
+        uint256 bufferRateBefore = IERC4626(vault.buffer()).convertToAssets(1e18);
 
         // Create bob and give him BNB for donation
         address bob = makeAddr("bob");
@@ -456,21 +461,45 @@ contract YnBNBxForkTest is Test, MainnetActors, ProxyUtils, VaultUtils {
             IERC4626(vault.buffer()).totalAssets(), bufferBefore + donationAmount, "Buffer should increase by donation"
         );
 
+        assertEq(
+            IERC4626(vault.buffer()).totalSupply(),
+            bufferTotalSupplyBefore,
+            "Buffer total supply should remain unchanged"
+        );
+
+        assertEq(
+            IERC4626(vault.buffer()).balanceOf(address(vault)),
+            bufferSharesBefore,
+            "Buffer shares should remain unchanged"
+        );
+
+        // Verify buffer rate increased due to donation
+        uint256 bufferRateAfter = IERC4626(vault.buffer()).convertToAssets(1e18);
+
+        uint256 changeInRate = Math.mulDiv(1e18, donationAmount + 1, bufferTotalSupplyBefore + 1, Math.Rounding.Floor);
+
+        assertGt(bufferRateAfter, bufferRateBefore, "Buffer rate should increase");
+
+        assertApproxEqAbs(
+            bufferRateAfter - bufferRateBefore, changeInRate, 1, "Buffer rate should increase by donation"
+        );
+
         // Verify total assets increased but shares unchanged
         {
-            uint256 vaultShareProportion = (donationAmount * bufferSharesBefore) / bufferTotalSupplyBefore;
+            uint256 vaultShareProportion = (bufferRateAfter - bufferRateBefore) * bufferSharesBefore / 1e18;
 
             assertApproxEqAbs(
                 vault.totalAssets(),
                 vaultAssetsBefore + vaultShareProportion,
-                10,
+                1,
                 "Total assets should increase proportionally to the shares held by the vault"
             );
             assertEq(vault.totalSupply(), vaultSharesBefore, "Total supply should remain unchanged");
 
-            // Verify rate increased due to donation
+            // Verify vault rate increased due to donation
             uint256 newRate = vault.convertToAssets(1e18);
             uint256 expectedRate = ((vaultAssetsBefore + vaultShareProportion) * 1e18) / vaultSharesBefore;
+            assertGt(newRate, oldRate, "New rate should increase");
             assertApproxEqAbs(newRate, expectedRate, 1, "New rate should reflect donation");
         }
     }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {BscContracts, ChapelContracts, IContracts} from "script/Contracts.sol";
 import {Script} from "lib/forge-std/src/Script.sol";
 
 import {Vault} from "src/Vault.sol";
