@@ -5,39 +5,6 @@ interface IProvider {
     function getRate(address asset) external view returns (uint256);
 }
 
-interface IStETH {
-    function getPooledEthByShares(uint256 _ethAmount) external view returns (uint256);
-}
-
-interface IMETH {
-    function mETHToETH(uint256 mETHAmount) external view returns (uint256);
-}
-
-interface IOETH {
-    function assetToEth(uint256 _assetAmount) external view returns (uint256);
-}
-
-interface IRETH {
-    function getExchangeRate() external view returns (uint256);
-}
-
-interface IswETH {
-    function swETHToETHRate() external view returns (uint256);
-}
-
-interface IsfrxETH {
-    function pricePerShare() external view returns (uint256);
-}
-
-interface IFrxEthWethDualOracle {
-    function getCurveEmaEthPerFrxEth() external view returns (uint256);
-}
-
-interface IynLSDe {
-    function convertToAssets(address asset, uint256 shares) external view returns (uint256);
-    function previewRedeem(uint256 shares) external view returns (uint256);
-}
-
 interface ICurveLpConnector {
     function rate() external view returns (int256 rate, uint256 updatedAt);
 }

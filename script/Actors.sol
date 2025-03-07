@@ -91,7 +91,9 @@ contract MainnetActors is IActors {
     address public constant PROCESSOR_MANAGER = YnSecurityCouncil;
     address public constant PAUSER = YnDev;
     address public constant UNPAUSER = YnSecurityCouncil;
+    address public constant MORPHO_USDC_CORE_VAULT_MANAGER = YnSecurityCouncil;
     address public constant FEE_MANAGER = YnSecurityCouncil;
+    address public constant DEPOSIT_MANAGER = YnSecurityCouncil;
 
     address public constant ALLOCATOR_MANAGER = YnSecurityCouncil;
 

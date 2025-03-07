@@ -2,35 +2,33 @@
 pragma solidity ^0.8.24;
 
 import {Provider} from "src/module/Provider.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Vault} from "src/Vault.sol";
-import {TimelockController, IERC20, Math, ERC20} from "src/Common.sol";
+import {TimelockController, IERC20, Math} from "src/Common.sol";
 import {MainnetActors, IActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
+import {VaultVerification} from "script/verification/VaultVerification.sol";
+import {RolesVerification} from "script/verification/RolesVerification.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
+import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
+import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {BaseVault} from "src/BaseVault.sol";
-import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
-import {RulesVerification} from "script/verification/RulesVerification.sol";
-import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {BufferStrategy} from "src/BufferStrategy.sol";
-import {console} from "lib/forge-std/src/console.sol";
-import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
-contract VaultBasicFunctionalityTest is SetupVault, TestHelper {
-    using SafeERC20 for IERC20;
-
+contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
     Vault public vault;
+    Withdrawer public withdrawer;
     TimelockController public timelock;
-    BufferStrategy public bufferStrategy;
-    Provider public provider;
 
-    string public constant VAULT_VERSION = "0.1.0";
+    string public constant VAULT_VERSION = "0.2.0";
 
     function setUp() public {
-        (vault, bufferStrategy, provider) = SetupVault.deploy();
+        vault = Vault(payable(MC.YNETHX));
+        withdrawer = VaultVerification.getWithdrawer(vault);
 
         timelock = TimelockController(payable(MC.TIMELOCK));
 
@@ -38,54 +36,127 @@ contract VaultBasicFunctionalityTest is SetupVault, TestHelper {
         vault.processAccounting();
     }
 
-    function test_deposit_USDC(uint256 depositAmount) public {
-        depositAmount = bound(depositAmount, 1, 100_000 * 1e6);
+    function test_configure() public view {
+        // verify the configuration was successful
+        IActors actors = IActors(payable(address(this)));
 
-        deal(MC.USDC, address(this), depositAmount);
+        VaultVerification.verifyProvider(Provider(IVault(address(vault)).provider()), withdrawer);
+
+        VaultVerification.verifyVaultConfiguration(vault, withdrawer);
+
+        VaultVerification.verifyRules(vault);
+
+        // verify actors & timelock roles on vault
+        RolesVerification.verifyDefaultRoles(vault, timelock, actors);
+        RolesVerification.verifyRole(
+            vault, actors.FEE_MANAGER(), vault.FEE_MANAGER_ROLE(), true, "Fee Manager has FEE_MANAGER_ROLE"
+        );
+
+        // verify proxy roles on vault
+        RolesVerification.verifyProxyRoles(address(vault), MC.PROXY_ADMIN, address(timelock));
+
+        // verify withdrawer config
+        VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
+
+        // verify withdrawer roles
+        VaultVerification.verifyWithdrawerRules(withdrawer);
+
+        // verify actors & timelock roles on withdrawer
+        RolesVerification.verifyDefaultRoles(withdrawer, timelock, actors);
+        RolesVerification.verifyRole(
+            withdrawer, address(vault), withdrawer.ALLOCATOR_ROLE(), true, "YnETHx has ALLOCATOR_ROLE"
+        );
+
+        address withdrawerProxyAdmin = ProxyUtils.getProxyAdmin(address(withdrawer));
+
+        // verify proxy roles on withdrawer
+        RolesVerification.verifyProxyRoles(address(withdrawer), withdrawerProxyAdmin, address(timelock));
+
+        // verify timelock roles
+        uint256 minDelay = 1 days;
+        RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
+    }
+
+    function test_deposit_ynETH(uint256 depositAmount) public {
+        vm.assume(depositAmount > 10000);
+        vm.assume(depositAmount < 100_000 ether);
+
+        deal(MC.YNETH, address(this), depositAmount);
         uint256 totalAssetBefore = vault.totalAssets();
 
-        IERC20(MC.USDC).approve(address(vault), depositAmount);
-        vault.depositAsset(MC.USDC, depositAmount, address(this));
+        IERC20(MC.YNETH).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.YNETH, depositAmount, address(this));
         vault.processAccounting();
 
         uint256 totalAssets = vault.totalAssets();
-        uint256 ynUSDCRate = IProvider(vault.provider()).getRate(MC.USDC);
+        uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
 
-        assertEq(
+        assertApproxEqAbs(
             totalAssets,
-            totalAssetBefore + (depositAmount * ynUSDCRate / 1e6),
+            totalAssetBefore + (depositAmount * ynEthRate / 1e18),
+            3,
             "Total assets should match deposit amount"
         );
     }
 
-    function test_can_not_deposit_other_assets(uint256 depositAmount) public {
-        depositAmount = bound(depositAmount, 1, 100_000 * 1e6);
-        address[] memory assets = vault.getAssets();
-        for(uint256 i = 0; i < assets.length; i++) {
-            address asset = assets[i];
-            
-            if(asset == MC.USDC) {
-                continue;
-            }
+    function test_deposit_ynLSDe(uint256 depositAmount) public {
+        vm.assume(depositAmount > 10000);
+        vm.assume(depositAmount < 100_000 ether);
 
-            deal(asset, address(this), depositAmount);
-            uint256 totalAssetBefore = vault.totalAssets();
+        uint256 totalAssetBefore = vault.totalAssets();
 
-            IERC20(asset).forceApprove(address(vault), depositAmount);
-            vm.expectRevert();
-            vault.depositAsset(asset, depositAmount, address(this));
-            vault.processAccounting();
+        // Deposit YNLSDE
+        deal(MC.YNLSDE, address(this), depositAmount);
+        IERC20(MC.YNLSDE).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.YNLSDE, depositAmount, address(this));
 
-            assertEq(vault.totalAssets(), totalAssetBefore, "Total assets should not change");
-        }
+        vault.processAccounting();
+
+        // Assert totalAssets is correct
+        uint256 totalAssets = vault.totalAssets();
+
+        uint256 ynLSDeRate = IProvider(vault.provider()).getRate(MC.YNLSDE);
+        assertApproxEqAbs(
+            totalAssets,
+            totalAssetBefore + (depositAmount * ynLSDeRate / 1e18),
+            3,
+            "Total assets should match deposit amount"
+        );
+    }
+
+    function test_deposit_wETH(uint256 depositAmount) public {
+        vm.assume(depositAmount > 10000);
+        vm.assume(depositAmount < 100_000 ether);
+
+        uint256 totalAssetBefore = vault.totalAssets();
+
+        // Deposit YN
+        deal(MC.WETH, address(this), depositAmount);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.WETH, depositAmount, address(this));
+
+        vault.processAccounting();
+
+        // Assert totalAssets is correct
+        uint256 totalAssets = vault.totalAssets();
+
+        uint256 wethRate = IProvider(vault.provider()).getRate(MC.WETH);
+        assertApproxEqAbs(
+            totalAssets,
+            totalAssetBefore + (depositAmount * wethRate / 1e18),
+            3,
+            "Total assets should match deposit amount"
+        );
     }
 
     function test_donate_assets(uint256 donationAmount) public {
+        vm.assume(donationAmount > 1e8);
+        vm.assume(donationAmount < 1_000 ether);
 
         address[] memory assets = vault.getAssets();
+        assertEq(assets.length, 11, "Should have 11 assets");
 
         for (uint256 i = 0; i < assets.length; i++) {
-            donationAmount = bound(donationAmount, 100, 100_000 * 10 ** ERC20(assets[i]).decimals());
             _test_donate_single_asset(assets[i], donationAmount);
         }
     }
@@ -97,34 +168,37 @@ contract VaultBasicFunctionalityTest is SetupVault, TestHelper {
 
         assertEq(IERC20(asset).balanceOf(alice), 0, "Balance should be 0 before donation");
 
-        deal(asset, alice, donationAmount);
+        dealAsset(asset, alice, donationAmount);
+
+        //  note: donatedAmount is the actual amount donated to the vault
+        uint256 donatedAmount = IERC20(asset).balanceOf(alice);
 
         vm.startPrank(alice);
-        IERC20(asset).safeTransfer(address(vault), donationAmount);
+        IERC20(asset).transfer(address(vault), donatedAmount);
         vm.stopPrank();
 
         vault.processAccounting();
 
         uint256 rate = IProvider(vault.provider()).getRate(asset);
-        uint256 baseAmount = Math.mulDiv(donationAmount, rate, 10 ** ERC20(asset).decimals(), Math.Rounding.Floor);
+        uint256 baseAmount = Math.mulDiv(donatedAmount, rate, 10 ** 18, Math.Rounding.Floor);
 
-        assertEq(vault.totalAssets(), totalAssetBefore + baseAmount, "Total assets should be correct");
+        assertApproxEqRel(vault.totalAssets(), totalAssetBefore + baseAmount, 1e12, "Total assets should be correct");
     }
 
-    function test_deposit_any_asset(uint256 depositAmount, uint256 assetIndex) public {
+    function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {
+        vm.assume(depositAmount > 10000);
+        vm.assume(depositAmount < 100_000 ether);
 
         address[] memory assets = vault.getAssets();
-        assetIndex = bound(assetIndex, 0, assets.length - 1);
+        vm.assume(assetIndex < assets.length);
         address asset = assets[assetIndex];
 
-        depositAmount = bound(depositAmount, 1, 1000_000 * 10 ** ERC20(asset).decimals());
-
         address alice = address(0xa11ce);
-        deal(asset, alice, depositAmount);
+        dealAsset(asset, alice, depositAmount);
 
         // Skip if asset is already active
         if (!vault.getAsset(asset).active) {
-            vm.startPrank(address(ADMIN));
+            vm.startPrank(address(timelock));
             IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
             vault.updateAsset(assetIndex, fields);
             vm.stopPrank();
@@ -133,29 +207,28 @@ contract VaultBasicFunctionalityTest is SetupVault, TestHelper {
         vault.processAccounting();
 
         uint256 totalAssetBefore = vault.totalAssets();
+        uint256 actualAmount = IERC20(asset).balanceOf(alice);
         uint256 vaultRateBefore = vault.convertToAssets(1e18);
 
         vm.startPrank(alice);
-        IERC20(asset).forceApprove(address(vault), depositAmount);
-        vault.depositAsset(asset, depositAmount, address(this));
+        IERC20(asset).approve(address(vault), actualAmount);
+        vault.depositAsset(asset, actualAmount, address(this));
         vm.stopPrank();
-
-        vault.processAccounting();
 
         uint256 totalAssets = vault.totalAssets();
         uint256 assetRate = IProvider(vault.provider()).getRate(asset);
         uint256 vaultRateAfterDeposit = vault.convertToAssets(1e18);
 
         assertApproxEqRel(vaultRateBefore, vaultRateAfterDeposit, 1e10, "Vault rate should not change after deposit");
-        uint256 baseAmount = Math.mulDiv(depositAmount, assetRate, 10 ** ERC20(asset).decimals(), Math.Rounding.Floor);
 
         assertApproxEqAbs(
             totalAssets,
-            totalAssetBefore + baseAmount,
+            totalAssetBefore + (actualAmount * assetRate / 1e18),
             3,
             "Total assets should match deposit amount"
         );
 
+        vault.processAccounting();
 
         uint256 vaultRateAfterProcessing = vault.convertToAssets(1e18);
         assertApproxEqRel(
@@ -165,7 +238,7 @@ contract VaultBasicFunctionalityTest is SetupVault, TestHelper {
         // Verify total assets remains the same after processing accounting
         assertApproxEqAbs(
             vault.totalAssets(),
-            totalAssetBefore + baseAmount,
+            totalAssetBefore + (actualAmount * assetRate / 1e18),
             3,
             "Total assets should match deposit amount"
         );
@@ -321,7 +394,7 @@ contract VaultBasicFunctionalityTest is SetupVault, TestHelper {
 
             // TODO: understand why the rate is changing this much
             // rate is changing for underlying assets
-            assertApproxEqRel(finalRates[i], initialRates[i], 2e14, "Rate should match");
+            assertApproxEqRel(finalRates[i], initialRates[i], 1e14, "Rate should match");
         }
 
         uint256 finalTvl = vault.totalAssets();
@@ -329,7 +402,7 @@ contract VaultBasicFunctionalityTest is SetupVault, TestHelper {
 
         // The rates of underlying assets changes, consequently the total assets changes slightly
         assertApproxEqRel(
-            finalTvl, tvlBeforeWithdraw, 1e13, "Total assets should remain unchanged after processing accounting"
+            finalTvl, tvlBeforeWithdraw, 1e12, "Total assets should remain unchanged after processing accounting"
         );
     }
 
@@ -441,45 +514,40 @@ contract VaultBasicFunctionalityTest is SetupVault, TestHelper {
     }
 
     function test_depositAndWithdrawFromBuffer() public {
-        uint256 depositAmount =  100_000e6;
+        uint256 depositAmount = 100 ether;
 
         address alice = makeAddr("alice");
-        deal(MC.USDC, alice, depositAmount);
+        deal(MC.WETH, alice, 1000 ether);
 
         // Get initial balances
-        uint256 aliceUSDCBalanceBefore = IERC20(MC.USDC).balanceOf(alice);
+        uint256 aliceWethBalanceBefore = IERC20(MC.WETH).balanceOf(alice);
         uint256 vaultTotalAssetsBefore = vault.totalAssets();
 
-        // Approve and deposit USDC
+        // Approve and deposit WETH
         vm.startPrank(alice);
-        IERC20(MC.USDC).approve(address(vault), depositAmount);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
         vault.deposit(depositAmount, alice);
         vm.stopPrank();
 
         // Verify deposit
         assertEq(
-            IERC20(MC.USDC).balanceOf(alice),
-            aliceUSDCBalanceBefore - depositAmount,
-            "User USDC balance should decrease by deposit amount"
+            IERC20(MC.WETH).balanceOf(alice),
+            aliceWethBalanceBefore - depositAmount,
+            "User WETH balance should decrease"
         );
-        uint256 rate = IProvider(vault.provider()).getRate(MC.USDC);
-        uint256 baseAmount = Math.mulDiv(depositAmount, rate, 10 ** ERC20(MC.USDC).decimals(), Math.Rounding.Floor);
-        assertEq(vault.totalAssets(), vaultTotalAssetsBefore + baseAmount, "Vault total assets should increase");
-        assertEq(vault.balanceOf(alice), vault.totalSupply(), "Vault balance of alice should increase");
+        assertEq(vault.totalAssets(), vaultTotalAssetsBefore + depositAmount, "Vault total assets should increase");
 
-        uint256 bufferStrategyBalanceBefore = bufferStrategy.balanceOf(address(vault));
-        uint256 bufferStrategyTotalSupplyBefore = bufferStrategy.totalSupply();
-        // Allocate to buffer (MorphoGauntletUSDC vault)
+        // Allocate to buffer (Euler vault)
         {
             address[] memory targets = new address[](2);
             uint256[] memory values = new uint256[](2);
             bytes[] memory data = new bytes[](2);
 
-            targets[0] = MC.USDC;
+            targets[0] = MC.WETH;
             values[0] = 0;
-            data[0] = abi.encodeCall(IERC20.approve, (address(bufferStrategy), depositAmount));
+            data[0] = abi.encodeCall(IERC20.approve, (MC.EULER_WETH_22_VAULT, depositAmount));
 
-            targets[1] = address(bufferStrategy);
+            targets[1] = MC.EULER_WETH_22_VAULT;
             values[1] = 0;
             data[1] = abi.encodeCall(IERC4626.deposit, (depositAmount, address(vault)));
 
@@ -504,14 +572,14 @@ contract VaultBasicFunctionalityTest is SetupVault, TestHelper {
         assertApproxEqAbs(
             IERC20(MC.WETH).balanceOf(alice),
             aliceWethBalanceBefore - depositAmount + amountAfterFee,
-            // TODO: fix this down to at least 1e8 margin of error
-            1e15, // withdrawal fee precision error is at 0.01% of amount
+            // todo: fix this down to at least 1e8 margin of error
+            1e14, // withdrawal fee precision error is at 0.001% of amount
             "User should receive original WETH amount back minus fee"
         );
         assertApproxEqAbs(
             vault.totalAssets(),
             vaultTotalAssetsBefore + fee,
-            1e15, // withdrawal fee precision error is at 0.01% of amount
+            1e14, // withdrawal fee precision error is at 0.001% of amount
             "Vault total assets should include withdrawal fee"
         );
     }
@@ -533,42 +601,61 @@ contract VaultBasicFunctionalityTest is SetupVault, TestHelper {
             vault.depositAsset(MC.YNLSDE, depositAmount, alice);
             vm.stopPrank();
 
-            // Process accounting
             vault.processAccounting();
         }
 
-        {
-            uint256 expectedUsdcCoreVaultShares = IERC4626(MC.MORPHO_GAUNTLET_USDC_VAULT).previewDeposit(depositAmount);
-            assertEq(IERC20(MC.USDC).balanceOf(address(bufferStrategy)), 0, "Buffer strategy should deposit USDC to usdc core vault");
-            assertEq(IERC4626(MC.MORPHO_GAUNTLET_USDC_VAULT).balanceOf(address(bufferStrategy)), expectedUsdcCoreVaultShares, "Buffer strategy should receive shares from usdc core vault");
-            assertEq(bufferStrategy.balanceOf(address(vault)), bufferStrategy.totalSupply() - bufferStrategyTotalSupplyBefore, "Buffer strategy balance of vault should increase");
-        }
-        {
-            uint256 vaultBalanceBeforeWithdraw = vault.balanceOf(alice);
-            // User withdraws max amount
-            vm.startPrank(alice);
-            uint256 maxWithdraw = vault.maxWithdraw(alice);
-            uint256 sharesBurned = vault.previewWithdraw(maxWithdraw);
-            vault.withdraw(maxWithdraw, alice, alice);
-            vm.stopPrank();
+        // Record total assets after deposits but before connector deposit
+        uint256 totalAssetsAfterDeposits = vault.totalAssets();
+        // Calculate TVL in terms of ynETH and ynLSDe rates
+        uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
+        uint256 ynLsdeRate = IProvider(vault.provider()).getRate(MC.YNLSDE);
 
-            // Calculate withdrawal fee
-            uint256 fee = depositAmount * vault.baseWithdrawalFee() / 1e8;
-            uint256 amountAfterFee = depositAmount - fee;
-            // Verify withdrawal
-            assertApproxEqAbs(
-                IERC20(MC.USDC).balanceOf(alice),
-                aliceUSDCBalanceBefore - depositAmount + amountAfterFee,
-                10, // withdrawal fee precision error is at 0.001% of amount
-                "User should receive original USDC amount back minus fee"
-            );
-            assertEq(vault.balanceOf(alice), vaultBalanceBeforeWithdraw - sharesBurned, "Vault balance of alice should decrease by shares burned");
-            assertApproxEqAbs(
-                vault.totalAssets(),
-                vaultTotalAssetsBefore + fee,
-                1e12, // withdrawal fee precision error is at 0.001% of amount
-                "Vault total assets should include withdrawal fee"
-            );
+        uint256 ynEthValueInBase = depositAmount * ynEthRate / 1e18;
+        uint256 ynLsdeValueInBase = depositAmount * ynLsdeRate / 1e18;
+
+        assertApproxEqAbs(
+            totalAssetsAfterDeposits - vaultTotalAssetsBefore,
+            ynEthValueInBase + ynLsdeValueInBase,
+            3,
+            "Total assets increase should match sum of ynETH and ynLSDe values"
+        );
+
+        // Deposit equal amounts to ynETH and ynLSDe
+        {
+            address[] memory targets = new address[](3);
+            uint256[] memory values = new uint256[](3);
+            bytes[] memory data = new bytes[](3);
+
+            // Approve and deposit to ynETH
+            targets[0] = MC.YNETH;
+            values[0] = 0;
+            data[0] = abi.encodeCall(IERC20.approve, (MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, depositAmount));
+
+            targets[1] = MC.YNLSDE;
+            values[1] = 0;
+            data[1] = abi.encodeCall(IERC20.approve, (MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, depositAmount));
+
+            // Deposit to connector
+            targets[2] = MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR;
+            values[2] = 0;
+
+            data[2] = abi.encodeWithSignature("deposit(uint256,uint256,uint256)", depositAmount, depositAmount, 0);
+            // data[2] =  abi.encodeCall(ICurveLpConnector.deposit, (depositAmount, depositAmount, 0));
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets, values, data);
+            vm.stopPrank();
         }
+
+        // Process accounting
+        vault.processAccounting();
+
+        // Verify balances
+        assertApproxEqAbs(
+            totalAssetsAfterDeposits - vaultTotalAssetsBefore,
+            ynEthValueInBase + ynLsdeValueInBase,
+            3,
+            "Total assets increase should match sum of ynETH and ynLSDe values"
+        );
     }
 }

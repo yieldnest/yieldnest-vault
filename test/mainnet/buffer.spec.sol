@@ -5,11 +5,9 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
-import {IERC20, Math} from "src/Common.sol";
+import {IERC20, Math, TimelockController} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
-import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
@@ -37,32 +35,33 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
         );
     }
 
-    function allocateToBuffer(uint256 amount) public returns (uint256 bufferShares) {
-        address[] memory targets = new address[](2);
-        targets[0] = MC.WETH;
-        targets[1] = vault.buffer();
+    function allocateToBuffer(uint256 depositAmount) public returns (uint256 bufferShares) {
+        // Allocate to buffer (MorphoGauntletUSDC vault)
+        {
+            address[] memory targets = new address[](2);
+            uint256[] memory values = new uint256[](2);
+            bytes[] memory data = new bytes[](2);
 
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
+            targets[0] = MC.USDC;
+            values[0] = 0;
+            data[0] = abi.encodeCall(IERC20.approve, (address(bufferStrategy), depositAmount));
 
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
-        data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
+            targets[1] = address(bufferStrategy);
+            values[1] = 0;
+            data[1] = abi.encodeCall(IERC4626.deposit, (depositAmount, address(vault)));
 
-        vm.prank(PROCESSOR);
-        bytes[] memory returnData = vault.processor(targets, values, data);
-
-        bufferShares = abi.decode(returnData[1], (uint256));
-
+            vm.startPrank(PROCESSOR);
+            bytes[] memory returnData = vault.processor(targets, values, data);
+            vm.stopPrank();
+        
+            bufferShares = abi.decode(returnData[1], (uint256));
+        }
         vault.processAccounting();
     }
 
     function test_Vault_4626Invariants_depositBase_WithBufferAllocation(uint256 assets, uint256 bufferAmount) public {
-        vm.assume(assets > 1000_000);
-        vm.assume(assets < 100_000 ether);
-        vm.assume(bufferAmount < assets);
-        vm.assume(bufferAmount > 1000_000);
+        assets = bound(assets, 1, 1000_000 * 1e6);
+        bufferAmount = bound(bufferAmount, 1, assets);
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
@@ -71,10 +70,8 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
         assertEq(vault.decimals(), 18, "Decimals should be 18");
 
         // Test the asset function
-        assertEq(vault.asset(), MC.WETH, "Asset address should be WETH");
+        assertEq(vault.asset(), MC.USDC, "Asset address should be WETH");
 
-        // Test the totalAssets function
-        assertGt(vault.totalAssets(), 0, "Total assets should be greater than 0");
 
         // Test the convertToShares function
         uint256 shares = vault.convertToShares(assets);
@@ -92,10 +89,8 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
 
         {
             // Test the depositAsset function
-            deal(address(this), assets);
-            (bool success,) = MC.WETH.call{value: assets}("");
-            assertTrue(success, "Weth deposit failed");
-            IERC20(MC.WETH).approve(address(vault), assets);
+            deal(MC.USDC, address(this), assets);
+            IERC20(MC.USDC).approve(address(vault), assets);
 
             address receiver = address(this);
             uint256 depositedShares = vault.deposit(assets, receiver);
@@ -105,7 +100,9 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
         vault.processAccounting();
 
         totalSupplyInvariant(initialSupply + shares);
-        totalAssetsInvariant(initialAssets + assets);
+        uint256 rate = IProvider(vault.provider()).getRate(vault.asset());
+        uint256 baseAmount = Math.mulDiv(assets, rate, 10 ** ERC20(MC.USDC).decimals(), Math.Rounding.Floor);
+        totalAssetsInvariant(initialAssets + baseAmount);
 
         initialAssets = vault.totalAssets();
         initialSupply = vault.totalSupply();
@@ -113,21 +110,22 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
         uint256 bufferShares;
         {
             // allocate to buffer
-            uint256 balanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
-            uint256 bufferBefore = IERC20(MC.WETH).balanceOf(vault.buffer());
+            uint256 balanceBefore = IERC20(MC.USDC).balanceOf(address(vault));
+            uint256 bufferBefore = IERC20(MC.USDC).balanceOf(vault.buffer());
 
             bufferShares = allocateToBuffer(bufferAmount);
 
-            uint256 balanceAfter = IERC20(MC.WETH).balanceOf(address(vault));
-            uint256 bufferAfter = IERC20(MC.WETH).balanceOf(vault.buffer());
-            assertEq(balanceBefore - balanceAfter, bufferAmount, "WETH balance should decrease by buffer amount");
-            assertEq(bufferAfter - bufferBefore, bufferAmount, "Buffer balance should increase by buffer amount");
+            uint256 balanceAfter = IERC20(MC.USDC).balanceOf(address(vault));
+            uint256 bufferAfter = IERC20(MC.USDC).balanceOf(vault.buffer());
+            assertEq(balanceBefore - balanceAfter, bufferAmount, "USDC balance should decrease by buffer amount");
+            assertEq(bufferAfter - bufferBefore, 0, "Buffer balance should be allocated to usdc core vault");
         }
 
         assertGt(bufferShares, 0, "Buffer shares should be greater than 0");
 
         uint256 bufferRate = IProvider(vault.provider()).getRate(vault.buffer());
         uint256 bufferAssets = Math.mulDiv(bufferShares, bufferRate, 1e18, Math.Rounding.Floor);
+        bufferAmount = Math.mulDiv(bufferAmount, bufferRate, 1e6, Math.Rounding.Floor);
 
         assertApproxEqRel(bufferAssets, bufferAmount, 1e13, "Buffer assets should equal buffer amount");
 
@@ -136,77 +134,85 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
     }
 
     function testDonationToBuffer_withoutBufferAllocation() public {
-        uint256 assets = 1 ether;
-        uint256 bufferAmount = 0.5 ether;
-
-        setMockBuffer();
+        uint256 assets = 1000_000 * 1e6;
+        uint256 bufferAmount = 500_000 * 1e6;
 
         // Initial state
         uint256 initialSupply = vault.totalSupply();
         uint256 initialAssets = vault.totalAssets();
 
         // Make initial deposit
-        deal(address(this), assets);
-        (bool success,) = MC.WETH.call{value: assets}("");
-        assertTrue(success, "Weth deposit failed");
-        IERC20(MC.WETH).approve(address(vault), assets);
+        deal(MC.USDC, address(this), assets);
+        IERC20(MC.USDC).approve(address(vault), assets);
         uint256 shares = vault.deposit(assets, address(this));
+        uint256 rate = IProvider(vault.provider()).getRate(vault.asset());
+        uint256 baseAmount = Math.mulDiv(assets, rate, 10 ** ERC20(vault.asset()).decimals(), Math.Rounding.Floor);
 
         // Process accounting
         vault.processAccounting();
 
         totalSupplyInvariant(initialSupply + shares);
-        totalAssetsInvariant(initialAssets + assets);
+        totalAssetsInvariant(initialAssets + baseAmount);
 
         // Donate directly to buffer
-        deal(address(this), 1 ether);
-        (success,) = MC.WETH.call{value: 1 ether}("");
-        assertTrue(success, "Weth deposit failed");
-        IERC20(MC.WETH).transfer(vault.buffer(), 1 ether);
+        deal(MC.USDC, address(this), bufferAmount);
+        IERC20(MC.USDC).transfer(vault.buffer(), bufferAmount);
+        uint256 baseBufferAmount = Math.mulDiv(bufferAmount, rate, 10 ** ERC20(bufferStrategy.asset()).decimals(), Math.Rounding.Floor);
 
         // Allocate to buffer
         allocateToBuffer(bufferAmount);
 
+        vault.processAccounting();
+
         totalSupplyInvariant(initialSupply + shares);
-        // assets go down because of buffer donation  - THIS MUST BE AVOIDED
-        totalAssetsInvariant(initialAssets + (assets - bufferAmount));
+        totalAssetsInvariant(initialAssets + baseAmount);
     }
 
-    function setMockBuffer() internal {
-        // Deploy mock buffer
-        MockERC4626 mockBuffer = new MockERC4626(ERC20(MC.WETH), "Mock Buffer", "BUFF");
+    function test_allocateToBuffer_syncDeposit_off() public {
+        vm.prank(DEPOSIT_MANAGER);
+        bufferStrategy.setSyncDeposit(false);
 
-        // Deploy mock provider
-        MockProvider mockProvider = new MockProvider();
+        uint256 assets = 1000_000 * 1e6;
+        uint256 bufferAmount = 500_000 * 1e6;
 
-        // Configure mock provider to use ERC4626 rate for buffer
-        mockProvider.addERC4626(address(mockBuffer));
+        // Make initial deposit
+        deal(MC.USDC, address(this), assets);
+        IERC20(MC.USDC).approve(address(vault), assets);
+        uint256 shares = vault.deposit(assets, address(this));
 
-        vm.startPrank(MC.TIMELOCK);
+        // Process accounting
+        vault.processAccounting();
 
-        // Set mock buffer address
-        vault.setBuffer(address(mockBuffer));
+        // Allocate to buffer
+        allocateToBuffer(bufferAmount);
 
-        // Set mock provider address
-        vault.setProvider(address(mockProvider));
-
-        // Add mock buffer as an asset
-        vault.addAsset(address(mockBuffer), false);
-
-        vm.stopPrank();
-
-        // Grant PROCESSOR_MANAGER_ROLE to this contract
-        vm.startPrank(ADMIN);
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));
-        vm.stopPrank();
-
-        _setupRules(address(mockBuffer));
+        assertEq(IERC20(MC.USDC).balanceOf(vault.buffer()), bufferAmount, "Buffer should have received USDC");
     }
 
-    function _setupRules(address mockBuffer) internal {
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](2);
-        rules[0] = BaseRules.getApprovalRule(MC.WETH, address(mockBuffer));
-        rules[1] = BaseRules.getDepositRule(address(mockBuffer), address(vault));
-        SafeRules.setProcessorRules(vault, rules, true);
+    function test_withdrawFromBuffer_notSyncWithdraw() public {
+        vm.prank(DEPOSIT_MANAGER);
+        bufferStrategy.setSyncWithdraw(false);
+
+        uint256 depositAmount =  100_000e6;
+
+        address alice = makeAddr("alice");
+        deal(MC.USDC, alice, depositAmount);
+
+        // Approve and deposit USDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), depositAmount);
+        vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        allocateToBuffer(depositAmount);
+
+        uint256 aliceSharesBefore = vault.balanceOf(alice);
+        vm.startPrank(alice);
+        uint256 maxWithdraw = vault.maxWithdraw(alice);
+        vault.withdraw(maxWithdraw, alice, alice);
+        vm.stopPrank();
+
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "Alice should not receive USDC");
+        assertEq(vault.balanceOf(alice), aliceSharesBefore, "Alice should have same shares before");
     }
 }

@@ -278,3 +278,4 @@ contract VaultViewsUnitTest is Test, Etches {
         _testConvertBaseToAsset(MC.METH, baseAssets, 12e17);
     }
 }
+

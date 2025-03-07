@@ -183,29 +183,4 @@ library BaseRules {
 
         return SafeRules.RuleParams({contractAddress: contractAddress, funcSig: funcSig, rule: rule});
     }
-
-    function getWethDepositRule(address weth_) internal pure returns (SafeRules.RuleParams memory) {
-        bytes4 funcSig = bytes4(keccak256("deposit()"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
-
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        return SafeRules.RuleParams({contractAddress: weth_, funcSig: funcSig, rule: rule});
-    }
-
-    function getWethWithdrawRule(address weth_) internal pure returns (SafeRules.RuleParams memory) {
-        bytes4 funcSig = bytes4(keccak256("withdraw(uint256)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](1);
-
-        paramRules[0] =
-            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        return SafeRules.RuleParams({contractAddress: weth_, funcSig: funcSig, rule: rule});
-    }
 }
