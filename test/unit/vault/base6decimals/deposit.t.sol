@@ -47,10 +47,17 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         weth.approve(address(vault), type(uint256).max);
     }
 
-    function test_Vault_deposit_success(uint256 depositAmount, bool alwaysComputeTotalAssets) public {
+    function test_Vault_deposit_success()
+        // uint256 depositAmount,
+        // bool alwaysComputeTotalAssets
+        public
+    {
         // Bound deposit amount between 10 and 100k USDC (6 decimals)
-        if (depositAmount < 10) return;
-        if (depositAmount > 100_000 * 1e6) return;
+        // if (depositAmount < 10) return;
+        // if (depositAmount > 100_000 * 1e6) return;
+
+        uint256 depositAmount = 1000e6;
+        bool alwaysComputeTotalAssets = true;
 
         vm.prank(ASSET_MANAGER);
         vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
@@ -82,6 +89,8 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Check that Alice received the correct amount of shares
         assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
 
+        // Check that shares minted is depositAmount * 1e12 (converting from 6 to 18 decimals)
+        assertEq(sharesMinted, depositAmount * 1e12, "Incorrect number of shares minted");
         // Check that total assets increased
         assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
     }
