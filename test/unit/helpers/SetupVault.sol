@@ -14,7 +14,7 @@ import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
-    function setup() public returns (Vault vault, WETH9 weth) {
+    function setup() public virtual returns (Vault vault, WETH9 weth) {
         string memory name = "YieldNest MAX";
         string memory symbol = "ynMAx";
 

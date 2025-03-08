@@ -26,6 +26,7 @@ contract Etches is Test {
         mockOETH();
         mockCL_STETH();
         mockWBTC();
+        mockUSDC();
         mockProvider();
         mockBuffer();
     }
