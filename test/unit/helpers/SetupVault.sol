@@ -39,7 +39,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         }
     }
 
-    function configureLocal(Vault vault) internal {
+    function configureLocal(Vault vault) internal virtual {
         // etch to mock the mainnet contracts
         mockAll();
 
