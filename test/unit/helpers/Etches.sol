@@ -85,6 +85,12 @@ contract Etches is Test {
         vm.etch(MainnetContracts.WBTC, code);
     }
 
+    function mockUSDC() public {
+        MockERC20CustomDecimals usdc = new MockERC20CustomDecimals("USD Coin", "USDC", 6);
+        bytes memory code = address(usdc).code;
+        vm.etch(MainnetContracts.USDC, code);
+    }
+
     function mockProvider() public {
         Provider provider = new MockProvider();
         bytes memory code = address(provider).code;
