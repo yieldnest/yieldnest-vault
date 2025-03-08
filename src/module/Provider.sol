@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {
-    IProvider,
-    ICurveLpConnector
-} from "src/interface/IProvider.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IVault} from "src/interface/IVault.sol";
@@ -56,14 +53,6 @@ contract Provider is IProvider {
             return IERC4626(asset).convertToAssets(1e18) * 1e12;
         }
 
-        if (asset == MC.CURVE_LP_SCRVUSD_SUSDE_STRATEGY) {
-            (int256 strategyRate,) = ICurveLpConnector(MC.CURVE_LP_SCRVUSD_SUSDE_CONNECTOR).rate();
-            if (strategyRate < 0) {
-                revert RateIsNegative();
-            }
-
-            return uint256(strategyRate);
-        }
         // buffer strategy
         if (isUSDStrategyVault(asset)) {
             return IERC4626(asset).convertToAssets(1e18) * 1e12;

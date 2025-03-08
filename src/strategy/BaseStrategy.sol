@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import {IERC20Metadata as IERC20, Math, SafeERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
 import {IBaseStrategy} from "src/interface/IBaseStrategy.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 /**
  * @title BaseStrategy

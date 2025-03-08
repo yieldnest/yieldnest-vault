@@ -16,7 +16,6 @@ import {VaultLib} from "src/library/VaultLib.sol";
 
 import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 /**
  * @title BaseVault
