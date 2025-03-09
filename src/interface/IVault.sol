@@ -83,6 +83,7 @@ interface IVault is IERC4626 {
     error AssetNotActive();
     error ExceedsMaxBasisPoints(uint256 value);
     error InvalidNativeAssetDecimals(uint256 decimals);
+    error InvalidAssetDecimals(uint256 decimals);
 
     event DepositAsset(
         address indexed sender,

@@ -91,6 +91,11 @@ library VaultLib {
             revert IVault.InvalidNativeAssetDecimals(decimals_);
         }
 
+        // Check that asset decimals are not greater than 18
+        if (decimals_ > 18) {
+            revert IVault.InvalidAssetDecimals(decimals_);
+        }
+
         if (index > 0 && assetStorage.assets[asset_].index != 0) {
             revert IVault.DuplicateAsset(asset_);
         }
