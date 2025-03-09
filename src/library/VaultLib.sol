@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IVault} from "src/interface/IVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
-import {Math, IERC20} from "src/Common.sol";
+import {Math, IERC20, IERC20Metadata} from "src/Common.sol";
 import {Guard} from "src/module/Guard.sol";
 
 library VaultLib {
@@ -218,7 +218,15 @@ library VaultLib {
         uint256 totalAssets = IVault(address(this)).totalAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
         uint256 baseAssets = convertAssetToBase(asset_, assets);
-        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
+
+        // Handle the case when totalAssets or totalSupply is zero
+        if (totalAssets == 0 || totalSupply == 0) {
+            IVault.VaultStorage storage vaultStorage = getVaultStorage();
+            address baseAsset = getAssetStorage().list[0];
+            return (baseAssets * 10 ** (vaultStorage.decimals - IERC20Metadata(baseAsset).decimals()), baseAssets);
+        }
+
+        uint256 shares = baseAssets.mulDiv(totalSupply, totalAssets, rounding);
         return (shares, baseAssets);
     }
 
