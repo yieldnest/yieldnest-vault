@@ -18,6 +18,9 @@ import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {SetupBase6DecimalsVault} from "test/unit/vault/base6decimals/SetupBase6DecimalsVault.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
+
 
 contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -45,6 +48,16 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
+
+        // Set up approval rule for USDE to SUSDE
+        vm.startPrank(PROCESSOR_MANAGER);
+        SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(MC.USDE, MC.SUSDE);
+        vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
+        SafeRules.RuleParams memory depositRuleParams = BaseRules.getDepositRule(MC.SUSDE, address(vault));
+        vault.setProcessorRule(depositRuleParams.contractAddress, depositRuleParams.funcSig, depositRuleParams.rule);
+        vm.stopPrank();
+
+        
     }
 
     function test_Vault_deposit_success()
