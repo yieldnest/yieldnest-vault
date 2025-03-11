@@ -151,8 +151,9 @@ library VaultLib {
      */
     function convertAssetToBase(address asset_, uint256 assets) public view returns (uint256 baseAssets) {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
-        uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
-        baseAssets = assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals), Math.Rounding.Floor);
+        (uint256 rate, uint256 offset) = IProvider(getVaultStorage().provider).getRateAndOffset(asset_);
+        baseAssets =
+            assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals) * offset, Math.Rounding.Floor);
     }
 
     /**
@@ -163,8 +164,9 @@ library VaultLib {
      */
     function convertBaseToAsset(address asset_, uint256 baseAssets) public view returns (uint256 assets) {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
-        uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
-        assets = baseAssets.mulDiv(10 ** (getAssetStorage().assets[asset_].decimals), rate, Math.Rounding.Floor);
+        (uint256 rate, uint256 offset) = IProvider(getVaultStorage().provider).getRateAndOffset(asset_);
+        assets =
+            baseAssets.mulDiv(10 ** (getAssetStorage().assets[asset_].decimals) * offset, rate, Math.Rounding.Floor);
     }
 
     /**

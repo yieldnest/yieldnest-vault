@@ -3,6 +3,22 @@ pragma solidity ^0.8.24;
 
 interface IProvider {
     function getRate(address asset) external view returns (uint256);
+    /**
+     * @notice Returns the rate offset used for rate calculations
+     * @dev This function provides the decimal offset used when calculating exchange rates
+     * between different assets. Similar to ERC4626's _decimalsOffset(), it helps standardize
+     * rates across assets with different decimal places to 18 decimals.
+     * @return The rate offset value as a uint256
+     */
+    function rateOffset() external view returns (uint256);
+
+    /**
+     * @notice Returns both the rate and rate offset for an asset in a single call
+     * @param asset The address of the asset to get the rate for
+     * @return rate The current exchange rate of the asset
+     * @return offset The rate offset used for calculations
+     */
+    function getRateAndOffset(address asset) external view returns (uint256 rate, uint256 offset);
 }
 
 interface IStETH {

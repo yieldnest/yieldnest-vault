@@ -107,4 +107,27 @@ contract Provider is IProvider {
 
         revert UnsupportedAsset(asset);
     }
+
+    /**
+     * @notice Returns the rate offset used for rate calculations
+     * @dev This function provides the decimal offset used when calculating exchange rates
+     *      between different assets. It helps standardize rates across assets with
+     *      different decimal places to ensure consistent calculations.
+     * @return offset The rate offset value as a uint256, representing the power of 10
+     *         used as the base for rate calculations (10^offset)
+     */
+    function rateOffset() public pure virtual returns (uint256) {
+        return 1;
+    }
+
+    /**
+     * @notice Returns both the rate and rate offset for an asset in a single call
+     * @dev This function combines getRate and rateOffset to provide both values efficiently
+     * @param asset The address of the asset to get the rate for
+     * @return rate The current exchange rate of the asset
+     * @return offset The rate offset value (power of 10 used as base for calculations)
+     */
+    function getRateAndOffset(address asset) external view returns (uint256 rate, uint256 offset) {
+        return (getRate(asset), rateOffset());
+    }
 }

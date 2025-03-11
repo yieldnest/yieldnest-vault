@@ -11,6 +11,7 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
+import {Mock6DecimalsProvider} from "test/unit/mocks/Mock6DecimalsProvider.sol";
 
 contract SetupBase6DecimalsVault is SetupVault {
     function setup() public override returns (Vault vault, WETH9 weth) {
@@ -53,7 +54,10 @@ contract SetupBase6DecimalsVault is SetupVault {
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
         vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
 
-        vault.setProvider(MC.PROVIDER);
+        // Deploy Mock6DecimalsProvider
+        Mock6DecimalsProvider mock6DecimalsProvider = new Mock6DecimalsProvider();
+        // Set the provider to the 6 decimals provider
+        vault.setProvider(address(mock6DecimalsProvider));
 
         // Add assets: Base asset (USDC) first, then WBTC and an 18 decimal asset
         vault.addAsset(MC.USDC, true); // USDC mocked at WETH address
@@ -73,11 +77,11 @@ contract SetupBase6DecimalsVault is SetupVault {
         vault.setBuffer(MC.BUFFER);
 
         // Set rates in provider
-        MockProvider(MC.PROVIDER).setRate(MC.USDC, 1e6); // 1 USD USDC
-        MockProvider(MC.PROVIDER).setRate(MC.USDE, 1e6); // 1 USD USDE
-        MockProvider(MC.PROVIDER).setRate(MC.WBTC, 100_000e6); // 100k USD bitcoin
-        MockProvider(MC.PROVIDER).setRate(MC.STETH, 10_000e6); // 10k USD steth
-        MockProvider(MC.PROVIDER).addERC4626(MC.SUSDE);
+        mock6DecimalsProvider.setRate(MC.USDC, 1e18); // 1 USD USDC
+        mock6DecimalsProvider.setRate(MC.USDE, 1e18); // 1 USD USDE
+        mock6DecimalsProvider.setRate(MC.WBTC, 100_000e18); // 100k USD bitcoin
+        mock6DecimalsProvider.setRate(MC.STETH, 10_000e18); // 10k USD steth
+        mock6DecimalsProvider.addERC4626(MC.SUSDE);
 
         vault.unpause();
         vm.stopPrank();

@@ -31,6 +31,10 @@ contract MockProvider is Provider {
         return super.getRate(asset);
     }
 
+    function rateOffset() public pure virtual override returns (uint256) {
+        return 1;
+    }
+
     function addERC4626(address asset) external {
         _erc4626[asset] = true;
     }
