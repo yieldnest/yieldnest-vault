@@ -9,6 +9,8 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 
 contract SetupBase6DecimalsVault is SetupVault {
     function setup() public override returns (Vault vault, WETH9 weth) {
@@ -70,10 +72,31 @@ contract SetupBase6DecimalsVault is SetupVault {
 
         // Set rates in provider
         MockProvider(MC.PROVIDER).setRate(MC.USDC, 1e6); // 1 USD USDC
+        MockProvider(MC.PROVIDER).setRate(MC.USDE, 1e6); // 1 USD USDE
         MockProvider(MC.PROVIDER).setRate(MC.WBTC, 100_000e6); // 100k USD bitcoin
         MockProvider(MC.PROVIDER).setRate(MC.STETH, 10_000e6); // 10k USD steth
 
         vault.unpause();
         vm.stopPrank();
+
+        {
+            // Deposit 100 million USDE to SUSDE vault
+            uint256 amount = 100_000_000_000e18;
+            address depositor = address(0xDEADBEEF);
+            deal(MC.USDE, depositor, amount);
+            vm.startPrank(depositor);
+            IERC20(MC.USDE).approve(address(MC.SUSDE), amount);
+            uint256 shares = MockERC4626(MC.SUSDE).deposit(amount, depositor);
+            vm.stopPrank();
+
+            // Donate 123456789 USDE to the vault
+            address donor = address(0xCAFEBABE);
+            uint256 donationAmount = 12_345_678_900e18;
+            deal(MC.USDE, donor, donationAmount);
+            vm.startPrank(donor);
+            IERC20(MC.USDE).approve(address(MC.SUSDE), donationAmount);
+            IERC20(MC.USDE).transfer(address(MC.SUSDE), donationAmount);
+            vm.stopPrank();
+        }
     }
 }
