@@ -231,7 +231,7 @@ library VaultLib {
             return (baseAssets * 10 ** (vaultStorage.decimals - IERC20Metadata(baseAsset).decimals()), baseAssets);
         }
 
-        uint256 shares = baseAssets.mulDiv(totalSupply, totalAssets, rounding);
+        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
         return (shares, baseAssets);
     }
 
