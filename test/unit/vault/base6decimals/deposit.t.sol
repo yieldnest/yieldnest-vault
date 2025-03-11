@@ -21,7 +21,6 @@ import {SetupBase6DecimalsVault} from "test/unit/vault/base6decimals/SetupBase6D
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 
-
 contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
@@ -30,7 +29,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     WETH9 public weth;
     MockSTETH public steth;
 
-    address public alice = address(0x1);
+    address public alice = address(0x12345);
     uint256 public constant INITIAL_BALANCE = 200_000 ether;
 
     function setUp() public {
@@ -56,8 +55,6 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         SafeRules.RuleParams memory depositRuleParams = BaseRules.getDepositRule(MC.SUSDE, address(vault));
         vault.setProcessorRule(depositRuleParams.contractAddress, depositRuleParams.funcSig, depositRuleParams.rule);
         vm.stopPrank();
-
-        
     }
 
     function test_Vault_deposit_success()
@@ -109,10 +106,6 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_depositAsset_USDE_success() public {
-        // Add USDE as an asset
-        vm.prank(ASSET_MANAGER);
-        vault.addAsset(MC.USDE, true);
-
         uint256 depositAmount = 1000e18; // USDE has 18 decimals
 
         // Give Alice USDE
@@ -148,5 +141,62 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         // Check that total assets increased by the USD value of USDE (depositAmount / 1e12)
         assertEq(vault.totalAssets(), depositAmount / 1e12, "Total assets did not increase correctly");
+    }
+
+    function test_Vault_depositAsset_USDE_thenDepositToSUSDE() public {
+        uint256 depositAmount = 1_000_000_000e18; // USDE has 18 decimals
+
+        // Give Alice USDE using MockERC20 mint
+        vm.prank(alice);
+        MockERC20(MC.USDE).mint(depositAmount);
+
+        // Approve vault to spend Alice's USDE
+        vm.startPrank(alice);
+        IERC20(MC.USDE).approve(address(vault), type(uint256).max);
+
+        // Deposit USDE using depositAsset
+        uint256 sharesMinted = vault.depositAsset(MC.USDE, depositAmount, alice);
+        vm.stopPrank();
+
+        // Check initial state after deposit
+        assertEq(IERC20(MC.USDE).balanceOf(address(vault)), depositAmount, "Vault did not receive USDE");
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
+        uint256 initialTotalAssets = vault.totalAssets();
+        assertEq(initialTotalAssets, depositAmount / 1e12, "Initial total assets incorrect");
+
+        // Execute the processor rule to deposit USDE to SUSDE
+        address[] memory targets = new address[](2);
+        targets[0] = MC.USDE;
+        targets[1] = MC.SUSDE;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", MC.SUSDE, depositAmount);
+        data[1] = abi.encodeWithSignature("deposit(uint256,address)", depositAmount, address(vault));
+
+        vm.prank(PROCESSOR);
+        vault.processor(targets, values, data);
+
+        // Process accounting to update vault state
+        vault.processAccounting();
+
+        // Verify USDE is now in SUSDE
+        assertEq(IERC20(MC.USDE).balanceOf(address(vault)), 0, "Vault should have no USDE left");
+        assertGt(IERC20(MC.SUSDE).balanceOf(address(vault)), 0, "Vault should have SUSDE tokens");
+
+        // Total assets should remain the same since we just moved from one asset to another of same value
+        uint256 finalTotalAssets = vault.totalAssets();
+        assertApproxEqAbs(
+            finalTotalAssets,
+            initialTotalAssets,
+            1, // 0.1% tolerance for potential rounding
+            "Total assets should remain the same after depositing to SUSDE"
+        );
+
+        // Shares should remain unchanged
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice's shares should remain unchanged");
     }
 }

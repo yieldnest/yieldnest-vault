@@ -60,6 +60,8 @@ contract SetupBase6DecimalsVault is SetupVault {
         vault.addAsset(MC.BUFFER, false);
         vault.addAsset(MC.WBTC, true);
         vault.addAsset(MC.STETH, true); // 18 decimals asset
+        vault.addAsset(MC.USDE, true); // 18 decimals USDE
+        vault.addAsset(MC.SUSDE, true); // sUSDE (ERC4626 for USDE)
 
         // Configure processor rules
         setDepositRule(vault, MC.BUFFER, address(vault));
@@ -75,6 +77,7 @@ contract SetupBase6DecimalsVault is SetupVault {
         MockProvider(MC.PROVIDER).setRate(MC.USDE, 1e6); // 1 USD USDE
         MockProvider(MC.PROVIDER).setRate(MC.WBTC, 100_000e6); // 100k USD bitcoin
         MockProvider(MC.PROVIDER).setRate(MC.STETH, 10_000e6); // 10k USD steth
+        MockProvider(MC.PROVIDER).addERC4626(MC.SUSDE);
 
         vault.unpause();
         vm.stopPrank();
