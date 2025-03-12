@@ -145,6 +145,13 @@ library VaultLib {
         assetStorage.list[index] = assetStorage.list[assetStorage.list.length - 1];
         assetStorage.list.pop();
         delete assetStorage.assets[asset_];
+
+        // Update the index for the asset that was moved to the deleted position
+        if (index < assetStorage.list.length) {
+            address movedAsset = assetStorage.list[index];
+            assetStorage.assets[movedAsset].index = index;
+        }
+
         emit IVault.DeleteAsset(index, asset_);
     }
 
