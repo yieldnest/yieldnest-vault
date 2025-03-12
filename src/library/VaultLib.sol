@@ -96,6 +96,11 @@ library VaultLib {
             revert IVault.InvalidAssetDecimals(decimals_);
         }
 
+        // Check if trying to add the primary asset again
+        if (index > 0 && asset_ == assetStorage.list[0]) {
+            revert IVault.DuplicateAsset(asset_);
+        }
+
         if (index > 0 && assetStorage.assets[asset_].index != 0) {
             revert IVault.DuplicateAsset(asset_);
         }

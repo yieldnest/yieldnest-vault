@@ -67,6 +67,18 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.addAsset(address(asset), true);
     }
 
+    function test_Vault_addAsset_primaryDepositAssetDuplicate() public {
+        // Add a primary deposit asset (first asset in the list)
+        vm.startPrank(ASSET_MANAGER);
+
+        address baseAsset = vault.asset();
+        // Verify duplicate asset error
+        vm.expectRevert(abi.encodeWithSelector(IVault.DuplicateAsset.selector, baseAsset));
+        vault.addAsset(baseAsset, true);
+
+        vm.stopPrank();
+    }
+
     function test_Vault_addAsset_unauthorized() public {
         vm.expectRevert();
         vault.addAsset(address(asset), true);
