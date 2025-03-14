@@ -54,6 +54,10 @@ contract SetupStrategy is Test, Etches, MainnetActors {
         strategy.addAsset(MC.STETH, true);
         strategy.addAsset(MC.WBTC, true);
 
+        strategy.setAssetWithdrawable(MC.WETH, true);
+        strategy.setAssetWithdrawable(MC.STETH, true);
+        strategy.setAssetWithdrawable(MC.WBTC, true);
+
         // configure processor rules
         setDepositRule(strategy, MC.BUFFER, address(strategy));
         setWethDepositRule(strategy, MC.WETH);
