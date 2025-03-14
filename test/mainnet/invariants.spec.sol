@@ -30,7 +30,7 @@ contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
         withdrawer = VaultVerification.getWithdrawer(vault);
         assertEq(vault.asset(), MC.WETH, "base asset should be weth");
 
-        assertEq(vault.baseWithdrawalFee(), 1e5, "base withdrawal fee should be zero");
+        assertEq(vault.baseWithdrawalFee(), 250000, "base withdrawal fee should be correct");
 
         // Process accounting to ensure vault is in sync
         vault.processAccounting();

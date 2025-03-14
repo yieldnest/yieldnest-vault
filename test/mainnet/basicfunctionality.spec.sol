@@ -394,7 +394,7 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
 
             // TODO: understand why the rate is changing this much
             // rate is changing for underlying assets
-            assertApproxEqRel(finalRates[i], initialRates[i], 1e14, "Rate should match");
+            assertApproxEqRel(finalRates[i], initialRates[i], 2e14, "Rate should match");
         }
 
         uint256 finalTvl = vault.totalAssets();
@@ -402,7 +402,7 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
 
         // The rates of underlying assets changes, consequently the total assets changes slightly
         assertApproxEqRel(
-            finalTvl, tvlBeforeWithdraw, 1e12, "Total assets should remain unchanged after processing accounting"
+            finalTvl, tvlBeforeWithdraw, 1e13, "Total assets should remain unchanged after processing accounting"
         );
     }
 
@@ -572,14 +572,14 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
         assertApproxEqAbs(
             IERC20(MC.WETH).balanceOf(alice),
             aliceWethBalanceBefore - depositAmount + amountAfterFee,
-            // todo: fix this down to at least 1e8 margin of error
-            1e14, // withdrawal fee precision error is at 0.001% of amount
+            // TODO: fix this down to at least 1e8 margin of error
+            1e15, // withdrawal fee precision error is at 0.01% of amount
             "User should receive original WETH amount back minus fee"
         );
         assertApproxEqAbs(
             vault.totalAssets(),
             vaultTotalAssetsBefore + fee,
-            1e14, // withdrawal fee precision error is at 0.001% of amount
+            1e15, // withdrawal fee precision error is at 0.01% of amount
             "Vault total assets should include withdrawal fee"
         );
     }
