@@ -127,10 +127,9 @@ contract StrategyRatesUnitTest is Test, MainnetActors {
         );
         assertEq(asset.balanceOf(depositor), beforeDepositorBalance - amount, "From should not have the assets");
         assertEq(vault.balanceOf(depositor), beforeDepositorShares + shares, "From should have shares after deposit");
-        assertApproxEqAbs(
+        assertEq(
             vault.maxWithdrawAsset(address(asset), depositor),
             beforeMaxWithdraw + amount,
-            2,
             "Depositor should have max withdraw after deposit"
         );
     }
@@ -279,27 +278,22 @@ contract StrategyRatesUnitTest is Test, MainnetActors {
         (uint256 sharesAfterWithdrawCeil,) = vault.convertToSharesForAsset(address(asset1), 1e18, Math.Rounding.Ceil);
 
         // Assert rate stayed the same after withdrawal
-        assertApproxEqAbs(
-            assetsAfterWithdrawFloor,
-            assetsBeforeWithdrawFloor,
-            1e6,
-            "Floor Rate should remain unchanged after withdrawal"
+        assertEq(
+            assetsAfterWithdrawFloor, assetsBeforeWithdrawFloor, "Floor Rate should remain unchanged after withdrawal"
         );
-        assertApproxEqAbs(
+        assertEq(
             sharesAfterWithdrawFloor,
             sharesBeforeWithdrawFloor,
-            1e6,
             "Floor Shares conversion rate should remain unchanged after withdrawal"
         );
 
-        assertApproxEqAbs(
-            assetsAfterWithdrawCeil, assetsBeforeWithdrawCeil, 1e6, "Ceil Rate should remain unchanged after withdrawal"
+        assertEq(
+            assetsAfterWithdrawCeil, assetsBeforeWithdrawCeil, "Ceil Rate should remain unchanged after withdrawal"
         );
 
-        assertApproxEqAbs(
+        assertEq(
             sharesAfterWithdrawCeil,
             sharesBeforeWithdrawCeil,
-            1e6,
             "Ceil Shares conversion rate should remain unchanged after withdrawal"
         );
 
