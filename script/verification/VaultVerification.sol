@@ -28,7 +28,7 @@ library VaultVerification {
         vm.assertEq(vault.alwaysComputeTotalAssets(), false);
         vm.assertEq(vault.countNativeAsset(), true);
         vm.assertEq(vault.decimals(), 18);
-        vm.assertEq(vault.baseWithdrawalFee(), 1e5); // 0.1%
+        vm.assertEq(vault.baseWithdrawalFee(), 250000); // 0.25%
         vm.assertFalse(vault.paused(), "Vault should not be paused");
 
         // Verify deposit assets
