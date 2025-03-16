@@ -233,7 +233,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertApproxEqAbs(
             finalTotalAssets,
             initialTotalAssets,
-            1, // 0.1% tolerance for potential rounding
+            1, 
             "Total assets should remain the same after depositing to SUSDE"
         );
 
@@ -306,7 +306,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertApproxEqAbs(
             finalTotalAssets,
             preTotalAssets,
-            1, // 0.1% tolerance for potential rounding
+            1,
             "Total assets should remain the same after depositing to SUSDE"
         );
 
