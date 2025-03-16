@@ -199,4 +199,83 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Shares should remain unchanged
         assertEq(vault.balanceOf(alice), sharesMinted, "Alice's shares should remain unchanged");
     }
+
+    function test_Vault_depositAsset_USDE_with_rewards() public {
+        // Initial deposit
+        uint256 depositAmount = 1000_000e18;
+
+        // Give Alice USDE by minting
+        vm.startPrank(alice);
+        MockERC20(MC.USDE).mint(depositAmount);
+        vm.stopPrank();
+
+        // Approve vault to spend Alice's USDE
+        vm.startPrank(alice);
+        IERC20(MC.USDE).approve(address(vault), type(uint256).max);
+
+        // Deposit USDE using depositAsset
+        uint256 sharesMinted = vault.depositAsset(MC.USDE, depositAmount, alice);
+        vm.stopPrank();
+        
+        // Simulate USDE rewards by having a rewarder send USDE to the vault
+        uint256 rewardAmount = 100e18; // 100 USDE (18 decimals)
+        {
+            address rewarder = address(0xBEEF);
+            vm.startPrank(rewarder);
+            MockERC20(MC.USDE).mint(rewardAmount);
+            IERC20(MC.USDE).transfer(address(vault), rewardAmount);
+            vm.stopPrank();
+        }
+
+        // Process accounting to update vault state with rewards
+        vault.processAccounting();
+
+        // Record state before processor
+        uint256 preTotalAssets = vault.totalAssets();
+        uint256 aliceAssetsBeforeProcessor = vault.convertToAssets(sharesMinted);
+
+        // Calculate total USDE in vault (original deposit + rewards)
+        uint256 totalUsde = depositAmount + rewardAmount;
+
+        // Execute the processor rule to deposit USDE to SUSDE
+        address[] memory targets = new address[](2);
+        targets[0] = MC.USDE;
+        targets[1] = MC.SUSDE;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", MC.SUSDE, totalUsde);
+        data[1] = abi.encodeWithSignature("deposit(uint256,address)", totalUsde, address(vault));
+
+        vm.prank(PROCESSOR);
+        vault.processor(targets, values, data);
+
+        // Process accounting to update vault state
+        vault.processAccounting();
+
+        // Verify USDE is now in SUSDE
+        assertEq(IERC20(MC.USDE).balanceOf(address(vault)), 0, "Vault should have no USDE left");
+        assertGt(IERC20(MC.SUSDE).balanceOf(address(vault)), 0, "Vault should have SUSDE tokens");
+
+        // Total assets should remain the same after processor
+        uint256 finalTotalAssets = vault.totalAssets();
+        assertApproxEqAbs(
+            finalTotalAssets,
+            preTotalAssets,
+            1, // 0.1% tolerance for potential rounding
+            "Total assets should remain the same after depositing to SUSDE"
+        );
+
+        // Alice's assets value should remain the same after processor
+        uint256 aliceAssetsAfterProcessor = vault.convertToAssets(sharesMinted);
+        assertApproxEqAbs(
+            aliceAssetsAfterProcessor,
+            aliceAssetsBeforeProcessor,
+            1,
+            "Alice's asset value should remain the same after processor"
+        );
+    }
 }
