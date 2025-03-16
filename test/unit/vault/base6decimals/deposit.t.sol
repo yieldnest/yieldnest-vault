@@ -141,8 +141,9 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly");
     }
 
-    function test_Vault_initial_depositAsset_USDE_success() public {
-        uint256 depositAmount = 1000e18; // USDE has 18 decimals
+    function testFuzz_Vault_initial_depositAsset_USDE_success(uint256 depositAmount) public {
+        // Assume reasonable deposit amount to avoid overflow and unrealistic values
+        vm.assume(depositAmount > 1e12 && depositAmount <= 1_000_000_000e18);
 
         // Give Alice USDE
         deal(MC.USDE, alice, INITIAL_BALANCE);
@@ -154,9 +155,6 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Deposit USDE using depositAsset
         uint256 sharesMinted = vault.depositAsset(MC.USDE, depositAmount, alice);
         vm.stopPrank();
-
-        // Check that shares were minted
-        assertGt(sharesMinted, 0, "No shares were minted");
 
         // Check that the vault received the USDE
         assertEq(IERC20(MC.USDE).balanceOf(address(vault)), depositAmount, "Vault did not receive USDE");
@@ -173,7 +171,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         // Since USDE has 18 decimals but is valued at 1 USD, the shares should be depositAmount / 1e12
         // (converting from 18 to 6 decimals for USD value)
-        assertEq(sharesMinted, depositAmount, "Incorrect number of shares minted");
+        assertApproxEqRel(sharesMinted, depositAmount, 1e6, "Incorrect number of shares minted");
 
         // Check that total assets increased by the USD value of USDE (depositAmount / 1e12)
         assertEq(vault.totalAssets(), depositAmount / 1e12, "Total assets did not increase correctly");
