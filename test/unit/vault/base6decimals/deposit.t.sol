@@ -30,7 +30,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     MockSTETH public steth;
 
     address public alice = address(0x12345);
-    uint256 public constant INITIAL_BALANCE = 200_000 ether;
+    uint256 public constant INITIAL_BALANCE = 200_000_000 ether;
 
     function setUp() public {
         SetupVault setupVault = new SetupBase6DecimalsVault();
@@ -57,7 +57,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         vm.stopPrank();
     }
 
-    function test_Vault_deposit_success()
+    function test_Vault_initial_deposit_success()
         // uint256 depositAmount,
         // bool alwaysComputeTotalAssets
         public
@@ -103,6 +103,47 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(sharesMinted, depositAmount * 1e12, "Incorrect number of shares minted");
         // Check that total assets increased
         assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
+    }
+
+    function test_Vault_initial_mint_success() public {
+        uint256 sharesToMint = 1000e18; // 1000 vault shares with 18 decimals
+        bool alwaysComputeTotalAssets = true;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        // Give Alice USDC
+        deal(MC.USDC, alice, INITIAL_BALANCE);
+
+        // Approve vault to spend Alice's USDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
+
+        // Mint shares
+        uint256 assetsDeposited = vault.mint(sharesToMint, alice);
+        vm.stopPrank();
+
+        // Check that assets were deposited
+        assertGt(assetsDeposited, 0, "No assets were deposited");
+
+        // Check that the vault received the USDC
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), assetsDeposited, "Vault did not receive USDC");
+
+        // Check that Alice's USDC balance decreased
+        assertEq(
+            IERC20(MC.USDC).balanceOf(alice),
+            INITIAL_BALANCE - assetsDeposited,
+            "Alice's balance did not decrease correctly"
+        );
+
+        // Check that Alice received the correct amount of shares
+        assertEq(vault.balanceOf(alice), sharesToMint, "Alice did not receive the correct amount of shares");
+
+        // Check that assets deposited is sharesToMint / 1e12 (converting from 18 to 6 decimals)
+        assertEq(assetsDeposited, sharesToMint / 1e12, "Incorrect amount of assets deposited");
+
+        // Check that total assets increased
+        assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly");
     }
 
     function test_Vault_depositAsset_USDE_success() public {
@@ -216,7 +257,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Deposit USDE using depositAsset
         uint256 sharesMinted = vault.depositAsset(MC.USDE, depositAmount, alice);
         vm.stopPrank();
-        
+
         // Simulate USDE rewards by having a rewarder send USDE to the vault
         uint256 rewardAmount = 100e18; // 100 USDE (18 decimals)
         {
