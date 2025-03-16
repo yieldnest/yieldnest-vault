@@ -50,21 +50,12 @@ contract SetupStrategy is Test, Etches, MainnetActors {
 
         // Add assets: Base asset always first
         strategy.addAsset(MC.WETH, true);
-        strategy.addAsset(MC.BUFFER, false);
         strategy.addAsset(MC.STETH, true);
         strategy.addAsset(MC.WBTC, true);
 
-        // configure processor rules
-        setDepositRule(strategy, MC.BUFFER, address(strategy));
-        setWethDepositRule(strategy, MC.WETH);
-
-        setApprovalRule(strategy, MC.WETH, MC.BUFFER);
-        setApprovalRule(strategy, address(strategy), MC.YNETH);
-        setApprovalRule(strategy, address(strategy), MC.YNLSDE);
-
-        // add strategies
-
-        strategy.setBuffer(MC.BUFFER);
+        strategy.setAssetWithdrawable(MC.WETH, true);
+        strategy.setAssetWithdrawable(MC.STETH, true);
+        strategy.setAssetWithdrawable(MC.WBTC, true);
 
         // Set WBTC rate to 20 ETH
         MockProvider(MC.PROVIDER).setRate(MC.WBTC, 20e18);
@@ -72,53 +63,5 @@ contract SetupStrategy is Test, Etches, MainnetActors {
         MockProvider(MC.PROVIDER).setRate(MC.METH, 1.2e18);
 
         vm.stopPrank();
-    }
-
-    function setDepositRule(MockStrategy strategy_, address contractAddress, address receiver) internal {
-        bytes4 funcSig = bytes4(keccak256("deposit(uint256,address)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        paramRules[0] =
-            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-
-        address[] memory allowList = new address[](1);
-        allowList[0] = receiver;
-
-        paramRules[1] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
-
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        strategy_.setProcessorRule(contractAddress, funcSig, rule);
-    }
-
-    function setApprovalRule(MockStrategy strategy_, address contractAddress, address spender) internal {
-        bytes4 funcSig = bytes4(keccak256("approve(address,uint256)"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
-
-        address[] memory allowList = new address[](1);
-        allowList[0] = spender;
-
-        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
-
-        paramRules[1] =
-            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        strategy_.setProcessorRule(contractAddress, funcSig, rule);
-    }
-
-    function setWethDepositRule(MockStrategy strategy_, address weth_) public {
-        bytes4 funcSig = bytes4(keccak256("deposit()"));
-
-        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](0);
-
-        IVault.FunctionRule memory rule =
-            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
-
-        strategy_.setProcessorRule(weth_, funcSig, rule);
     }
 }

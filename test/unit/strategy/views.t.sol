@@ -50,28 +50,108 @@ contract StrategyViewsUnitTest is Test, Etches, MainnetActors {
 
     function test_Strategy_MaxRedeem() public {
         assertEq(strategy.maxRedeem(address(alice)), 0, "Alice should have max redeem of 0");
+        assertEq(strategy.maxRedeemAsset(MC.WETH, address(alice)), 0, "Alice should have max redeem of 0");
         vm.prank(alice);
         strategy.deposit(INITIAL_BALANCE, alice);
         assertEq(
             strategy.maxRedeem(address(alice)), INITIAL_BALANCE, "Alice should have max redeem of INITIAL_BALANCE WETH"
         );
+        assertEq(
+            strategy.maxRedeemAsset(MC.WETH, address(alice)),
+            INITIAL_BALANCE,
+            "Alice should have max redeem of INITIAL_BALANCE WETH"
+        );
     }
 
     function test_Stategy_MaxRedeem_Paused() public {
+        assertEq(strategy.maxRedeem(address(alice)), 0, "Alice should have max redeem of 0");
+        assertEq(strategy.maxRedeemAsset(MC.WETH, address(alice)), 0, "Alice should have max redeem of 0");
+        vm.prank(alice);
+        strategy.deposit(INITIAL_BALANCE, alice);
+        assertEq(
+            strategy.maxRedeem(address(alice)), INITIAL_BALANCE, "Alice should have max redeem of INITIAL_BALANCE WETH"
+        );
+        assertEq(
+            strategy.maxRedeemAsset(MC.WETH, address(alice)),
+            INITIAL_BALANCE,
+            "Alice should have max redeem of INITIAL_BALANCE WETH"
+        );
         vm.prank(PAUSER);
         strategy.pause();
-        assertEq(strategy.maxRedeem(address(alice)), 0, "Paused  should have max redeem of 0");
+        assertEq(strategy.maxRedeem(address(alice)), 0, "Paused should have max redeem of 0");
+        assertEq(strategy.maxRedeemAsset(MC.WETH, address(alice)), 0, "Paused should have max redeem of 0");
+    }
+
+    function test_Stategy_MaxRedeem_NotWithdrawable() public {
+        assertEq(strategy.maxRedeem(address(alice)), 0, "Alice should have max redeem of 0");
+        assertEq(strategy.maxRedeemAsset(MC.WETH, address(alice)), 0, "Alice should have max redeem of 0");
+        vm.prank(alice);
+        strategy.deposit(INITIAL_BALANCE, alice);
+        assertEq(
+            strategy.maxRedeem(address(alice)), INITIAL_BALANCE, "Alice should have max redeem of INITIAL_BALANCE WETH"
+        );
+        assertEq(
+            strategy.maxRedeemAsset(MC.WETH, address(alice)),
+            INITIAL_BALANCE,
+            "Alice should have max redeem of INITIAL_BALANCE WETH"
+        );
+        vm.prank(ASSET_MANAGER);
+        strategy.setAssetWithdrawable(MC.WETH, false);
+        assertEq(strategy.maxRedeem(address(alice)), 0, "Max redeem should be 0 when withdrawable false");
+        assertEq(strategy.maxRedeemAsset(MC.WETH, address(alice)), 0, "Paused should have max redeem of 0");
     }
 
     function test_Strategy_MaxWithdraw() public {
         assertEq(strategy.maxWithdraw(address(alice)), 0, "Alice should have max withdraw of 0");
+        assertEq(strategy.maxWithdrawAsset(MC.WETH, address(alice)), 0, "Alice should have max withdraw of 0");
         vm.prank(alice);
         strategy.deposit(INITIAL_BALANCE, alice);
         assertEq(
-            strategy.maxWithdraw(address(alice)),
+            strategy.maxWithdraw(address(alice)), INITIAL_BALANCE, "Alice should have max withdraw of INITIAL_BALANCE WETH"
+        );
+        assertEq(
+            strategy.maxWithdrawAsset(MC.WETH, address(alice)),
             INITIAL_BALANCE,
             "Alice should have max withdraw of INITIAL_BALANCE WETH"
         );
+    }
+
+    function test_Stategy_MaxWithdraw_Paused() public {
+        assertEq(strategy.maxWithdraw(address(alice)), 0, "Alice should have max withdraw of 0");
+        assertEq(strategy.maxWithdrawAsset(MC.WETH, address(alice)), 0, "Alice should have max withdraw of 0");
+        vm.prank(alice);
+        strategy.deposit(INITIAL_BALANCE, alice);
+        assertEq(
+            strategy.maxWithdraw(address(alice)), INITIAL_BALANCE, "Alice should have max withdraw of INITIAL_BALANCE WETH"
+        );
+        assertEq(
+            strategy.maxWithdrawAsset(MC.WETH, address(alice)),
+            INITIAL_BALANCE,
+            "Alice should have max withdraw of INITIAL_BALANCE WETH"
+        );
+        vm.prank(PAUSER);
+        strategy.pause();
+        assertEq(strategy.maxWithdraw(address(alice)), 0, "Paused should have max withdraw of 0");
+        assertEq(strategy.maxWithdrawAsset(MC.WETH, address(alice)), 0, "Paused should have max withdraw of 0");
+    }
+
+    function test_Stategy_MaxWithdraw_NotWithdrawable() public {
+        assertEq(strategy.maxWithdraw(address(alice)), 0, "Alice should have max withdraw of 0");
+        assertEq(strategy.maxWithdrawAsset(MC.WETH, address(alice)), 0, "Alice should have max withdraw of 0");
+        vm.prank(alice);
+        strategy.deposit(INITIAL_BALANCE, alice);
+        assertEq(
+            strategy.maxWithdraw(address(alice)), INITIAL_BALANCE, "Alice should have max withdraw of INITIAL_BALANCE WETH"
+        );
+        assertEq(
+            strategy.maxWithdrawAsset(MC.WETH, address(alice)),
+            INITIAL_BALANCE,
+            "Alice should have max withdraw of INITIAL_BALANCE WETH"
+        );
+        vm.prank(ASSET_MANAGER);
+        strategy.setAssetWithdrawable(MC.WETH, false);
+        assertEq(strategy.maxWithdraw(address(alice)), 0, "Max withdraw should be 0 when withdrawable false");
+        assertEq(strategy.maxWithdrawAsset(MC.WETH, address(alice)), 0, "Paused should have max withdraw of 0");
     }
 
     function test_Strategy_PreviewMintAsset() public view {
