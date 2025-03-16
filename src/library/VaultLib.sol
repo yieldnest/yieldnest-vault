@@ -218,7 +218,17 @@ library VaultLib {
     {
         uint256 totalAssets = IVault(address(this)).totalAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
-        baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
+
+        // Handle the case when totalAssets or totalSupply is zero
+        if (totalAssets == 0 || totalSupply == 0) {
+            IVault.VaultStorage storage vaultStorage = getVaultStorage();
+            address baseAsset = getAssetStorage().list[0];
+            baseAssets =
+                shares.mulDiv(1, 10 ** (vaultStorage.decimals - IERC20Metadata(baseAsset).decimals()), rounding);
+        } else {
+            baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
+        }
+
         assets = convertBaseToAsset(asset_, baseAssets);
     }
 
