@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IVault} from "src/interface/IVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
-import {Math, IERC20} from "src/Common.sol";
+import {Math, IERC20, IERC20Metadata} from "src/Common.sol";
 import {Guard} from "src/module/Guard.sol";
 
 library VaultLib {
@@ -91,6 +91,16 @@ library VaultLib {
             revert IVault.InvalidNativeAssetDecimals(decimals_);
         }
 
+        // Check that asset decimals are not greater than 18
+        if (decimals_ > 18) {
+            revert IVault.InvalidAssetDecimals(decimals_);
+        }
+
+        // Check if trying to add the primary asset again
+        if (index > 0 && asset_ == assetStorage.list[0]) {
+            revert IVault.DuplicateAsset(asset_);
+        }
+
         if (index > 0 && assetStorage.assets[asset_].index != 0) {
             revert IVault.DuplicateAsset(asset_);
         }
@@ -135,6 +145,13 @@ library VaultLib {
         assetStorage.list[index] = assetStorage.list[assetStorage.list.length - 1];
         assetStorage.list.pop();
         delete assetStorage.assets[asset_];
+
+        // Update the index for the asset that was moved to the deleted position
+        if (index < assetStorage.list.length) {
+            address movedAsset = assetStorage.list[index];
+            assetStorage.assets[movedAsset].index = index;
+        }
+
         emit IVault.DeleteAsset(index, asset_);
     }
 
@@ -146,8 +163,9 @@ library VaultLib {
      */
     function convertAssetToBase(address asset_, uint256 assets) public view returns (uint256 baseAssets) {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
-        uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
-        baseAssets = assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals), Math.Rounding.Floor);
+        (uint256 rate, uint256 offset) = IProvider(getVaultStorage().provider).getRateAndOffset(asset_);
+        baseAssets =
+            assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals) * offset, Math.Rounding.Floor);
     }
 
     /**
@@ -158,8 +176,9 @@ library VaultLib {
      */
     function convertBaseToAsset(address asset_, uint256 baseAssets) public view returns (uint256 assets) {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
-        uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
-        assets = baseAssets.mulDiv(10 ** (getAssetStorage().assets[asset_].decimals), rate, Math.Rounding.Floor);
+        (uint256 rate, uint256 offset) = IProvider(getVaultStorage().provider).getRateAndOffset(asset_);
+        assets =
+            baseAssets.mulDiv(10 ** (getAssetStorage().assets[asset_].decimals) * offset, rate, Math.Rounding.Floor);
     }
 
     /**
@@ -218,6 +237,14 @@ library VaultLib {
         uint256 totalAssets = IVault(address(this)).totalAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
         uint256 baseAssets = convertAssetToBase(asset_, assets);
+
+        // Handle the case when totalAssets or totalSupply is zero
+        if (totalAssets == 0 || totalSupply == 0) {
+            IVault.VaultStorage storage vaultStorage = getVaultStorage();
+            address baseAsset = getAssetStorage().list[0];
+            return (baseAssets * 10 ** (vaultStorage.decimals - IERC20Metadata(baseAsset).decimals()), baseAssets);
+        }
+
         uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
         return (shares, baseAssets);
     }

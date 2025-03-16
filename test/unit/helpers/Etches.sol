@@ -12,6 +12,9 @@ import {MockBuffer} from "test/unit/mocks/MockBuffer.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {MockERC20} from "test/unit/mocks/MockERC20.sol";
 import {MockERC20CustomDecimals} from "test/unit/mocks/MockERC20CustomDecimals.sol";
+import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import {Test} from "lib/forge-std/src/Test.sol";
 
@@ -26,6 +29,9 @@ contract Etches is Test {
         mockOETH();
         mockCL_STETH();
         mockWBTC();
+        mockUSDC();
+        mockUSDE();
+        mockSUSDE();
         mockProvider();
         mockBuffer();
     }
@@ -89,6 +95,18 @@ contract Etches is Test {
         MockERC20CustomDecimals usdc = new MockERC20CustomDecimals("USD Coin", "USDC", 6);
         bytes memory code = address(usdc).code;
         vm.etch(MainnetContracts.USDC, code);
+    }
+
+    function mockUSDE() public {
+        MockERC20CustomDecimals usde = new MockERC20CustomDecimals("USD Coin", "USDE", 18);
+        bytes memory code = address(usde).code;
+        vm.etch(MainnetContracts.USDE, code);
+    }
+
+    function mockSUSDE() public {
+        MockERC4626 susde = new MockERC4626(ERC20(MainnetContracts.USDE), "Staked USDE", "sUSDE");
+        bytes memory code = address(susde).code;
+        vm.etch(MainnetContracts.SUSDE, code);
     }
 
     function mockProvider() public {
