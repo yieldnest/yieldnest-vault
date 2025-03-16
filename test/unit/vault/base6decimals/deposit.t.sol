@@ -20,6 +20,8 @@ import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {SetupBase6DecimalsVault} from "test/unit/vault/base6decimals/SetupBase6DecimalsVault.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
+import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -57,17 +59,10 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         vm.stopPrank();
     }
 
-    function test_Vault_initial_deposit_success()
-        // uint256 depositAmount,
-        // bool alwaysComputeTotalAssets
-        public
-    {
+    function test_Vault_initial_deposit_success(uint256 depositAmount, bool alwaysComputeTotalAssets) public {
         // Bound deposit amount between 10 and 100k USDC (6 decimals)
-        // if (depositAmount < 10) return;
-        // if (depositAmount > 100_000 * 1e6) return;
-
-        uint256 depositAmount = 1000e6;
-        bool alwaysComputeTotalAssets = true;
+        if (depositAmount < 10) return;
+        if (depositAmount > 100_000 * 1e6) return;
 
         vm.prank(ASSET_MANAGER);
         vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
@@ -146,7 +141,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly");
     }
 
-    function test_Vault_depositAsset_USDE_success() public {
+    function test_Vault_initial_depositAsset_USDE_success() public {
         uint256 depositAmount = 1000e18; // USDE has 18 decimals
 
         // Give Alice USDE
@@ -182,6 +177,36 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         // Check that total assets increased by the USD value of USDE (depositAmount / 1e12)
         assertEq(vault.totalAssets(), depositAmount / 1e12, "Total assets did not increase correctly");
+    }
+
+    function test_Vault_convertToAssetsForAsset_USDE_beforeDeposit() public {
+        uint256 sharesAmount = 1000e18;
+
+        // Cast vault to PublicViewsVault to access the public conversion functions
+        PublicViewsVault publicVault = PublicViewsVault(payable(address(vault)));
+
+        // Test conversion before any deposits are made
+        (uint256 assets, uint256 baseAssets) =
+            publicVault.convertToAssetsForAsset(MC.USDE, sharesAmount, Math.Rounding.Floor);
+
+        // Since USDE has 18 decimals but is valued at 1 USD, the assets should be equal to shares
+        // and baseAssets should be shares / 1e12 (converting from 18 to 6 decimals for USD value)
+        assertEq(assets, sharesAmount, "Incorrect assets conversion");
+        assertEq(baseAssets, sharesAmount / 1e12, "Incorrect baseAssets conversion");
+
+        // Verify the reverse conversion as well
+        (uint256 sharesBack, uint256 baseAssetsBack) =
+            publicVault.convertToSharesForAsset(MC.USDE, assets, Math.Rounding.Floor);
+
+        assertEq(sharesBack, sharesAmount, "Reverse conversion to shares failed");
+        assertEq(baseAssetsBack, baseAssets, "Reverse conversion to baseAssets failed");
+
+        // Test direct conversion functions
+        uint256 convertedBaseAssets = publicVault.convertAssetToBase(MC.USDE, sharesAmount);
+        assertEq(convertedBaseAssets, sharesAmount / 1e12, "Direct asset to base conversion failed");
+
+        uint256 convertedAssets = publicVault.convertBaseToAsset(MC.USDE, convertedBaseAssets);
+        assertEq(convertedAssets, sharesAmount, "Direct base to asset conversion failed");
     }
 
     function test_Vault_depositAsset_USDE_thenDepositToSUSDE() public {
@@ -231,10 +256,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Total assets should remain the same since we just moved from one asset to another of same value
         uint256 finalTotalAssets = vault.totalAssets();
         assertApproxEqAbs(
-            finalTotalAssets,
-            initialTotalAssets,
-            1, 
-            "Total assets should remain the same after depositing to SUSDE"
+            finalTotalAssets, initialTotalAssets, 1, "Total assets should remain the same after depositing to SUSDE"
         );
 
         // Shares should remain unchanged
@@ -304,10 +326,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Total assets should remain the same after processor
         uint256 finalTotalAssets = vault.totalAssets();
         assertApproxEqAbs(
-            finalTotalAssets,
-            preTotalAssets,
-            1,
-            "Total assets should remain the same after depositing to SUSDE"
+            finalTotalAssets, preTotalAssets, 1, "Total assets should remain the same after depositing to SUSDE"
         );
 
         // Alice's assets value should remain the same after processor
