@@ -21,6 +21,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     WETH9 public weth;
     MockERC20 public asset;
     MockERC20 public asset2;
+    MockERC20 public asset3;
 
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 1_000 * 10 ** 18;
@@ -32,7 +33,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         // Deploy mock asset
         asset = new MockERC20("Mock Token", "MOCK");
         asset2 = new MockERC20("Mock Token 2", "MOCK2");
-
+        asset3 = new MockERC20("Mock Token 3", "MOCK3");
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
         deal(address(weth), address(alice), INITIAL_BALANCE);
@@ -65,6 +66,18 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.addAsset(address(asset), true);
         vm.expectRevert(abi.encodeWithSelector(IVault.DuplicateAsset.selector, address(asset)));
         vault.addAsset(address(asset), true);
+    }
+
+    function test_Vault_addAsset_primaryDepositAssetDuplicate() public {
+        // Add a primary deposit asset (first asset in the list)
+        vm.startPrank(ASSET_MANAGER);
+
+        address baseAsset = vault.asset();
+        // Verify duplicate asset error
+        vm.expectRevert(abi.encodeWithSelector(IVault.DuplicateAsset.selector, baseAsset));
+        vault.addAsset(baseAsset, true);
+
+        vm.stopPrank();
     }
 
     function test_Vault_addAsset_unauthorized() public {
@@ -155,6 +168,45 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vm.stopPrank();
 
         assertEq(vault.getAssets().length, 6);
+    }
+
+    function test_Vault_deleteAsset_updatesIndex() public {
+        vm.startPrank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+        vault.addAsset(address(asset2), true);
+        vault.addAsset(address(asset3), true);
+        vm.stopPrank();
+
+        uint256 initialAssetsCount = vault.getAssets().length;
+        assertEq(vault.getAssets().length, initialAssetsCount, "Initial assets count should match");
+
+        // Get index of asset to delete
+        address[] memory assets = vault.getAssets();
+        uint256 assetIndex;
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (assets[i] == address(asset)) {
+                assetIndex = i;
+                break;
+            }
+        }
+
+        // Delete asset and verify last asset's index changed
+        vm.startPrank(ASSET_MANAGER);
+        vault.deleteAsset(assetIndex);
+        vm.stopPrank();
+
+        uint256 expectedAssetsCount = initialAssetsCount - 1;
+        assertEq(vault.getAssets().length, expectedAssetsCount, "Assets count should decrease by 1 after deletion");
+
+        // Verify asset3 is now at the index where asset was previously
+        assertEq(
+            vault.getAssets()[assetIndex], address(asset3), "Asset3 should be moved to the deleted asset's position"
+        );
+
+        // Verify asset3's index is correctly updated in the vault's mapping
+        assertEq(
+            vault.getAsset(address(asset3)).index, assetIndex, "Asset3's index should be updated in the vault mapping"
+        );
     }
 
     function test_Vault_deleteAsset_notEmpty() public {
