@@ -5,24 +5,33 @@ import {Provider} from "src/module/Provider.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IERC4626} from "src/Common.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
-import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {IStETH, IMETH, IRETH, IynLSDe} from "src/interface/IProvider.sol";
 import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "src/Common.sol";
 import {Vault} from "src/Vault.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
+import {VaultVerification} from "script/verification/VaultVerification.sol";
 
 import {IswETH, IsfrxETH, IFrxEthWethDualOracle, ICurveLpConnector} from "src/interface/IProvider.sol";
 
-contract ProviderTest is Test, Etches {
+contract ProviderTest is Test {
     Provider public provider;
     address public admin = makeAddr("admin");
     MockStrategy public mockStrategy;
     Vault public vault;
+    Withdrawer public withdrawer;
 
     function setUp() public {
         vault = Vault(payable(MC.YNETHX));
-        provider = Provider(vault.provider());
+        withdrawer = VaultVerification.getWithdrawer(vault);
+
+        // deploy new provider
+        provider = new Provider();
+
+        // set provider for vault
+        vm.prank(MC.TIMELOCK);
+        vault.setProvider(address(provider));
 
         MockStrategy implementation = new MockStrategy();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), admin, "");
@@ -198,5 +207,11 @@ contract ProviderTest is Test, Etches {
         address unsupportedAsset = address(0x123);
         vm.expectRevert();
         provider.getRate(unsupportedAsset);
+    }
+
+    function test_Provider_Withdrawer() public view {
+        uint256 expectedRate = withdrawer.convertToAssets(1e18);
+        uint256 rate = provider.getRate(address(withdrawer));
+        assertEq(rate, expectedRate, "Rate for withdrawer should match the convertToAssets rate");
     }
 }
