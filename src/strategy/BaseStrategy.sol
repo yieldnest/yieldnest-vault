@@ -13,7 +13,7 @@ import {IBaseStrategy} from "src/interface/IBaseStrategy.sol";
  */
 abstract contract BaseStrategy is BaseVault, IBaseStrategy {
     /// @notice The version of the strategy contract.
-    string public constant STRATEGY_VERSION = "0.1.0";
+    string public constant STRATEGY_VERSION = "0.1.1";
     /// @notice Role for allocator permissions
     bytes32 public constant ALLOCATOR_ROLE = keccak256("ALLOCATOR_ROLE");
     /// @notice Role for allocator manager permissions

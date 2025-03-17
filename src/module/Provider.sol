@@ -31,7 +31,7 @@ contract Provider is IProvider {
     function isETHStrategyVault(address asset) public view returns (bool) {
         try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
             address vaultAsset = IVault(asset).asset();
-            return keccak256(bytes(version)) == keccak256(bytes("0.1.0")) && vaultAsset == MC.WETH;
+            return keccak256(bytes(version)) == keccak256(bytes("0.1.1")) && vaultAsset == MC.WETH;
         } catch {
             return false;
         }
