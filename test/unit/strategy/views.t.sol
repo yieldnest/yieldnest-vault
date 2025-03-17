@@ -107,7 +107,9 @@ contract StrategyViewsUnitTest is Test, Etches, MainnetActors {
         vm.prank(alice);
         strategy.deposit(INITIAL_BALANCE, alice);
         assertEq(
-            strategy.maxWithdraw(address(alice)), INITIAL_BALANCE, "Alice should have max withdraw of INITIAL_BALANCE WETH"
+            strategy.maxWithdraw(address(alice)),
+            INITIAL_BALANCE,
+            "Alice should have max withdraw of INITIAL_BALANCE WETH"
         );
         assertEq(
             strategy.maxWithdrawAsset(MC.WETH, address(alice)),
@@ -122,7 +124,9 @@ contract StrategyViewsUnitTest is Test, Etches, MainnetActors {
         vm.prank(alice);
         strategy.deposit(INITIAL_BALANCE, alice);
         assertEq(
-            strategy.maxWithdraw(address(alice)), INITIAL_BALANCE, "Alice should have max withdraw of INITIAL_BALANCE WETH"
+            strategy.maxWithdraw(address(alice)),
+            INITIAL_BALANCE,
+            "Alice should have max withdraw of INITIAL_BALANCE WETH"
         );
         assertEq(
             strategy.maxWithdrawAsset(MC.WETH, address(alice)),
@@ -141,7 +145,9 @@ contract StrategyViewsUnitTest is Test, Etches, MainnetActors {
         vm.prank(alice);
         strategy.deposit(INITIAL_BALANCE, alice);
         assertEq(
-            strategy.maxWithdraw(address(alice)), INITIAL_BALANCE, "Alice should have max withdraw of INITIAL_BALANCE WETH"
+            strategy.maxWithdraw(address(alice)),
+            INITIAL_BALANCE,
+            "Alice should have max withdraw of INITIAL_BALANCE WETH"
         );
         assertEq(
             strategy.maxWithdrawAsset(MC.WETH, address(alice)),
