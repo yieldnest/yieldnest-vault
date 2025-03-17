@@ -209,6 +209,41 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         );
     }
 
+    function test_Vault_deleteAsset_lastAsset() public {
+        vm.startPrank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+        vault.addAsset(address(asset2), true);
+        vault.addAsset(address(asset3), true);
+        vm.stopPrank();
+
+        uint256 initialAssetsCount = vault.getAssets().length;
+        assertEq(vault.getAssets().length, initialAssetsCount, "Initial assets count should match");
+
+        // Get index of the last asset
+        address[] memory assets = vault.getAssets();
+        uint256 lastAssetIndex = assets.length - 1;
+        address lastAsset = assets[lastAssetIndex];
+
+        // Delete the last asset
+        vm.startPrank(ASSET_MANAGER);
+        vault.deleteAsset(lastAssetIndex);
+        vm.stopPrank();
+
+        uint256 expectedAssetsCount = initialAssetsCount - 1;
+        assertEq(vault.getAssets().length, expectedAssetsCount, "Assets count should decrease by 1 after deletion");
+
+        // Verify the last asset is removed and the rest of the assets match the original array (except the last one)
+        address[] memory updatedAssets = vault.getAssets();
+        for (uint256 i = 0; i < updatedAssets.length; i++) {
+            assertNotEq(updatedAssets[i], lastAsset, "Last asset should not be in the assets array anymore");
+            assertEq(updatedAssets[i], assets[i], "Remaining assets should match the original array");
+        }
+
+        // Verify the asset is no longer active and its index is wiped out
+        assertFalse(vault.getAsset(lastAsset).active, "Last asset should not be active anymore");
+        assertEq(vault.getAsset(lastAsset).index, 0, "Last asset's index should be reset to 0");
+    }
+
     function test_Vault_deleteAsset_notEmpty() public {
         vm.startPrank(ASSET_MANAGER);
         vault.addAsset(address(asset), true);
