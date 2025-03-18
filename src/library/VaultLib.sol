@@ -91,14 +91,9 @@ library VaultLib {
             revert IVault.InvalidNativeAssetDecimals(decimals_);
         }
 
-        // Check that asset decimals are not greater than 18
+        // Vault does not support assets with more than 18 decimals
         if (decimals_ > 18) {
             revert IVault.InvalidAssetDecimals(decimals_);
-        }
-
-        // Check if trying to add the primary asset again
-        if (index > 0 && asset_ == assetStorage.list[0]) {
-            revert IVault.DuplicateAsset(asset_);
         }
 
         if (index > 0 && assetStorage.assets[asset_].index != 0) {
@@ -145,13 +140,6 @@ library VaultLib {
         assetStorage.list[index] = assetStorage.list[assetStorage.list.length - 1];
         assetStorage.list.pop();
         delete assetStorage.assets[asset_];
-
-        // Update the index for the asset that was moved to the deleted position
-        if (index < assetStorage.list.length) {
-            address movedAsset = assetStorage.list[index];
-            assetStorage.assets[movedAsset].index = index;
-        }
-
         emit IVault.DeleteAsset(index, asset_);
     }
 
