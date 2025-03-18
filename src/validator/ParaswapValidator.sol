@@ -12,7 +12,7 @@ error InvalidYnUSDx();
 error InvalidBeneficiary();
 error SlippageTooHigh();
 error InvalidSelector();
-
+error InvalidToken();
 contract ParaswapValidator is IValidator {
 
     address public immutable PARASWAP_AUGUSTUS;
@@ -20,12 +20,16 @@ contract ParaswapValidator is IValidator {
     address public immutable provider;
     uint256 public immutable maxSlippage;
     uint256 public constant SLIPPAGE_PRECISION = 10000; // 100%
+    mapping(address => bool) public supportedTokens;
 
-    constructor(address _paraswapAugustus, address _ynUSDx, address _provider, uint256 _maxSlippage) {
+    constructor(address _paraswapAugustus, address _ynUSDx, address _provider, uint256 _maxSlippage, address[] memory _supportedTokens) {
         PARASWAP_AUGUSTUS = _paraswapAugustus;
         YnUSDx = _ynUSDx;
         provider = _provider;
         maxSlippage = _maxSlippage;
+        for (uint256 i = 0; i < _supportedTokens.length; i++) {
+            supportedTokens[_supportedTokens[i]] = true;
+        }
     }
 
     function validate(address target, uint256 value, bytes calldata data) external view {
@@ -55,17 +59,7 @@ contract ParaswapValidator is IValidator {
             destToken = swapData.destToken;
             srcAmount = swapData.fromAmount;
             destAmount = swapData.toAmount;
-        }
-         else if (selector == IAugustusV6.swapExactAmountInOnBalancerV2.selector) {
-            (IAugustusV6.BalancerV2Data memory balancerData, uint256 partnerAndFee, bytes memory permit, bytes memory executorData) = abi.decode(data[4:], (IAugustusV6.BalancerV2Data, uint256, bytes, bytes));
-            uint256 beneficiaryAndApproveFlag = balancerData.beneficiaryAndApproveFlag;
-            beneficiary = address(uint160(beneficiaryAndApproveFlag));
-            srcToken = balancerData.srcToken;
-            destToken = balancerData.destToken;
-            srcAmount = balancerData.fromAmount;
-            destAmount = balancerData.toAmount;
-        }
-        else if (selector == IAugustusV6.swapExactAmountInOnCurveV1.selector) {
+        } else if (selector == IAugustusV6.swapExactAmountInOnCurveV1.selector) {
             (IAugustusV6.CurveV1Data memory curveV1Data, uint256 partnerAndFee, bytes memory permit) = abi.decode(data[4:], (IAugustusV6.CurveV1Data, uint256, bytes));
             beneficiary = curveV1Data.beneficiary;
             srcToken = curveV1Data.srcToken;
@@ -102,6 +96,10 @@ contract ParaswapValidator is IValidator {
 
         if (beneficiary != YnUSDx && beneficiary != address(0)) {
             revert InvalidBeneficiary();
+        }
+
+        if (!supportedTokens[address(srcToken)] || !supportedTokens[address(destToken)]) {
+            revert InvalidToken();
         }
 
         uint256 srcTokenRate = IProvider(provider).getRate(address(srcToken));

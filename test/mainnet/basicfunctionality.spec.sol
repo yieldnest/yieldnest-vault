@@ -10,30 +10,25 @@ import {IVault} from "src/interface/IVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
-import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {BaseVault} from "src/BaseVault.sol";
-import {SetupVault} from "test/mainnet/helpers/SetupVault.sol";
+import {BaseTest} from "test/mainnet/helpers/BaseTest.sol";
 import {RulesVerification} from "script/verification/RulesVerification.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {BufferStrategy} from "src/BufferStrategy.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
-contract VaultBasicFunctionalityTest is SetupVault, TestHelper {
+contract VaultBasicFunctionalityTest is BaseTest {
     using SafeERC20 for IERC20;
 
     Vault public vault;
-    TimelockController public timelock;
     BufferStrategy public bufferStrategy;
     Provider public provider;
 
     string public constant VAULT_VERSION = "0.1.0";
 
     function setUp() public {
-        (vault, bufferStrategy, provider) = SetupVault.deploy();
-
-        timelock = TimelockController(payable(MC.TIMELOCK));
-
+        (vault, bufferStrategy, provider) = BaseTest.deploy();
         // Process accounting to ensure vault is in sync
         vault.processAccounting();
     }

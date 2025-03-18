@@ -2,16 +2,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-// USDC (primary deposit asset)
-// USDT
-// GHO
-// sFRAX
-// sUSDe
-// USDe
-// sUSDS (Maker DAO/Sky)
-// scrvUSD
-
-
 interface IContracts {
     function USDC() external pure returns (address);
     function USDT() external pure returns (address);
@@ -33,6 +23,10 @@ library MainnetContracts {
     address public constant USDE = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
     address public constant SUSDS = 0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD;
     address public constant SCRVUSD = 0x0655977FEb2f289A4aB78af67BAB0d17aAb84367;
+
+    address public constant FRAX = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
+    address public constant USDS = 0xdC035D45d973E3EC169d2276DDab16f1e407384F;
+    address public constant CRVUSD = 0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E;
 
     address public constant YNUSDx = 0x238213078DbD09f2D15F4c14c02300FA1b2A81BB; // TODO: Update with deployed YnUSDx
 
@@ -57,6 +51,8 @@ library MainnetContracts {
 
     // Morpho Gauntlet USDC Vault is used as the buffer for ynUSDCx
     address public constant MORPHO_GAUNTLET_USDC_VAULT = address(0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458);
+
+    address public constant SUPER_USDC_VAULT = 0xF7DE3c70F2db39a188A81052d2f3C8e3e217822a;
 
     address public constant WSTETH_WITHDRAWAL_QUEUE = 0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1;
 

@@ -46,18 +46,23 @@ contract Provider is IProvider {
         }
 
         if (asset == MC.SFRAX || asset == MC.SUSDE || asset == MC.SUSDS || asset == MC.SCRVUSD) {
+            return IERC4626(asset).convertToAssets(1e6) * 1e12;
+        }
+
+        if (asset == MC.SUPER_USDC_VAULT) {
             return IERC4626(asset).convertToAssets(1e18);
         }
 
         if (asset == MC.MORPHO_GAUNTLET_USDC_VAULT) {
+            // base asset is USDC with 6 decimals. we scale it to 18 decimals
             return IERC4626(asset).convertToAssets(1e18) * 1e12;
         }
 
         // buffer strategy
         if (isUSDStrategyVault(asset)) {
+            // base asset is USDC with 6 decimals. we scale it to 18 decimals
             return IERC4626(asset).convertToAssets(1e18) * 1e12;
         }
-
         revert UnsupportedAsset(asset);
     }
 }
