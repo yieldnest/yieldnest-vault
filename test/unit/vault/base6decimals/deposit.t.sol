@@ -207,6 +207,66 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(convertedAssets, sharesAmount, "Direct base to asset conversion failed");
     }
 
+    function test_Vault_convertToSharesForAsset_USDC_vs_USDE() public {
+        uint256 assetsAmount = 1000.123456e6; // USDC has 6 decimals
+        uint256 equivalentUSDEAmount = 1000.123456e18; // USDE has 18 decimals (same USD value)
+
+        // Cast vault to PublicViewsVault to access the public conversion functions
+        PublicViewsVault publicVault = PublicViewsVault(payable(address(vault)));
+
+        // Convert USDC to shares
+        (uint256 sharesFromUSDC, uint256 baseAssetsFromUSDC) =
+            publicVault.convertToSharesForAsset(MC.USDC, assetsAmount, Math.Rounding.Floor);
+
+        // Convert USDE to shares
+        (uint256 sharesFromUSDE, uint256 baseAssetsFromUSDE) =
+            publicVault.convertToSharesForAsset(MC.USDE, equivalentUSDEAmount, Math.Rounding.Floor);
+
+        // Both should result in the same number of shares since they represent the same USD value
+        assertEq(sharesFromUSDC, sharesFromUSDE, "Shares from USDC and USDE should be equal");
+
+        // Both should result in the same base assets (in 6 decimals)
+        assertEq(baseAssetsFromUSDC, baseAssetsFromUSDE, "Base assets from USDC and USDE should be equal");
+
+        // Verify that base assets are correctly calculated (should match the input values)
+        assertEq(baseAssetsFromUSDC, assetsAmount, "Base assets from USDC should match input amount");
+        assertEq(baseAssetsFromUSDE, assetsAmount, "Base assets from USDE should match input amount");
+
+        {
+            // Verify the reverse conversion for USDC
+            (uint256 assetsBackUSDC, uint256 baseAssetsBackUSDC) =
+                publicVault.convertToAssetsForAsset(MC.USDC, sharesFromUSDC, Math.Rounding.Floor);
+
+            // Verify the reverse conversion for USDE
+            (uint256 assetsBackUSDE, uint256 baseAssetsBackUSDE) =
+                publicVault.convertToAssetsForAsset(MC.USDE, sharesFromUSDE, Math.Rounding.Floor);
+
+            // Check that we get back the original amounts
+            assertEq(assetsBackUSDC, assetsAmount, "Reverse conversion for USDC failed");
+            assertEq(assetsBackUSDE, equivalentUSDEAmount, "Reverse conversion for USDE failed");
+            assertEq(baseAssetsBackUSDC, baseAssetsBackUSDE, "Base assets from reverse conversion should be equal");
+        }
+
+        {
+            // Demonstrate the decimals imprecision
+            // Direct conversion from asset to base
+            uint256 usdcToBase = publicVault.convertAssetToBase(MC.USDC, assetsAmount);
+            uint256 usdeToBase = publicVault.convertAssetToBase(MC.USDE, equivalentUSDEAmount);
+
+            assertEq(usdcToBase, usdeToBase, "Direct conversion to base should yield same result");
+        }
+
+        // Direct conversion from base to asset
+        uint256 baseToUSDC = publicVault.convertBaseToAsset(MC.USDC, baseAssetsFromUSDC);
+        uint256 baseToUSDE = publicVault.convertBaseToAsset(MC.USDE, baseAssetsFromUSDE);
+
+        assertEq(baseToUSDC, assetsAmount, "Base to USDC conversion should match original amount");
+        assertEq(baseToUSDE, equivalentUSDEAmount, "Base to USDE conversion should match original amount");
+
+        // Demonstrate that the ratio between USDE and USDC is 10^12 (difference in decimals)
+        assertEq(baseToUSDE / baseToUSDC, 1e12, "USDE to USDC ratio should be 10^12");
+    }
+
     function test_Vault_depositAsset_USDE_thenDepositToSUSDE() public {
         uint256 depositAmount = 1_000_000_000e18; // USDE has 18 decimals
 
