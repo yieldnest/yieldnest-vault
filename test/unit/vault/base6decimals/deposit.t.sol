@@ -171,7 +171,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         // Since USDE has 18 decimals but is valued at 1 USD, the shares should be depositAmount / 1e12
         // (converting from 18 to 6 decimals for USD value)
-        assertApproxEqRel(sharesMinted, depositAmount, 1e6, "Incorrect number of shares minted");
+        assertApproxEqAbs(sharesMinted, depositAmount, 1, "Incorrect number of shares minted");
 
         // Check that total assets increased by the USD value of USDE (depositAmount / 1e12)
         assertEq(vault.totalAssets(), depositAmount / 1e12, "Total assets did not increase correctly");
