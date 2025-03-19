@@ -177,6 +177,65 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), depositAmount / 1e12, "Total assets did not increase correctly");
     }
 
+    function testFuzz_Vault_initial_USDC_deposit_then_depositAsset_USDE_success(
+        uint256 usdeDepositAmount,
+        uint256 usdcDepositAmount
+    ) public {
+        // Assume reasonable deposit amounts to avoid overflow and unrealistic values
+        vm.assume(usdeDepositAmount > 1e12 && usdeDepositAmount <= 1_000_000_000e18);
+        vm.assume(usdcDepositAmount > 1e6 && usdcDepositAmount <= 1_000_000_000e6);
+
+        // Give Alice an initial USDC balance
+        deal(MC.USDC, alice, usdcDepositAmount);
+
+        // Approve vault to spend Alice's USDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
+
+        // Deposit USDC using depositAsset
+        uint256 sharesMintedFromUSDC = vault.depositAsset(MC.USDC, usdcDepositAmount, alice);
+        vm.stopPrank();
+
+        // Give Alice USDE
+        deal(MC.USDE, alice, INITIAL_BALANCE);
+
+        // Approve vault to spend Alice's USDE
+        vm.startPrank(alice);
+        IERC20(MC.USDE).approve(address(vault), type(uint256).max);
+
+        // Deposit USDE using depositAsset
+        uint256 sharesMintedFromUSDE = vault.depositAsset(MC.USDE, usdeDepositAmount, alice);
+        vm.stopPrank();
+
+        // Check that the vault received the USDE
+        assertEq(IERC20(MC.USDE).balanceOf(address(vault)), usdeDepositAmount, "Vault did not receive USDE");
+
+        // Check that Alice's USDE balance decreased
+        assertEq(
+            IERC20(MC.USDE).balanceOf(alice),
+            INITIAL_BALANCE - usdeDepositAmount,
+            "Alice's USDE balance did not decrease correctly"
+        );
+
+        // Check that Alice received the correct amount of shares for USDE deposit
+        assertEq(
+            vault.balanceOf(alice),
+            sharesMintedFromUSDC + sharesMintedFromUSDE,
+            "Alice did not receive the correct amount of shares from USDE deposit"
+        );
+
+        // Since USDE has 18 decimals but is valued at 1 USD, the shares should be usdeDepositAmount / 1e12
+        // (converting from 18 to 6 decimals for USD value)
+        assertApproxEqAbs(sharesMintedFromUSDE, usdeDepositAmount, 1, "Incorrect number of shares minted from USDE");
+
+        // Check that total assets increased by the USD value of USDE (usdeDepositAmount / 1e12) and USDC (usdcDepositAmount)
+        assertEq(
+            vault.totalAssets(),
+            (usdeDepositAmount / 1e12) + usdcDepositAmount,
+            "Total assets did not increase correctly"
+        );
+    }
+
     function test_Vault_convertToAssetsForAsset_USDE_beforeDeposit() public {
         uint256 sharesAmount = 1000e18;
 
