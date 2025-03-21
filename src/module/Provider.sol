@@ -30,7 +30,6 @@ contract Provider is IProvider {
 
     // precompute to save gas
     bytes32 private constant _VERSION_0_1_1 = keccak256("0.1.1");
-    bytes32 private constant _VERSION_0_1_0 = keccak256("0.1.0");
 
     function isETHStrategyVault(address asset) public view returns (bool) {
         try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
@@ -40,7 +39,7 @@ contract Provider is IProvider {
                 return false;
             }
             bytes32 versionHash = keccak256(bytes(version));
-            return versionHash == _VERSION_0_1_0 || versionHash == _VERSION_0_1_1;
+            return versionHash == _VERSION_0_1_1;
         } catch {
             return false;
         }
