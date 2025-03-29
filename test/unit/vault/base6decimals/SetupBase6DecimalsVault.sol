@@ -93,7 +93,7 @@ contract SetupBase6DecimalsVault is SetupVault {
             deal(MC.USDE, depositor, amount);
             vm.startPrank(depositor);
             IERC20(MC.USDE).approve(address(MC.SUSDE), amount);
-            uint256 shares = MockERC4626(MC.SUSDE).deposit(amount, depositor);
+            MockERC4626(MC.SUSDE).deposit(amount, depositor);
             vm.stopPrank();
 
             // Donate 123456789 USDE to the vault

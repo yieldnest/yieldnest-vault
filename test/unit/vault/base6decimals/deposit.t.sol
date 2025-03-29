@@ -24,31 +24,16 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
-    Vault public vaultImplementation;
-    TransparentUpgradeableProxy public vaultProxy;
-
     Vault public vault;
-    WETH9 public weth;
-    MockSTETH public steth;
-
     address public alice = address(0x12345);
     uint256 public constant INITIAL_BALANCE = 20_000_000_000 ether;
 
     function setUp() public {
         SetupVault setupVault = new SetupBase6DecimalsVault();
-        (vault, weth) = setupVault.setup();
-
-        // Replace the steth mock with our custom MockSTETH
-        steth = MockSTETH(payable(MC.STETH));
+        (vault,) = setupVault.setup();
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
-        weth.deposit{value: INITIAL_BALANCE}();
-        weth.transfer(alice, INITIAL_BALANCE);
-
-        // Approve vault to spend Alice's tokens
-        vm.prank(alice);
-        weth.approve(address(vault), type(uint256).max);
 
         // Set up approval rule for USDE to SUSDE
         vm.startPrank(PROCESSOR_MANAGER);
