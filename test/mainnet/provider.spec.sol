@@ -47,8 +47,12 @@ contract ProviderTest is BaseIntegrationTest, Etches {
         mockStrategy.grantRole(mockStrategy.PROVIDER_MANAGER_ROLE(), admin);
         vm.stopPrank();
 
+        // Deploy a new Provider instance
+        Provider newProvider = new Provider();
+
+        // Set the new provider in the mock strategy
         vm.prank(admin);
-        mockStrategy.setProvider(address(provider));
+        mockStrategy.setProvider(address(newProvider));
     }
 
     function test_Provider_GetRateWETH() public view {
@@ -183,8 +187,9 @@ contract ProviderTest is BaseIntegrationTest, Etches {
         // Add WSTETH as an asset
         wstethStrategy.addAsset(MC.WSTETH, true);
 
-        // Set provider for the strategy
-        wstethStrategy.setProvider(address(provider));
+        // Create a new provider instance and set it for the strategy
+        Provider newProvider = new Provider();
+        wstethStrategy.setProvider(address(newProvider));
 
         // Deposit 1 WSTETH into strategy
         deal(MC.WSTETH, address(this), 1e18);
