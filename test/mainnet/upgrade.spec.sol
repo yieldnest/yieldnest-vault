@@ -6,12 +6,11 @@ import {Vault} from "src/Vault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
-contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
-    Vault public vault;
-
-    function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
+contract VaultMainnetUpgradeTest is BaseIntegrationTest {
+    function setUp() public override {
+        super.setUp();
     }
 
     function test_Vault_Upgrade_ERC20_view_functions() public view {

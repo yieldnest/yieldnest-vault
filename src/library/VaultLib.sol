@@ -211,14 +211,13 @@ library VaultLib {
         if (totalAssets == 0 || totalSupply == 0) {
             IVault.VaultStorage storage vaultStorage = getVaultStorage();
             address baseAsset = getAssetStorage().list[0];
-            
+
             //// Base Case Mint ////
             //Mints 1 Unit of Vault Shares for 1 Unit of baseAsset
             // Example: if the Vault has 18 decimals and the baseAsset has 6 decimals,
             // mint 1e18 shares for 1e6 of baseAsset
             uint256 baseAssetsOffset = 10 ** (vaultStorage.decimals - IERC20Metadata(baseAsset).decimals());
-            baseAssets =
-                shares.mulDiv(1, baseAssetsOffset, rounding);
+            baseAssets = shares.mulDiv(1, baseAssetsOffset, rounding);
         } else {
             baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
         }

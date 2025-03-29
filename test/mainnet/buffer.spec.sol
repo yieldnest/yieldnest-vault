@@ -16,7 +16,6 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
 contract VaultBufferInvariantsTest is BaseIntegrationTest {
-
     function setUp() public override {
         super.setUp();
 

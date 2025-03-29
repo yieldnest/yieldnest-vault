@@ -11,17 +11,17 @@ import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "src/Common.sol";
 import {Vault} from "src/Vault.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
 import {IswETH, IsfrxETH, IFrxEthWethDualOracle, ICurveLpConnector} from "src/interface/IProvider.sol";
 
-contract ProviderTest is Test, Etches {
+contract ProviderTest is BaseIntegrationTest, Etches {
     Provider public provider;
     address public admin = makeAddr("admin");
     MockStrategy public mockStrategy;
-    Vault public vault;
 
-    function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
+    function setUp() public override {
+        super.setUp();
         provider = Provider(vault.provider());
 
         MockStrategy implementation = new MockStrategy();

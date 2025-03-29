@@ -10,14 +10,13 @@ import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {IERC20Metadata, Math} from "src/Common.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
-contract VaultMainnetViewerTest is Test, MainnetActors {
-    Vault public vault;
-
+contract VaultMainnetViewerTest is BaseIntegrationTest {
     MaxVaultViewer public viewer;
 
-    function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
+    function setUp() public override {
+        super.setUp();
 
         viewer = deployViewer(vault);
     }
