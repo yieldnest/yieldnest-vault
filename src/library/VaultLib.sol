@@ -244,8 +244,6 @@ library VaultLib {
 
         // Handle the case when totalAssets or totalSupply is zero
         if (totalAssets == 0 || totalSupply == 0) {
-            IVault.VaultStorage storage vaultStorage = getVaultStorage();
-
             return (baseAssetsWithOffset, baseAssets);
         }
 
