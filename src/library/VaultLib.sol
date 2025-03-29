@@ -234,16 +234,22 @@ library VaultLib {
     {
         uint256 totalAssets = IVault(address(this)).totalAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
-        uint256 baseAssets = convertAssetToBase(asset_, assets);
+
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+        address baseAsset = getAssetStorage().list[0];
+        uint256 baseAssetsOffset = 10 ** (vaultStorage.decimals - IERC20Metadata(baseAsset).decimals());
+
+        uint256 baseAssetsWithOffset = convertAssetToBase(asset_, assets * baseAssetsOffset);
+        uint256 baseAssets = baseAssetsWithOffset.mulDiv(1, baseAssetsOffset, rounding);
 
         // Handle the case when totalAssets or totalSupply is zero
         if (totalAssets == 0 || totalSupply == 0) {
             IVault.VaultStorage storage vaultStorage = getVaultStorage();
-            address baseAsset = getAssetStorage().list[0];
-            return (baseAssets * 10 ** (vaultStorage.decimals - IERC20Metadata(baseAsset).decimals()), baseAssets);
+
+            return (baseAssetsWithOffset, baseAssets);
         }
 
-        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
+        uint256 shares = baseAssetsWithOffset.mulDiv(totalSupply + 1, (totalAssets + 1) * baseAssetsOffset, rounding);
         return (shares, baseAssets);
     }
 
