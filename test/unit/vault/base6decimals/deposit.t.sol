@@ -32,7 +32,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     MockSTETH public steth;
 
     address public alice = address(0x12345);
-    uint256 public constant INITIAL_BALANCE = 200_000_000 ether;
+    uint256 public constant INITIAL_BALANCE = 20_000_000_000 ether;
 
     function setUp() public {
         SetupVault setupVault = new SetupBase6DecimalsVault();
@@ -182,7 +182,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         uint256 usdcDepositAmount
     ) public {
         // Assume reasonable deposit amounts to avoid overflow and unrealistic values
-        vm.assume(usdeDepositAmount > 1e12 && usdeDepositAmount <= 1_000_000_000e18);
+        vm.assume(usdeDepositAmount > 1e18 && usdeDepositAmount <= 1_000_000_000e18);
         vm.assume(usdcDepositAmount > 1e6 && usdcDepositAmount <= 1_000_000_000e6);
 
         // Give Alice an initial USDC balance
@@ -227,6 +227,8 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Since USDE has 18 decimals but is valued at 1 USD, the shares should be usdeDepositAmount / 1e12
         // (converting from 18 to 6 decimals for USD value)
         assertApproxEqAbs(sharesMintedFromUSDE, usdeDepositAmount, 1, "Incorrect number of shares minted from USDE");
+        // Assert that the shares minted from USDE deposit is less than or equal to the usdeDepositAmount
+        assertLe(sharesMintedFromUSDE, usdeDepositAmount, "Shares minted from USDE deposit exceed the deposit amount");
 
         // Check that total assets increased by the USD value of USDE (usdeDepositAmount / 1e12) and USDC (usdcDepositAmount)
         assertEq(

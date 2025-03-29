@@ -249,7 +249,7 @@ library VaultLib {
             return (baseAssetsWithOffset, baseAssets);
         }
 
-        uint256 shares = baseAssetsWithOffset.mulDiv(totalSupply + 1, (totalAssets + 1) * baseAssetsOffset, rounding);
+        uint256 shares = baseAssetsWithOffset.mulDiv(totalSupply + 1, totalAssets * baseAssetsOffset + 1, rounding);
         return (shares, baseAssets);
     }
 
