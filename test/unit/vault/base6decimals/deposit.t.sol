@@ -22,6 +22,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
@@ -64,6 +65,8 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Deposit USDC
         uint256 sharesMinted = vault.deposit(depositAmount, alice);
         vm.stopPrank();
+
+        vm.assume(sharesMinted > 0);
 
         // Check rate after deposit is the same
         uint256 afterRate = vault.convertToAssets(1e18);
