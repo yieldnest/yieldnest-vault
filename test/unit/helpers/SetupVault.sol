@@ -210,11 +210,11 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         // First param: fromToken (address) - allow any token
         paramRules[0] =
-            IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: new address[](0)});
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         // Second param: toToken (address) - allow any token
         paramRules[1] =
-            IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: new address[](0)});
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
 
         // Third param: amountIn (uint256) - allow any amount
         paramRules[2] =

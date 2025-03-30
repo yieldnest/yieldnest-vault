@@ -139,7 +139,6 @@ contract VaultMainnetCurveTest is BaseIntegrationTest {
             minOut
         );
         uint256 ethBalanceBefore = address(vault).balance;
-        uint256 stethBalanceBefore = IERC20(MC.STETH).balanceOf(address(vault));
 
         {
             address[] memory targets = new address[](2);
@@ -159,10 +158,10 @@ contract VaultMainnetCurveTest is BaseIntegrationTest {
             vm.stopPrank();
         }
 
-        // Assert stETH balance decreased by swap amount
+        // Assert stETH balance is 0 and ETH balance matches expected amount
         assertApproxEqAbs(
-            stethBalanceBefore - IERC20(MC.STETH).balanceOf(address(vault)),
-            swapAmount,
+            IERC20(MC.STETH).balanceOf(address(vault)),
+            amount - swapAmount,
             2,
             "stETH balance should decrease by swap amount"
         );
@@ -208,7 +207,6 @@ contract VaultMainnetCurveTest is BaseIntegrationTest {
             minOut
         );
         uint256 ethBalanceBefore = address(vault).balance;
-        uint256 stethBalanceBefore = IERC20(MC.STETH).balanceOf(address(vault));
 
         {
             address[] memory targets = new address[](1);
@@ -233,10 +231,10 @@ contract VaultMainnetCurveTest is BaseIntegrationTest {
             "Vault ETH balance should be reduced by swap amount"
         );
         assertApproxEqAbs(
-            IERC20(MC.STETH).balanceOf(address(vault)) - stethBalanceBefore,
+            IERC20(MC.STETH).balanceOf(address(vault)),
             minOut,
             2,
-            "Vault stETH balance should increase by expected output amount"
+            "Vault stETH balance should match expected output amount"
         );
     }
 }

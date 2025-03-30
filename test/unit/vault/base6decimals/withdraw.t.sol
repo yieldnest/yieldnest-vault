@@ -23,6 +23,7 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
@@ -42,20 +43,33 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
 
         // Set up approval rule for USDE to SUSDE
         vm.startPrank(PROCESSOR_MANAGER);
-        SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(MC.USDE, MC.SUSDE);
+        // Create an allowlist with both SUSDE and swapper
+        address[] memory allowList = new address[](2);
+        allowList[0] = MC.SUSDE;
+        allowList[1] = address(swapper);
+        SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(MC.USDE, allowList);
         vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
         SafeRules.RuleParams memory depositRuleParams = BaseRules.getDepositRule(MC.SUSDE, address(vault));
         vault.setProcessorRule(depositRuleParams.contractAddress, depositRuleParams.funcSig, depositRuleParams.rule);
         vm.stopPrank();
     }
 
-    function test_Vault_deposit_and_withdraw_success(uint256 depositAmount, uint256 withdrawAmount) public {
+    function test_Vault_deposit_and_withdraw_success(uint256 depositAmount, uint256 withdrawAmount)
+        public
+    {
         // Bound deposit amount between 10 and 100k USDC (6 decimals)
         vm.assume(depositAmount >= 10 * 1e18);
         vm.assume(depositAmount <= 100_000 * 1e18);
 
+        vm.assume(withdrawAmount > 0);
+        vm.assume(withdrawAmount <= depositAmount);
+
+        // uint256 depositAmount = 21254606715831297717389;
+        // uint256 withdrawAmount = 9088900153765937479;
+
         // Bound withdraw amount to be less than or equal to deposit amount
-        withdrawAmount = bound(withdrawAmount, 1, depositAmount);
+
+        withdrawAmount = withdrawAmount / 1e12; // USDC amount
 
         vm.prank(alice);
         MockERC20(MC.USDE).mint(depositAmount);
@@ -98,36 +112,64 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
 
             vm.prank(PROCESSOR);
             bytes[] memory returnData = vault.processor(targets, new uint256[](2), calldatas);
-            uint256 receivedUsdc = abi.decode(returnData[0], (uint256));
+            uint256 receivedUsdc = abi.decode(returnData[1], (uint256));
 
             // Verify the swap was successful
             assertEq(receivedUsdc, expectedUsdcAmount, "Received USDC should match expected amount");
             assertEq(IERC20(MC.USDC).balanceOf(address(vault)), receivedUsdc, "Vault should have received the USDC");
+            // Print the amount of USDC received from the swap
+            console.log("USDC received from swap:", receivedUsdc);
+
+            // Allocate the received USDC to the buffer
+            // First approve USDC to the buffer
+            targets = new address[](2);
+            targets[0] = MC.USDC;
+            targets[1] = MC.BUFFER;
+
+            calldatas = new bytes[](2);
+            calldatas[0] = abi.encodeWithSelector(IERC20.approve.selector, MC.BUFFER, receivedUsdc);
+            calldatas[1] = abi.encodeWithSelector(IERC4626.deposit.selector, receivedUsdc, address(vault));
+
+            vm.prank(PROCESSOR);
+            vault.processor(targets, new uint256[](2), calldatas);
+
+            // Verify the buffer deposit was successful
+            assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 0, "Vault should have deposited all USDC to buffer");
+            assertEq(
+                IERC20(MC.BUFFER).balanceOf(address(vault)), receivedUsdc, "Vault should have received buffer shares"
+            );
         }
 
         // Ensure withdrawAmount doesn't exceed the total assets in the vault
         // Convert expectedTotalAssets back to USDE decimals (18) by multiplying by 1e12
-        uint256 maxWithdrawable = expectedTotalAssets * 1e12;
+        uint256 maxWithdrawable = expectedTotalAssets;
         withdrawAmount = withdrawAmount > maxWithdrawable ? maxWithdrawable : withdrawAmount;
+
+        // Print Alice's shares before withdrawal
+        uint256 aliceShares = vault.balanceOf(alice);
+        console.log("Alice's shares before withdrawal:", aliceShares);
+        // Print the maximum amount Alice can withdraw
+        uint256 maxWithdraw = vault.maxWithdraw(alice);
+        console.log("Max withdraw for Alice:", maxWithdraw);
 
         // Calculate expected shares to burn
         uint256 sharesToBurn = vault.previewWithdraw(withdrawAmount);
-
         // Withdraw assets from the vault
         vm.startPrank(alice);
-        uint256 assetsReceived = vault.withdraw(withdrawAmount, alice, alice);
+        uint256 sharesBurned = vault.withdraw(withdrawAmount, alice, alice);
         vm.stopPrank();
 
         // Verify withdraw was successful
-        assertEq(assetsReceived, withdrawAmount, "Assets received should match withdraw amount");
         assertEq(
             vault.balanceOf(alice), sharesReceived - sharesToBurn, "Alice's shares should be reduced by burned amount"
         );
         assertEq(vault.totalSupply(), sharesReceived - sharesToBurn, "Total supply should be reduced by burned amount");
         assertEq(
-            vault.totalAssets(), depositAmount - withdrawAmount, "Total assets should be reduced by withdraw amount"
+            vault.totalAssets(),
+            expectedTotalAssets - withdrawAmount,
+            "Total assets should be reduced by withdraw amount"
         );
-        assertEq(IERC20(MC.USDE).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
+        assertEq(IERC20(MC.USDC).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
     }
 
     function test_Vault_redeem_success(uint256 depositAmount, uint256 redeemShares) public {

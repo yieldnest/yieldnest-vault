@@ -13,9 +13,18 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {Mock6DecimalsProvider} from "test/unit/mocks/Mock6DecimalsProvider.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
 
 contract SetupBase6DecimalsVault is SetupVault {
     MockSwapper public swapper;
+
+    function mockUSDCBuffer() public {
+        MockERC4626 usdcBuffer = new MockERC4626(ERC20(MC.USDC), "Staked USDE", "sUSDE");
+        bytes memory code = address(usdcBuffer).code;
+        vm.etch(MC.BUFFER, code);
+    }
 
     function setup() public override returns (Vault vault, WETH9 weth) {
         string memory name = "YieldNest MAX";
@@ -70,15 +79,6 @@ contract SetupBase6DecimalsVault is SetupVault {
         vault.addAsset(MC.USDE, true); // 18 decimals USDE
         vault.addAsset(MC.SUSDE, true); // sUSDE (ERC4626 for USDE)
 
-        // Configure processor rules
-        setDepositRule(vault, MC.BUFFER, address(vault));
-        setWethDepositRule(vault, MC.WETH);
-
-        setApprovalRule(vault, address(vault), MC.BUFFER);
-        setApprovalRule(vault, MC.WETH, MC.BUFFER);
-
-        vault.setBuffer(MC.BUFFER);
-
         // Set rates in provider
         mock6DecimalsProvider.setRate(MC.USDC, 1e18); // 1 USD USDC
         mock6DecimalsProvider.setRate(MC.USDE, 1e18); // 1 USD USDE
@@ -119,6 +119,23 @@ contract SetupBase6DecimalsVault is SetupVault {
             swapableAssets[3] = MC.USDE;
             swapableAssets[4] = MC.SUSDE;
             swapper = setupSwapper(vault, swapableAssets);
+            vm.stopPrank();
+        }
+
+        {
+            vm.startPrank(ADMIN);
+            // Configure processor rules
+            address[] memory allowList = new address[](2);
+            allowList[0] = MC.BUFFER;
+            allowList[1] = address(swapper);
+            SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(MC.USDC, allowList);
+            vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
+            // Configure processor rules
+            setDepositRule(vault, MC.BUFFER, address(vault));
+
+            mockUSDCBuffer();
+
+            vault.setBuffer(MC.BUFFER);
             vm.stopPrank();
         }
     }
