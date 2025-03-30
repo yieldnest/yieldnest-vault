@@ -54,6 +54,8 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         // Give Alice USDC
         deal(MC.USDC, alice, INITIAL_BALANCE);
+        // Check initial conversion rate
+        uint256 initialRate = vault.convertToAssets(1e18);
 
         // Approve vault to spend Alice's USDC
         vm.startPrank(alice);
@@ -62,6 +64,10 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Deposit USDC
         uint256 sharesMinted = vault.deposit(depositAmount, alice);
         vm.stopPrank();
+
+        // Check rate after deposit is the same
+        uint256 afterRate = vault.convertToAssets(1e18);
+        assertEq(initialRate, afterRate, "Conversion rate changed after deposit");
 
         // Check that shares were minted
         assertGt(sharesMinted, 0, "No shares were minted");

@@ -25,7 +25,6 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-
 contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
 
@@ -58,10 +57,11 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
     function swapAndAllocateToBuffer(uint256 depositAmount) internal {
         // Calculate how much USDC we expect to receive for our USDE
         uint256 expectedUsdcAmount = swapper.previewSwap(MC.USDE, MC.USDC, depositAmount);
+        // Verify the expected USDC amount is depositAmount / 12
+        assertEq(expectedUsdcAmount, depositAmount / 1e12, "Expected USDC amount should be depositAmount / 1e12");
 
         // Prepare the calldata for the swap function
-        bytes memory swapCalldata =
-            abi.encodeWithSelector(MockSwapper.swap.selector, MC.USDE, MC.USDC, depositAmount);
+        bytes memory swapCalldata = abi.encodeWithSelector(MockSwapper.swap.selector, MC.USDE, MC.USDC, depositAmount);
 
         // First approve USDE to the swapper, then execute the swap
         address[] memory targets = new address[](2);
@@ -95,13 +95,10 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
 
         // Verify the buffer deposit was successful
         assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 0, "Vault should have deposited all USDC to buffer");
-        assertEq(
-            IERC20(MC.BUFFER).balanceOf(address(vault)), receivedUsdc, "Vault should have received buffer shares"
-        );
+        assertEq(IERC20(MC.BUFFER).balanceOf(address(vault)), receivedUsdc, "Vault should have received buffer shares");
     }
 
     function test_Vault_deposit_and_withdraw_success(uint256 depositAmount, uint256 withdrawAmount) public {
-
         vm.assume(depositAmount >= 1e12); // enough decimal points to be non-zero in USDC
         vm.assume(depositAmount <= 100_000 * 1e18);
 
@@ -152,7 +149,10 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
             // TODO: fix the error margin here
             // more error at lower amounts
             assertApproxEqAbs(
-                assetsPerShareBefore, assetsPerShareAfter, 10 ** IERC20Metadata(MC.USDC).decimals(), "Asset per share ratio should remain constant"
+                assetsPerShareBefore,
+                assetsPerShareAfter,
+                10 ** IERC20Metadata(MC.USDC).decimals(),
+                "Asset per share ratio should remain constant"
             );
         }
 
@@ -168,9 +168,8 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         );
         assertEq(IERC20(MC.USDC).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
     }
-    
-    function test_Vault_deposit_and_redeem_success(uint256 depositAmount, uint256 withdrawAmount) public {
 
+    function test_Vault_deposit_and_redeem_success(uint256 depositAmount, uint256 withdrawAmount) public {
         vm.assume(depositAmount >= 1e12); // enough decimal points to be non-zero in USDC
         vm.assume(depositAmount <= 100_000 * 1e18);
 
@@ -184,6 +183,8 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         vm.prank(alice);
         MockERC20(MC.USDE).mint(depositAmount);
 
+        uint256 assetsPerShareBeforeDeposit = vault.convertToAssets(1e18);
+
         vm.startPrank(alice);
         IERC20(MC.USDE).approve(address(vault), depositAmount);
         uint256 sharesReceived = vault.depositAsset(MC.USDE, depositAmount, alice);
@@ -193,12 +194,23 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         // total assets are in USDC
         assertEq(vault.totalAssets(), expectedTotalAssets, "Total assets should match deposit amount");
 
+        uint256 assetsPerShareBeforeSwap = vault.convertToAssets(1e18);
+
+        // Assert that assets per share remains the same after deposit
+        assertEq(
+            assetsPerShareBeforeDeposit,
+            assetsPerShareBeforeSwap,
+            "Asset per share ratio should remain the same after deposit"
+        );
+
         swapAndAllocateToBuffer(depositAmount);
 
         // Calculate expected shares to burn
         uint256 sharesToBurn = vault.previewWithdraw(withdrawAmount);
         // Check convertToAssets before withdrawal
         uint256 assetsPerShareBefore = vault.convertToAssets(1e18);
+
+        assertEq(assetsPerShareBefore, assetsPerShareBeforeSwap, "Shares to burn should match expected calculation");
 
         // Withdraw assets from the vault
         vm.startPrank(alice);
@@ -221,7 +233,10 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
             // TODO: fix the error margin here
             // more error at lower amounts
             assertApproxEqAbs(
-                assetsPerShareBefore, assetsPerShareAfter, 10 ** IERC20Metadata(MC.USDC).decimals(), "Asset per share ratio should remain constant"
+                assetsPerShareBefore,
+                assetsPerShareAfter,
+                10 ** IERC20Metadata(MC.USDC).decimals(),
+                "Asset per share ratio should remain constant"
             );
         }
 
