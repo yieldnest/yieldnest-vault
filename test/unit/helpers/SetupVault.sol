@@ -13,6 +13,7 @@ import {IValidator} from "src/interface/IValidator.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
     function setup() public virtual returns (Vault vault, WETH9 weth) {
@@ -193,12 +194,14 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault_.setProcessorRule(weth_, funcSig, rule);
     }
 
-    function setupSwapper(Vault vault_) internal returns (MockSwapper swapper) {
+    function setupSwapper(Vault vault_, address[] memory swapableAssets) internal returns (MockSwapper swapper) {
         // Deploy mock swapper
         swapper = new MockSwapper(vault_.provider());
 
-        // Set up approval rule for swapper
-        setApprovalRule(vault_, address(vault_), address(swapper));
+        // Set up approval rules for all swapable assets
+        for (uint256 i = 0; i < swapableAssets.length; i++) {
+            setApprovalRule(vault_, swapableAssets[i], address(swapper));
+        }
 
         // Set up swap function rule
         bytes4 funcSig = bytes4(keccak256("swap(address,address,uint256)"));
@@ -221,5 +224,15 @@ contract SetupVault is Test, Etches, MainnetActors {
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault_.setProcessorRule(address(swapper), funcSig, rule);
+
+        // Transfer 10 billion of each asset to the Swapper with appropriate decimals
+        for (uint256 i = 0; i < swapableAssets.length; i++) {
+            address asset = swapableAssets[i];
+            uint256 decimals = IERC20Metadata(asset).decimals();
+            uint256 amount = 10_000_000_000 * (10 ** decimals);
+            deal(asset, address(swapper), amount);
+        }
+
+        return swapper;
     }
 }

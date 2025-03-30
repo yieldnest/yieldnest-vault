@@ -87,15 +87,17 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
             bytes memory swapCalldata =
                 abi.encodeWithSelector(MockSwapper.swap.selector, MC.USDE, MC.USDC, depositAmount);
 
-            // Execute the swap through the vault's processor
-            address[] memory targets = new address[](1);
-            targets[0] = address(swapper);
+            // First approve USDE to the swapper, then execute the swap
+            address[] memory targets = new address[](2);
+            targets[0] = address(MC.USDE);
+            targets[1] = address(swapper);
 
-            bytes[] memory calldatas = new bytes[](1);
-            calldatas[0] = swapCalldata;
+            bytes[] memory calldatas = new bytes[](2);
+            calldatas[0] = abi.encodeWithSelector(IERC20.approve.selector, address(swapper), depositAmount);
+            calldatas[1] = swapCalldata;
 
-            vm.prank(ADMIN);
-            bytes[] memory returnData = vault.processor(targets, new uint256[](0), calldatas);
+            vm.prank(PROCESSOR);
+            bytes[] memory returnData = vault.processor(targets, new uint256[](2), calldatas);
             uint256 receivedUsdc = abi.decode(returnData[0], (uint256));
 
             // Verify the swap was successful

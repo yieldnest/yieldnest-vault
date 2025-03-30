@@ -112,28 +112,14 @@ contract SetupBase6DecimalsVault is SetupVault {
         {
             vm.startPrank(ADMIN);
             // Transfer 10 billion of each asset to the Swapper
-            swapper = setupSwapper(vault);
+            address[] memory swapableAssets = new address[](5);
+            swapableAssets[0] = MC.USDC;
+            swapableAssets[1] = MC.WBTC;
+            swapableAssets[2] = MC.STETH;
+            swapableAssets[3] = MC.USDE;
+            swapableAssets[4] = MC.SUSDE;
+            swapper = setupSwapper(vault, swapableAssets);
             vm.stopPrank();
-
-            // Transfer 10 billion USDC (6 decimals)
-            uint256 usdcAmount = 10_000_000_000 * 1e6;
-            deal(address(MC.USDC), address(swapper), usdcAmount);
-
-            // Transfer 10 billion WBTC (8 decimals)
-            uint256 wbtcAmount = 10_000_000_000 * 1e8;
-            deal(address(MC.WBTC), address(swapper), wbtcAmount);
-
-            // Transfer 10 billion STETH (18 decimals)
-            uint256 stethAmount = 10_000_000_000 * 1e18;
-            deal(address(MC.STETH), address(swapper), stethAmount);
-
-            // Transfer 10 billion USDE (18 decimals)
-            uint256 usdeAmount = 10_000_000_000 * 1e18;
-            deal(address(MC.USDE), address(swapper), usdeAmount);
-
-            // Transfer 10 billion SUSDE (18 decimals)
-            uint256 susdeAmount = 10_000_000_000 * 1e18;
-            deal(address(MC.SUSDE), address(swapper), susdeAmount);
         }
     }
 }
