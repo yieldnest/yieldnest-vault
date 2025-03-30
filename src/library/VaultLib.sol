@@ -219,7 +219,7 @@ library VaultLib {
             uint256 baseAssetsOffset = 10 ** (vaultStorage.decimals - IERC20Metadata(baseAsset).decimals());
             baseAssets = shares.mulDiv(1, baseAssetsOffset, rounding);
         } else {
-            baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
+            baseAssets = shares.mulDiv(totalAssets, totalSupply, rounding);
         }
 
         assets = convertBaseToAsset(asset_, baseAssets);

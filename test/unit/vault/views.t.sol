@@ -122,7 +122,7 @@ contract VaultViewsUnitTest is Test, Etches {
         // Test asset conversion
         (uint256 assetAmount, uint256 baseAssets) = pVault.convertToAssetsForAsset(asset, shares, Math.Rounding.Floor);
 
-        uint256 expectedAssets = shares.mulDiv(vault.totalAssets() + 1, vault.totalSupply() + 1, Math.Rounding.Floor);
+        uint256 expectedAssets = shares.mulDiv(vault.totalAssets(), vault.totalSupply(), Math.Rounding.Floor);
 
         if (asset == MC.WETH) {
             assertEq(assetAmount, expectedAssets, "WETH asset conversion failed");

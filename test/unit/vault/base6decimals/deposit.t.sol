@@ -146,9 +146,16 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         vm.startPrank(alice);
         IERC20(MC.USDE).approve(address(vault), type(uint256).max);
 
+        // Record assets value before deposit
+        uint256 assetsBeforeDeposit = vault.convertToAssets(1e18);
+
         // Deposit USDE using depositAsset
         uint256 sharesMinted = vault.depositAsset(MC.USDE, depositAmount, alice);
         vm.stopPrank();
+        
+        // Verify convertToAssets stayed the same for existing shares
+        uint256 assetsAfterDeposit = vault.convertToAssets(1e18);
+        assertEq(assetsBeforeDeposit, assetsAfterDeposit, "convertToAssets should remain the same for existing shares");
 
         // Check that the vault received the USDE
         assertEq(IERC20(MC.USDE).balanceOf(address(vault)), depositAmount, "Vault did not receive USDE");
