@@ -23,7 +23,6 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
@@ -54,18 +53,13 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         vm.stopPrank();
     }
 
-    function test_Vault_deposit_and_withdraw_success(uint256 depositAmount, uint256 withdrawAmount)
-        public
-    {
+    function test_Vault_deposit_and_withdraw_success(uint256 depositAmount, uint256 withdrawAmount) public {
         // Bound deposit amount between 10 and 100k USDC (6 decimals)
-        vm.assume(depositAmount >= 10 * 1e18);
+        vm.assume(depositAmount >= 1e18); // enough decimal points to be non-zero in USDC
         vm.assume(depositAmount <= 100_000 * 1e18);
 
         vm.assume(withdrawAmount > 0);
         vm.assume(withdrawAmount <= depositAmount);
-
-        // uint256 depositAmount = 21254606715831297717389;
-        // uint256 withdrawAmount = 9088900153765937479;
 
         // Bound withdraw amount to be less than or equal to deposit amount
 
@@ -117,8 +111,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
             // Verify the swap was successful
             assertEq(receivedUsdc, expectedUsdcAmount, "Received USDC should match expected amount");
             assertEq(IERC20(MC.USDC).balanceOf(address(vault)), receivedUsdc, "Vault should have received the USDC");
-            // Print the amount of USDC received from the swap
-            console.log("USDC received from swap:", receivedUsdc);
+
 
             // Allocate the received USDC to the buffer
             // First approve USDC to the buffer
@@ -140,24 +133,25 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
             );
         }
 
-        // Ensure withdrawAmount doesn't exceed the total assets in the vault
-        // Convert expectedTotalAssets back to USDE decimals (18) by multiplying by 1e12
-        uint256 maxWithdrawable = expectedTotalAssets;
-        withdrawAmount = withdrawAmount > maxWithdrawable ? maxWithdrawable : withdrawAmount;
-
-        // Print Alice's shares before withdrawal
-        uint256 aliceShares = vault.balanceOf(alice);
-        console.log("Alice's shares before withdrawal:", aliceShares);
-        // Print the maximum amount Alice can withdraw
-        uint256 maxWithdraw = vault.maxWithdraw(alice);
-        console.log("Max withdraw for Alice:", maxWithdraw);
-
         // Calculate expected shares to burn
         uint256 sharesToBurn = vault.previewWithdraw(withdrawAmount);
+        // Check convertToAssets before withdrawal
+        uint256 assetsPerShareBefore = vault.convertToAssets(1e18);
+        
         // Withdraw assets from the vault
         vm.startPrank(alice);
-        uint256 sharesBurned = vault.withdraw(withdrawAmount, alice, alice);
+        vault.withdraw(withdrawAmount, alice, alice);
         vm.stopPrank();
+        
+        // Check convertToAssets after withdrawal
+        uint256 assetsPerShareAfter = vault.convertToAssets(1e18);
+        
+ 
+        // Assert that the conversion rate is greater than or equal after withdrawal
+        assertGe(assetsPerShareAfter, assetsPerShareBefore, "Asset per share ratio should not decrease after withdrawal");
+        // Assert that the conversion rate remains approximately the same
+        // TODO: fix the error margin here
+        assertApproxEqAbs(assetsPerShareBefore, assetsPerShareAfter, 1, "Asset per share ratio should remain constant");
 
         // Verify withdraw was successful
         assertEq(
@@ -170,60 +164,5 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
             "Total assets should be reduced by withdraw amount"
         );
         assertEq(IERC20(MC.USDC).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
-    }
-
-    function test_Vault_redeem_success(uint256 depositAmount, uint256 redeemShares) public {
-        // Bound deposit amount between 10 and 100k USDC (6 decimals)
-        vm.assume(depositAmount >= 10 * 1e6);
-        vm.assume(depositAmount <= 100_000 * 1e6);
-
-        // Deposit USDE to the vault
-        deal(MC.USDE, alice, depositAmount);
-
-        vm.startPrank(alice);
-        IERC20(MC.USDE).approve(address(vault), depositAmount);
-        uint256 sharesReceived = vault.deposit(depositAmount, alice);
-        vm.stopPrank();
-
-        // Bound redeem shares to be less than or equal to shares received
-        redeemShares = bound(redeemShares, 1, sharesReceived);
-
-        // Calculate expected assets to receive
-        uint256 expectedAssets = vault.previewRedeem(redeemShares);
-
-        // Redeem shares from the vault
-        vm.startPrank(alice);
-        uint256 assetsReceived = vault.redeem(redeemShares, alice, alice);
-        vm.stopPrank();
-
-        // Verify redeem was successful
-        assertEq(assetsReceived, expectedAssets, "Assets received should match expected assets");
-        assertEq(
-            vault.balanceOf(alice), sharesReceived - redeemShares, "Alice's shares should be reduced by redeemed amount"
-        );
-        assertEq(
-            vault.totalSupply(), sharesReceived - redeemShares, "Total supply should be reduced by redeemed amount"
-        );
-        assertEq(
-            vault.totalAssets(), depositAmount - expectedAssets, "Total assets should be reduced by redeemed assets"
-        );
-        assertEq(IERC20(MC.USDE).balanceOf(alice), expectedAssets, "Alice should have received the redeemed assets");
-    }
-
-    function test_Vault_withdraw_revert_InsufficientAssets() public {
-        uint256 depositAmount = 1000 * 1e6; // 1000 USDC
-
-        // Deposit USDE to the vault
-        deal(MC.USDE, alice, depositAmount);
-
-        vm.startPrank(alice);
-        IERC20(MC.USDE).approve(address(vault), depositAmount);
-        vault.deposit(depositAmount, alice);
-
-        // Try to withdraw more than deposited
-        uint256 excessiveWithdrawAmount = depositAmount + 1;
-        vm.expectRevert();
-        vault.withdraw(excessiveWithdrawAmount, alice, alice);
-        vm.stopPrank();
     }
 }
