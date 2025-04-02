@@ -28,7 +28,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault = Vault(payable(address(vaultProxy)));
 
         // Initialize the vault
-        vault.initialize(ADMIN, name, symbol, 18, 0, true, false);
+        vault.initialize(ADMIN, name, symbol, 18, 0, true, false, 0);
 
         weth = WETH9(payable(MC.WETH));
 

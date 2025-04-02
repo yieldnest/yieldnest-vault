@@ -204,25 +204,27 @@ library VaultLib {
         view
         returns (uint256 assets, uint256 baseAssets)
     {
-        uint256 totalAssets = IVault(address(this)).totalAssets();
+        uint256 totalAssetsWithOffset = IVault(address(this)).totalAssetsWithOffset();
         uint256 totalSupply = getERC20Storage().totalSupply;
 
-        // Handle the case when totalAssets or totalSupply is zero
-        if (totalAssets == 0 || totalSupply == 0) {
-            IVault.VaultStorage storage vaultStorage = getVaultStorage();
-            address baseAsset = getAssetStorage().list[0];
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+        uint256 baseAssetsOffset = 10 ** vaultStorage.baseAssetOffset;
 
+        uint256 baseAssetsWithOffset;
+        // Handle the case when totalAssets or totalSupply is zero
+        if (totalAssetsWithOffset == 0 || totalSupply == 0) {
+            address baseAsset = getAssetStorage().list[0];
             //// Base Case Mint ////
             //Mints 1 Unit of Vault Shares for 1 Unit of baseAsset
             // Example: if the Vault has 18 decimals and the baseAsset has 6 decimals,
             // mint 1e18 shares for 1e6 of baseAsset
-            uint256 baseAssetsOffset = 10 ** (vaultStorage.decimals - IERC20Metadata(baseAsset).decimals());
-            baseAssets = shares.mulDiv(1, baseAssetsOffset, rounding);
+            baseAssetsWithOffset = shares;
         } else {
-            baseAssets = shares.mulDiv(totalAssets, totalSupply, rounding);
+            baseAssetsWithOffset = shares.mulDiv(totalAssetsWithOffset, totalSupply, rounding);
         }
 
-        assets = convertBaseToAsset(asset_, baseAssets);
+        assets = convertBaseToAsset(asset_, baseAssetsWithOffset).mulDiv(1, baseAssetsOffset, rounding);
+        baseAssets = baseAssetsWithOffset.mulDiv(1, baseAssetsOffset, rounding);
     }
 
     /**
@@ -237,14 +239,14 @@ library VaultLib {
         view
         returns (uint256, uint256)
     {
-        uint256 totalAssets = IVault(address(this)).totalAssets();
+        uint256 totalAssetsWithOffset = IVault(address(this)).totalAssetsWithOffset();
         uint256 totalSupply = getERC20Storage().totalSupply;
 
         IVault.VaultStorage storage vaultStorage = getVaultStorage();
         address baseAsset = getAssetStorage().list[0];
 
         // Offset applied to baseAsset amounts to match the Vault's decimals, to preserve precision
-        uint256 baseAssetsOffset = 10 ** (vaultStorage.decimals - IERC20Metadata(baseAsset).decimals());
+        uint256 baseAssetsOffset = 10 ** vaultStorage.baseAssetOffset;
 
         // value of assets (in asset_) converted to baseAsset with the offset applied
         uint256 baseAssetsWithOffset = convertAssetToBase(asset_, assets * baseAssetsOffset);
@@ -253,17 +255,18 @@ library VaultLib {
         uint256 baseAssets = baseAssetsWithOffset.mulDiv(1, baseAssetsOffset, rounding);
 
         // Handle the case when totalAssets or totalSupply is zero
-        if (totalAssets == 0 || totalSupply == 0) {
+        if (totalAssetsWithOffset == 0 || totalSupply == 0) {
             //// Base Case Mint ////
             //Mints 1 Unit of Vault Shares for 1 Unit of baseAsset
             // Example: if the Vault has 18 decimals and the baseAsset has 6 decimals,
             // mint 1e18 shares for 1e6 of baseAsset
+
             return (baseAssetsWithOffset, baseAssets);
         }
 
         // amount of shares calculated using baseAssetsWithOffset to preserve precision
         // dividing by baseAssetsOffset to convert back to vault decimals
-        uint256 shares = baseAssetsWithOffset.mulDiv(totalSupply + 1, totalAssets * baseAssetsOffset + 1, rounding);
+        uint256 shares = baseAssetsWithOffset.mulDiv(totalSupply + 1, totalAssetsWithOffset + 1, rounding);
         return (shares, baseAssets);
     }
 
@@ -317,10 +320,12 @@ library VaultLib {
         address[] memory assetList = assetStorage.list;
         uint256 assetListLength = assetList.length;
 
+        uint256 baseAssetsOffset = 10 ** vaultStorage.baseAssetOffset;
+
         for (uint256 i = 0; i < assetListLength; i++) {
             uint256 balance = IERC20(assetList[i]).balanceOf(address(this));
             if (balance == 0) continue;
-            totalBaseBalance += convertAssetToBase(assetList[i], balance);
+            totalBaseBalance += convertAssetToBase(assetList[i], balance * baseAssetsOffset);
         }
     }
 

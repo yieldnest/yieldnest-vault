@@ -11,7 +11,6 @@ import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "src/Common.sol";
 import {IERC20, IERC20Metadata} from "src/Common.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 contract VaultViewsUnitTest is Test, Etches {
     using Math for uint256;
@@ -166,11 +165,6 @@ contract VaultViewsUnitTest is Test, Etches {
         deal(MC.WETH, address(this), depositedAssets);
         IERC20(MC.WETH).approve(address(vault), depositedAssets);
         vault.deposit(depositedAssets, address(vault));
-
-        // Print total shares
-        console.log("Deposited Assets:", depositedAssets);
-        uint256 totalShares = vault.totalSupply();
-        console.log("Total Shares:", totalShares);
 
         deal(MC.WETH, address(this), rewards);
         IERC20(MC.WETH).transfer(address(vault), rewards);

@@ -37,9 +37,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Returns the total assets held by the vault denominated in the underlying asset.
-     * @return uint256 The total assets.
+     * @return _totalAssets The total assets.
      */
     function totalAssets() public view virtual returns (uint256) {
+        return totalAssetsWithOffset() / 10 ** _getVaultStorage().baseAssetOffset;
+    }
+
+    function totalAssetsWithOffset() public view virtual returns (uint256) {
         if (_getVaultStorage().alwaysComputeTotalAssets) {
             return computeTotalAssets();
         }
@@ -363,7 +367,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert AssetNotActive();
         }
 
-        _addTotalAssets(baseAssets);
+        _addTotalAssets(_convertAssetToBase(asset_, assets * 10 ** _getVaultStorage().baseAssetOffset));
 
         SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
         _mint(receiver, shares);

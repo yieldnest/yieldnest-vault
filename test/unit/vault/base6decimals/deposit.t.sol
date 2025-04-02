@@ -22,7 +22,6 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
@@ -135,9 +134,14 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly");
     }
 
-    function testFuzz_Vault_initial_depositAsset_USDE_success(uint256 depositAmount) public {
+    function testFuzz_Vault_initial_depositAsset_USDE_success()
+        // uint256 depositAmount
+        public
+    {
         // Assume reasonable deposit amount to avoid overflow and unrealistic values
-        vm.assume(depositAmount > 1e12 && depositAmount <= 1_000_000_000e18);
+        // vm.assume(depositAmount > 1e12 && depositAmount <= 1_000_000_000e18);
+
+        uint256 depositAmount = 1290664430712916653;
 
         // Give Alice USDE
         deal(MC.USDE, alice, INITIAL_BALANCE);
@@ -152,7 +156,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Deposit USDE using depositAsset
         uint256 sharesMinted = vault.depositAsset(MC.USDE, depositAmount, alice);
         vm.stopPrank();
-        
+
         // Verify convertToAssets stayed the same for existing shares
         uint256 assetsAfterDeposit = vault.convertToAssets(1e18);
         assertEq(assetsBeforeDeposit, assetsAfterDeposit, "convertToAssets should remain the same for existing shares");

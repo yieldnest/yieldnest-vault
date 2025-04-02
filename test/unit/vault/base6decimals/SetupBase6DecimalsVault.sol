@@ -38,7 +38,8 @@ contract SetupBase6DecimalsVault is SetupVault {
         vault = Vault(payable(address(vaultProxy)));
 
         // Initialize the vault
-        vault.initialize(ADMIN, name, symbol, 18, 0, false, false);
+        // setup a baseAssetOffset of 12 to test the conversion of 18 decimals to 6 decimals
+        vault.initialize(ADMIN, name, symbol, 18, 0, false, false, 12);
 
         weth = WETH9(payable(MC.WETH));
 

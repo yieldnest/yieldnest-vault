@@ -34,9 +34,19 @@ contract Vault is BaseVault {
         uint8 decimals_,
         uint64 baseWithdrawalFee_,
         bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_
+        bool alwaysComputeTotalAssets_,
+        uint256 baseAssetOffset_
     ) external virtual initializer {
-        _initialize(admin, name, symbol, decimals_, baseWithdrawalFee_, countNativeAsset_, alwaysComputeTotalAssets_);
+        _initialize(
+            admin,
+            name,
+            symbol,
+            decimals_,
+            baseWithdrawalFee_,
+            countNativeAsset_,
+            alwaysComputeTotalAssets_,
+            baseAssetOffset_
+        );
     }
 
     /**
@@ -56,7 +66,8 @@ contract Vault is BaseVault {
         uint8 decimals_,
         uint64 baseWithdrawalFee_,
         bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_
+        bool alwaysComputeTotalAssets_,
+        uint256 baseAssetOffset_
     ) internal virtual {
         __ERC20_init(name, symbol);
         __AccessControl_init();
@@ -68,6 +79,7 @@ contract Vault is BaseVault {
         vaultStorage.decimals = decimals_;
         vaultStorage.countNativeAsset = countNativeAsset_;
         vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
+        vaultStorage.baseAssetOffset = baseAssetOffset_;
 
         FeeStorage storage fees = _getFeeStorage();
         fees.baseWithdrawalFee = baseWithdrawalFee_;
