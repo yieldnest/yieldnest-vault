@@ -14,7 +14,7 @@ import {MainnetActors} from "script/Actors.sol";
 
 contract GenerateProcessorTxData is Script {
     function run() external {
-        uint256 DEPOSIT_AMOUNT = 400 ether;
+        uint256 DEPOSIT_AMOUNT = 196.84 ether;
 
         MainnetActors actors = new MainnetActors();
 
@@ -45,5 +45,28 @@ contract GenerateProcessorTxData is Script {
         console2.log("Receiver: %s", vm.toString(MC.YNBNBX));
         console2.log("Transaction data:");
         console2.logBytes(depositData);
+
+        // Generate processor tx data to execute all transactions
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory data = new bytes[](2);
+
+        // 1. Approve
+        targets[0] = MC.WBNB;
+        values[0] = 0;
+        data[0] = txData;
+
+        // 2. Deposit
+        targets[1] = MC.BUFFER;
+        values[1] = 0;
+        data[1] = depositData;
+
+        bytes memory processorData =
+            abi.encodeWithSelector(bytes4(keccak256("processor(address[],uint256[],bytes[])")), targets, values, data);
+
+        console2.log("\n=== Processor Transaction Details ===");
+        console2.log("Target: %s", vm.toString(MC.YNBNBX));
+        console2.log("Transaction data:");
+        console2.logBytes(processorData);
     }
 }
