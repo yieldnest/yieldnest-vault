@@ -104,6 +104,8 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
 
         _setSTETHActive();
 
+        uint256 initialBalance = IERC20(MC.STETH).balanceOf(address(vault));
+
         // Convert ETH to stETH via Lido
         vm.startPrank(user);
         IStETH(MC.STETH).submit{value: amount + 100 wei}(address(0));
@@ -160,10 +162,10 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
             vm.stopPrank();
         }
 
-        // Assert stETH balance decreased by swap amount
+        // Assert stETH balance is correct and ETH balance matches expected amount
         assertApproxEqAbs(
-            stethBalanceBefore - IERC20(MC.STETH).balanceOf(address(vault)),
-            swapAmount,
+            IERC20(MC.STETH).balanceOf(address(vault)),
+            initialBalance + amount - swapAmount,
             2,
             "stETH balance should decrease by swap amount"
         );
@@ -192,6 +194,8 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
         (bool success,) = address(vault).call{value: amount}("");
         assertTrue(success, "ETH transfer failed");
         vm.stopPrank();
+
+        uint256 initialBalance = IERC20(MC.STETH).balanceOf(address(vault));
 
         // Get curve pool for ETH/stETH
         ICurveRegistry registry = ICurveRegistry(MC.CURVE_REGISTRY);
@@ -234,8 +238,8 @@ contract VaultMainnetCurveTest is Test, MainnetActors {
             "Vault ETH balance should be reduced by swap amount"
         );
         assertApproxEqAbs(
-            IERC20(MC.STETH).balanceOf(address(vault)) - stethBalanceBefore,
-            minOut,
+            IERC20(MC.STETH).balanceOf(address(vault)),
+            initialBalance + minOut,
             2,
             "Vault stETH balance should increase by expected output amount"
         );
