@@ -21,6 +21,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     WETH9 public weth;
     MockERC20 public asset;
     MockERC20 public asset2;
+    MockERC20 public asset3;
 
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 1_000 * 10 ** 18;
@@ -32,7 +33,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         // Deploy mock asset
         asset = new MockERC20("Mock Token", "MOCK");
         asset2 = new MockERC20("Mock Token 2", "MOCK2");
-
+        asset3 = new MockERC20("Mock Token 3", "MOCK3");
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
         deal(address(weth), address(alice), INITIAL_BALANCE);
@@ -65,6 +66,18 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.addAsset(address(asset), true);
         vm.expectRevert(abi.encodeWithSelector(IVault.DuplicateAsset.selector, address(asset)));
         vault.addAsset(address(asset), true);
+    }
+
+    function test_Vault_addAsset_primaryDepositAssetDuplicate() public {
+        // Add a primary deposit asset (first asset in the list)
+        vm.startPrank(ASSET_MANAGER);
+
+        address baseAsset = vault.asset();
+        // Verify duplicate asset error
+        vm.expectRevert(abi.encodeWithSelector(IVault.DuplicateAsset.selector, baseAsset));
+        vault.addAsset(baseAsset, true);
+
+        vm.stopPrank();
     }
 
     function test_Vault_addAsset_unauthorized() public {
@@ -155,6 +168,108 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vm.stopPrank();
 
         assertEq(vault.getAssets().length, 6);
+    }
+
+    function test_Vault_deleteAsset_updatesIndex() public {
+        vm.startPrank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+        vault.addAsset(address(asset2), true);
+        vault.addAsset(address(asset3), true);
+        vm.stopPrank();
+
+        uint256 initialAssetsCount = vault.getAssets().length;
+        assertEq(vault.getAssets().length, initialAssetsCount, "Initial assets count should match");
+
+        // Get index of asset to delete
+        address[] memory assets = vault.getAssets();
+        uint256 assetIndex;
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (assets[i] == address(asset)) {
+                assetIndex = i;
+                break;
+            }
+        }
+
+        // Store asset params before deletion
+        IVault.AssetParams[] memory beforeStates = new IVault.AssetParams[](assets.length);
+        for (uint256 i = 0; i < assets.length; i++) {
+            beforeStates[i] = vault.getAsset(assets[i]);
+        }
+
+        // Delete asset
+        vm.startPrank(ASSET_MANAGER);
+        vault.deleteAsset(assetIndex);
+        vm.stopPrank();
+
+        uint256 expectedAssetsCount = initialAssetsCount - 1;
+        assertEq(vault.getAssets().length, expectedAssetsCount, "Assets count should decrease by 1 after deletion");
+
+        // Get updated assets and compare with before states
+        address[] memory updatedAssets = vault.getAssets();
+        for (uint256 i = 0; i < updatedAssets.length; i++) {
+            IVault.AssetParams memory currentParams = vault.getAsset(updatedAssets[i]);
+
+            if (i == assetIndex) {
+                // The asset at the deleted index should now be the last asset from before
+                assertEq(updatedAssets[i], address(asset3), "Asset3 should be moved to the deleted asset's position");
+                assertEq(currentParams.index, assetIndex, "Asset3's index should be updated to the deleted position");
+            } else {
+                // Assets before the deleted index should remain unchanged
+                assertEq(updatedAssets[i], assets[i], "Assets before deleted index should remain in same position");
+                assertEq(currentParams.index, beforeStates[i].index, "Index should remain unchanged");
+            }
+        }
+
+        // Verify the deleted asset is no longer active and its index is wiped out
+        assertFalse(vault.getAsset(address(asset)).active, "Deleted asset should not be active anymore");
+        assertEq(vault.getAsset(address(asset)).index, 0, "Deleted asset's index should be reset to 0");
+    }
+
+    function test_Vault_deleteAsset_lastAsset() public {
+        vm.startPrank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+        vault.addAsset(address(asset2), true);
+        vault.addAsset(address(asset3), true);
+        vm.stopPrank();
+
+        uint256 initialAssetsCount = vault.getAssets().length;
+        assertEq(vault.getAssets().length, initialAssetsCount, "Initial assets count should match");
+
+        // Get index of the last asset
+        address[] memory assets = vault.getAssets();
+        uint256 lastAssetIndex = assets.length - 1;
+        address lastAsset = assets[lastAssetIndex];
+
+        // Store asset params before deletion
+        IVault.AssetParams[] memory beforeStates = new IVault.AssetParams[](assets.length);
+        for (uint256 i = 0; i < assets.length; i++) {
+            beforeStates[i] = vault.getAsset(assets[i]);
+        }
+
+        // Delete the last asset
+        vm.startPrank(ASSET_MANAGER);
+        vault.deleteAsset(lastAssetIndex);
+        vm.stopPrank();
+
+        uint256 expectedAssetsCount = initialAssetsCount - 1;
+        assertEq(vault.getAssets().length, expectedAssetsCount, "Assets count should decrease by 1 after deletion");
+
+        // Verify the last asset is removed and the rest of the assets match the original array (except the last one)
+        address[] memory updatedAssets = vault.getAssets();
+        for (uint256 i = 0; i < updatedAssets.length; i++) {
+            assertNotEq(updatedAssets[i], lastAsset, "Last asset should not be in the assets array anymore");
+            assertEq(updatedAssets[i], assets[i], "Remaining assets should match the original array");
+
+            // Verify active status, index and decimals remain unchanged for non-deleted assets
+            IVault.AssetParams memory currentParams = vault.getAsset(updatedAssets[i]);
+            assertEq(currentParams.active, beforeStates[i].active, "Asset active status should remain unchanged");
+            assertEq(currentParams.index, beforeStates[i].index, "Asset index should remain unchanged");
+            assertEq(currentParams.decimals, beforeStates[i].decimals, "Asset decimals should remain unchanged");
+        }
+
+        // Verify the asset is no longer active and its index is wiped out
+        assertFalse(vault.getAsset(lastAsset).active, "Last asset should not be active anymore");
+        assertEq(vault.getAsset(lastAsset).index, 0, "Last asset's index should be reset to 0");
     }
 
     function test_Vault_deleteAsset_notEmpty() public {
