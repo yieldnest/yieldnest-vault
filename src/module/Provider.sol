@@ -28,18 +28,10 @@ contract Provider is IProvider {
     error UnsupportedAsset(address asset);
     error RateIsNegative();
 
-    // precompute to save gas
-    bytes32 private constant _VERSION_0_1_1 = keccak256("0.1.1");
-
     function isETHStrategyVault(address asset) public view returns (bool) {
         try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
             address vaultAsset = IVault(asset).asset();
-            if (vaultAsset != MC.WETH) {
-                // return early to save gas
-                return false;
-            }
-            bytes32 versionHash = keccak256(bytes(version));
-            return versionHash == _VERSION_0_1_1;
+            return keccak256(bytes(version)) == keccak256(bytes("0.1.0")) && vaultAsset == MC.WETH;
         } catch {
             return false;
         }
