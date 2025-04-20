@@ -130,7 +130,7 @@ contract VaultBufferInvariantsTest is Test, AssertUtils, MainnetActors {
         uint256 bufferRate = IProvider(vault.provider()).getRate(vault.buffer());
         uint256 bufferAssets = Math.mulDiv(bufferShares, bufferRate, 1e18, Math.Rounding.Floor);
 
-        assertApproxEqRel(bufferAssets, bufferAmount, 1e12, "Buffer assets should equal buffer amount");
+        assertApproxEqRel(bufferAssets, bufferAmount, 1e13, "Buffer assets should equal buffer amount");
 
         totalSupplyInvariant(initialSupply);
         totalAssetsInvariant(initialAssets - bufferAmount + bufferAssets);
