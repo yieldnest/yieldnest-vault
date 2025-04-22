@@ -25,8 +25,8 @@ contract SetupBase6DecimalsVault is SetupVault {
     WrappedToken public wusdc;
 
     function mockUSDCBuffer() public {
-        MockERC4626 usdcBuffer = new MockERC4626(ERC20(MC.USDC), "Staked USDE", "sUSDE");
-        bytes memory code = address(usdcBuffer).code;
+        MockERC4626 wusdcBuffer = new MockERC4626(ERC20(address(wusdc)), "Staked WUSDC", "sWUSDC");
+        bytes memory code = address(wusdcBuffer).code;
         vm.etch(MC.BUFFER, code);
     }
 
@@ -139,7 +139,7 @@ contract SetupBase6DecimalsVault is SetupVault {
             address[] memory allowList = new address[](2);
             allowList[0] = MC.BUFFER;
             allowList[1] = address(swapper);
-            SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(MC.USDC, allowList);
+            SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(address(wusdc), allowList);
             vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
             // Configure processor rules
             setDepositRule(vault, MC.BUFFER, address(vault));
@@ -147,6 +147,33 @@ contract SetupBase6DecimalsVault is SetupVault {
             mockUSDCBuffer();
 
             vault.setBuffer(MC.BUFFER);
+            vm.stopPrank();
+        }
+
+        {
+
+            vm.startPrank(ADMIN);
+            address[] memory allowList = new address[](2);
+            allowList[0] = address(wusdc);
+            allowList[1] = address(swapper);
+            SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(address(MC.USDC), allowList);
+            vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
+
+            vm.stopPrank();
+        }
+
+        {
+            vm.startPrank(ADMIN);
+            // Configure processor rules for WUSDC
+            
+            // Rule for unwrapping WUSDC back to USDC
+            SafeRules.RuleParams memory redeemRule = BaseRules.getRedeemRule(address(wusdc), address(vault));
+            vault.setProcessorRule(redeemRule.contractAddress, redeemRule.funcSig, redeemRule.rule);
+            
+            // Rule for wrapping USDC to WUSDC
+            SafeRules.RuleParams memory depositRule = BaseRules.getDepositRule(address(wusdc), address(vault));
+            vault.setProcessorRule(depositRule.contractAddress, depositRule.funcSig, depositRule.rule);
+            
             vm.stopPrank();
         }
     }
