@@ -18,7 +18,6 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 
-
 contract SetupBase6DecimalsVault is SetupVault {
     MockSwapper public swapper;
 
@@ -77,7 +76,6 @@ contract SetupBase6DecimalsVault is SetupVault {
         Mock6DecimalsProvider mock6DecimalsProvider = new Mock6DecimalsProvider();
         // Set the provider to the 6 decimals provider
         vault.setProvider(address(mock6DecimalsProvider));
-
 
         // Add assets: Base asset (USDC) first, then WBTC and an 18 decimal asset
 
@@ -151,7 +149,6 @@ contract SetupBase6DecimalsVault is SetupVault {
         }
 
         {
-
             vm.startPrank(ADMIN);
             address[] memory allowList = new address[](2);
             allowList[0] = address(wusdc);
@@ -165,15 +162,15 @@ contract SetupBase6DecimalsVault is SetupVault {
         {
             vm.startPrank(ADMIN);
             // Configure processor rules for WUSDC
-            
+
             // Rule for unwrapping WUSDC back to USDC
             SafeRules.RuleParams memory redeemRule = BaseRules.getRedeemRule(address(wusdc), address(vault));
             vault.setProcessorRule(redeemRule.contractAddress, redeemRule.funcSig, redeemRule.rule);
-            
+
             // Rule for wrapping USDC to WUSDC
             SafeRules.RuleParams memory depositRule = BaseRules.getDepositRule(address(wusdc), address(vault));
             vault.setProcessorRule(depositRule.contractAddress, depositRule.funcSig, depositRule.rule);
-            
+
             vm.stopPrank();
         }
     }

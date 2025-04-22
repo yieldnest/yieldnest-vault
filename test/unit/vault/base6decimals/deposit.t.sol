@@ -26,7 +26,6 @@ import {console} from "lib/forge-std/src/console.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
-
 contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
     address public alice = address(0x12345);
@@ -62,7 +61,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         {
             // Give Alice USDC
             deal(MC.USDC, alice, INITIAL_BALANCE);
-            
+
             // Wrap USDC to wUSDC
             vm.startPrank(alice);
             IERC20(MC.USDC).approve(address(wusdc), depositAmount);
@@ -70,7 +69,6 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
             vm.stopPrank();
         }
 
-        
         // Check initial conversion rate
         uint256 initialRate = vault.convertToAssets(1e18);
 
@@ -120,7 +118,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         {
             // Give Alice USDC
             deal(MC.USDC, alice, INITIAL_BALANCE / 1e12);
-            
+
             // Wrap USDC to wUSDC
             vm.startPrank(alice);
             IERC20(MC.USDC).approve(address(wusdc), type(uint256).max);
@@ -131,7 +129,6 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Approve vault to spend Alice's wUSDC
         vm.startPrank(alice);
         IERC20(address(wusdc)).approve(address(vault), type(uint256).max);
-
 
         // Mint shares
         uint256 assetsDeposited = vault.mint(sharesToMint, alice);
@@ -258,9 +255,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         // Check that total assets increased by the USD value of USDE (usdeDepositAmount / 1e12) and USDC (usdcDepositAmount)
         assertEq(
-            vault.totalAssets(),
-            usdeDepositAmount + usdcDepositAmount * 1e12,
-            "Total assets did not increase correctly"
+            vault.totalAssets(), usdeDepositAmount + usdcDepositAmount * 1e12, "Total assets did not increase correctly"
         );
     }
 
@@ -369,7 +364,6 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         uint256 sharesMinted = vault.depositAsset(MC.USDE, depositAmount, alice);
         vm.stopPrank();
 
-
         // Process accounting to update vault state
         vault.processAccounting();
 
@@ -388,7 +382,6 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         values[0] = 0;
         values[1] = 0;
 
-
         uint256 investedAmount = depositAmount / 2;
 
         bytes[] memory data = new bytes[](2);
@@ -402,7 +395,9 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         vault.processAccounting();
 
         // Verify USDE is now in SUSDE
-        assertEq(IERC20(MC.USDE).balanceOf(address(vault)), depositAmount - investedAmount, "Vault should have no USDE left");
+        assertEq(
+            IERC20(MC.USDE).balanceOf(address(vault)), depositAmount - investedAmount, "Vault should have no USDE left"
+        );
         assertGt(IERC20(MC.SUSDE).balanceOf(address(vault)), 0, "Vault should have SUSDE tokens");
 
         // Total assets should remain the same since we just moved from one asset to another of same value

@@ -22,7 +22,6 @@ interface IynETH {
 }
 
 contract VaultMainnetCurveTest is BaseIntegrationTest {
-
     function setUp() public override {
         super.setUp();
 

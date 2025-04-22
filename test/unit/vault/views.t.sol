@@ -134,7 +134,11 @@ contract VaultViewsUnitTest is Test, Etches {
             // assetDecimals = 8 (WBTC decimals)
             // rate = 20e18 (20 ETH per WBTC)
             // Then: assetAmount = (100e18 * 1e8) / 20e18 = 5 WBTC = 500000000 satoshi
-            assertEq(assetAmount, expectedAssets.mulDiv(10 ** assetDecimals, rate, Math.Rounding.Floor), "Asset conversion failed");
+            assertEq(
+                assetAmount,
+                expectedAssets.mulDiv(10 ** assetDecimals, rate, Math.Rounding.Floor),
+                "Asset conversion failed"
+            );
             assertEq(baseAssets, expectedAssets, "Base asset conversion failed");
         }
     }

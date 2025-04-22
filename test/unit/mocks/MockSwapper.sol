@@ -49,7 +49,6 @@ contract MockSwapper {
         assets = baseAssets.mulDiv(10 ** IERC20Metadata(asset_).decimals(), rate, Math.Rounding.Floor);
     }
 
-
     /**
      * @notice Previews the amount of tokenOut that would be received for a given amount of tokenIn
      * @param tokenIn The address of the input token

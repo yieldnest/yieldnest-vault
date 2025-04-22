@@ -27,7 +27,6 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {console} from "lib/forge-std/src/console.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 
-
 contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
     WrappedToken public wusdc;
@@ -104,9 +103,13 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
 
             // Verify the wrapping was successful
             assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 0, "Vault should have wrapped all USDC");
-            assertEq(IERC20(address(wusdc)).balanceOf(address(vault)), receivedUsdc * 1e12, "Vault should have received WUSDC");
+            assertEq(
+                IERC20(address(wusdc)).balanceOf(address(vault)),
+                receivedUsdc * 1e12,
+                "Vault should have received WUSDC"
+            );
         }
-        
+
         // Allocate the received USDC to the buffer
         // First approve USDC to the buffer
         targets = new address[](2);
@@ -196,9 +199,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         assertEq(IERC20(wusdc).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
     }
 
-    function test_Vault_deposit_and_redeem_success(
-        uint256 depositAmount, uint256 withdrawAmount
-    ) public {
+    function test_Vault_deposit_and_redeem_success(uint256 depositAmount, uint256 withdrawAmount) public {
         vm.assume(depositAmount >= 1e12); // enough decimal points to be non-zero in USDC
         vm.assume(depositAmount <= 100_000 * 1e18);
 
