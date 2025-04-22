@@ -91,6 +91,14 @@ library VaultLib {
             revert IVault.InvalidNativeAssetDecimals(decimals_);
         }
 
+        // If this is not the first asset, check that its decimals are not higher than the base asset
+        if (index > 0) {
+            uint8 baseAssetDecimals = assetStorage.assets[assetStorage.list[0]].decimals;
+            if (decimals_ > baseAssetDecimals) {
+                revert IVault.InvalidAssetDecimals(decimals_);
+            }
+        }
+
         // Check if trying to add the primary asset again
         if (index > 0 && asset_ == assetStorage.list[0]) {
             revert IVault.DuplicateAsset(asset_);

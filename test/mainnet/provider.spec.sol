@@ -11,17 +11,17 @@ import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "src/Common.sol";
 import {Vault} from "src/Vault.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
 import {IswETH, IsfrxETH, IFrxEthWethDualOracle, ICurveLpConnector} from "src/interface/IProvider.sol";
 
-contract ProviderTest is Test, Etches {
+contract ProviderTest is BaseIntegrationTest, Etches {
     Provider public provider;
     address public admin = makeAddr("admin");
     MockStrategy public mockStrategy;
-    Vault public vault;
 
-    function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
+    function setUp() public override {
+        super.setUp();
         provider = Provider(vault.provider());
 
         MockStrategy implementation = new MockStrategy();
@@ -47,8 +47,12 @@ contract ProviderTest is Test, Etches {
         mockStrategy.grantRole(mockStrategy.PROVIDER_MANAGER_ROLE(), admin);
         vm.stopPrank();
 
+        // Deploy a new Provider instance
+        Provider newProvider = new Provider();
+
+        // Set the new provider in the mock strategy
         vm.prank(admin);
-        mockStrategy.setProvider(address(provider));
+        mockStrategy.setProvider(address(newProvider));
     }
 
     function test_Provider_GetRateWETH() public view {
@@ -183,8 +187,9 @@ contract ProviderTest is Test, Etches {
         // Add WSTETH as an asset
         wstethStrategy.addAsset(MC.WSTETH, true);
 
-        // Set provider for the strategy
-        wstethStrategy.setProvider(address(provider));
+        // Create a new provider instance and set it for the strategy
+        Provider newProvider = new Provider();
+        wstethStrategy.setProvider(address(newProvider));
 
         // Deposit 1 WSTETH into strategy
         deal(MC.WSTETH, address(this), 1e18);

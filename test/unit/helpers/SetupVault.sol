@@ -12,9 +12,11 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
+import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
-    function setup() public returns (Vault vault, WETH9 weth) {
+    function setup() public virtual returns (Vault vault, WETH9 weth) {
         string memory name = "YieldNest MAX";
         string memory symbol = "ynMAx";
 
@@ -39,7 +41,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         }
     }
 
-    function configureLocal(Vault vault) internal {
+    function configureLocal(Vault vault) internal virtual {
         // etch to mock the mainnet contracts
         mockAll();
 
@@ -190,5 +192,47 @@ contract SetupVault is Test, Etches, MainnetActors {
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
         vault_.setProcessorRule(weth_, funcSig, rule);
+    }
+
+    function setupSwapper(Vault vault_, address[] memory swapableAssets) internal returns (MockSwapper swapper) {
+        // Deploy mock swapper
+        swapper = new MockSwapper(vault_.provider());
+
+        // Set up approval rules for all swapable assets
+        for (uint256 i = 0; i < swapableAssets.length; i++) {
+            setApprovalRule(vault_, swapableAssets[i], address(swapper));
+        }
+
+        // Set up swap function rule
+        bytes4 funcSig = bytes4(keccak256("swap(address,address,uint256)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](3);
+
+        // First param: fromToken (address) - allow any token
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        // Second param: toToken (address) - allow any token
+        paramRules[1] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        // Third param: amountIn (uint256) - allow any amount
+        paramRules[2] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+
+        vault_.setProcessorRule(address(swapper), funcSig, rule);
+
+        // Transfer 10 billion of each asset to the Swapper with appropriate decimals
+        for (uint256 i = 0; i < swapableAssets.length; i++) {
+            address asset = swapableAssets[i];
+            uint256 decimals = IERC20Metadata(asset).decimals();
+            uint256 amount = 10_000_000_000 * (10 ** decimals);
+            deal(asset, address(swapper), amount);
+        }
+
+        return swapper;
     }
 }
