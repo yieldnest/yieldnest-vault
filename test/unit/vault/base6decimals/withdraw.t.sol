@@ -134,7 +134,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         // First approve WUSDC to the buffer
         uint256 wusdcBalanceBefore = IERC20(address(wusdc)).balanceOf(address(vault));
         uint256 bufferSharesBefore = IERC20(MC.BUFFER).balanceOf(address(vault));
-        
+
         address[] memory targets = new address[](2);
         targets[0] = address(wusdc);
         targets[1] = MC.BUFFER;
@@ -148,13 +148,13 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
 
         // Verify the buffer deposit was successful
         assertEq(
-            IERC20(address(wusdc)).balanceOf(address(vault)), 
-            wusdcBalanceBefore - amount, 
+            IERC20(address(wusdc)).balanceOf(address(vault)),
+            wusdcBalanceBefore - amount,
             "Vault WUSDC balance should decrease by the deposited amount"
         );
         assertEq(
-            IERC20(MC.BUFFER).balanceOf(address(vault)), 
-            bufferSharesBefore + amount, 
+            IERC20(MC.BUFFER).balanceOf(address(vault)),
+            bufferSharesBefore + amount,
             "Vault buffer shares should increase by the deposited amount"
         );
         assertEq(IERC20(MC.BUFFER).balanceOf(address(vault)), amount, "Vault should have received buffer shares");
@@ -329,69 +329,134 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         // Bound deposit amount to reasonable values
         vm.assume(depositAmount >= 1); // At least 1 USDC
         vm.assume(depositAmount <= 1_000_000 * 1e18); // Up to 1 million USDC
-        
+
         // Ensure withdraw amount is between 0 and deposit amount
         vm.assume(withdrawAmount > 0);
         vm.assume(withdrawAmount <= depositAmount);
-        
+
         // Give Alice USDC
         deal(address(wusdc), alice, depositAmount);
-        
+
         // Approve vault to spend Alice's WUSDC
         vm.startPrank(alice);
         IERC20(wusdc).approve(address(vault), depositAmount);
-        
+
         // Deposit WUSDC into the vault
         uint256 sharesReceived = vault.deposit(depositAmount, alice);
         vm.stopPrank();
-        
+
         // Verify deposit was successful
         assertEq(vault.balanceOf(alice), sharesReceived, "Alice should have received shares");
         assertEq(vault.totalSupply(), sharesReceived, "Total supply should match shares received");
         assertEq(IERC20(wusdc).balanceOf(alice), 0, "Alice's WUSDC balance should be 0 after deposit");
         assertEq(IERC20(wusdc).balanceOf(address(vault)), depositAmount, "Vault should have received the WUSDC");
-        
+
         // Record state before withdrawal
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 assetsPerShareBefore = vault.convertToAssets(1e18);
 
         allocateToBuffer(depositAmount);
-        
+
         // Record buffer's WUSDC balance before withdrawal
         uint256 bufferWUSDCBalanceBefore = IERC20(wusdc).balanceOf(address(MC.BUFFER));
-        
+
         // Calculate shares to burn for withdrawal
         uint256 sharesToBurn = vault.previewWithdraw(withdrawAmount);
-        
+
         // Withdraw WUSDC from the vault
         vm.startPrank(alice);
         vault.withdraw(withdrawAmount, alice, alice);
         vm.stopPrank();
-        
+
         // Verify withdrawal was successful
-        assertEq(vault.balanceOf(alice), sharesReceived - sharesToBurn, "Alice's shares should be reduced by burned amount");
+        assertEq(
+            vault.balanceOf(alice), sharesReceived - sharesToBurn, "Alice's shares should be reduced by burned amount"
+        );
         assertEq(vault.totalSupply(), sharesReceived - sharesToBurn, "Total supply should be reduced by burned amount");
         assertEq(IERC20(wusdc).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn WUSDC");
         assertEq(
-            IERC20(wusdc).balanceOf(address(MC.BUFFER)), 
-            bufferWUSDCBalanceBefore - withdrawAmount, 
+            IERC20(wusdc).balanceOf(address(MC.BUFFER)),
+            bufferWUSDCBalanceBefore - withdrawAmount,
             "Vault's WUSDC balance should be reduced by withdrawn amount"
         );
-        
+
         // Check asset per share ratio
         uint256 assetsPerShareAfter = vault.convertToAssets(1e18);
         assertGe(
-            assetsPerShareAfter, 
-            assetsPerShareBefore, 
-            "Asset per share ratio should not decrease after withdrawal"
+            assetsPerShareAfter, assetsPerShareBefore, "Asset per share ratio should not decrease after withdrawal"
         );
-        
+
         // Check total assets
         uint256 expectedTotalAssetsAfter = totalAssetsBefore - withdrawAmount;
+        assertEq(vault.totalAssets(), expectedTotalAssetsAfter, "Total assets should be reduced by withdraw amount");
+    }
+
+    function test_Vault_deposit_wusdc_and_redeem_wusdc_success(uint256 depositAmount, uint256 redeemShares) public {
+        vm.assume(depositAmount >= 1); // At least 1 WUSDC
+        vm.assume(depositAmount <= 1_000_000 * 1e18); // Up to 1 million WUSDC
+
+        vm.assume(redeemShares > 0);
+
+        // Give Alice WUSDC
+        deal(address(wusdc), alice, depositAmount);
+
+        // Approve vault to spend Alice's WUSDC
+        vm.startPrank(alice);
+        IERC20(wusdc).approve(address(vault), depositAmount);
+
+        // Deposit WUSDC into the vault
+        uint256 sharesReceived = vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        // Bound redeem shares to be less than or equal to shares received
+        redeemShares = bound(redeemShares, 1, sharesReceived);
+
+        // Verify deposit was successful
+        assertEq(vault.balanceOf(alice), sharesReceived, "Alice should have received shares");
+        assertEq(vault.totalSupply(), sharesReceived, "Total supply should match shares received");
+        assertEq(IERC20(wusdc).balanceOf(alice), 0, "Alice's WUSDC balance should be 0 after deposit");
+        assertEq(IERC20(wusdc).balanceOf(address(vault)), depositAmount, "Vault should have received the WUSDC");
+
+        // Record state before redemption
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 assetsPerShareBefore = vault.convertToAssets(1e18);
+
+        allocateToBuffer(depositAmount);
+
+        // Record buffer's WUSDC balance before redemption
+        uint256 bufferWUSDCBalanceBefore = IERC20(wusdc).balanceOf(address(MC.BUFFER));
+
+        // Calculate expected assets to receive
+        uint256 expectedAssets = vault.previewRedeem(redeemShares);
+
+        // Redeem shares from the vault
+        vm.startPrank(alice);
+        uint256 assetsReceived = vault.redeem(redeemShares, alice, alice);
+        vm.stopPrank();
+
+        // Verify redemption was successful
+        assertEq(assetsReceived, expectedAssets, "Assets received should match preview");
         assertEq(
-            vault.totalAssets(),
-            expectedTotalAssetsAfter,
-            "Total assets should be reduced by withdraw amount"
+            vault.balanceOf(alice), sharesReceived - redeemShares, "Alice's shares should be reduced by redeemed amount"
         );
+        assertEq(
+            vault.totalSupply(), sharesReceived - redeemShares, "Total supply should be reduced by redeemed amount"
+        );
+        assertEq(IERC20(wusdc).balanceOf(alice), expectedAssets, "Alice should have received the expected assets");
+        assertEq(
+            IERC20(wusdc).balanceOf(address(MC.BUFFER)),
+            bufferWUSDCBalanceBefore - expectedAssets,
+            "Buffer's WUSDC balance should be reduced by redeemed amount"
+        );
+
+        // Check asset per share ratio
+        uint256 assetsPerShareAfter = vault.convertToAssets(1e18);
+        assertGe(
+            assetsPerShareAfter, assetsPerShareBefore, "Asset per share ratio should not decrease after redemption"
+        );
+
+        // Check total assets
+        uint256 expectedTotalAssetsAfter = totalAssetsBefore - expectedAssets;
+        assertEq(vault.totalAssets(), expectedTotalAssetsAfter, "Total assets should be reduced by redeemed amount");
     }
 }
