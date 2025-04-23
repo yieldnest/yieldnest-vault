@@ -129,7 +129,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         return wusdcBalance;
     }
 
-    function test_Vault_deposit_and_withdraw_success(uint256 depositAmount, uint256 withdrawAmount) public {
+    function test_Vault_deposit_usde_and_withdraw_usdc_success(uint256 depositAmount, uint256 withdrawAmount) public {
         vm.assume(depositAmount >= 1e12); // enough decimal points to be non-zero in USDC
         vm.assume(depositAmount <= 100_000 * 1e18);
 
@@ -200,7 +200,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         assertEq(IERC20(wusdc).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
     }
 
-    function test_Vault_deposit_and_redeem_success(uint256 depositAmount, uint256 withdrawAmount) public {
+    function test_Vault_deposit_usde_and_redeem_usdc_success(uint256 depositAmount, uint256 withdrawAmount) public {
         vm.assume(depositAmount >= 1e12); // enough decimal points to be non-zero in USDC
         vm.assume(depositAmount <= 100_000 * 1e18);
 
