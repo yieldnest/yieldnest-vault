@@ -59,7 +59,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         vm.stopPrank();
     }
 
-    function swapAndAllocateToBuffer(uint256 depositAmount) internal {
+    function swapAndAllocateToBuffer(uint256 depositAmount) internal returns (uint256) {
         // Calculate how much USDC we expect to receive for our USDE
         uint256 expectedUsdcAmount = swapper.previewSwap(MC.USDE, MC.USDC, depositAmount);
         // Verify the expected USDC amount is depositAmount / 12
@@ -126,6 +126,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         // Verify the buffer deposit was successful
         assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 0, "Vault should have deposited all USDC to buffer");
         assertEq(IERC20(MC.BUFFER).balanceOf(address(vault)), wusdcBalance, "Vault should have received buffer shares");
+        return wusdcBalance;
     }
 
     function test_Vault_deposit_and_withdraw_success(uint256 depositAmount, uint256 withdrawAmount) public {
@@ -199,7 +200,9 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         assertEq(IERC20(wusdc).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
     }
 
-    function test_Vault_deposit_and_redeem_success(uint256 depositAmount, uint256 withdrawAmount) public {
+    function test_Vault_deposit_and_redeem_success(
+        uint256 depositAmount, uint256 withdrawAmount
+    ) public {
         vm.assume(depositAmount >= 1e12); // enough decimal points to be non-zero in USDC
         vm.assume(depositAmount <= 100_000 * 1e18);
 
@@ -231,7 +234,14 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
             "Asset per share ratio should remain the same after deposit"
         );
 
-        swapAndAllocateToBuffer(depositAmount);
+        uint256 allocatedWusdc = swapAndAllocateToBuffer(depositAmount);
+
+        // Verify that the allocated WUSDC amount is correct
+        // USDE has 18 decimals, USDC has 6 decimals, so we divide by 1e12
+        assertEq(allocatedWusdc, depositAmount / 1e12 * 1e12, "Allocated WUSDC should match deposit amount converted to USDC decimals");
+
+        // Ensure withdrawAmount doesn't exceed the allocated WUSDC amount
+        withdrawAmount = withdrawAmount <= allocatedWusdc ? withdrawAmount : allocatedWusdc;
 
         // Calculate expected shares to burn
         uint256 sharesToBurn = vault.previewWithdraw(withdrawAmount);
