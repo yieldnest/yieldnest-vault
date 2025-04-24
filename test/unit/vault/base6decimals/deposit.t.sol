@@ -61,12 +61,6 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         {
             // Give Alice USDC
             deal(MC.USDC, alice, INITIAL_BALANCE);
-
-            // Wrap USDC to wUSDC
-            vm.startPrank(alice);
-            IERC20(MC.USDC).approve(address(wusdc), depositAmount);
-            wusdc.deposit(depositAmount, alice);
-            vm.stopPrank();
         }
 
         // Check initial conversion rate
@@ -74,9 +68,9 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         // Approve vault to spend Alice's wUSDC
         vm.startPrank(alice);
-        IERC20(address(wusdc)).approve(address(vault), type(uint256).max);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
 
-        // Deposit wUSDC
+        // Deposit USDC
         uint256 sharesMinted = vault.deposit(depositAmount, alice);
         vm.stopPrank();
 
@@ -88,9 +82,8 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         // Check that shares were minted
         assertGt(sharesMinted, 0, "No shares were minted");
-
-        // Check that the vault received the wUSDC
-        assertEq(IERC20(address(wusdc)).balanceOf(address(vault)), depositAmount, "Vault did not receive wUSDC");
+        // Check that the vault received the USDC
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), depositAmount, "Vault did not receive USDC");
 
         // Check that Alice's USDC balance decreased
         assertEq(
@@ -103,9 +96,10 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
 
         // Check that shares minted is depositAmount * 1e12 (converting from 6 to 18 decimals)
-        assertEq(sharesMinted, depositAmount, "Incorrect number of shares minted");
+        assertEq(sharesMinted, depositAmount * 1e12, "Incorrect number of shares minted");
         // Check that total assets increased
         assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
+        assertEq(vault.totalBaseAssets(), depositAmount * 1e12, "Total assets did not increase correctly");
     }
 
     function test_Vault_initial_mint_success() public {
@@ -117,18 +111,12 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         {
             // Give Alice USDC
-            deal(MC.USDC, alice, INITIAL_BALANCE / 1e12);
-
-            // Wrap USDC to wUSDC
-            vm.startPrank(alice);
-            IERC20(MC.USDC).approve(address(wusdc), type(uint256).max);
-            wusdc.deposit(INITIAL_BALANCE / 1e12, alice);
-            vm.stopPrank();
+            deal(MC.USDC, alice, INITIAL_BALANCE);
         }
 
         // Approve vault to spend Alice's wUSDC
         vm.startPrank(alice);
-        IERC20(address(wusdc)).approve(address(vault), type(uint256).max);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
 
         // Mint shares
         uint256 assetsDeposited = vault.mint(sharesToMint, alice);
@@ -138,11 +126,11 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertGt(assetsDeposited, 0, "No assets were deposited");
 
         // Check that the vault received the wUSDC
-        assertEq(IERC20(address(wusdc)).balanceOf(address(vault)), assetsDeposited, "Vault did not receive wUSDC");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), assetsDeposited, "Vault did not receive wUSDC");
 
         // Check that Alice's USDC balance decreased
         assertEq(
-            IERC20(wusdc).balanceOf(alice),
+            IERC20(MC.USDC).balanceOf(alice),
             INITIAL_BALANCE - assetsDeposited,
             "Alice's balance did not decrease correctly"
         );
@@ -151,10 +139,11 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.balanceOf(alice), sharesToMint, "Alice did not receive the correct amount of shares");
 
         // Check that assets deposited is sharesToMint (since wUSDC has 18 decimals)
-        assertEq(assetsDeposited, sharesToMint, "Incorrect amount of assets deposited");
+        assertEq(assetsDeposited * 1e12, sharesToMint, "Incorrect amount of assets deposited");
 
         // Check that total assets increased
         assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly");
+        assertEq(vault.totalBaseAssets(), assetsDeposited * 1e12, "Total assets did not increase correctly");
     }
 
     function testFuzz_Vault_initial_depositAsset_USDE_success(uint256 depositAmount) public {
@@ -197,7 +186,8 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertApproxEqAbs(sharesMinted, depositAmount, 1, "Incorrect number of shares minted");
 
         // Check that total assets increased by the USD value of USDE (depositAmount / 1e12)
-        assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
+        assertEq(vault.totalBaseAssets(), depositAmount, "Total assets did not increase correctly");
+        assertEq(vault.totalAssets(), depositAmount / 1e12, "Total assets did not increase correctly");
     }
 
     function testFuzz_Vault_initial_USDC_deposit_then_depositAsset_USDE_success(
@@ -255,7 +245,12 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         // Check that total assets increased by the USD value of USDE (usdeDepositAmount / 1e12) and USDC (usdcDepositAmount)
         assertEq(
-            vault.totalAssets(), usdeDepositAmount + usdcDepositAmount * 1e12, "Total assets did not increase correctly"
+            vault.totalBaseAssets(),
+            usdeDepositAmount + usdcDepositAmount * 1e12,
+            "Total assets did not increase correctly"
+        );
+        assertEq(
+            vault.totalAssets(), usdeDepositAmount / 1e12 + usdcDepositAmount, "Total assets did not increase correctly"
         );
     }
 
@@ -370,8 +365,10 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Check initial state after deposit
         assertEq(IERC20(MC.USDE).balanceOf(address(vault)), depositAmount, "Vault did not receive USDE");
         assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
-        uint256 initialTotalAssets = vault.totalAssets();
-        assertEq(initialTotalAssets, depositAmount, "Initial total assets incorrect");
+        uint256 initialTotalBaseAssets = vault.totalBaseAssets();
+        assertEq(initialTotalBaseAssets, depositAmount, "Initial total assets incorrect");
+
+        assertEq(vault.totalAssets(), depositAmount / 1e12, "Total assets should equal the deposited amount");
 
         // Execute the processor rule to deposit USDE to SUSDE
         address[] memory targets = new address[](2);
@@ -401,9 +398,12 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertGt(IERC20(MC.SUSDE).balanceOf(address(vault)), 0, "Vault should have SUSDE tokens");
 
         // Total assets should remain the same since we just moved from one asset to another of same value
-        uint256 finalTotalAssets = vault.totalAssets();
+        uint256 finalTotaBaseAssets = vault.totalBaseAssets();
         assertApproxEqAbs(
-            finalTotalAssets, initialTotalAssets, 1, "Total assets should remain the same after depositing to SUSDE"
+            finalTotaBaseAssets,
+            initialTotalBaseAssets,
+            1,
+            "Total assets should remain the same after depositing to SUSDE"
         );
 
         // Shares should remain unchanged

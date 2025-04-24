@@ -40,8 +40,16 @@ contract SetupBase6DecimalsVault is SetupVault {
 
         vault = Vault(payable(address(vaultProxy)));
 
-        // Initialize the vault
-        vault.initialize(ADMIN, name, symbol, 18, 0, false, false, 0);
+        // Initialize the vault with the following parameters:
+        // ADMIN: The address that will have admin privileges
+        // name: The name of the vault token ("YieldNest MAX")
+        // symbol: The symbol of the vault token ("ynMAx")
+        // 18: The number of decimals for the vault token
+        // 0: The withdrawal fee in basis points
+        // false: Whether to count native assets (ETH) in the vault
+        // false: Whether to always compute total assets (instead of tracking incrementally)
+        // 1: The default asset index to use (in this case, the second asset added will be default)
+        vault.initialize(ADMIN, name, symbol, 18, 0, false, false, 1);
 
         weth = WETH9(payable(MC.WETH));
 
