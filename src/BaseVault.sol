@@ -24,7 +24,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @dev The base underlying asset is the first asset added to the asset storage list.
      */
     function asset() public view virtual returns (address) {
-        return _getAssetStorage().list[0];
+        return _getAssetStorage().list[_getVaultStorage().defaultAssetIndex];
     }
 
     /**
@@ -40,6 +40,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The total assets.
      */
     function totalAssets() public view virtual returns (uint256) {
+        return VaultLib.convertBaseToAsset(asset(), totalBaseAssets());
+    }
+
+    function totalBaseAssets() public view virtual returns (uint256) {
         if (_getVaultStorage().alwaysComputeTotalAssets) {
             return computeTotalAssets();
         }

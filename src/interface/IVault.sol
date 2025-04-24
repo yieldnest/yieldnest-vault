@@ -13,6 +13,7 @@ interface IVault is IERC4626 {
         uint8 decimals;
         bool countNativeAsset;
         bool alwaysComputeTotalAssets;
+        uint256 defaultAssetIndex;
     }
 
     struct AssetParams {
@@ -114,6 +115,7 @@ interface IVault is IERC4626 {
     function depositAsset(address assetAddress, uint256 amount, address receiver) external returns (uint256);
     function provider() external view returns (address);
     function buffer() external view returns (address);
+    function totalBaseAssets() external view returns (uint256);
 
     // ADMIN
     function setProvider(address provider) external;

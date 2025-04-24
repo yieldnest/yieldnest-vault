@@ -41,7 +41,7 @@ contract SetupBase6DecimalsVault is SetupVault {
         vault = Vault(payable(address(vaultProxy)));
 
         // Initialize the vault
-        vault.initialize(ADMIN, name, symbol, 18, 0, false, false);
+        vault.initialize(ADMIN, name, symbol, 18, 0, false, false, 0);
 
         weth = WETH9(payable(MC.WETH));
 

@@ -135,7 +135,9 @@ library VaultLib {
      * @param index The index of the asset to delete.
      */
     function deleteAsset(uint256 index) public {
-        if (index == 0) revert IVault.DefaultAsset();
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+        if (index == 0 || index == vaultStorage.defaultAssetIndex) revert IVault.DefaultAsset();
+
         IVault.AssetStorage storage assetStorage = getAssetStorage();
         if (index >= assetStorage.list.length) {
             revert IVault.InvalidAsset(address(0));
@@ -217,7 +219,7 @@ library VaultLib {
         view
         returns (uint256 assets, uint256 baseAssets)
     {
-        uint256 totalAssets = IVault(address(this)).totalAssets();
+        uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
         baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
         assets = convertBaseToAsset(asset_, baseAssets);
@@ -235,7 +237,7 @@ library VaultLib {
         view
         returns (uint256, uint256)
     {
-        uint256 totalAssets = IVault(address(this)).totalAssets();
+        uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
         uint256 baseAssets = convertAssetToBase(asset_, assets);
         uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
