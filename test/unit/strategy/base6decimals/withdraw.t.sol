@@ -28,7 +28,7 @@ import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {SetupBase6DecimalsBaseStrategy} from "test/unit/strategy/base6decimals/SetupBase6DecimalsBaseStrategy.sol";
 import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
 
-contract BaseStrategy6DecimalsBaseWithdrawaUnitTest is Test, MainnetActors, Etches {
+contract BaseStrategy6DecimalsBaseWithdrawalUnitTest is Test, MainnetActors, Etches {
     MockStrategy public vault;
     address public alice = address(0x12345);
     WrappedToken public wusdc;
