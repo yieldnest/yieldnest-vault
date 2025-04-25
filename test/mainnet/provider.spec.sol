@@ -31,7 +31,8 @@ contract ProviderTest is BaseIntegrationTest, Etches {
             "Mock WETH Strategy",
             "mWETH",
             admin,
-            true // alwaysComputeTotalAssets
+            true, // alwaysComputeTotalAssets
+            0 // defaultAssetIndex
         );
 
         vm.startPrank(admin);
@@ -178,7 +179,8 @@ contract ProviderTest is BaseIntegrationTest, Etches {
         MockStrategy wstethStrategy = MockStrategy(
             payable(address(new TransparentUpgradeableProxy(address(new MockStrategy()), address(this), "")))
         );
-        wstethStrategy.initialize("Mock wstETH Strategy", "mWSTETH", address(this), false);
+        // Set the default asset index to 0, so WSTETH is the default asset
+        wstethStrategy.initialize("Mock wstETH Strategy", "mWSTETH", address(this), false, 0);
 
         // Grant admin role to this contract
         wstethStrategy.grantRole(wstethStrategy.ASSET_MANAGER_ROLE(), address(this));
