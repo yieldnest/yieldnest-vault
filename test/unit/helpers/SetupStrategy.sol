@@ -24,7 +24,8 @@ contract SetupStrategy is Test, Etches, MainnetActors {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), ADMIN, "");
 
         strategy = MockStrategy(payable(address(proxy)));
-        strategy.initialize("Mock Strategy", "MS", ADMIN, true);
+        // Set the default asset index to 0 (WETH)
+        strategy.initialize("Mock Strategy", "MS", ADMIN, true, 0);
 
         // Add WETH as an asset to the strategy
         configureLocal(strategy);

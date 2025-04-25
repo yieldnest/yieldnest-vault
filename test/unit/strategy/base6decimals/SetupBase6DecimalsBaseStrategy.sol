@@ -16,8 +16,15 @@ import {SetupStrategy} from "test/unit/helpers/SetupStrategy.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
+import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
+import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
+import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
 
 contract SetupBase6DecimalsBaseStrategy is Test, Etches, MainnetActors, SetupStrategy {
+    MockSwapper public swapper;
+
+    WrappedToken public wusdc;
+
     function setup() public override returns (MockStrategy strategy, WETH9 weth) {
         weth = WETH9(payable(MC.WETH));
 
@@ -28,7 +35,11 @@ contract SetupBase6DecimalsBaseStrategy is Test, Etches, MainnetActors, SetupStr
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), ADMIN, "");
 
         strategy = MockStrategy(payable(address(proxy)));
-        strategy.initialize("Mock Strategy", "MS", ADMIN, true);
+        // Set the default asset index to 1 (USDC)
+        strategy.initialize("Mock Strategy", "MS", ADMIN, true, 1);
+
+        wusdc = WrappedToken(address(new TUProxy(address(new WrappedToken()), ADMIN, "")));
+        wusdc.initialize(IERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
 
         // Add WETH as an asset to the strategy
         configureLocal(strategy);
@@ -49,26 +60,28 @@ contract SetupBase6DecimalsBaseStrategy is Test, Etches, MainnetActors, SetupStr
         strategy.grantRole(strategy.PAUSER_ROLE(), PAUSER);
         strategy.grantRole(strategy.UNPAUSER_ROLE(), UNPAUSER);
 
-        // set the rate provider contract
-        strategy.setProvider(MC.PROVIDER);
-
-        // Add assets: Base asset (USDC) first, then WBTC and an 18 decimal asset
-        strategy.addAsset(MC.USDC, true); // USDC mocked at WETH address
-        strategy.addAsset(MC.BUFFER, false);
-        strategy.addAsset(MC.WBTC, true);
-        strategy.addAsset(MC.STETH, true); // 18 decimals asset
-        strategy.addAsset(MC.USDE, true); // 18 decimals USDE
-        strategy.addAsset(MC.SUSDE, true); // sUSDE (ERC4626 for USDE)
+        // Add assets: Base asset (WUSDC) first, default asset USDC second. then WBTC and an 18 decimal asset
+        strategy.addAsset(address(wusdc), true, true); // WUSDC with 18 decimals
+        strategy.addAsset(MC.USDC, true, true); // USDC mocked at WETH address
+        strategy.addAsset(MC.BUFFER, false, false);
+        strategy.addAsset(MC.WBTC, true, true);
+        strategy.addAsset(MC.STETH, true, true); // 18 decimals asset
+        strategy.addAsset(MC.USDE, true, true); // 18 decimals USDE
+        strategy.addAsset(MC.SUSDE, true, true); // sUSDE (ERC4626 for USDE)
 
         // Set rates in provider
         Mock6DecimalsProvider mock6DecimalsProvider = new Mock6DecimalsProvider();
+
+        // Set the provider to the 6 decimals provider
+        strategy.setProvider(address(mock6DecimalsProvider));
+
+        mock6DecimalsProvider.setRate(MC.USDC, 1e18); // 1 USD USDC
         mock6DecimalsProvider.setRate(MC.USDC, 1e18); // 1 USD USDC
         mock6DecimalsProvider.setRate(MC.USDE, 1e18); // 1 USD USDE
         mock6DecimalsProvider.setRate(MC.WBTC, 100_000e18); // 100k USD bitcoin
         mock6DecimalsProvider.setRate(MC.STETH, 10_000e18); // 10k USD steth
         mock6DecimalsProvider.addERC4626(MC.SUSDE);
 
-        strategy.unpause();
         vm.stopPrank();
 
         {
