@@ -24,7 +24,6 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {console} from "lib/forge-std/src/console.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 
 contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
@@ -78,14 +77,16 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         bytes[] memory calldatas = new bytes[](2);
         calldatas[0] = abi.encodeWithSelector(IERC20.approve.selector, address(swapper), depositableAmount);
         calldatas[1] = swapCalldata;
-
+        // Get the initial USDC balance before the swap
+        uint256 initialUsdcBalance = IERC20(MC.USDC).balanceOf(address(vault));
+        
         vm.prank(PROCESSOR);
         bytes[] memory returnData = vault.processor(targets, new uint256[](2), calldatas);
         uint256 receivedUsdc = abi.decode(returnData[1], (uint256));
 
         // Verify the swap was successful
         assertEq(receivedUsdc, expectedUsdcAmount, "Received USDC should match expected amount");
-        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), receivedUsdc, "Vault should have received the USDC");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), initialUsdcBalance + receivedUsdc, "Vault should have received the USDC");
 
         // Allocate the received USDC to the buffer
         // First approve USDC to the buffer
@@ -101,7 +102,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         vault.processor(targets, new uint256[](2), calldatas);
 
         // Verify the buffer deposit was successful
-        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 0, "Vault should have deposited all USDC to buffer");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), initialUsdcBalance, "Vault should have deposited converted USDC to buffer");
         assertEq(IERC20(MC.BUFFER).balanceOf(address(vault)), receivedUsdc, "Vault should have received buffer shares");
         return receivedUsdc;
     }
@@ -144,9 +145,6 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         vm.assume(withdrawAmount > 0);
         vm.assume(withdrawAmount <= depositAmount);
         withdrawAmount = withdrawAmount / 1e12; // USDC amount
-
-        // Log the withdrawAmount to understand the value being used in the test
-        console.log("withdrawAmount (in USDC 6 decimals):", withdrawAmount);
 
         vm.prank(alice);
         MockERC20(MC.USDE).mint(depositAmount);
@@ -226,9 +224,9 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         vm.assume(withdrawAmount <= depositAmount / 1e12);
 
 
+        // Pre-deposit 1 million USDC to the vault
+        uint256 preDepositAmount = 1_000_000 * 1e6; // 1 million USDC (6 decimals)
         {
-            // Pre-deposit 1 million USDC to the vault
-            uint256 preDepositAmount = 1_000_000 * 1e6; // 1 million USDC (6 decimals)
             
             // Create a depositor account
             address depositor = address(0xDEAD);
@@ -243,6 +241,8 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
             vm.stopPrank();
         }
 
+        uint256 initialSupply = vault.totalSupply();
+
         // Bound withdraw amount to be less than or equal to deposit amount
 
         vm.prank(alice);
@@ -255,7 +255,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         uint256 sharesReceived = vault.depositAsset(MC.USDE, depositAmount, alice);
         vm.stopPrank();
 
-        uint256 expectedTotalAssets = depositAmount;
+        uint256 expectedTotalAssets = depositAmount + preDepositAmount * 1e12;
         // total assets are in WUSDC
         assertEq(vault.totalBaseAssets(), expectedTotalAssets, "Total base assets should match deposit amount");
         assertEq(vault.totalAssets(), expectedTotalAssets / 1e12, "Total assets should match deposit amount");
@@ -322,13 +322,19 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         assertEq(
             vault.balanceOf(alice), sharesReceived - sharesToBurn, "Alice's shares should be reduced by burned amount"
         );
-        assertEq(vault.totalSupply(), sharesReceived - sharesToBurn, "Total supply should be reduced by burned amount");
+        assertEq(vault.totalSupply(), initialSupply + sharesReceived - sharesToBurn, "Total supply should be reduced by burned amount");
         assertEq(
-            vault.totalAssets(),
-            expectedTotalAssets - withdrawAmount,
+            vault.totalBaseAssets(),
+            expectedTotalAssets - withdrawAmount * 1e12,
             "Total assets should be reduced by withdraw amount"
         );
-        assertEq(IERC20(wusdc).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
+
+        assertEq(
+            vault.totalAssets(),
+            expectedTotalAssets / 1e12 - withdrawAmount,
+            "Total assets should match expected value after withdrawal"
+        );
+        assertEq(IERC20(MC.USDC).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
     }
 
     function test_depositAndWithdrawWUSDC(uint256 depositAmount, uint256 withdrawAmount) public {
