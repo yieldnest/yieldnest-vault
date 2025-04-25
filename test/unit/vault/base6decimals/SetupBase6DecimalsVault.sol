@@ -17,6 +17,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
+import {IERC4626} from "src/Common.sol";
 
 contract SetupBase6DecimalsVault is SetupVault {
     MockSwapper public swapper;
@@ -24,8 +25,8 @@ contract SetupBase6DecimalsVault is SetupVault {
     WrappedToken public wusdc;
 
     function mockUSDCBuffer() public {
-        MockERC4626 wusdcBuffer = new MockERC4626(ERC20(address(wusdc)), "Staked WUSDC", "sWUSDC");
-        bytes memory code = address(wusdcBuffer).code;
+        MockERC4626 usdcBuffer = new MockERC4626(ERC20(address(MC.USDC)), "Staked USDC", "sUSDC");
+        bytes memory code = address(usdcBuffer).code;
         vm.etch(MC.BUFFER, code);
     }
 
@@ -142,25 +143,35 @@ contract SetupBase6DecimalsVault is SetupVault {
         {
             vm.startPrank(ADMIN);
             // Configure processor rules
-            address[] memory allowList = new address[](2);
-            allowList[0] = MC.BUFFER;
-            allowList[1] = address(swapper);
-            SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(address(wusdc), allowList);
-            vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
-            // Configure processor rules
             setDepositRule(vault, MC.BUFFER, address(vault));
 
             mockUSDCBuffer();
 
             vault.setBuffer(MC.BUFFER);
             vm.stopPrank();
+
+            // Deposit USDC seed to buffer
+            uint256 usdcSeedAmount = 10_000e6; // 1 million USDC (6 decimals)
+            address bufferSeeder = address(0xB1111f3);
+            deal(MC.USDC, bufferSeeder, usdcSeedAmount);
+
+            vm.startPrank(bufferSeeder);
+            IERC20(MC.USDC).approve(MC.BUFFER, usdcSeedAmount);
+            IERC4626(MC.BUFFER).deposit(usdcSeedAmount, bufferSeeder);
+            vm.stopPrank();
+
+            // Verify the buffer deposit was successful
+            require(
+                IERC20(MC.BUFFER).balanceOf(bufferSeeder) == usdcSeedAmount, "Vault should have received buffer shares"
+            );
         }
 
         {
             vm.startPrank(ADMIN);
-            address[] memory allowList = new address[](2);
+            address[] memory allowList = new address[](3);
             allowList[0] = address(wusdc);
             allowList[1] = address(swapper);
+            allowList[2] = address(MC.BUFFER);
             SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(address(MC.USDC), allowList);
             vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
 

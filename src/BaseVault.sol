@@ -408,7 +408,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
     {
         VaultStorage storage vaultStorage = _getVaultStorage();
-        _subTotalAssets(assets);
+        _subTotalAssets(VaultLib.convertAssetToBase(asset(), assets));
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }
