@@ -65,8 +65,10 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         // Verify the expected USDC amount is depositAmount / 12
         assertEq(expectedUsdcAmount, depositAmount / 1e12, "Expected USDC amount should be depositAmount / 1e12");
 
+        uint256 depositableAmount = depositAmount / 1e12 * 1e12;
+
         // Prepare the calldata for the swap function
-        bytes memory swapCalldata = abi.encodeWithSelector(MockSwapper.swap.selector, MC.USDE, MC.USDC, depositAmount);
+        bytes memory swapCalldata = abi.encodeWithSelector(MockSwapper.swap.selector, MC.USDE, MC.USDC, depositableAmount);
 
         // First approve USDE to the swapper, then execute the swap
         address[] memory targets = new address[](2);
@@ -74,7 +76,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         targets[1] = address(swapper);
 
         bytes[] memory calldatas = new bytes[](2);
-        calldatas[0] = abi.encodeWithSelector(IERC20.approve.selector, address(swapper), depositAmount);
+        calldatas[0] = abi.encodeWithSelector(IERC20.approve.selector, address(swapper), depositableAmount);
         calldatas[1] = swapCalldata;
 
         vm.prank(PROCESSOR);
@@ -141,10 +143,10 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
 
         vm.assume(withdrawAmount > 0);
         vm.assume(withdrawAmount <= depositAmount);
-
-        // Bound withdraw amount to be less than or equal to deposit amount
-
         withdrawAmount = withdrawAmount / 1e12; // USDC amount
+
+        // Log the withdrawAmount to understand the value being used in the test
+        console.log("withdrawAmount (in USDC 6 decimals):", withdrawAmount);
 
         vm.prank(alice);
         MockERC20(MC.USDE).mint(depositAmount);
@@ -178,6 +180,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         assertGe(
             assetsPerShareAfter, assetsPerShareBefore, "Asset per share ratio should not decrease after withdrawal"
         );
+
         // Assert that the conversion rate remains approximately the same
         if (depositAmount >= 1e18) {
             assertApproxEqAbs(
@@ -199,12 +202,20 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
             vault.balanceOf(alice), sharesReceived - sharesToBurn, "Alice's shares should be reduced by burned amount"
         );
         assertEq(vault.totalSupply(), sharesReceived - sharesToBurn, "Total supply should be reduced by burned amount");
+
+        // Verify totalBaseAssets is reduced by the withdraw amount * 1e12 (to account for decimal conversion)
+        assertApproxEqAbs(
+            vault.totalBaseAssets(),
+            expectedTotalAssets - withdrawAmount * 1e12,
+            2,
+            "Total base assets should be reduced by withdraw amount (in base units)"
+        );
         assertEq(
             vault.totalAssets(),
-            expectedTotalAssets - withdrawAmount,
+            expectedTotalAssets / 1e12 - withdrawAmount,
             "Total assets should be reduced by withdraw amount"
         );
-        assertEq(IERC20(wusdc).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
+        assertEq(IERC20(MC.USDC).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
     }
 
     function test_Vault_deposit_usde_and_redeem_usdc_success(uint256 depositAmount, uint256 withdrawAmount) public {
@@ -213,6 +224,24 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
 
         vm.assume(withdrawAmount > 0);
         vm.assume(withdrawAmount <= depositAmount / 1e12);
+
+
+        {
+            // Pre-deposit 1 million USDC to the vault
+            uint256 preDepositAmount = 1_000_000 * 1e6; // 1 million USDC (6 decimals)
+            
+            // Create a depositor account
+            address depositor = address(0xDEAD);
+            
+            // Give the depositor USDC
+            deal(MC.USDC, depositor, preDepositAmount);
+            
+            // Deposit USDC to the vault
+            vm.startPrank(depositor);
+            IERC20(MC.USDC).approve(address(vault), preDepositAmount);
+            vault.depositAsset(MC.USDC, preDepositAmount, depositor);
+            vm.stopPrank();
+        }
 
         // Bound withdraw amount to be less than or equal to deposit amount
 
