@@ -13,6 +13,9 @@ interface IVault is IERC4626 {
         uint8 decimals;
         bool countNativeAsset;
         bool alwaysComputeTotalAssets;
+        /// @notice The index of the default asset.
+        /// The default asset is vault.asset(), used for deposit, withdraw, redeem, mint as default.
+        /// If defaultAssetIndex is 0, the vault will use the base asset as default asset.
         uint256 defaultAssetIndex;
     }
 

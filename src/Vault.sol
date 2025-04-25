@@ -5,6 +5,18 @@ import {BaseVault} from "src/BaseVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {VaultLib} from "src/library/VaultLib.sol";
 
+/**
+ * @title Vault
+ * @notice Multi-asset vault implementation extending ERC4626 standard
+ * @dev Provides asset management with fee capabilities and flexible accounting
+ *
+ * Key features:
+ * - Supports multiple deposit assets with common accounting denomination
+ * - Configurable withdrawal fees managed by fee managers
+ * - Buffer and strategy allocation for asset management
+ * - Flexible accounting with real-time or cached asset valuation
+ * - Role-based access control for administration and fee management
+ */
 contract Vault is BaseVault {
     string public constant VAULT_VERSION = "0.2.0";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");

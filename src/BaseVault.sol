@@ -17,6 +17,39 @@ import {VaultLib} from "src/library/VaultLib.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 
+/**
+ * @title BaseVault
+ * @notice Base contract for vault implementations that support multiple assets
+ * @dev This contract implements the ERC4626 standard with extensions to support multiple assets
+ *
+ * The BaseVault has two key asset concepts:
+ *
+ * 1. Base Asset: The common denomination used internally for accounting.
+ *    - All assets are converted to this base unit for consistent accounting
+ *    - The base asset has a fixed decimal precision (typically 18 decimals)
+ *    - totalBaseAssets() tracks the vault's total value in this base denomination
+ *
+ * 2. Default Asset: The primary asset used for standard ERC4626 operations.
+ *    - Specified by the defaultAssetIndex in VaultStorage
+ *    - Returned by the asset() function
+ *    - Used for deposit(), withdraw(), mint(), and redeem() when no asset is specified
+ *    - Can be different from the base asset
+ *
+ * The vault maintains a list of supported assets, each with their own decimal precision.
+ * When assets enter or leave the vault, they are converted to/from the base asset denomination
+ * for consistent accounting across different asset types.
+ * The vault also includes a processAccounting function that updates the vault's total assets.
+ * This function:
+ * - Computes the current total assets by querying the buffer and other strategies
+ * - Updates the vault's totalAssets storage value
+ *
+ * This accounting mechanism ensures the vault's reported asset values remain accurate over time,
+ * gas efficiency with accuracy by:
+ * - Using cached totalAssets values by default to save gas on frequent read operations
+ * - Providing an explicit processAccounting() function that updates the cached value when needed
+ * - Offering an alwaysComputeTotalAssets toggle for cases where real-time accuracy is preferred
+ *   despite the higher gas cost of querying external contracts on each totalAssets() call
+ */
 abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
     /**
      * @notice Returns the address of the underlying asset.
