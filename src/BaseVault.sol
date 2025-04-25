@@ -92,6 +92,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+     * @notice Returns the index of the default asset.
+     * @return uint256 The index of the default asset.
+     */
+    function defaultAssetIndex() public view virtual returns (uint256) {
+        return _getVaultStorage().defaultAssetIndex;
+    }
+
+    /**
      * @notice Converts a given amount of assets to shares.
      * @param assets The amount of assets to convert.
      * @return shares The equivalent amount of shares.
