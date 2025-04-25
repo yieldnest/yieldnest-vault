@@ -192,5 +192,19 @@ contract SetupBase6DecimalsVault is SetupVault {
 
             vm.stopPrank();
         }
+
+        {
+            // Set up approval rule for USDE to SUSDE
+            vm.startPrank(PROCESSOR_MANAGER);
+            // Create an allowlist with both SUSDE and swapper
+            address[] memory allowList = new address[](2);
+            allowList[0] = MC.SUSDE;
+            allowList[1] = address(swapper);
+            SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(MC.USDE, allowList);
+            vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
+            SafeRules.RuleParams memory depositRuleParams = BaseRules.getDepositRule(MC.SUSDE, address(vault));
+            vault.setProcessorRule(depositRuleParams.contractAddress, depositRuleParams.funcSig, depositRuleParams.rule);
+            vm.stopPrank();
+        }
     }
 }
