@@ -254,7 +254,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         );
     }
 
-    function test_Vault_convertToAssetsForAsset_USDE_beforeDeposit() public {
+    function test_Vault_convertToAssetsForAsset_USDE_beforeDeposit() public view {
         uint256 sharesAmount = 1000e18;
 
         // Cast vault to PublicViewsVault to access the public conversion functions
@@ -284,7 +284,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(convertedAssets, sharesAmount, "Direct base to asset conversion failed");
     }
 
-    function test_Vault_convertToSharesForAsset_USDC_vs_USDE() public {
+    function test_Vault_convertToSharesForAsset_USDC_vs_USDE() public view {
         uint256 assetsAmount = 1000.123456e6; // USDC has 6 decimals
         uint256 equivalentUSDEAmount = 1000.123456e18; // USDE has 18 decimals (same USD value)
 
