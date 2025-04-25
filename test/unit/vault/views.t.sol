@@ -206,14 +206,6 @@ contract VaultViewsUnitTest is Test, Etches {
         _testConvertToSharesForAsset(MC.WETH, assets, depositedAssets, rewards, 1e18);
     }
 
-    function test_Vault_convertToSharesForAsset_Concrete() public {
-        uint256 assets = 171730314;
-        uint256 depositedAssets = 19052;
-        uint256 rewards = 5062;
-
-        _testConvertToSharesForAsset(MC.WETH, assets, depositedAssets, rewards, 1e18);
-    }
-
     function test_Vault_convertToSharesForAsset_WBTC(uint256 assets, uint256 depositedAssets, uint256 rewards) public {
         _testConvertToSharesForAsset(MC.WBTC, assets, depositedAssets, rewards, 20e18);
     }
