@@ -62,6 +62,11 @@ contract VaultViewsUnitTest is Test, Etches {
         assertEq(vault.alwaysComputeTotalAssets(), false, "Always compute total assets should be false");
     }
 
+    function test_Vault_defaultAssetIndex() public view {
+        uint256 defaultAssetIndex = vault.defaultAssetIndex();
+        assertEq(defaultAssetIndex, 0, "Default asset index should be 0");
+    }
+
     function test_Vault_feeOnTotal() public view {
         uint256 fee = vault._feeOnTotal(1e18);
         assertEq(fee, 0, "Fee on total should be zero");
