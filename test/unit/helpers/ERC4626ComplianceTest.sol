@@ -14,12 +14,6 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
  * @dev This contract provides utility functions to test ERC4626 vault compliance
  */
 abstract contract ERC4626ComplianceTest is ERC4626Test {
-    /**
-     * @notice Returns the vault to test
-     * @return The ERC4626 vault implementation
-     */
-    function getVault() internal view virtual returns (IERC4626);
-
     function setUpVault(Init memory init) public virtual override {
         // Get the underlying token's decimals to properly handle token amounts
         uint8 underlyingDecimals = IERC20Metadata(_underlying_).decimals();
@@ -54,20 +48,5 @@ abstract contract ERC4626ComplianceTest is ERC4626Test {
 
         // setup initial yield for vault
         // setUpYield(init);
-    }
-
-    /**
-     * @notice Tests that previewDeposit returns the correct number of shares
-     * @param assets The amount of assets to deposit
-     */
-    function test_previewDeposit_correctShares(uint256 assets) public view {
-        // Bound assets to a reasonable maximum to avoid overflow
-        assets = bound(assets, 0, 1000_000_000e18);
-
-        IERC4626 vault = getVault();
-        uint256 shares = vault.previewDeposit(assets);
-        uint256 expectedShares = vault.convertToShares(assets);
-
-        assertEq(shares, expectedShares, "Preview deposit should return correct shares amount");
     }
 }

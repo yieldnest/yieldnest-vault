@@ -21,6 +21,7 @@ contract Vault6DecimalsBaseComplianceTest is ERC4626ComplianceTest {
         (vault,) = setupVault.setup();
         wusdc = setupVault.wusdc();
 
+        // ERC4626Test initializations
         _underlying_ = address(vault.asset());
         _vault_ = address(vault);
         _delta_ = 0;
@@ -33,10 +34,6 @@ contract Vault6DecimalsBaseComplianceTest is ERC4626ComplianceTest {
 
     function setUpVault(Init memory init) public virtual override {
         super.setUpVault(init);
-    }
-
-    function getVault() internal view override returns (IERC4626) {
-        return IERC4626(address(vault));
     }
 
     function test_RT_mint_withdraw(Init memory init, uint256 shares) public virtual override {
