@@ -9,7 +9,7 @@ import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupBase6DecimalsVault, WrappedToken} from "test/unit/vault/base6decimals/SetupBase6DecimalsVault.sol";
 
-contract BaseStrategy6DecimalsBaseComplianceTest is ERC4626ComplianceTest {
+contract BaseStrategy6DecimalsBaseERC4626ComplianceTest is ERC4626ComplianceTest {
     Vault public vault;
     address public alice = address(0x12345);
     uint256 public constant INITIAL_BALANCE = 20_000_000_000 ether;
