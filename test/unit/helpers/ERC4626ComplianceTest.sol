@@ -7,6 +7,7 @@ import {IERC20} from "src/Common.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {ERC4626Test, IMockERC20} from "lib/openzeppelin-contracts/lib/erc4626-tests/ERC4626.test.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 /**
  * @title ERC4626ComplianceTest
@@ -48,5 +49,42 @@ abstract contract ERC4626ComplianceTest is ERC4626Test {
 
         // setup initial yield for vault
         // setUpYield(init);
+    }
+
+    function testFail_withdraw(Init memory init, uint256 assets) public virtual override {
+        vm.skip(true);
+    }
+
+    function testFail_redeem(Init memory init, uint256 assets) public virtual override {
+        vm.skip(true);
+    }
+
+    function test_withdraw_fails(Init memory init, uint256 assets) public virtual {
+        setUpVault(init);
+        address caller = init.user[0];
+        address receiver = init.user[1];
+        address owner = init.user[2];
+        assets = bound(assets, 0, _max_withdraw(owner));
+        vm.assume(caller != owner);
+        vm.assume(assets > 0);
+        _approve(_vault_, owner, caller, 0);
+        vm.prank(caller);
+
+        vm.expectRevert(abi.encodeWithSelector(IVault.ExceededMaxWithdraw.selector, owner, assets, 0));
+        uint256 shares = IERC4626(_vault_).withdraw(assets, receiver, owner);
+    }
+
+    function test_redeem_fails(Init memory init, uint256 shares) public virtual {
+        setUpVault(init);
+        address caller = init.user[0];
+        address receiver = init.user[1];
+        address owner = init.user[2];
+        shares = bound(shares, 0, _max_redeem(owner));
+        vm.assume(caller != owner);
+        vm.assume(shares > 0);
+        _approve(_vault_, owner, caller, 0);
+        vm.expectRevert(abi.encodeWithSelector(IVault.ExceededMaxRedeem.selector, owner, shares, 0));
+        vm.prank(caller);
+        IERC4626(_vault_).redeem(shares, receiver, owner);
     }
 }
