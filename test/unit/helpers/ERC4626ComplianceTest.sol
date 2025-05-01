@@ -338,7 +338,7 @@ abstract contract ERC4626ComplianceTest is ERC4626Prop {
         vm.prank(caller);
 
         vm.expectRevert(abi.encodeWithSelector(IVault.ExceededMaxWithdraw.selector, owner, assets, 0));
-        uint256 shares = IERC4626(_vault_).withdraw(assets, receiver, owner);
+        IERC4626(_vault_).withdraw(assets, receiver, owner);
     }
 
     function test_redeem_fails(Init memory init, uint256 shares) public virtual {
