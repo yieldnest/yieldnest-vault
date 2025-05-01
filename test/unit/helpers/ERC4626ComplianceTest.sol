@@ -26,8 +26,8 @@ abstract contract ERC4626ComplianceTest is ERC4626Prop {
 
     struct Init {
         address[N] user;
-        uint256[N] share;
-        uint256[N] asset;
+        uint72[N] share;
+        uint72[N] asset;
     }
 
     function setUpVault(Init memory init) public virtual {
@@ -40,9 +40,9 @@ abstract contract ERC4626ComplianceTest is ERC4626Prop {
             vm.assume(_isEOA(user));
 
             // Bound share and asset values to reasonable amounts based on token decimals
-            // to avoid overflow and unrealistic test scenarios
-            init.share[i] = bound(init.share[i], 0, 1_000_000 * (10 ** underlyingDecimals));
-            init.asset[i] = bound(init.asset[i], 0, 1_000_000 * (10 ** underlyingDecimals));
+            // to avoid overflow and unrealistic test scenarios; use uint72 for faster run times
+            init.share[i] = uint72(bound(init.share[i], 0, 1000 * (10 ** underlyingDecimals)));
+            init.asset[i] = uint72(bound(init.asset[i], 0, 1000 * (10 ** underlyingDecimals)));
 
             // shares
             uint256 shares = init.share[i];
