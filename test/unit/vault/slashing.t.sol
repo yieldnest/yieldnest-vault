@@ -248,4 +248,77 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
             "Withdrawn amount should reflect the partial slashing of vault assets"
         );
     }
+
+    function test_Withdrawal_Before_Processing_Slashing_Loss(
+        uint256 depositAmount,
+        uint256 slashFraction,
+        uint256 bufferDepositAmount
+    ) public {
+        // Bound inputs to reasonable values
+        depositAmount = bound(depositAmount, 1 ether, 1000 ether);
+        slashFraction = bound(slashFraction, 1 wei, 1 ether);
+        bufferDepositAmount = bound(bufferDepositAmount, depositAmount, 100_000 ether); // Buffer between 10% and 200% of deposit
+
+        // Alice deposits
+        vm.startPrank(alice);
+        weth.approve(address(vault), depositAmount);
+        uint256 aliceShares = vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        // Allocate the deposited WETH to the mock vault strategy
+        ProcessorUtils.allocateToERC4626(address(vault), address(weth), address(mockVault), depositAmount, PROCESSOR);
+
+        {
+            // Deposit from Bob
+            // Mint WETH to Bob
+            deal(address(weth), bob, bufferDepositAmount);
+
+            // Approve vault to spend Bob's WETH
+            vm.startPrank(bob);
+            weth.approve(address(vault), bufferDepositAmount);
+
+            // Bob deposits WETH into the vault
+            vault.deposit(bufferDepositAmount, bob);
+            vm.stopPrank();
+
+            // Allocate the deposited WETH to the mock buffer strategy
+            ProcessorUtils.allocateToERC4626(
+                address(vault), address(weth), address(MC.BUFFER), bufferDepositAmount, PROCESSOR
+            );
+        }
+
+        // Record total assets before slashing
+        uint256 totalAssetsBeforeSlash = vault.totalAssets();
+
+        // Use the slash function to simulate the loss
+        mockVault.slash(slashFraction);
+
+        // Verify that total assets have NOT been updated without processAccounting
+        uint256 totalAssetsAfterSlash = vault.totalAssets();
+        assertEq(
+            totalAssetsAfterSlash,
+            totalAssetsBeforeSlash,
+            "Total assets should only reflect buffer allocation without processAccounting"
+        );
+
+        // Test withdrawal for Alice
+        uint256 expectedWithdrawAmount = vault.previewRedeem(aliceShares);
+
+        vm.startPrank(alice);
+        uint256 withdrawnAmount = vault.redeem(aliceShares, alice, alice);
+        vm.stopPrank();
+
+        // Verify withdrawal amount does not reflect the slashing
+        assertEq(withdrawnAmount, expectedWithdrawAmount, "Withdrawn amount should match preview");
+
+        // The withdrawn amount should be close to the original deposit since processAccounting wasn't called
+        // But it might be slightly higher due to the buffer allocation
+        uint256 expectedWithdrawnWithBuffer = depositAmount;
+        assertApproxEqAbs(
+            withdrawnAmount,
+            expectedWithdrawnWithBuffer,
+            2, // Increased tolerance for fuzzing
+            "Withdrawn amount should reflect buffer allocation but not slashing"
+        );
+    }
 }
