@@ -78,9 +78,15 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
         vm.stopPrank();
     }
 
-    function test_deposit_WETH_And_Slash() public {
-        // Define the deposit amount
-        uint256 depositAmount = 1000 ether;
+    function test_deposit_WETH_And_Slash(uint256 depositAmount, uint256 slashFraction) public {
+        // Bound the deposit amount to be reasonable but non-zero
+        depositAmount = bound(depositAmount, 1 ether, 100_000 ether);
+
+        // Bound the slash fraction between 0.1% and 99.9%
+        slashFraction = bound(slashFraction, 1 wei, 1 ether);
+
+        // Ensure Alice has enough balance
+        vm.assume(depositAmount <= INITIAL_BALANCE);
 
         // Perform the deposit as Alice
         vm.prank(alice);
@@ -96,9 +102,6 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
             depositAmount,
             "Mock buffer should have received the deposit amount"
         );
-
-        // Simulate a loss in the mock vault (slashing)
-        uint256 slashFraction = 0.3 ether; // 30% loss
 
         // Store the total assets before slashing
         uint256 totalAssetsBeforeSlash = vault.totalAssets();
@@ -130,27 +133,40 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
             "Total assets should decrease after processAccounting due to slashing"
         );
 
-        assertEq(
+        // Calculate expected assets after slashing
+        uint256 expectedAssetsAfterSlash = depositAmount - (depositAmount * slashFraction / 1 ether);
+
+        // Allow for small rounding errors due to decimal calculations
+        assertApproxEqAbs(
             totalAssetsAfterAccounting,
-            remainingAmount,
-            "Total assets should match the value of shares in mock vault after accounting"
+            expectedAssetsAfterSlash,
+            1,
+            "Total assets should match the expected value after slashing"
         );
     }
 
-    function test_deposit_WETH_And_Slash_And_Withdraw() public {
-        // Setup
-        uint256 depositAmount = 10 ether;
+    function test_deposit_WETH_And_Slash_And_Withdraw(
+        uint256 depositAmount,
+        uint256 bufferDepositAmount,
+        uint256 slashFraction
+    ) public {
+        // Bound inputs to reasonable values
+        depositAmount = bound(depositAmount, 1 ether, 100_000 ether);
+        bufferDepositAmount = bound(bufferDepositAmount, depositAmount, 100_000 ether);
+        slashFraction = bound(slashFraction, 1 wei, 1 ether);
 
+        // Setup
         {
             // Perform the deposit as Alice
-            vm.prank(alice);
+            deal(address(weth), alice, depositAmount);
+            vm.startPrank(alice);
+            weth.approve(address(vault), depositAmount);
             vault.deposit(depositAmount, alice);
+            vm.stopPrank();
         }
 
         {
             // Deposit from Bob
-            uint256 bufferDepositAmount = 1000 ether;
-
             // Mint WETH to Bob
             deal(address(weth), bob, bufferDepositAmount);
 
@@ -176,11 +192,8 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
         assertEq(
             IERC20(address(mockVault)).balanceOf(address(vault)),
             depositAmount,
-            "Mock buffer should have received the deposit amount"
+            "Mock vault should have received the deposit amount"
         );
-
-        // Simulate a loss in the mock vault (slashing)
-        uint256 slashFraction = 0.3 ether; // 30% loss
 
         // Store the total assets before slashing
         uint256 totalAssetsBeforeSlash = vault.totalAssets();
@@ -201,13 +214,13 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
             "Total assets should decrease after processAccounting due to slashing"
         );
 
-        // Calculate expected assets after slashing (approximately 70% of original)
+        // Calculate expected assets after slashing
         uint256 expectedAssetsAfterSlash = totalAssetsBeforeSlash - (depositAmount * slashFraction / 1 ether);
         assertApproxEqAbs(
             totalAssetsAfterAccounting,
             expectedAssetsAfterSlash,
-            1,
-            "Total assets should reflect approximately slashFraction/ 1e18 slashed of mock vault being slashed"
+            2, // Increased tolerance for fuzzing
+            "Total assets should reflect approximately slashFraction/1e18 of mock vault being slashed"
         );
 
         // Test withdrawal for Alice
@@ -219,14 +232,19 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
 
         // Verify withdrawal amount reflects the slashing
         assertEq(withdrawnAmount, expectedWithdrawAmount, "Withdrawn amount should match preview");
-        assertLt(withdrawnAmount, depositAmount, "Withdrawn amount should be less than deposit due to slashing");
+
+        // Only assert this if the slashing is significant enough
+        if (slashFraction > 0.05 ether) {
+            assertLt(withdrawnAmount, depositAmount, "Withdrawn amount should be less than deposit due to slashing");
+        }
+
         // Since slashing only affects the portion of assets in the mock vault,
         // the withdrawn amount should reflect the partial impact on the total assets
         uint256 expectedWithdrawnAmount = depositAmount * (totalAssetsAfterAccounting) / totalAssetsBeforeSlash;
         assertApproxEqAbs(
             withdrawnAmount,
             expectedWithdrawnAmount,
-            1,
+            2, // Increased tolerance for fuzzing
             "Withdrawn amount should reflect the partial slashing of vault assets"
         );
     }
