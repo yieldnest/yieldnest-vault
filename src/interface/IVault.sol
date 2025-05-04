@@ -13,6 +13,10 @@ interface IVault is IERC4626 {
         uint8 decimals;
         bool countNativeAsset;
         bool alwaysComputeTotalAssets;
+        /// @notice The index of the default asset.
+        /// The default asset is vault.asset(), used for deposit, withdraw, redeem, mint as default.
+        /// If defaultAssetIndex is 0, the vault will use the base asset as default asset.
+        uint256 defaultAssetIndex;
     }
 
     struct AssetParams {
@@ -83,6 +87,7 @@ interface IVault is IERC4626 {
     error AssetNotActive();
     error ExceedsMaxBasisPoints(uint256 value);
     error InvalidNativeAssetDecimals(uint256 decimals);
+    error InvalidAssetDecimals(uint256 decimals);
 
     event DepositAsset(
         address indexed sender,
@@ -113,6 +118,7 @@ interface IVault is IERC4626 {
     function depositAsset(address assetAddress, uint256 amount, address receiver) external returns (uint256);
     function provider() external view returns (address);
     function buffer() external view returns (address);
+    function totalBaseAssets() external view returns (uint256);
 
     // ADMIN
     function setProvider(address provider) external;

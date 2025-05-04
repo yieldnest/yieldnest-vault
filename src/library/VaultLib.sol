@@ -91,6 +91,14 @@ library VaultLib {
             revert IVault.InvalidNativeAssetDecimals(decimals_);
         }
 
+        // If this is not the first asset, check that its decimals are not higher than the base asset
+        if (index > 0) {
+            uint8 baseAssetDecimals = assetStorage.assets[assetStorage.list[0]].decimals;
+            if (decimals_ > baseAssetDecimals) {
+                revert IVault.InvalidAssetDecimals(decimals_);
+            }
+        }
+
         // Check if trying to add the primary asset again
         if (index > 0 && asset_ == assetStorage.list[0]) {
             revert IVault.DuplicateAsset(asset_);
@@ -127,7 +135,9 @@ library VaultLib {
      * @param index The index of the asset to delete.
      */
     function deleteAsset(uint256 index) public {
-        if (index == 0) revert IVault.DefaultAsset();
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+        if (index == 0 || index == vaultStorage.defaultAssetIndex) revert IVault.DefaultAsset();
+
         IVault.AssetStorage storage assetStorage = getAssetStorage();
         if (index >= assetStorage.list.length) {
             revert IVault.InvalidAsset(address(0));
@@ -209,7 +219,7 @@ library VaultLib {
         view
         returns (uint256 assets, uint256 baseAssets)
     {
-        uint256 totalAssets = IVault(address(this)).totalAssets();
+        uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
         baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
         assets = convertBaseToAsset(asset_, baseAssets);
@@ -227,7 +237,7 @@ library VaultLib {
         view
         returns (uint256, uint256)
     {
-        uint256 totalAssets = IVault(address(this)).totalAssets();
+        uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
         uint256 baseAssets = convertAssetToBase(asset_, assets);
         uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);

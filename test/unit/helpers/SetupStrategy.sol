@@ -14,7 +14,7 @@ import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 
 contract SetupStrategy is Test, Etches, MainnetActors {
-    function setup() public returns (MockStrategy strategy, WETH9 weth) {
+    function setup() public virtual returns (MockStrategy strategy, WETH9 weth) {
         weth = WETH9(payable(MC.WETH));
 
         MockProvider provider = new MockProvider();
@@ -24,13 +24,14 @@ contract SetupStrategy is Test, Etches, MainnetActors {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), ADMIN, "");
 
         strategy = MockStrategy(payable(address(proxy)));
-        strategy.initialize("Mock Strategy", "MS", ADMIN, true);
+        // Set the default asset index to 0 (WETH)
+        strategy.initialize("Mock Strategy", "MS", ADMIN, true, 0);
 
         // Add WETH as an asset to the strategy
         configureLocal(strategy);
     }
 
-    function configureLocal(MockStrategy strategy) internal {
+    function configureLocal(MockStrategy strategy) internal virtual {
         // etch to mock the mainnet contracts
         mockAll();
 

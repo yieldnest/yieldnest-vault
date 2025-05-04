@@ -13,12 +13,11 @@ import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
-contract VaultBufferInvariantsTest is Test, AssertUtils, MainnetActors {
-    Vault public vault;
-
-    function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
+contract VaultBufferInvariantsTest is BaseIntegrationTest {
+    function setUp() public override {
+        super.setUp();
 
         // Process accounting to ensure vault is in sync
         vault.processAccounting();

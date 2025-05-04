@@ -11,12 +11,11 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
-contract VaultMainnetYnETHTest is Test, AssertUtils, MainnetActors {
-    Vault public vault;
-
-    function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
+contract VaultMainnetYnETHTest is BaseIntegrationTest {
+    function setUp() public override {
+        super.setUp();
 
         // Process accounting to ensure vault is in sync
         vault.processAccounting();
