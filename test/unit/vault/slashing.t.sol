@@ -20,6 +20,7 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -29,6 +30,7 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
     WETH9 public weth;
 
     address public alice = address(0x1);
+    address public bob = address(0x2);
     uint256 public constant INITIAL_BALANCE = 200_000 ether;
     MockERC4626 public mockVault;
 
@@ -76,7 +78,7 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
         vm.stopPrank();
     }
 
-    function test_deposit_1000_WETH() public {
+    function test_deposit_WETH_And_Slash() public {
         // Define the deposit amount
         uint256 depositAmount = 1000 ether;
 
@@ -132,6 +134,100 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
             totalAssetsAfterAccounting,
             remainingAmount,
             "Total assets should match the value of shares in mock vault after accounting"
+        );
+    }
+
+    function test_deposit_WETH_And_Slash_And_Withdraw() public {
+        // Setup
+        uint256 depositAmount = 10 ether;
+
+        {
+            // Perform the deposit as Alice
+            vm.prank(alice);
+            vault.deposit(depositAmount, alice);
+        }
+
+        {
+            // Deposit from Bob
+            uint256 bufferDepositAmount = 1000 ether;
+
+            // Mint WETH to Bob
+            deal(address(weth), bob, bufferDepositAmount);
+
+            // Approve vault to spend Bob's WETH
+            vm.startPrank(bob);
+            weth.approve(address(vault), bufferDepositAmount);
+
+            // Bob deposits WETH into the vault
+            vault.deposit(bufferDepositAmount, bob);
+            vm.stopPrank();
+
+            // Allocate the deposited WETH to the mock buffer strategy
+            ProcessorUtils.allocateToERC4626(
+                address(vault), address(weth), address(MC.BUFFER), bufferDepositAmount, PROCESSOR
+            );
+        }
+
+        // Allocate the deposited WETH to the mock vault strategy
+        ProcessorUtils.allocateToERC4626(address(vault), address(weth), address(mockVault), depositAmount, PROCESSOR);
+
+        // Verify the allocation was successful
+        assertEq(weth.balanceOf(address(vault)), 0, "Vault should have transferred all WETH");
+        assertEq(
+            IERC20(address(mockVault)).balanceOf(address(vault)),
+            depositAmount,
+            "Mock buffer should have received the deposit amount"
+        );
+
+        // Simulate a loss in the mock vault (slashing)
+        uint256 slashFraction = 0.3 ether; // 30% loss
+
+        // Store the total assets before slashing
+        uint256 totalAssetsBeforeSlash = vault.totalAssets();
+        uint256 aliceShares = vault.balanceOf(alice);
+
+        // Use the slash function to simulate the loss
+        mockVault.slash(slashFraction);
+
+        // Call processAccounting to update the vault's accounting
+        vm.prank(PROCESSOR);
+        vault.processAccounting();
+
+        // Verify that total assets have been updated after processAccounting
+        uint256 totalAssetsAfterAccounting = vault.totalAssets();
+        assertLt(
+            totalAssetsAfterAccounting,
+            totalAssetsBeforeSlash,
+            "Total assets should decrease after processAccounting due to slashing"
+        );
+
+        // Calculate expected assets after slashing (approximately 70% of original)
+        uint256 expectedAssetsAfterSlash = totalAssetsBeforeSlash - (depositAmount * slashFraction / 1 ether);
+        assertApproxEqAbs(
+            totalAssetsAfterAccounting,
+            expectedAssetsAfterSlash,
+            1,
+            "Total assets should reflect approximately slashFraction/ 1e18 slashed of mock vault being slashed"
+        );
+
+        // Test withdrawal for Alice
+        uint256 expectedWithdrawAmount = vault.previewRedeem(aliceShares);
+
+        vm.startPrank(alice);
+        uint256 withdrawnAmount = vault.redeem(aliceShares, alice, alice);
+        vm.stopPrank();
+
+        // Verify withdrawal amount reflects the slashing
+        assertEq(withdrawnAmount, expectedWithdrawAmount, "Withdrawn amount should match preview");
+        assertLt(withdrawnAmount, depositAmount, "Withdrawn amount should be less than deposit due to slashing");
+        // Since slashing only affects the portion of assets in the mock vault,
+        // the withdrawn amount should reflect the partial impact on the total assets
+        uint256 expectedWithdrawnAmount = depositAmount * (totalAssetsAfterAccounting) / totalAssetsBeforeSlash;
+        assertApproxEqAbs(
+            withdrawnAmount,
+            expectedWithdrawnAmount,
+            1,
+            "Withdrawn amount should reflect the partial slashing of vault assets"
         );
     }
 }
