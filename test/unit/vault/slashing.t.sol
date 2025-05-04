@@ -301,15 +301,12 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
             "Total assets should only reflect buffer allocation without processAccounting"
         );
 
-        // Test withdrawal for Alice
-        uint256 expectedWithdrawAmount = vault.previewRedeem(aliceShares);
-
         vm.startPrank(alice);
         uint256 withdrawnAmount = vault.redeem(aliceShares, alice, alice);
         vm.stopPrank();
 
         // Verify withdrawal amount does not reflect the slashing
-        assertEq(withdrawnAmount, expectedWithdrawAmount, "Withdrawn amount should match preview");
+        assertEq(withdrawnAmount, depositAmount, "Withdrawn amount should match deposit amount");
 
         // The withdrawn amount should be close to the original deposit since processAccounting wasn't called
         // But it might be slightly higher due to the buffer allocation
@@ -317,8 +314,28 @@ contract VaultSlashingUnitTest is Test, MainnetActors, Etches {
         assertApproxEqAbs(
             withdrawnAmount,
             expectedWithdrawnWithBuffer,
-            2, // Increased tolerance for fuzzing
+            1, // Increased tolerance for fuzzing
             "Withdrawn amount should reflect buffer allocation but not slashing"
         );
+
+        vault.processAccounting();
+
+        {
+            // Verify that total assets have been updated after processAccounting
+            uint256 totalAssetsAfterProcessing = vault.totalAssets();
+
+            // Calculate expected assets after slashing and withdrawal
+            // Calculate expected assets after slashing based on the proportion of assets in the vault
+            uint256 expectedAssetsAfterSlashing = totalAssetsBeforeSlash - (depositAmount * slashFraction / 1e18);
+            // Calculate the loss based on the ratio of depositAmount and slashFraction
+            uint256 expectedAssetsAfterWithdrawal = expectedAssetsAfterSlashing - withdrawnAmount;
+
+            assertApproxEqAbs(
+                totalAssetsAfterProcessing,
+                expectedAssetsAfterWithdrawal,
+                1, // Small tolerance for rounding
+                "Total assets should reflect both slashing and withdrawal after processing"
+            );
+        }
     }
 }
