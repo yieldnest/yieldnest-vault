@@ -353,4 +353,38 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
 
         vm.stopPrank();
     }
+
+    function test_Vault_addAsset_firstAssetWithDifferentDecimals_noNativeAsset() public {
+        // Deploy implementation and proxy
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(implementation),
+            address(this),
+            abi.encodeWithSelector(
+                Vault.initialize.selector,
+                address(this),
+                "Test Vault",
+                "TV",
+                18,
+                0, // baseWithdrawalFee
+                false, // countNativeAsset
+                false // alwaysComputeTotalAssets
+            )
+        );
+        Vault newVault = Vault(payable(address(proxy)));
+
+        // Create mock asset with 8 decimals
+        MockERC20CustomDecimals eightDecimalAsset = new MockERC20CustomDecimals("Test", "TST", 8);
+
+        // Grant asset manager role
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+
+        vm.startPrank(ASSET_MANAGER);
+
+        // Should revert when trying to add 8 decimal asset as first asset when vault has 18 decimals
+        vm.expectRevert(abi.encodeWithSelector(IVault.InvalidAssetDecimals.selector, 8));
+        newVault.addAsset(address(eightDecimalAsset), true);
+
+        vm.stopPrank();
+    }
 }
