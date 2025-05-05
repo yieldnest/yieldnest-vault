@@ -86,9 +86,16 @@ library VaultLib {
         IVault.AssetStorage storage assetStorage = getAssetStorage();
         uint256 index = assetStorage.list.length;
 
-        if (index == 0 && getVaultStorage().countNativeAsset && decimals_ != 18) {
-            // if native asset is counted the primary asset should match the decimals count.
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+
+        // if native asset is counted the primary asset should match the decimals count.
+        if (index == 0 && vaultStorage.countNativeAsset && decimals_ != 18) {
             revert IVault.InvalidNativeAssetDecimals(decimals_);
+        }
+
+        // If this is the first asset, check that its decimals are the same as the vault's decimals
+        if (index == 0 && decimals_ != vaultStorage.decimals) {
+            revert IVault.InvalidAssetDecimals(decimals_);
         }
 
         // If this is not the first asset, check that its decimals are not higher than the base asset
