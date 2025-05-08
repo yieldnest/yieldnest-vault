@@ -49,6 +49,7 @@ library MainnetContracts {
     address public constant RETH = BNBX;
 
     address public constant YNETH = YNBNBK;
+    address public constant CLIS_BNB_STRATEGY = address(0x0c); // TODO: update with deployed strategy
 }
 
 library TestnetContracts {
