@@ -7,6 +7,7 @@ import {IERC4626} from "src/Common.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {IBNBXStakeManagerV2} from "src/interface/external/stader/IBNBXStakeManagerV2.sol";
+import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
 
 contract ProviderTest is Test, Etches {
     Provider public provider;
@@ -14,6 +15,7 @@ contract ProviderTest is Test, Etches {
     function setUp() public {
         provider = new Provider();
         mockBuffer();
+        mockClisBnbStrategy();
     }
 
     function test_Provider_GetRateWBNB() public view {
@@ -37,6 +39,13 @@ contract ProviderTest is Test, Etches {
         uint256 expectedRate = IBNBXStakeManagerV2(MC.BNBX_STAKE_MANAGER).convertBnbXToBnb(1e18);
         uint256 rate = provider.getRate(MC.BNBX);
         assertEq(rate, expectedRate, "Rate for BNBx should match the ratio");
+    }
+
+    function test_Provider_GetRateClisBnb() public view {
+        uint256 expectedRateInSlisBnb = IERC4626(MC.CLIS_BNB_STRATEGY).convertToAssets(1e18);
+        uint256 expectedRateInBnb = ISlisBnbStakeManager(MC.SLIS_BNB_STAKE_MANAGER).convertSnBnbToBnb(expectedRateInSlisBnb);
+        uint256 rate = provider.getRate(MC.CLIS_BNB_STRATEGY);
+        assertEq(rate, expectedRateInBnb, "Rate for ClisBnb should match the previewRedeem rate");
     }
 
     function test_Provider_UnsupportedAsset() public {
