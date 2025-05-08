@@ -28,6 +28,15 @@ contract Provider is IProvider {
         }
     }
 
+    function isClisBnbStrategyVault(address asset) public view returns (bool) {
+        try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
+            address vaultAsset = IVault(asset).asset();
+            return keccak256(bytes(version)) == keccak256(bytes("0.1.0")) && vaultAsset == MC.SLISBNB;
+        } catch {
+            return false;
+        }
+    }
+
     function getRate(address asset) public view override returns (uint256) {
         if (asset == MC.YNWBNBK || asset == MC.YNBNBK || asset == MC.YNCLISBNBK || asset == MC.YNASBNBK) {
             return IERC4626(asset).convertToAssets(1e18);
@@ -53,6 +62,13 @@ contract Provider is IProvider {
 
         if (isBNBStrategyVault(asset)) {
             return IERC4626(asset).convertToAssets(1e18);
+        }
+
+        if (isClisBnbStrategyVault(asset)) {
+            // base asset to clisBnbStrategy is SlisBnb
+            uint256 slisBnbPerShare = IERC4626(asset).convertToAssets(1e18);
+            // converts slisBnbPerShare to bnb
+            return ISlisBnbStakeManager(MC.SLIS_BNB_STAKE_MANAGER).convertSnBnbToBnb(slisBnbPerShare);
         }
 
         revert UnsupportedAsset(asset);
