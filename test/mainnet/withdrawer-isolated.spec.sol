@@ -19,17 +19,22 @@ import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {BaseWithdrawerMainnetTest} from "test/mainnet/BaseWithdrawerTest.sol";
-import {VaultVerification} from "script/verification/VaultVerification.sol";
 
 /**
- * @notice Tests for the Withdrawer contract deployed with ynETHx
+ * @notice Tests for the Withdrawer contract
+ *
+ * This test suite verifies the Withdrawer contract's functionality in isolation with a fresh deployment.
+ * Unlike other test suites that test integration with the main vault, these tests focus solely on the
+ * Withdrawer contract's core withdrawal functionality. By testing in isolation, we can verify the
+ * withdrawal logic works correctly without any dependencies on the main vault's state or behavior.
  *
  */
-contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
+contract WithdrawerIsolatedMainnetTest is BaseWithdrawerMainnetTest {
     function getWithdrawer() public override returns (Withdrawer) {
-        Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
-
+        SetupWithdrawer setup = new SetupWithdrawer();
+        withdrawer = Withdrawer(setup.setup());
         _initVault(withdrawer);
+
         return withdrawer;
     }
 }
