@@ -13,11 +13,29 @@ import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
+import {Provider} from "src/module/Provider.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
 
     function setUp() public virtual {
         vault = Vault(payable(MC.YNETHX));
+
+        // Create a new Provider instance for testing
+        Provider newProvider = new Provider();
+
+        // Admin operations to upgrade the rate provider
+        address admin = MainnetActors.ADMIN;
+        vm.startPrank(admin);
+
+        // Grant PROVIDER_MANAGER_ROLE to admin
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), admin);
+
+        // Set the new Provider
+        vault.setProvider(address(newProvider));
+        // Verify the provider was updated
+        assertEq(vault.provider(), address(newProvider), "Provider should be updated to new Provider");
+
+        vm.stopPrank();
     }
 }
