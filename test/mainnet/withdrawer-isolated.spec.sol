@@ -37,4 +37,15 @@ contract WithdrawerIsolatedMainnetTest is BaseWithdrawerMainnetTest {
 
         return withdrawer;
     }
+
+    /**
+     * @notice Test to verify the version of the Withdrawer contract
+     * @dev This test ensures that the deployed Withdrawer contract has the correct version
+     */
+    function test_check_withdrawer_version() public {
+        Withdrawer withdrawer = getWithdrawer();
+
+        // Assert that the Withdrawer contract has the correct version
+        assertEq(withdrawer.STRATEGY_VERSION(), "0.2.0", "Withdrawer should have version 0.2.0");
+    }
 }
