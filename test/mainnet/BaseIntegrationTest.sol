@@ -14,6 +14,9 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {Provider} from "src/module/Provider.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
@@ -26,15 +29,21 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
 
         // Admin operations to upgrade the rate provider
         address admin = MainnetActors.ADMIN;
+
+        Vault newVault = new Vault();
+        vm.startPrank(TIMELOCK);
+        ProxyAdmin(ProxyUtils.getProxyAdmin(address(vault)))
+            .upgradeAndCall(ITransparentUpgradeableProxy(address(vault)), address(newVault), "");
+        vm.stopPrank();
+
         vm.startPrank(admin);
 
         // Grant PROVIDER_MANAGER_ROLE to admin
         vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), admin);
-
         // Set the new Provider
         vault.setProvider(address(newProvider));
         // Verify the provider was updated
-        assertEq(vault.provider(), address(newProvider), "Provider should be updated to new Provider");
+        assertEq(vault.provider(), address(newProvider), "Provider should be updated to new Provider");        
 
         vm.stopPrank();
     }
