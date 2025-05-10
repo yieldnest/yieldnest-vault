@@ -14,6 +14,8 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {Provider} from "src/module/Provider.sol";
+import {VaultVerification} from "script/verification/VaultVerification.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
@@ -30,10 +32,28 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         // Admin operations to upgrade the rate provider
         address admin = MainnetActors.ADMIN;
 
-        Vault newVault = new Vault();
-        vm.startPrank(TIMELOCK);
-        ProxyAdmin(ProxyUtils.getProxyAdmin(address(vault)))
-            .upgradeAndCall(ITransparentUpgradeableProxy(address(vault)), address(newVault), "");
+        {
+            Vault newVault = new Vault();
+            vm.startPrank(TIMELOCK);
+            ProxyAdmin(ProxyUtils.getProxyAdmin(address(vault))).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(vault)), address(newVault), ""
+            );
+        }
+
+        {
+            // Get the current withdrawer from the vault
+            Withdrawer currentWithdrawer = VaultVerification.getWithdrawer(vault);
+
+            // Create a new Withdrawer instance
+            Withdrawer newWithdrawer = new Withdrawer();
+
+            // Upgrade the withdrawer proxy
+            ProxyAdmin proxyAdmin = ProxyAdmin(ProxyUtils.getProxyAdmin(address(currentWithdrawer)));
+            proxyAdmin.upgradeAndCall(
+                ITransparentUpgradeableProxy(address(currentWithdrawer)), address(newWithdrawer), ""
+            );
+        }
+
         vm.stopPrank();
 
         vm.startPrank(admin);
@@ -43,7 +63,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         // Set the new Provider
         vault.setProvider(address(newProvider));
         // Verify the provider was updated
-        assertEq(vault.provider(), address(newProvider), "Provider should be updated to new Provider");        
+        assertEq(vault.provider(), address(newProvider), "Provider should be updated to new Provider");
 
         vm.stopPrank();
     }
