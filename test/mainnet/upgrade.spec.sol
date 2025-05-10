@@ -7,10 +7,29 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
+import {VaultVerification} from "script/verification/VaultVerification.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     function setUp() public override {
         super.setUp();
+
+        {
+            Vault newVault = new Vault();
+            UpgradeUtils.timelockUpgrade(
+                TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(newVault)
+            );
+        }
+
+        {
+            Withdrawer newWithdrawer = new Withdrawer();
+            Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
+            UpgradeUtils.timelockUpgrade(
+                TimelockController(payable(TIMELOCK)), ADMIN, address(withdrawer), address(newWithdrawer)
+            );
+        }
     }
 
     function test_Vault_Upgrade_ERC20_view_functions() public view {
