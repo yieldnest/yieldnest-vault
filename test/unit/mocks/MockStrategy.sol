@@ -13,17 +13,7 @@ contract MockStrategy is BaseStrategy {
         bool alwaysComputeTotalAssets_,
         uint256 defaultAssetIndex_
     ) external initializer {
-        __ERC20_init(name, symbol);
-        __AccessControl_init();
-        __ReentrancyGuard_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.paused = false;
-        vaultStorage.decimals = 18;
-        vaultStorage.countNativeAsset = true;
-        vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
-        vaultStorage.defaultAssetIndex = defaultAssetIndex_;
+        _initialize(admin, name, symbol, 18, false, true, alwaysComputeTotalAssets_, defaultAssetIndex_);
     }
 
     function _feeOnRaw(uint256) public pure override returns (uint256) {

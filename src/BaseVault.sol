@@ -33,7 +33,11 @@ import {IStrategy} from "src/interface/IStrategy.sol";
  *    - Specified by the defaultAssetIndex in VaultStorage
  *    - Returned by the asset() function
  *    - Used for deposit(), withdraw(), mint(), and redeem() when no asset is specified
- *    - Can be different from the base asset
+ *       - Can be the same as base asset (defaultAssetIndex == 0)
+ *    - Can be different from the base asset (defaultAssetIndex == 1)
+ *
+ *  REQUIREMENT: default Asset MUST be the underyling asset of Base Asset.
+ *               Example: Default Asset is USDC, Base Asset is Wrapped USDC.
  *
  * The vault maintains a list of supported assets, each with their own decimal precision.
  * When assets enter or leave the vault, they are converted to/from the base asset denomination
@@ -51,6 +55,55 @@ import {IStrategy} from "src/interface/IStrategy.sol";
  *   despite the higher gas cost of querying external contracts on each totalAssets() call
  */
 abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+    
+    /// INITIALIZATION
+
+    /**
+     * @notice Internal function to initialize the vault.
+     * @param admin The address of the admin.
+     * @param name The name of the vault.
+     * @param symbol The symbol of the vault.
+     * @param decimals_ The number of decimals for the vault token.
+     * @param paused_ Whether the vault should start in a paused state.
+     * @param countNativeAsset_ Whether the vault should count the native asset.
+     * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
+     * @param defaultAssetIndex_ The index of the default asset in the asset list.
+     */
+    function _initialize(
+        address admin,
+        string memory name,
+        string memory symbol,
+        uint8 decimals_,
+        bool paused_,
+        bool countNativeAsset_,
+        bool alwaysComputeTotalAssets_,
+        uint256 defaultAssetIndex_
+    ) internal virtual {
+        __ERC20_init(name, symbol);
+        __AccessControl_init();
+        __ReentrancyGuard_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+
+        VaultStorage storage vaultStorage = _getVaultStorage();
+        vaultStorage.paused = paused_;
+        if (decimals_ == 0) {
+            revert InvalidDecimals();
+        }
+        vaultStorage.decimals = decimals_;
+        vaultStorage.countNativeAsset = countNativeAsset_;
+        vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
+
+        // The defaultAssetIndex must be 0 or 1 because:
+        // 1. When an asset is deleted, it's replaced with the last asset in the array
+        // 2. The base asset (index 0) and default asset should never be deleted
+        // 3. Therefore, they must be the first two positions in the array
+        // 4. Or if defaultAssetIndex is 0, then the base asset is also the default asset
+        if (defaultAssetIndex_ > 1) {
+            revert InvalidDefaultAssetIndex(defaultAssetIndex_);
+        }
+        vaultStorage.defaultAssetIndex = defaultAssetIndex_;
+    }
+
     /**
      * @notice Returns the address of the underlying asset.
      * @return address The address of the asset.

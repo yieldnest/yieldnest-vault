@@ -143,7 +143,8 @@ library VaultLib {
      */
     function deleteAsset(uint256 index) public {
         IVault.VaultStorage storage vaultStorage = getVaultStorage();
-        if (index == 0 || index == vaultStorage.defaultAssetIndex) revert IVault.DefaultAsset();
+        if (index == 0) revert IVault.BaseAsset();
+        if (index == vaultStorage.defaultAssetIndex) revert IVault.DefaultAsset();
 
         IVault.AssetStorage storage assetStorage = getAssetStorage();
         if (index >= assetStorage.list.length) {

@@ -138,10 +138,37 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.deleteAsset(0);
     }
 
-    function test_Vault_deleteAsset_defaultAsset() public {
+    function test_Vault_deleteAsset_BaseAsset() public {
+        vm.prank(ASSET_MANAGER);
+        vm.expectRevert(IVault.BaseAsset.selector);
+        vault.deleteAsset(0);
+    }
+
+    function test_Vault_deleteAsset_DefaultAsset() public {
+        // Deploy implementation and proxy
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+
+        // Initialize with defaultAssetIndex = 1
+        newVault.initialize(address(this), "Test Vault", "TV", 18, 0, true, false, 1);
+
+        // Grant asset manager role
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+
+        // Add assets
+        vm.startPrank(ASSET_MANAGER);
+        newVault.addAsset(address(asset), true); // index 0
+        newVault.addAsset(address(asset2), true); // index 1 (default asset)
+        vm.stopPrank();
+
+        // Verify default asset index
+        assertEq(newVault.defaultAssetIndex(), 1, "Default asset index should be 1");
+
+        // Try to delete the default asset
         vm.prank(ASSET_MANAGER);
         vm.expectRevert(IVault.DefaultAsset.selector);
-        vault.deleteAsset(0);
+        newVault.deleteAsset(1);
     }
 
     function test_Vault_deleteAsset_invalidIndex() public {
@@ -323,21 +350,11 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     function test_Vault_addAsset_firstAssetWithDifferentDecimals() public {
         // Deploy implementation and proxy
         Vault implementation = new Vault();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(implementation),
-            address(this),
-            abi.encodeWithSelector(
-                Vault.initialize.selector,
-                address(this),
-                "Test Vault",
-                "TV",
-                18,
-                0, // baseWithdrawalFee
-                true, // countNativeAsset
-                false // alwaysComputeTotalAssets
-            )
-        );
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
         Vault newVault = Vault(payable(address(proxy)));
+
+        // This is a duplicate initialization - the vault was already initialized in the proxy constructor
+        newVault.initialize(address(this), "Test Vault", "TV", 18, 0, true, false, 0);
 
         // Create mock asset with 6 decimals
         MockERC20CustomDecimals sixDecimalAsset = new MockERC20CustomDecimals("Test", "TST", 6);
@@ -357,21 +374,11 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     function test_Vault_addAsset_firstAssetWithDifferentDecimals_noNativeAsset() public {
         // Deploy implementation and proxy
         Vault implementation = new Vault();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(implementation),
-            address(this),
-            abi.encodeWithSelector(
-                Vault.initialize.selector,
-                address(this),
-                "Test Vault",
-                "TV",
-                18,
-                0, // baseWithdrawalFee
-                false, // countNativeAsset
-                false // alwaysComputeTotalAssets
-            )
-        );
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
         Vault newVault = Vault(payable(address(proxy)));
+
+        // This is a duplicate initialization - the vault was already initialized in the proxy constructor
+        newVault.initialize(address(this), "Test Vault", "TV", 18, 0, false, false, 0);
 
         // Create mock asset with 8 decimals
         MockERC20CustomDecimals eightDecimalAsset = new MockERC20CustomDecimals("Test", "TST", 8);
