@@ -14,6 +14,7 @@ abstract contract BaseWithdrawer is BaseStrategy {
      * @param decimals_ The number of decimals for the vault token.
      * @param countNativeAsset_ Whether the vault should count the native asset.
      * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
+     * @param defaultAssetIndex_ The index of the default asset in the asset list.
      */
     function initialize(
         address admin,

@@ -38,6 +38,7 @@ contract Vault is BaseVault {
      * @param baseWithdrawalFee_ The base withdrawal fee in basis points (1e8 = 100%).
      * @param countNativeAsset_ Whether the vault should count the native asset.
      * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
+     * @param defaultAssetIndex_ The index of the default asset in the asset list.
      */
     function initialize(
         address admin,
