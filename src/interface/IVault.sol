@@ -88,6 +88,8 @@ interface IVault is IERC4626 {
     error ExceedsMaxBasisPoints(uint256 value);
     error InvalidNativeAssetDecimals(uint256 decimals);
     error InvalidAssetDecimals(uint256 decimals);
+    error InvalidDefaultAssetIndex(uint256 index);
+    error BaseAsset();
 
     event DepositAsset(
         address indexed sender,

@@ -28,7 +28,7 @@ library WithdrawerConfig {
             bool countNativeAsset_ = true;
             bool alwaysComputeTotalAssets_ = false;
 
-            vault.initialize(deployer, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
+            vault.initialize(deployer, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_, 0);
         }
 
         {
