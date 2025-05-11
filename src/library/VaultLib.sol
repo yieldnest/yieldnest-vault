@@ -88,7 +88,7 @@ library VaultLib {
 
         IVault.VaultStorage storage vaultStorage = getVaultStorage();
 
-        // if native asset is counted the primary asset should match the decimals count.
+        // if native asset is counted the Base Asset should match the decimals count.
         if (index == 0 && vaultStorage.countNativeAsset && decimals_ != 18) {
             revert IVault.InvalidNativeAssetDecimals(decimals_);
         }
@@ -106,7 +106,7 @@ library VaultLib {
             }
         }
 
-        // Check if trying to add the primary asset again
+        // Check if trying to add the Base Asset again
         if (index > 0 && asset_ == assetStorage.list[0]) {
             revert IVault.DuplicateAsset(asset_);
         }

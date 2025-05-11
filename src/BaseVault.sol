@@ -29,7 +29,7 @@ import {IStrategy} from "src/interface/IStrategy.sol";
  *    - The base asset has a fixed decimal precision (typically 18 decimals)
  *    - totalBaseAssets() tracks the vault's total value in this base denomination
  *
- * 2. Default Asset: The primary asset used for standard ERC4626 operations.
+ * 2. Default Asset: The underlying asset used for standard ERC4626 operations.
  *    - Specified by the defaultAssetIndex in VaultStorage
  *    - Returned by the asset() function
  *    - Used for deposit(), withdraw(), mint(), and redeem() when no asset is specified
@@ -104,16 +104,16 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
-     * @notice Returns the address of the underlying asset.
+     * @notice Returns the address of the Default Asset.
      * @return address The address of the asset.
-     * @dev The base underlying asset is the first asset added to the asset storage list.
+     * @dev The ERC4626-interface underlying asset is the default asset at defaultAssetIndex
      */
     function asset() public view virtual returns (address) {
         return _getAssetStorage().list[_getVaultStorage().defaultAssetIndex];
     }
 
     /**
-     * @notice Returns the number of decimals of the underlying asset.
+     * @notice Returns the number of decimals of the vault.
      * @return uint256 The number of decimals.
      */
     function decimals() public view virtual override(ERC20Upgradeable, IERC20Metadata) returns (uint8) {
@@ -121,13 +121,20 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
-     * @notice Returns the total assets held by the vault denominated in the underlying asset.
+     * @notice Returns the total assets held by the vault denominated in the default asset.
+     * @dev The ERC4626 interface underyling asset is the default asset.
      * @return uint256 The total assets.
      */
     function totalAssets() public view virtual returns (uint256) {
         return VaultLib.convertBaseToAsset(asset(), totalBaseAssets());
     }
 
+    /**
+     * @notice Returns the total assets held by the vault denominated in the Base Asset.
+     * @dev Either returns the cached total assets or computes them in real-time
+     *      based on the alwaysComputeTotalAssets setting.
+     * @return uint256 The total base assets.
+     */
     function totalBaseAssets() public view virtual returns (uint256) {
         if (_getVaultStorage().alwaysComputeTotalAssets) {
             return computeTotalAssets();
