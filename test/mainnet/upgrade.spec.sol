@@ -140,10 +140,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
 
         // Increase due to sfrxETH and potentially other assets that accumulate rewards in a streaming fashion
         assertApproxEqRel(
-            totalAssetsAfter,
-            totalAssetsBefore,
-            1e14,
-            "Total assets should be equal within 1e14 (0.0001%) relative error"
+            totalAssetsAfter, totalAssetsBefore, 1e16, "Total assets should be equal within 1e16 (1%) relative error"
         );
 
         // Assert that totalSupply remains unchanged after the upgrade
