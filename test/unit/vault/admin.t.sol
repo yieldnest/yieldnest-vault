@@ -394,4 +394,74 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
 
         vm.stopPrank();
     }
+
+    function test_Vault_With8Decimals_addAsset_with8Decimals() public {
+        // Deploy implementation and proxy
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+
+        // Initialize vault with 8 decimals
+        newVault.initialize(address(this), "Test Vault", "TV", 8, 0, false, false, 0);
+
+        // Create mock asset with 8 decimals
+        MockERC20CustomDecimals eightDecimalAsset = new MockERC20CustomDecimals("Test", "TST", 8);
+
+        // Grant asset manager role
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+
+        vm.startPrank(ASSET_MANAGER);
+
+        // Should succeed when adding 8 decimal asset to vault with 8 decimals
+        newVault.addAsset(address(eightDecimalAsset), true);
+
+        // Verify asset was added correctly
+        IVault.AssetParams memory assetParams = newVault.getAsset(address(eightDecimalAsset));
+        assertEq(assetParams.active, true);
+        assertEq(assetParams.decimals, 8);
+        assertEq(assetParams.index, 0);
+
+        vm.stopPrank();
+    }
+
+    function test_Vault_WithDefaultAssetIndex1_addAsset_with8Decimals() public {
+        // Deploy implementation and proxy
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+
+        // Initialize vault with 8 decimals and default asset index of 1
+        newVault.initialize(address(this), "Test Vault", "TV", 8, 0, false, false, 1);
+
+        // Create mock assets with 8 decimals
+        MockERC20CustomDecimals eightDecimalAsset1 = new MockERC20CustomDecimals("Test1", "TST1", 8);
+        MockERC20CustomDecimals eightDecimalAsset2 = new MockERC20CustomDecimals("Test2", "TST2", 8);
+
+        // Grant asset manager role
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+
+        vm.startPrank(ASSET_MANAGER);
+
+        // Add first asset
+        newVault.addAsset(address(eightDecimalAsset1), true);
+
+        // Add second asset (should be the default asset since default index is 1)
+        newVault.addAsset(address(eightDecimalAsset2), true);
+
+        // Verify assets were added correctly
+        IVault.AssetParams memory asset1Params = newVault.getAsset(address(eightDecimalAsset1));
+        assertEq(asset1Params.active, true);
+        assertEq(asset1Params.decimals, 8);
+        assertEq(asset1Params.index, 0);
+
+        IVault.AssetParams memory asset2Params = newVault.getAsset(address(eightDecimalAsset2));
+        assertEq(asset2Params.active, true);
+        assertEq(asset2Params.decimals, 8);
+        assertEq(asset2Params.index, 1);
+
+        // Verify default asset index is 1
+        assertEq(newVault.defaultAssetIndex(), 1);
+
+        vm.stopPrank();
+    }
 }

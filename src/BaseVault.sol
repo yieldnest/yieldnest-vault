@@ -55,7 +55,6 @@ import {IStrategy} from "src/interface/IStrategy.sol";
  *   despite the higher gas cost of querying external contracts on each totalAssets() call
  */
 abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
-    
     /// INITIALIZATION
 
     /**
