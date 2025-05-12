@@ -22,7 +22,10 @@ contract Provider is IProvider {
     function isBNBStrategyVault(address asset) public view returns (bool) {
         try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
             address vaultAsset = IVault(asset).asset();
-            return keccak256(bytes(version)) == keccak256(bytes("0.1.0")) && vaultAsset == MC.WBNB;
+            return (
+                keccak256(bytes(version)) == keccak256(bytes("0.1.0"))
+                    || keccak256(bytes(version)) == keccak256(bytes("0.2.0"))
+            ) && vaultAsset == MC.WBNB;
         } catch {
             return false;
         }
