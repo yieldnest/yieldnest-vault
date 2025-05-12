@@ -111,7 +111,17 @@ contract DeployMaxVault is BaseScript {
 
         vault = Vault(payable(address(proxy)));
 
-        vault.initialize(admin, name, symbol_, decimals, baseWithdrawalFee, countNativeAsset, alwaysComputeTotalAssets);
+        uint256 defaultAssetIndex = 0;
+        vault.initialize(
+            admin,
+            name,
+            symbol_,
+            decimals,
+            baseWithdrawalFee,
+            countNativeAsset,
+            alwaysComputeTotalAssets,
+            defaultAssetIndex
+        );
 
         configureVault();
     }

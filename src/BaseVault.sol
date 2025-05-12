@@ -17,18 +17,103 @@ import {VaultLib} from "src/library/VaultLib.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 
+/**
+ * @title BaseVault
+ * @notice Base contract for vault implementations that support multiple assets
+ * @dev This contract implements the ERC4626 standard with extensions to support multiple assets
+ *
+ * The BaseVault has two key asset concepts:
+ *
+ * 1. Base Asset: The common denomination used internally for accounting.
+ *    - All assets are converted to this base unit for consistent accounting
+ *    - The base asset has a fixed decimal precision (typically 18 decimals)
+ *    - totalBaseAssets() tracks the vault's total value in this base denomination
+ *
+ * 2. Default Asset: The underlying asset used for standard ERC4626 operations.
+ *    - Specified by the defaultAssetIndex in VaultStorage
+ *    - Returned by the asset() function
+ *    - Used for deposit(), withdraw(), mint(), and redeem() when no asset is specified
+ *       - Can be the same as base asset (defaultAssetIndex == 0)
+ *    - Can be different from the base asset (defaultAssetIndex == 1)
+ *
+ *  REQUIREMENT: default Asset MUST be the underyling asset of Base Asset.
+ *               Example: Default Asset is USDC, Base Asset is Wrapped USDC.
+ *
+ * The vault maintains a list of supported assets, each with their own decimal precision.
+ * When assets enter or leave the vault, they are converted to/from the base asset denomination
+ * for consistent accounting across different asset types.
+ * The vault also includes a processAccounting function that updates the vault's total assets.
+ * This function:
+ * - Computes the current total assets by querying the buffer and other strategies
+ * - Updates the vault's totalAssets storage value
+ *
+ * This accounting mechanism ensures the vault's reported asset values remain accurate over time,
+ * gas efficiency with accuracy by:
+ * - Using cached totalAssets values by default to save gas on frequent read operations
+ * - Providing an explicit processAccounting() function that updates the cached value when needed
+ * - Offering an alwaysComputeTotalAssets toggle for cases where real-time accuracy is preferred
+ *   despite the higher gas cost of querying external contracts on each totalAssets() call
+ */
 abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+    /// INITIALIZATION
+
     /**
-     * @notice Returns the address of the underlying asset.
-     * @return address The address of the asset.
-     * @dev The base underlying asset is the first asset added to the asset storage list.
+     * @notice Internal function to initialize the vault.
+     * @param admin The address of the admin.
+     * @param name The name of the vault.
+     * @param symbol The symbol of the vault.
+     * @param decimals_ The number of decimals for the vault token.
+     * @param paused_ Whether the vault should start in a paused state.
+     * @param countNativeAsset_ Whether the vault should count the native asset.
+     * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
+     * @param defaultAssetIndex_ The index of the default asset in the asset list.
      */
-    function asset() public view virtual returns (address) {
-        return _getAssetStorage().list[0];
+    function _initialize(
+        address admin,
+        string memory name,
+        string memory symbol,
+        uint8 decimals_,
+        bool paused_,
+        bool countNativeAsset_,
+        bool alwaysComputeTotalAssets_,
+        uint256 defaultAssetIndex_
+    ) internal virtual {
+        __ERC20_init(name, symbol);
+        __AccessControl_init();
+        __ReentrancyGuard_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+
+        VaultStorage storage vaultStorage = _getVaultStorage();
+        vaultStorage.paused = paused_;
+        if (decimals_ == 0) {
+            revert InvalidDecimals();
+        }
+        vaultStorage.decimals = decimals_;
+        vaultStorage.countNativeAsset = countNativeAsset_;
+        vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
+
+        // The defaultAssetIndex must be 0 or 1 because:
+        // 1. When an asset is deleted, it's replaced with the last asset in the array
+        // 2. The base asset (index 0) and default asset should never be deleted
+        // 3. Therefore, they must be the first two positions in the array
+        // 4. Or if defaultAssetIndex is 0, then the base asset is also the default asset
+        if (defaultAssetIndex_ > 1) {
+            revert InvalidDefaultAssetIndex(defaultAssetIndex_);
+        }
+        vaultStorage.defaultAssetIndex = defaultAssetIndex_;
     }
 
     /**
-     * @notice Returns the number of decimals of the underlying asset.
+     * @notice Returns the address of the Default Asset.
+     * @return address The address of the asset.
+     * @dev The ERC4626-interface underlying asset is the default asset at defaultAssetIndex
+     */
+    function asset() public view virtual returns (address) {
+        return _getAssetStorage().list[_getVaultStorage().defaultAssetIndex];
+    }
+
+    /**
+     * @notice Returns the number of decimals of the vault.
      * @return uint256 The number of decimals.
      */
     function decimals() public view virtual override(ERC20Upgradeable, IERC20Metadata) returns (uint8) {
@@ -36,10 +121,21 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
-     * @notice Returns the total assets held by the vault denominated in the underlying asset.
+     * @notice Returns the total assets held by the vault denominated in the default asset.
+     * @dev The ERC4626 interface underyling asset is the default asset.
      * @return uint256 The total assets.
      */
     function totalAssets() public view virtual returns (uint256) {
+        return VaultLib.convertBaseToAsset(asset(), totalBaseAssets());
+    }
+
+    /**
+     * @notice Returns the total assets held by the vault denominated in the Base Asset.
+     * @dev Either returns the cached total assets or computes them in real-time
+     *      based on the alwaysComputeTotalAssets setting.
+     * @return uint256 The total base assets.
+     */
+    function totalBaseAssets() public view virtual returns (uint256) {
         if (_getVaultStorage().alwaysComputeTotalAssets) {
             return computeTotalAssets();
         }
@@ -52,6 +148,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function countNativeAsset() public view virtual returns (bool) {
         return _getVaultStorage().countNativeAsset;
+    }
+
+    /**
+     * @notice Returns the index of the default asset.
+     * @return uint256 The index of the default asset.
+     */
+    function defaultAssetIndex() public view virtual returns (uint256) {
+        return _getVaultStorage().defaultAssetIndex;
     }
 
     /**
@@ -404,7 +508,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
     {
         VaultStorage storage vaultStorage = _getVaultStorage();
-        _subTotalAssets(assets);
+        _subTotalAssets(VaultLib.convertAssetToBase(asset(), assets));
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }
