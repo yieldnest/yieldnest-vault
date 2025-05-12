@@ -19,12 +19,11 @@ contract SetupVault is Test, MainnetActors, Etches {
         // Deploy implementation contract
         Vault implementation = new Vault();
 
-        // Deploy transparent proxy
-        bytes memory initData = abi.encodeWithSelector(
-            Vault.initialize.selector, MainnetActors.ADMIN, "ynBNB MAX", "ynBNBx", 18, 0, true, true
-        );
         TransparentUpgradeableProxy proxy =
-            new TransparentUpgradeableProxy(address(implementation), address(MainnetActors.ADMIN), initData);
+            new TransparentUpgradeableProxy(address(implementation), address(MainnetActors.ADMIN), "");
+
+        // Initialize the vault explicitly after deployment
+        Vault(payable(address(proxy))).initialize(MainnetActors.ADMIN, "ynBNB MAX", "ynBNBx", 18, 0, true, true, 0);
 
         // Cast proxy to Vault type
         Vault vault = Vault(payable(address(proxy)));
