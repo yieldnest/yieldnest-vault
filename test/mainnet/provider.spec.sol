@@ -8,13 +8,14 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
 import {IBNBXStakeManagerV2} from "src/interface/external/stader/IBNBXStakeManagerV2.sol";
 import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
-contract ProviderTest is Test, Etches {
+contract ProviderTest is BaseIntegrationTest, Etches {
     Provider public provider;
 
-    function setUp() public {
-        provider = new Provider();
-        mockBuffer();
+    function setUp() public virtual override {
+        super.setUp();
+        provider = Provider(payable(vault.provider()));
         mockClisBnbStrategy();
     }
 

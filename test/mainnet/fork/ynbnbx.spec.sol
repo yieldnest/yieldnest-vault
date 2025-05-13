@@ -14,13 +14,13 @@ import {IVault} from "src/interface/IVault.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {Vault} from "src/Vault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
-contract YnBNBxForkTest is Test, MainnetActors {
-    Vault public vault;
+contract YnBNBxForkTest is BaseIntegrationTest {
     IERC20 public wbnb;
 
-    function setUp() public {
-        vault = Vault(payable(MainnetContracts.YNBNBX));
+    function setUp() public virtual override {
+        super.setUp();
         wbnb = IERC20(MainnetContracts.WBNB);
 
         // verify alwaysComputeTotalAssets is true
