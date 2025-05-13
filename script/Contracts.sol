@@ -14,6 +14,7 @@ interface IContracts {
 
     function YNBNBX() external view returns (address);
     function TIMELOCK() external view returns (address);
+    function CLIS_BNB_STRATEGY() external view returns (address);
 }
 
 library MainnetContracts {
@@ -74,6 +75,9 @@ library TestnetContracts {
 
     address public constant PROVIDER = address(0x0d); // TODO: Update with deployed Provider
     address public constant BUFFER = YNWBNBK;
+
+    address public constant SLIS_BNB_STAKE_MANAGER = 0xc695F964011a5a1024931E2AF0116afBaC41B31B;
+    address public constant CLIS_BNB_STRATEGY = 0xAD5214565030904E70b09Ef8936e2Fc26F8e9c77; 
 }
 
 contract ChapelContracts is IContracts {
@@ -112,6 +116,10 @@ contract ChapelContracts is IContracts {
     function TIMELOCK() external pure override returns (address) {
         return TestnetContracts.TIMELOCK;
     }
+
+    function CLIS_BNB_STRATEGY() external pure override returns (address) {
+        return TestnetContracts.CLIS_BNB_STRATEGY;
+    }
 }
 
 contract BscContracts is IContracts {
@@ -149,5 +157,9 @@ contract BscContracts is IContracts {
 
     function TIMELOCK() external pure override returns (address) {
         return MainnetContracts.TIMELOCK;
+    }
+
+    function CLIS_BNB_STRATEGY() external pure override returns (address) {
+        return MainnetContracts.CLIS_BNB_STRATEGY;
     }
 }

@@ -135,7 +135,7 @@ contract DeployMaxVault is BaseScript {
         // buffer or ynwbnbk
         vault.setBuffer(contracts.YNWBNBK());
 
-        uint256 rulesLength = block.chainid == 56 ? 11 : 7;
+        uint256 rulesLength = block.chainid == 56 ? 11 : 11;
         uint256 i = 0;
 
         SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](rulesLength);
@@ -166,6 +166,12 @@ contract DeployMaxVault is BaseScript {
         // wbnb
         rules[i++] = BaseRules.getWethDepositRule(contracts.WBNB());
         rules[i++] = BaseRules.getWethWithdrawRule(contracts.WBNB());
+
+        // clis bnb strategy
+        rules[i++] = BaseRules.getApprovalRule(contracts.SLISBNB(), contracts.CLIS_BNB_STRATEGY());
+        rules[i++] = BaseRules.getDepositRule(contracts.CLIS_BNB_STRATEGY(), address(vault));
+        rules[i++] = BaseRules.getWithdrawRule(contracts.CLIS_BNB_STRATEGY(), address(vault));
+        rules[i++] = BaseRules.getRedeemRule(contracts.CLIS_BNB_STRATEGY(), address(vault));
 
         if (i != rulesLength) {
             revert InvalidRules();
