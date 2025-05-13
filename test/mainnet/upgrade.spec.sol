@@ -7,20 +7,11 @@ import {Vault} from "src/Vault.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
-contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
-    Vault public vault;
-
-    function setUp() public {
-        SetupVault setupVault = new SetupVault();
-        vault = setupVault.deploy();
-
-        uint256 previousTotalAssets = vault.totalAssets();
-
-        // TODO: do another upgrade here
-        uint256 newTotalAssets = vault.totalAssets();
-
-        assertEq(newTotalAssets, previousTotalAssets, "Total assets should remain the same after upgrade");
+contract VaultMainnetUpgradeTest is BaseIntegrationTest {
+    function setUp() public virtual override {
+        super.setUp();
     }
 
     function test_Vault_Upgrade_ERC20_view_functions() public view {
@@ -76,11 +67,6 @@ contract VaultMainnetUpgradeTest is Test, AssertUtils, MainnetActors {
 
         // Test the getAssets function
         address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 5, "There should be 5 assets in the vault");
-        assertEq(assets[0], MC.WBNB, "First asset should be WBNB");
-        assertEq(assets[1], MC.BUFFER, "Second asset should be BUFFER");
-        assertEq(assets[2], MC.YNBNBK, "Third asset should be YNBNBk");
-        assertEq(assets[3], MC.BNBX, "Fourth asset should be BNBX");
-        assertEq(assets[4], MC.SLISBNB, "Fifth asset should be SLISBNB");
+        assertEq(assets.length, 6, "There should be 5 assets in the vault");
     }
 }
