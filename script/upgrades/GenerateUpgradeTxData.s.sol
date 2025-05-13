@@ -130,6 +130,9 @@ contract GenerateVaultUpgradeTxData is BaseScript {
             data.txCount += 1; // One for withdrawer implementation upgrade
         }
 
+        // Add 2 more transactions for processAccounting on withdrawer and vault
+        data.txCount += 2;
+
         // Create arrays for the batch transaction
         data.targets = new address[](data.txCount);
         data.values = new uint256[](data.txCount);
@@ -192,6 +195,29 @@ contract GenerateVaultUpgradeTxData is BaseScript {
             console.logBytes(setWithdrawerProviderData);
             console.log("Target for withdrawer setProvider: %s", vm.toString(address(data.withdrawer)));
         }
+
+        // Add processAccounting for withdrawer
+        console.log("\n=== Process Accounting Details ===");
+        bytes memory processAccountingWithdrawerData = abi.encodeWithSelector(BaseVault.processAccounting.selector);
+        data.targets[data.txIndex] = address(data.withdrawer);
+        data.values[data.txIndex] = 0;
+        data.calldatas[data.txIndex] = processAccountingWithdrawerData;
+        data.txIndex++;
+
+        console.log("Process accounting transaction data for withdrawer:");
+        console.logBytes(processAccountingWithdrawerData);
+        console.log("Target for withdrawer processAccounting: %s", vm.toString(address(data.withdrawer)));
+
+        // Add processAccounting for vault
+        bytes memory processAccountingVaultData = abi.encodeWithSelector(BaseVault.processAccounting.selector);
+        data.targets[data.txIndex] = address(vault);
+        data.values[data.txIndex] = 0;
+        data.calldatas[data.txIndex] = processAccountingVaultData;
+        data.txIndex++;
+
+        console.log("Process accounting transaction data for vault:");
+        console.logBytes(processAccountingVaultData);
+        console.log("Target for vault processAccounting: %s", vm.toString(address(vault)));
 
         // Print out the arrays in comma-separated format
         console.log("\n=== Batch Transaction Arrays ===");
