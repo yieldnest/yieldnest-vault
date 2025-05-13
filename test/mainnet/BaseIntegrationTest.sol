@@ -26,24 +26,35 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     function setUp() public virtual {
         vault = Vault(payable(MC.YNETHX));
 
+        upgradeVaults();
+    }
+
+    function upgradeVaults() internal {
+        vault.processAccounting();
+        // Capture values before upgrade
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 totalSupplyBefore = vault.totalSupply();
+
         // Create a new Provider instance for testing
         Provider newProvider = new Provider();
 
-        // Admin operations to upgrade the rate provider
-        address admin = MainnetActors.ADMIN;
-
+        vm.startPrank(TIMELOCK);
         {
             Vault newVault = new Vault();
-            vm.startPrank(TIMELOCK);
+
             ProxyAdmin(ProxyUtils.getProxyAdmin(address(vault))).upgradeAndCall(
                 ITransparentUpgradeableProxy(address(vault)), address(newVault), ""
             );
+
+            assertEq(
+                ProxyUtils.getImplementation(address(vault)),
+                address(newVault),
+                "Vault implementation should be updated correctly"
+            );
         }
 
+        Withdrawer currentWithdrawer = VaultVerification.getWithdrawer(vault);
         {
-            // Get the current withdrawer from the vault
-            Withdrawer currentWithdrawer = VaultVerification.getWithdrawer(vault);
-
             // Create a new Withdrawer instance
             Withdrawer newWithdrawer = new Withdrawer();
 
@@ -52,19 +63,27 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
             proxyAdmin.upgradeAndCall(
                 ITransparentUpgradeableProxy(address(currentWithdrawer)), address(newWithdrawer), ""
             );
+
+            // Assert that the withdrawer implementation was updated correctly
+            assertEq(
+                ProxyUtils.getImplementation(address(currentWithdrawer)),
+                address(newWithdrawer),
+                "Withdrawer implementation should be updated correctly"
+            );
         }
-
-        vm.stopPrank();
-
-        vm.startPrank(admin);
-
-        // Grant PROVIDER_MANAGER_ROLE to admin
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), admin);
         // Set the new Provider
         vault.setProvider(address(newProvider));
         // Verify the provider was updated
         assertEq(vault.provider(), address(newProvider), "Provider should be updated to new Provider");
 
+        currentWithdrawer.setProvider(address(newProvider));
+
         vm.stopPrank();
+
+        vault.processAccounting();
+
+        // Assert that totalAssets and totalSupply remain unchanged after the upgrade
+        assertEq(vault.totalAssets(), totalAssetsBefore, "Total assets should remain unchanged after upgrade");
+        assertEq(vault.totalSupply(), totalSupplyBefore, "Total supply should remain unchanged after upgrade");
     }
 }
