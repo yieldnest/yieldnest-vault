@@ -77,7 +77,7 @@ library TestnetContracts {
     address public constant BUFFER = YNWBNBK;
 
     address public constant SLIS_BNB_STAKE_MANAGER = 0xc695F964011a5a1024931E2AF0116afBaC41B31B;
-    address public constant CLIS_BNB_STRATEGY = 0xAD5214565030904E70b09Ef8936e2Fc26F8e9c77; 
+    address public constant CLIS_BNB_STRATEGY = 0xAD5214565030904E70b09Ef8936e2Fc26F8e9c77;
 }
 
 contract ChapelContracts is IContracts {
