@@ -13,6 +13,9 @@ import {MainnetContracts} from "script/Contracts.sol";
 import {IStakerGateway} from "src/interface/external/kernel/IStakerGateway.sol";
 import {IKernelVault} from "src/interface/external/kernel/IKernelVault.sol";
 import {IKernelConfig} from "src/interface/external/kernel/IKernelConfig.sol";
+import {ProxyAdmin} from "src/Common.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
 
 contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
@@ -29,6 +32,15 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
 
         // Set the provider in the vault
         vm.startPrank(MC.TIMELOCK);
+
+        // Execute the Upgrade ATOMICALLY at upgrade time
+        {
+            Vault newVault = new Vault();
+            ProxyAdmin(ProxyUtils.getProxyAdmin(address(vault))).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(vault)), address(newVault), ""
+            );
+        }
+
         vault.setProvider(address(provider));
         vm.stopPrank();
     }
