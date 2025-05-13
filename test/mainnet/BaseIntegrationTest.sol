@@ -27,6 +27,14 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         mockKernelVaultDepositLimit(MC.CLISBNB);
         mockKernelVaultDepositLimit(MC.SLISBNB);
 
+        upgradeVaults();
+    }
+
+    function upgradeVaults() public {
+        // Get initial values to verify after upgrade
+        uint256 initialTotalAssets = vault.totalAssets();
+        uint256 initialTotalSupply = vault.totalSupply();
+
         // Deploy a new Provider
         Provider provider = new Provider();
 
@@ -43,6 +51,10 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
 
         vault.setProvider(address(provider));
         vm.stopPrank();
+
+        // Assert that totalAssets and totalSupply stayed the same after upgrade
+        assertEq(vault.totalAssets(), initialTotalAssets, "Total assets should remain unchanged after upgrade");
+        assertEq(vault.totalSupply(), initialTotalSupply, "Total supply should remain unchanged after upgrade");
     }
 
     function mockKernelVaultDepositLimit(address asset) public {
