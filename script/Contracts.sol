@@ -65,7 +65,7 @@ library TestnetContracts {
     address public constant BNBX = 0x6cd3f51A92d022030d6e75760200c051caA7152A;
 
     address public constant YNBNBX = 0x6164f96Fa28147508d3545c38B61eD0BD7c5DF03;
-    address public constant TIMELOCK = 0x0672980063d35393084989754f14f7E90F4AB3aD;
+    address public constant TIMELOCK = 0x3dC437681606C21Ce315E4e4CF504E017a6e6C62;
 
     // bnb vault
     address public constant YNBNBK = 0x7e87787C22117374Fad2E3E2E8C6159f0875F92e;

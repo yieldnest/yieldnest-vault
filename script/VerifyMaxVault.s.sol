@@ -38,7 +38,7 @@ contract VerifyMaxVault is BaseScript, Test {
         if (block.chainid == 56) {
             assertEq(vault.name(), "ynBNB MAX", "name is invalid");
         } else if (block.chainid == 97) {
-            assertEq(vault.name(), "YieldNest BNB Max", "name is invalid");
+            assertEq(vault.name(), "ynBNB MAX", "name is invalid");
         }
         assertEq(vault.symbol(), "ynBNBx", "symbol is invalid");
         assertEq(vault.decimals(), 18, "decimals is invalid");
