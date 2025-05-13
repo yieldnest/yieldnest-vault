@@ -12,6 +12,9 @@ import {TimelockController} from "@openzeppelin/contracts/governance/TimelockCon
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     // Implementation addresses
@@ -68,6 +71,29 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         // Test the totalSupply function
         uint256 totalSupply = vault.totalSupply();
         assertGt(totalSupply, 0, "Total supply should be greater than zero");
+
+        // Test the defaultAssetIndex function
+        uint256 defaultAssetIndex = vault.defaultAssetIndex();
+        assertEq(defaultAssetIndex, 0, "Default asset index should be 0 (WETH)");
+
+        // Test the version function
+        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.2.0");
+
+        // Test the buffer function
+        address buffer = vault.buffer();
+        assertEq(IERC4626(buffer).asset(), MC.WETH, "Buffer asset should be WETH");
+
+        // Test the provider function
+        address provider = vault.provider();
+        assertEq(IProvider(provider).getRate(MC.WETH), 1e18, "Provider rate for WETH should be 1e18");
+
+        // Test the paused function
+        bool isPaused = vault.paused();
+        assertFalse(isPaused, "Vault should not be paused");
+
+        // Test the withdrawal fee
+        uint256 withdrawalFee = vault.baseWithdrawalFee();
+        assertLe(withdrawalFee, 0.0025e8, "Withdrawal fee should be less than or equal to 0.25%");
     }
 
     function test_Vault_Upgrade_ERC4626_view_functions() public {

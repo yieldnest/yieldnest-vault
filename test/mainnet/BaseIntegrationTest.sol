@@ -53,10 +53,8 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
             );
         }
 
+        Withdrawer currentWithdrawer = VaultVerification.getWithdrawer(vault);
         {
-            // Get the current withdrawer from the vault
-            Withdrawer currentWithdrawer = VaultVerification.getWithdrawer(vault);
-
             // Create a new Withdrawer instance
             Withdrawer newWithdrawer = new Withdrawer();
 
@@ -77,6 +75,8 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         vault.setProvider(address(newProvider));
         // Verify the provider was updated
         assertEq(vault.provider(), address(newProvider), "Provider should be updated to new Provider");
+
+        currentWithdrawer.setProvider(address(newProvider));
 
         vm.stopPrank();
 
