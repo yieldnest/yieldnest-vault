@@ -39,7 +39,7 @@ contract VerifyMaxVault is BaseScript, Test {
         assertEq(vault.symbol(), "ynETHx", "symbol is invalid");
         assertEq(vault.decimals(), 18, "decimals is invalid");
         assertEq(vault.provider(), address(rateProvider), "provider is invalid");
-        assertEq(vault.baseWithdrawalFee(), 100000, "base withdrawal fee is invalid");
+        assertEq(vault.baseWithdrawalFee(), 250000, "base withdrawal fee is invalid");
         assertEq(vault.countNativeAsset(), true, "count native asset is invalid");
         assertFalse(vault.alwaysComputeTotalAssets(), "always compute total assets is invalid");
         IVault.AssetParams memory asset;
