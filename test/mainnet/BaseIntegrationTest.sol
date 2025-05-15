@@ -26,7 +26,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     function setUp() public virtual {
         vault = Vault(payable(MC.YNETHX));
 
-        upgradeVaults();
+        //upgradeVaults();
     }
 
     function upgradeVaults() internal {
