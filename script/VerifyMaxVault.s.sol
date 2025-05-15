@@ -96,7 +96,6 @@ contract VerifyMaxVault is BaseScript, Test {
         assertEq(withdrawer.STRATEGY_VERSION(), "0.2.0", "Strategy version should be 0.2.0");
         console.log("\u2705 Strategy version:       ", withdrawer.STRATEGY_VERSION());
 
-
         // Verify provider configuration
         VaultVerification.verifyProvider(Provider(address(rateProvider)), withdrawer);
 
