@@ -8,6 +8,8 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {Provider} from "src/module/Provider.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     function setUp() public virtual override {
@@ -26,6 +28,20 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
 
         // Test the totalSupply function
         vault.totalSupply();
+
+        // Test the balanceOf function
+        vault.balanceOf(address(this));
+
+        // Test the defaultAssetIndex function
+        assertEq(vault.defaultAssetIndex(), 0, "Default asset index should be 0");
+
+        assertEq(IERC4626(vault.buffer()).asset(), MC.WBNB, "Buffer asset should be WBNB");
+
+        // Test the provider rate for WBNB
+        assertEq(Provider(vault.provider()).getRate(MC.WBNB), 1e18, "Provider rate for WBNB should be 1e18");
+
+        // Test the version function
+        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be '0.3.0'");
     }
 
     function test_Vault_Upgrade_ERC4626_view_functions() public view {
@@ -68,5 +84,41 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         // Test the getAssets function
         address[] memory assets = vault.getAssets();
         assertEq(assets.length, 6, "There should be 5 assets in the vault");
+    }
+
+    function test_Vault_Upgrade_totalAssets_unchanged(bool processAccountingBeforeCheck) public {
+        if (processAccountingBeforeCheck) {
+            vault.processAccounting();
+        }
+
+        // Get totalAssets before upgrade
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 totalSupplyBefore = vault.totalSupply();
+
+        // Perform the upgrade
+        upgradeVaults();
+
+        if (processAccountingBeforeCheck) {
+            vault.processAccounting();
+        }
+
+        // Get totalAssets after upgrade
+        uint256 totalAssetsAfter = vault.totalAssets();
+        uint256 totalSupplyAfter = vault.totalSupply();
+
+        // Assert that totalAssets after upgrade is greater than or equal to totalAssets before upgrade
+        assertGe(
+            totalAssetsAfter,
+            totalAssetsBefore,
+            "Total assets after upgrade should be greater than or equal to total assets before upgrade"
+        );
+
+        // Increase due to sfrxETH and potentially other assets that accumulate rewards in a streaming fashion
+        assertApproxEqRel(
+            totalAssetsAfter, totalAssetsBefore, 1e16, "Total assets should be equal within 1e16 (1%) relative error"
+        );
+
+        // Assert that totalSupply remains unchanged after the upgrade
+        assertEq(totalSupplyAfter, totalSupplyBefore, "Total supply should remain unchanged after upgrade");
     }
 }
