@@ -10,30 +10,15 @@ import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {IERC20Metadata, Math} from "src/Common.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
-contract VaultMainnetViewerTest is Test, MainnetActors {
-    Vault public vault;
-
+contract VaultMainnetViewerTest is BaseIntegrationTest {
     MaxVaultViewer public viewer;
 
-    function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
+    function setUp() public override {
+        super.setUp();
 
-        viewer = deployViewer(vault);
-    }
-
-    function deployViewer(Vault vault_) internal returns (MaxVaultViewer _viewer) {
-        MaxVaultViewer implementation = new MaxVaultViewer();
-
-        bytes memory initData =
-            abi.encodeWithSelector(MaxVaultViewer.initialize.selector, address(vault_), address(ADMIN));
-
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), ADMIN, initData);
-        _viewer = MaxVaultViewer(payable(address(proxy)));
-
-        vm.startPrank(ADMIN);
-        _viewer.grantRole(_viewer.UPDATER_ROLE(), ADMIN);
-        vm.stopPrank();
+        viewer = MaxVaultViewer(MC.YNETHX_VIEWER);
     }
 
     function test_Vault_Viewer_getVault() public view {
@@ -114,63 +99,59 @@ contract VaultMainnetViewerTest is Test, MainnetActors {
     }
 
     function test_Vault_Viewer_isUnderlyingAsset() public {
-        assertFalse(viewer.isUnderlyingAsset(MC.WETH));
+        assertTrue(viewer.isUnderlyingAsset(MC.WETH));
         assertFalse(viewer.isUnderlyingAsset(vault.buffer()));
-        assertFalse(viewer.isUnderlyingAsset(MC.STETH));
-        assertFalse(viewer.isUnderlyingAsset(MC.YNETH));
-        assertFalse(viewer.isUnderlyingAsset(MC.YNLSDE));
+        assertTrue(viewer.isUnderlyingAsset(MC.STETH));
+        assertTrue(viewer.isUnderlyingAsset(MC.YNETH));
+        assertTrue(viewer.isUnderlyingAsset(MC.YNLSDE));
 
-        address[] memory underlyingAssets = new address[](3);
-        underlyingAssets[0] = MC.WETH;
-        underlyingAssets[1] = MC.STETH;
-        underlyingAssets[2] = vault.buffer();
+        // Get the length before adding a new asset
+        uint256 lengthBefore = viewer.getUnderlyingAssetsLength();
 
-        vm.prank(ADMIN);
+        address[] memory underlyingAssets = new address[](1);
+        underlyingAssets[0] = vault.buffer();
+
+        vm.prank(YnDev);
         viewer.addUnderlyingAssets(underlyingAssets);
 
-        assertTrue(viewer.isUnderlyingAsset(MC.WETH));
-        assertTrue(viewer.isUnderlyingAsset(MC.STETH));
         assertTrue(viewer.isUnderlyingAsset(vault.buffer()));
 
-        assertEq(viewer.getUnderlyingAssetsLength(), 3);
+        // Assert length increased by exactly 1
+        assertEq(viewer.getUnderlyingAssetsLength(), lengthBefore + 1);
 
         address[] memory underlyingAssets2 = new address[](1);
         underlyingAssets2[0] = vault.buffer();
 
-        vm.prank(ADMIN);
+        vm.prank(YnDev);
         viewer.removeUnderlyingAssets(underlyingAssets2);
 
-        assertTrue(viewer.isUnderlyingAsset(MC.WETH));
-        assertTrue(viewer.isUnderlyingAsset(MC.STETH));
         assertFalse(viewer.isUnderlyingAsset(vault.buffer()));
 
-        assertEq(viewer.getUnderlyingAssetsLength(), 2);
+        assertEq(viewer.getUnderlyingAssetsLength(), lengthBefore);
     }
 
     function test_Vault_Viewer_getStrategies() public {
-        IVaultViewer.AssetInfo[] memory assetsInfo = viewer.getUnderlyingAssets();
+        uint256 strategiesLengthBefore;
         {
             IVaultViewer.AssetInfo[] memory strategies = viewer.getStrategies();
-
-            assertEq(assetsInfo.length, strategies.length);
-            assertEq(strategies.length, 11);
+            strategiesLengthBefore = strategies.length;
+            assertEq(strategies.length, 4, "There should be exactly 4 strategies");
         }
 
-        address[] memory underlyingAssets = new address[](2);
-        underlyingAssets[0] = MC.WETH;
-        underlyingAssets[1] = MC.STETH;
+        address[] memory underlyingAssets = new address[](1);
+        underlyingAssets[0] = vault.buffer();
 
-        vm.prank(ADMIN);
+        vm.prank(YnDev);
         viewer.addUnderlyingAssets(underlyingAssets);
 
         {
             IVaultViewer.AssetInfo[] memory strategies = viewer.getStrategies();
 
-            assertEq(strategies.length, 9);
-
-            assertEq(strategies[0].asset, MC.YNETH);
-            assertEq(strategies[1].asset, MC.YNLSDE);
-            assertEq(strategies[2].asset, MC.EULER_WETH_22_VAULT);
+            assertEq(
+                strategies.length,
+                strategiesLengthBefore - 1,
+                "Strategies length should decrease by 1 after adding buffer as underlying asset"
+            );
         }
     }
 }

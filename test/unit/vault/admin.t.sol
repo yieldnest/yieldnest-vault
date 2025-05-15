@@ -21,6 +21,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     WETH9 public weth;
     MockERC20 public asset;
     MockERC20 public asset2;
+    MockERC20 public asset3;
 
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 1_000 * 10 ** 18;
@@ -32,7 +33,7 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         // Deploy mock asset
         asset = new MockERC20("Mock Token", "MOCK");
         asset2 = new MockERC20("Mock Token 2", "MOCK2");
-
+        asset3 = new MockERC20("Mock Token 3", "MOCK3");
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
         deal(address(weth), address(alice), INITIAL_BALANCE);
@@ -65,6 +66,18 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.addAsset(address(asset), true);
         vm.expectRevert(abi.encodeWithSelector(IVault.DuplicateAsset.selector, address(asset)));
         vault.addAsset(address(asset), true);
+    }
+
+    function test_Vault_addAsset_primaryDepositAssetDuplicate() public {
+        // Add a primary deposit asset (first asset in the list)
+        vm.startPrank(ASSET_MANAGER);
+
+        address baseAsset = vault.asset();
+        // Verify duplicate asset error
+        vm.expectRevert(abi.encodeWithSelector(IVault.DuplicateAsset.selector, baseAsset));
+        vault.addAsset(baseAsset, true);
+
+        vm.stopPrank();
     }
 
     function test_Vault_addAsset_unauthorized() public {
@@ -125,10 +138,37 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.deleteAsset(0);
     }
 
-    function test_Vault_deleteAsset_defaultAsset() public {
+    function test_Vault_deleteAsset_BaseAsset() public {
+        vm.prank(ASSET_MANAGER);
+        vm.expectRevert(IVault.BaseAsset.selector);
+        vault.deleteAsset(0);
+    }
+
+    function test_Vault_deleteAsset_DefaultAsset() public {
+        // Deploy implementation and proxy
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+
+        // Initialize with defaultAssetIndex = 1
+        newVault.initialize(address(this), "Test Vault", "TV", 18, 0, true, false, 1);
+
+        // Grant asset manager role
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+
+        // Add assets
+        vm.startPrank(ASSET_MANAGER);
+        newVault.addAsset(address(asset), true); // index 0
+        newVault.addAsset(address(asset2), true); // index 1 (default asset)
+        vm.stopPrank();
+
+        // Verify default asset index
+        assertEq(newVault.defaultAssetIndex(), 1, "Default asset index should be 1");
+
+        // Try to delete the default asset
         vm.prank(ASSET_MANAGER);
         vm.expectRevert(IVault.DefaultAsset.selector);
-        vault.deleteAsset(0);
+        newVault.deleteAsset(1);
     }
 
     function test_Vault_deleteAsset_invalidIndex() public {
@@ -155,6 +195,108 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vm.stopPrank();
 
         assertEq(vault.getAssets().length, 6);
+    }
+
+    function test_Vault_deleteAsset_updatesIndex() public {
+        vm.startPrank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+        vault.addAsset(address(asset2), true);
+        vault.addAsset(address(asset3), true);
+        vm.stopPrank();
+
+        uint256 initialAssetsCount = vault.getAssets().length;
+        assertEq(vault.getAssets().length, initialAssetsCount, "Initial assets count should match");
+
+        // Get index of asset to delete
+        address[] memory assets = vault.getAssets();
+        uint256 assetIndex;
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (assets[i] == address(asset)) {
+                assetIndex = i;
+                break;
+            }
+        }
+
+        // Store asset params before deletion
+        IVault.AssetParams[] memory beforeStates = new IVault.AssetParams[](assets.length);
+        for (uint256 i = 0; i < assets.length; i++) {
+            beforeStates[i] = vault.getAsset(assets[i]);
+        }
+
+        // Delete asset
+        vm.startPrank(ASSET_MANAGER);
+        vault.deleteAsset(assetIndex);
+        vm.stopPrank();
+
+        uint256 expectedAssetsCount = initialAssetsCount - 1;
+        assertEq(vault.getAssets().length, expectedAssetsCount, "Assets count should decrease by 1 after deletion");
+
+        // Get updated assets and compare with before states
+        address[] memory updatedAssets = vault.getAssets();
+        for (uint256 i = 0; i < updatedAssets.length; i++) {
+            IVault.AssetParams memory currentParams = vault.getAsset(updatedAssets[i]);
+
+            if (i == assetIndex) {
+                // The asset at the deleted index should now be the last asset from before
+                assertEq(updatedAssets[i], address(asset3), "Asset3 should be moved to the deleted asset's position");
+                assertEq(currentParams.index, assetIndex, "Asset3's index should be updated to the deleted position");
+            } else {
+                // Assets before the deleted index should remain unchanged
+                assertEq(updatedAssets[i], assets[i], "Assets before deleted index should remain in same position");
+                assertEq(currentParams.index, beforeStates[i].index, "Index should remain unchanged");
+            }
+        }
+
+        // Verify the deleted asset is no longer active and its index is wiped out
+        assertFalse(vault.getAsset(address(asset)).active, "Deleted asset should not be active anymore");
+        assertEq(vault.getAsset(address(asset)).index, 0, "Deleted asset's index should be reset to 0");
+    }
+
+    function test_Vault_deleteAsset_lastAsset() public {
+        vm.startPrank(ASSET_MANAGER);
+        vault.addAsset(address(asset), true);
+        vault.addAsset(address(asset2), true);
+        vault.addAsset(address(asset3), true);
+        vm.stopPrank();
+
+        uint256 initialAssetsCount = vault.getAssets().length;
+        assertEq(vault.getAssets().length, initialAssetsCount, "Initial assets count should match");
+
+        // Get index of the last asset
+        address[] memory assets = vault.getAssets();
+        uint256 lastAssetIndex = assets.length - 1;
+        address lastAsset = assets[lastAssetIndex];
+
+        // Store asset params before deletion
+        IVault.AssetParams[] memory beforeStates = new IVault.AssetParams[](assets.length);
+        for (uint256 i = 0; i < assets.length; i++) {
+            beforeStates[i] = vault.getAsset(assets[i]);
+        }
+
+        // Delete the last asset
+        vm.startPrank(ASSET_MANAGER);
+        vault.deleteAsset(lastAssetIndex);
+        vm.stopPrank();
+
+        uint256 expectedAssetsCount = initialAssetsCount - 1;
+        assertEq(vault.getAssets().length, expectedAssetsCount, "Assets count should decrease by 1 after deletion");
+
+        // Verify the last asset is removed and the rest of the assets match the original array (except the last one)
+        address[] memory updatedAssets = vault.getAssets();
+        for (uint256 i = 0; i < updatedAssets.length; i++) {
+            assertNotEq(updatedAssets[i], lastAsset, "Last asset should not be in the assets array anymore");
+            assertEq(updatedAssets[i], assets[i], "Remaining assets should match the original array");
+
+            // Verify active status, index and decimals remain unchanged for non-deleted assets
+            IVault.AssetParams memory currentParams = vault.getAsset(updatedAssets[i]);
+            assertEq(currentParams.active, beforeStates[i].active, "Asset active status should remain unchanged");
+            assertEq(currentParams.index, beforeStates[i].index, "Asset index should remain unchanged");
+            assertEq(currentParams.decimals, beforeStates[i].decimals, "Asset decimals should remain unchanged");
+        }
+
+        // Verify the asset is no longer active and its index is wiped out
+        assertFalse(vault.getAsset(lastAsset).active, "Last asset should not be active anymore");
+        assertEq(vault.getAsset(lastAsset).index, 0, "Last asset's index should be reset to 0");
     }
 
     function test_Vault_deleteAsset_notEmpty() public {
@@ -208,21 +350,11 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     function test_Vault_addAsset_firstAssetWithDifferentDecimals() public {
         // Deploy implementation and proxy
         Vault implementation = new Vault();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(implementation),
-            address(this),
-            abi.encodeWithSelector(
-                Vault.initialize.selector,
-                address(this),
-                "Test Vault",
-                "TV",
-                18,
-                0, // baseWithdrawalFee
-                true, // countNativeAsset
-                false // alwaysComputeTotalAssets
-            )
-        );
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
         Vault newVault = Vault(payable(address(proxy)));
+
+        // This is a duplicate initialization - the vault was already initialized in the proxy constructor
+        newVault.initialize(address(this), "Test Vault", "TV", 18, 0, true, false, 0);
 
         // Create mock asset with 6 decimals
         MockERC20CustomDecimals sixDecimalAsset = new MockERC20CustomDecimals("Test", "TST", 6);
@@ -235,6 +367,100 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         // Should revert when trying to add 6 decimal asset as first asset
         vm.expectRevert(abi.encodeWithSelector(IVault.InvalidNativeAssetDecimals.selector, 6));
         newVault.addAsset(address(sixDecimalAsset), true);
+
+        vm.stopPrank();
+    }
+
+    function test_Vault_addAsset_firstAssetWithDifferentDecimals_noNativeAsset() public {
+        // Deploy implementation and proxy
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+
+        // This is a duplicate initialization - the vault was already initialized in the proxy constructor
+        newVault.initialize(address(this), "Test Vault", "TV", 18, 0, false, false, 0);
+
+        // Create mock asset with 8 decimals
+        MockERC20CustomDecimals eightDecimalAsset = new MockERC20CustomDecimals("Test", "TST", 8);
+
+        // Grant asset manager role
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+
+        vm.startPrank(ASSET_MANAGER);
+
+        // Should revert when trying to add 8 decimal asset as first asset when vault has 18 decimals
+        vm.expectRevert(abi.encodeWithSelector(IVault.InvalidAssetDecimals.selector, 8));
+        newVault.addAsset(address(eightDecimalAsset), true);
+
+        vm.stopPrank();
+    }
+
+    function test_Vault_With8Decimals_addAsset_with8Decimals() public {
+        // Deploy implementation and proxy
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+
+        // Initialize vault with 8 decimals
+        newVault.initialize(address(this), "Test Vault", "TV", 8, 0, false, false, 0);
+
+        // Create mock asset with 8 decimals
+        MockERC20CustomDecimals eightDecimalAsset = new MockERC20CustomDecimals("Test", "TST", 8);
+
+        // Grant asset manager role
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+
+        vm.startPrank(ASSET_MANAGER);
+
+        // Should succeed when adding 8 decimal asset to vault with 8 decimals
+        newVault.addAsset(address(eightDecimalAsset), true);
+
+        // Verify asset was added correctly
+        IVault.AssetParams memory assetParams = newVault.getAsset(address(eightDecimalAsset));
+        assertEq(assetParams.active, true);
+        assertEq(assetParams.decimals, 8);
+        assertEq(assetParams.index, 0);
+
+        vm.stopPrank();
+    }
+
+    function test_Vault_WithDefaultAssetIndex1_addAsset_with8Decimals() public {
+        // Deploy implementation and proxy
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+
+        // Initialize vault with 8 decimals and default asset index of 1
+        newVault.initialize(address(this), "Test Vault", "TV", 8, 0, false, false, 1);
+
+        // Create mock assets with 8 decimals
+        MockERC20CustomDecimals eightDecimalAsset1 = new MockERC20CustomDecimals("Test1", "TST1", 8);
+        MockERC20CustomDecimals eightDecimalAsset2 = new MockERC20CustomDecimals("Test2", "TST2", 8);
+
+        // Grant asset manager role
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+
+        vm.startPrank(ASSET_MANAGER);
+
+        // Add first asset
+        newVault.addAsset(address(eightDecimalAsset1), true);
+
+        // Add second asset (should be the default asset since default index is 1)
+        newVault.addAsset(address(eightDecimalAsset2), true);
+
+        // Verify assets were added correctly
+        IVault.AssetParams memory asset1Params = newVault.getAsset(address(eightDecimalAsset1));
+        assertEq(asset1Params.active, true);
+        assertEq(asset1Params.decimals, 8);
+        assertEq(asset1Params.index, 0);
+
+        IVault.AssetParams memory asset2Params = newVault.getAsset(address(eightDecimalAsset2));
+        assertEq(asset2Params.active, true);
+        assertEq(asset2Params.decimals, 8);
+        assertEq(asset2Params.index, 1);
+
+        // Verify default asset index is 1
+        assertEq(newVault.defaultAssetIndex(), 1);
 
         vm.stopPrank();
     }

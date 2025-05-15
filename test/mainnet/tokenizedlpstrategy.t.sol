@@ -11,10 +11,10 @@ import {Provider} from "src/module/Provider.sol";
 import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {IProvider} from "src/interface/IProvider.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
-contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
+contract TokenizedLPStrategyUnitTest is BaseIntegrationTest {
     IERC20 public strategy;
-    Vault public vault;
     ICurvePool public pool;
     ICurveLpConnector public connector;
     uint256 public constant INITIAL_BALANCE = 101 ether;
@@ -24,8 +24,9 @@ contract TokenizedLPStrategyUnitTest is Test, MainnetActors {
 
     address public alice = address(0xa11c3);
 
-    function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
+    function setUp() public override {
+        super.setUp();
+
         connector = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR);
 
         assertEq(address(connector.STRATEGY()), MC.CURVE_LP_YNETH_YNLSDE_STRATEGY);

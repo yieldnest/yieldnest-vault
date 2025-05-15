@@ -13,6 +13,7 @@ import {IStETH} from "test/interface/external/lido/IStETH.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
 interface IynETH {
     function depositETH(address receiver) external payable returns (uint256);
@@ -20,11 +21,9 @@ interface IynETH {
     function approve(address spender, uint256 amount) external returns (uint256);
 }
 
-contract VaultMainnetCurveTest is Test, MainnetActors {
-    Vault public vault;
-
-    function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
+contract VaultMainnetCurveTest is BaseIntegrationTest {
+    function setUp() public override {
+        super.setUp();
 
         vm.startPrank(ADMIN);
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), address(this));

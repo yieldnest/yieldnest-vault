@@ -11,18 +11,18 @@ import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {IProvider} from "src/interface/IProvider.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 
-contract VaultMainnetInvariantsTest is TestHelper, MainnetActors {
+contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     using Math for uint256;
 
-    Vault public vault;
     Withdrawer public withdrawer;
 
     IProvider public provider;
 
-    function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
+    function setUp() public override {
+        super.setUp();
         _initVault(vault);
 
         provider = IProvider(vault.provider());

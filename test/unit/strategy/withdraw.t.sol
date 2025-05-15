@@ -2,19 +2,16 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {MainnetContracts as MC} from "script/Contracts.sol";
-import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {Math} from "src/Common.sol";
-import {IERC20, IERC20Metadata} from "src/Common.sol";
+import {IERC20} from "src/Common.sol";
 import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
-import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {SetupStrategy} from "test/unit/helpers/SetupStrategy.sol";
-import {FeeMath} from "src/module/FeeMath.sol";
+import {IVault} from "src/interface/IVault.sol";
 
-contract StrategWithdrawUnitTest is Test, Etches, MainnetActors {
+contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
 
     MockStrategy public strategy;
@@ -194,6 +191,30 @@ contract StrategWithdrawUnitTest is Test, Etches, MainnetActors {
         assertEq(strategy.balanceOf(alice), shares - maxShares, "Receiver should have correct shares remaining");
     }
 
+    function test_Strategy_Withdrawable_Asset_Revert_NotWithdrawable(uint256 assets) public {
+        vm.assume(assets >= 1000 && assets <= 100_000 ether);
+        uint256 shares = depositIntoStrategy(address(weth), alice, assets);
+        // assert withdrawable assets are equal to shares when asset is withdrawable
+        assertEq(
+            strategy.maxWithdrawAsset(address(weth), alice), shares, "withdrawable Assets should be equal to assets"
+        );
+
+        // set asset to not withdrawable
+        vm.prank(ASSET_MANAGER);
+        strategy.setAssetWithdrawable(address(weth), false);
+
+        assertEq(
+            strategy.maxWithdrawAsset(address(weth), alice),
+            0,
+            "withdrawable Assets should be 0 after asset is set to not withdrawable"
+        );
+
+        vm.startPrank(alice);
+        // withdraw
+        vm.expectRevert(abi.encodeWithSelector(IVault.ExceededMaxWithdraw.selector, alice, shares, 0));
+        strategy.withdrawAsset(address(weth), shares, alice, alice);
+    }
+
     function test_Strategy_Redeem(uint256 assets) public {
         // Bound inputs to valid ranges
         vm.assume(assets >= 100000 && assets <= 100_000 ether);
@@ -216,5 +237,129 @@ contract StrategWithdrawUnitTest is Test, Etches, MainnetActors {
         assertApproxEqRel(redeemedAmount, convertedAssets, 1e14, "Redeemed amount should be total assets minus fee");
 
         assertEq(strategy.balanceOf(alice), shares - maxShares, "Receiver should have correct shares remaining");
+    }
+
+    function test_Strategy_Redeem_Asset_Revert_NotWithdrawable(uint256 assets) public {
+        vm.assume(assets >= 1000 && assets <= 100_000 ether);
+        uint256 shares = depositIntoStrategy(address(weth), alice, assets);
+        assertEq(strategy.maxRedeemAsset(address(weth), alice), shares, "redeemable Assets should be equal to assets");
+        // set asset to not withdrawable
+        vm.prank(ASSET_MANAGER);
+        strategy.setAssetWithdrawable(address(weth), false);
+        assertEq(
+            strategy.maxRedeemAsset(address(weth), alice),
+            0,
+            "redeemable Assets should be 0 after asset is set to not withdrawable"
+        );
+        // assert redeem should revert
+        vm.expectRevert(abi.encodeWithSelector(IVault.ExceededMaxRedeem.selector, alice, shares, 0));
+        strategy.redeemAsset(address(weth), shares, alice, alice);
+    }
+
+    function depositIntoStrategy(address assetAddress, address depositor, uint256 amount)
+        internal
+        returns (uint256 shares)
+    {
+        IERC20 asset = IERC20(assetAddress);
+
+        uint256 beforeTotalAssets = strategy.totalAssets();
+        uint256 beforeTotalShares = strategy.totalSupply();
+        uint256 beforeStrategyBalance = asset.balanceOf(address(strategy));
+        uint256 beforeDepositorBalance = asset.balanceOf(depositor);
+        uint256 beforeDepositorShares = strategy.balanceOf(depositor);
+        uint256 beforeMaxWithdraw = strategy.maxWithdrawAsset(assetAddress, depositor);
+        assertEq(beforeMaxWithdraw, 0, "Depositor should have no max withdraw before deposit");
+
+        uint256 previewShares = strategy.previewDepositAsset(assetAddress, amount);
+
+        vm.prank(depositor);
+        asset.approve(address(strategy), amount);
+
+        // Test the deposit function
+        vm.prank(depositor);
+        shares = strategy.depositAsset(assetAddress, amount, depositor);
+
+        assertEq(previewShares, shares, "Preview shares should be equal to shares");
+
+        assertEq(
+            strategy.totalAssets(),
+            beforeTotalAssets + strategy.convertToAssets(shares),
+            "Total assets should increase by the amount deposited"
+        );
+        assertEq(
+            strategy.totalSupply(), beforeTotalShares + shares, "Total shares should increase by the amount deposited"
+        );
+
+        assertEq(
+            asset.balanceOf(address(strategy)),
+            beforeStrategyBalance + amount,
+            "Strategy should have the asset after deposit"
+        );
+        assertEq(asset.balanceOf(depositor), beforeDepositorBalance - amount, "From should not have the assets");
+        assertEq(strategy.balanceOf(depositor), beforeDepositorShares + shares, "From should have shares after deposit");
+        assertApproxEqAbs(
+            strategy.maxWithdrawAsset(address(asset), depositor),
+            beforeMaxWithdraw + amount,
+            2,
+            "Depositor should have max withdraw after deposit"
+        );
+    }
+
+    function withdrawFromStrategy(address assetAddress, address withdrawer, uint256 withdrawAmount) internal virtual {
+        IERC20 asset = IERC20(assetAddress);
+
+        // Initial balances
+        uint256 withdrawerAssetBefore = asset.balanceOf(withdrawer);
+        uint256 withdrawerSharesBefore = strategy.balanceOf(withdrawer);
+
+        // Store initial state
+        uint256 initialTotalAssets = strategy.totalAssets();
+        uint256 initialTotalSupply = strategy.totalSupply();
+
+        // Store initial strategy Asset balance
+        uint256 strategyAssetBefore = asset.balanceOf(address(strategy));
+
+        vm.startPrank(withdrawer);
+
+        // Deposit Asset to get shares
+        uint256 shares = strategy.withdrawAsset(address(asset), withdrawAmount, withdrawer, withdrawer);
+
+        vm.stopPrank();
+
+        // Check balances after deposit
+        assertEq(asset.balanceOf(withdrawer), withdrawerAssetBefore + withdrawAmount, "Asset balance incorrect");
+        assertEq(strategy.balanceOf(withdrawer), withdrawerSharesBefore - shares, "Should have burnt shares");
+
+        // Check strategy state after deposit
+        assertEq(
+            strategy.totalAssets(),
+            initialTotalAssets - withdrawAmount,
+            "Total assets should decrease by withdraw amount"
+        );
+        assertEq(strategy.totalSupply(), initialTotalSupply - shares, "Total supply should decrease by shares");
+
+        // Check that strategy Asset balance increased by deposit amount
+        assertEq(
+            asset.balanceOf(address(strategy)),
+            strategyAssetBefore - withdrawAmount,
+            "Strategy balance should decrease by withdraw amount"
+        );
+    }
+
+    function test_Strategy_Deposit_WETH(uint256 assets) external {
+        // Bound inputs to valid ranges
+        vm.assume(assets >= 1000 && assets <= 100_000 ether);
+
+        deal(address(weth), alice, assets);
+        depositIntoStrategy(address(weth), alice, assets);
+    }
+
+    function test_Strategy_Withdraw_WETH(uint256 assets) external {
+        // Bound inputs to valid ranges
+        vm.assume(assets >= 1000 && assets <= 100_000 ether);
+
+        deal(address(weth), alice, assets);
+        depositIntoStrategy(address(weth), alice, assets);
+        withdrawFromStrategy(address(weth), alice, assets);
     }
 }

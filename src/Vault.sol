@@ -5,8 +5,20 @@ import {BaseVault} from "src/BaseVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {VaultLib} from "src/library/VaultLib.sol";
 
+/**
+ * @title Vault
+ * @notice Multi-asset vault implementation extending ERC4626 standard
+ * @dev Provides asset management with fee capabilities and flexible accounting
+ *
+ * Key features:
+ * - Supports multiple deposit assets with common accounting denomination
+ * - Configurable withdrawal fees managed by fee managers
+ * - Buffer and strategy allocation for asset management
+ * - Flexible accounting with real-time or cached asset valuation
+ * - Role-based access control for administration and fee management
+ */
 contract Vault is BaseVault {
-    string public constant VAULT_VERSION = "0.2.0";
+    string public constant VAULT_VERSION = "0.3.0";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
     /**
@@ -26,6 +38,7 @@ contract Vault is BaseVault {
      * @param baseWithdrawalFee_ The base withdrawal fee in basis points (1e8 = 100%).
      * @param countNativeAsset_ Whether the vault should count the native asset.
      * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
+     * @param defaultAssetIndex_ The index of the default asset in the asset list.
      */
     function initialize(
         address admin,
@@ -34,43 +47,21 @@ contract Vault is BaseVault {
         uint8 decimals_,
         uint64 baseWithdrawalFee_,
         bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_
+        bool alwaysComputeTotalAssets_,
+        uint256 defaultAssetIndex_
     ) external virtual initializer {
-        _initialize(admin, name, symbol, decimals_, baseWithdrawalFee_, countNativeAsset_, alwaysComputeTotalAssets_);
-    }
+        _initialize(
+            admin, // Address with admin privileges for the vault
+            name, // Name of the vault token (ERC20)
+            symbol, // Symbol of the vault token (ERC20)
+            decimals_, // Decimal precision for the vault token
+            true, // Start the vault in paused state for safety
+            countNativeAsset_, // Whether to include native ETH in asset calculations
+            alwaysComputeTotalAssets_, // Whether to compute assets in real-time vs using cached values
+            defaultAssetIndex_ // Index of the default asset in the asset list
+        );
 
-    /**
-     * @notice Internal function to initialize the vault.
-     * @param admin The address of the admin.
-     * @param name The name of the vault.
-     * @param symbol The symbol of the vault.
-     * @param decimals_ The number of decimals for the vault token.
-     * @param baseWithdrawalFee_ The base withdrawal fee in basis points (1e8 = 100%).
-     * @param countNativeAsset_ Whether the vault should count the native asset.
-     * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
-     */
-    function _initialize(
-        address admin,
-        string memory name,
-        string memory symbol,
-        uint8 decimals_,
-        uint64 baseWithdrawalFee_,
-        bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_
-    ) internal virtual {
-        __ERC20_init(name, symbol);
-        __AccessControl_init();
-        __ReentrancyGuard_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.paused = true;
-        vaultStorage.decimals = decimals_;
-        vaultStorage.countNativeAsset = countNativeAsset_;
-        vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
-
-        FeeStorage storage fees = _getFeeStorage();
-        fees.baseWithdrawalFee = baseWithdrawalFee_;
+        _setBaseWithdrawalFee(baseWithdrawalFee_);
     }
 
     //// FEES ////
@@ -113,6 +104,14 @@ contract Vault is BaseVault {
      * @dev Only callable by accounts with FEE_MANAGER_ROLE
      */
     function setBaseWithdrawalFee(uint64 baseWithdrawalFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+        _setBaseWithdrawalFee(baseWithdrawalFee_);
+    }
+
+    /**
+     * @dev Internal implementation of setBaseWithdrawalFee
+     * @param baseWithdrawalFee_ The new base withdrawal fee in basis points (1/10000)
+     */
+    function _setBaseWithdrawalFee(uint64 baseWithdrawalFee_) internal virtual {
         if (baseWithdrawalFee_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints(baseWithdrawalFee_);
         FeeStorage storage fees = _getFeeStorage();
         uint64 oldFee = fees.baseWithdrawalFee;

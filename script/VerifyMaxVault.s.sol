@@ -39,9 +39,35 @@ contract VerifyMaxVault is BaseScript, Test {
         assertEq(vault.symbol(), "ynETHx", "symbol is invalid");
         assertEq(vault.decimals(), 18, "decimals is invalid");
         assertEq(vault.provider(), address(rateProvider), "provider is invalid");
-        assertEq(vault.baseWithdrawalFee(), 100000, "base withdrawal fee is invalid");
+        assertEq(vault.baseWithdrawalFee(), 250000, "base withdrawal fee is invalid");
         assertEq(vault.countNativeAsset(), true, "count native asset is invalid");
         assertFalse(vault.alwaysComputeTotalAssets(), "always compute total assets is invalid");
+
+        {
+            // Verify proxy admin and implementation addresses
+            console.log("==============================================");
+            console.log("=        VERIFYING PROXY CONFIGURATION      =");
+            console.log("==============================================");
+
+            // Verify vault proxy configuration
+            address vaultImpl = ProxyUtils.getImplementation(address(vault));
+            address vaultAdmin = ProxyUtils.getProxyAdmin(address(vault));
+            assertEq(vaultImpl, address(implementation), "Vault implementation address mismatch");
+            assertEq(vaultAdmin, vaultProxyAdmin, "Vault proxy admin address mismatch");
+            console.log("\u2705 Vault implementation:     ", vaultImpl);
+            console.log("\u2705 Vault proxy admin:        ", vaultAdmin);
+
+            // Verify withdrawer proxy configuration
+            address withdrawerImpl = ProxyUtils.getImplementation(address(withdrawer));
+            address withdrawerAdmin = ProxyUtils.getProxyAdmin(address(withdrawer));
+
+            assertEq(withdrawerImpl, address(withdrawerImplementation), "Withdrawer implementation address mismatch");
+            assertEq(withdrawerAdmin, withdrawerProxyAdmin, "Withdrawer proxy admin address mismatch");
+            console.log("\u2705 Withdrawer implementation:", withdrawerImpl);
+            console.log("\u2705 Withdrawer proxy admin:   ", withdrawerAdmin);
+            console.log("==============================================");
+        }
+
         IVault.AssetParams memory asset;
         address[] memory assets = vault.getAssets();
 
@@ -62,6 +88,13 @@ contract VerifyMaxVault is BaseScript, Test {
         console.log("==============================================");
         console.log("Verifying withdrawer at:   ", address(withdrawer));
         console.log("==============================================");
+
+        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.3.0");
+        console.log("\u2705 Vault version:          ", vault.VAULT_VERSION());
+        console.log("==============================================");
+
+        assertEq(withdrawer.STRATEGY_VERSION(), "0.2.0", "Strategy version should be 0.2.0");
+        console.log("\u2705 Strategy version:       ", withdrawer.STRATEGY_VERSION());
 
         // Verify provider configuration
         VaultVerification.verifyProvider(Provider(address(rateProvider)), withdrawer);

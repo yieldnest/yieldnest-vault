@@ -29,6 +29,8 @@ interface IActors {
 
     /// @dev multisig
     function BOOTSTRAPPER() external view returns (address);
+
+    function TIMELOCK() external view returns (address);
 }
 
 abstract contract LocalActors is IActors {
@@ -46,6 +48,7 @@ abstract contract LocalActors is IActors {
     address public constant FEE_MANAGER = address(12);
     address public constant BOOTSTRAPPER = address(13);
     address public constant UNAUTHORIZED = address(0);
+    address public constant TIMELOCK = address(14);
 }
 
 contract HoleskyActors is IActors {
@@ -66,6 +69,7 @@ contract HoleskyActors is IActors {
     address public constant FEE_MANAGER = HoleskyAdmin;
     address public constant BOOTSTRAPPER = HoleskyAdmin;
     address public constant UNAUTHORIZED = address(0);
+    address public constant TIMELOCK = HoleskyAdmin;
 }
 
 contract MainnetActors is IActors {
@@ -73,6 +77,8 @@ contract MainnetActors is IActors {
     address public constant YnProcessor = 0x56866A6D5655C9E534320DA95fbBB82Fb3bF3D7D;
     address public constant YnDev = 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3;
     address public constant YnBootstrapper = 0x832e0D8e7A7Bdfe181f30df614383FAA4B5C2924;
+
+    address public constant TIMELOCK = 0xb5b52c63067E490982874B0d0F559668Bbe0c36B;
 
     address public constant ADMIN = YnSecurityCouncil;
     address public constant PROCESSOR = YnProcessor;

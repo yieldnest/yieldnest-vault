@@ -27,7 +27,7 @@ contract SetupWithdrawer is Test, Etches, MainnetActors {
         bool alwaysComputeTotalAssets_ = false;
 
         vm.prank(ADMIN);
-        vault.initialize(ADMIN, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
+        vault.initialize(ADMIN, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_, 0);
         weth = WETH9(payable(MC.WETH));
 
         configureLocal(vault);

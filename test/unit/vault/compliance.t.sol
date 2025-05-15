@@ -8,8 +8,10 @@ import {MainnetActors} from "script/Actors.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
+import {ERC4626ComplianceTest} from "test/unit/helpers/ERC4626ComplianceTest.sol";
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-contract Vault4626ComplianceUnitTest is Test, MainnetActors, Etches {
+contract Vault4626ComplianceUnitTest is ERC4626ComplianceTest, MainnetActors, Etches {
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -19,7 +21,7 @@ contract Vault4626ComplianceUnitTest is Test, MainnetActors, Etches {
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 100_000 ether;
 
-    function setUp() public {
+    function setUp() public override {
         SetupVault setupVault = new SetupVault();
         (vault, weth) = setupVault.setup();
 
@@ -31,6 +33,13 @@ contract Vault4626ComplianceUnitTest is Test, MainnetActors, Etches {
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
+
+        // ERC4626Test initializations
+        _underlying_ = address(vault.asset());
+        _vault_ = address(vault);
+        _delta_ = 0;
+        _vaultMayBeEmpty = false;
+        _unlimitedAmount = false;
     }
 
     /* The maxWithdraw function should return the maximum amount of underlying assets that 
