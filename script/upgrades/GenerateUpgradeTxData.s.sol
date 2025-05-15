@@ -7,7 +7,10 @@ import {console} from "lib/forge-std/src/console.sol";
 
 import {BaseScript} from "script/BaseScript.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
-
+import {Vault} from "src/Vault.sol";
+import {Provider} from "src/module/Provider.sol";
+import {BaseVault} from "src/BaseVault.sol";
+import {VaultVerification} from "script/verification/VaultVerification.sol";
 /**
  * @title GenerateVaultUpgradeTxData
  * @dev This script generates the transaction data needed to upgrade a specific contract in the YnLSDe system.
@@ -38,8 +41,24 @@ import {ProxyUtils} from "script/ProxyUtils.sol";
  * The script will then generate and display the necessary transaction data for the upgrade process.
  * --------
  */
+
 contract GenerateVaultUpgradeTxData is BaseScript {
     string internal _tokenSymbol;
+
+    // Struct to hold local variables to avoid stack too deep errors
+    struct UpgradeData {
+        address newImplementation;
+        address newProvider;
+        address proxyAddress;
+        address proxyAdmin;
+        ITransparentUpgradeableProxy proxy;
+        bytes txData;
+        uint256 txCount;
+        uint256 txIndex;
+        address[] targets;
+        uint256[] values;
+        bytes[] calldatas;
+    }
 
     // needs to be overriden by child script
     function symbol() public view virtual override returns (string memory) {
@@ -52,30 +71,125 @@ contract GenerateVaultUpgradeTxData is BaseScript {
         console.log("Current Chain ID: %s", block.chainid);
 
         _tokenSymbol = vm.envString("TOKEN");
-        address newImplementation = vm.envAddress("NEW_IMPLEMENTATION");
-
         console.log("Token Name: %s", _tokenSymbol);
+
+        // Initialize the upgrade data struct
+        UpgradeData memory data;
+
+        // Load environment variables
+        data.newImplementation = vm.envAddress("NEW_IMPLEMENTATION");
+        try vm.envAddress("NEW_PROVIDER") returns (address provider) {
+            data.newProvider = provider;
+        } catch {
+            data.newProvider = address(0);
+        }
 
         _loadDeployment();
 
         console.log("=== Contract Upgrade Details ===");
         console.log("Contract address: %s", vm.toString(address(vault)));
+        console.log("New implementation: %s", vm.toString(data.newImplementation));
 
-        console.log("New implementation: %s", vm.toString(newImplementation));
+        data.proxyAddress = address(vault);
+        data.proxy = ITransparentUpgradeableProxy(data.proxyAddress);
+        data.proxyAdmin = ProxyUtils.getProxyAdmin(address(data.proxy));
+        require(vaultProxyAdmin == data.proxyAdmin, "ProxyAdmin mismatch");
 
-        address proxyAddress = address(vault);
-        ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(proxyAddress);
-        address proxyAdmin = ProxyUtils.getProxyAdmin(address(proxy));
-        require(vaultProxyAdmin == proxyAdmin, "ProxyAdmin mismatch");
-
-        bytes memory data = ""; // Empty data for now, can be customized if needed
-        bytes memory txData =
-            abi.encodeWithSelector(ProxyAdmin.upgradeAndCall.selector, address(proxy), newImplementation, data);
+        bytes memory emptyData = ""; // Empty data for now, can be customized if needed
+        data.txData = abi.encodeWithSelector(
+            ProxyAdmin.upgradeAndCall.selector, address(data.proxy), data.newImplementation, emptyData
+        );
 
         console.log("=== Upgrade Transaction Details ===");
         console.log("Upgrade timelock: %s", vm.toString(address(timelock)));
-        console.log("Target ProxyAdmin: %s", vm.toString(proxyAdmin));
+        console.log("Target ProxyAdmin: %s", vm.toString(data.proxyAdmin));
         console.log("Upgrade transaction data:");
-        console.logBytes(txData);
+        console.logBytes(data.txData);
+
+        // Determine the number of transactions we need to execute
+        data.txCount = 1; // Start with the vault implementation upgrade
+
+        if (data.newProvider != address(0)) {
+            data.txCount += 1; // One for vault provider
+        }
+
+        // Create arrays for the batch transaction
+        data.targets = new address[](data.txCount);
+        data.values = new uint256[](data.txCount);
+        data.calldatas = new bytes[](data.txCount);
+
+        // Add vault implementation upgrade
+        data.txIndex = 0;
+        data.targets[data.txIndex] = data.proxyAdmin;
+        data.values[data.txIndex] = 0;
+        data.calldatas[data.txIndex] = data.txData;
+        data.txIndex++;
+
+        // Add provider updates if needed
+        if (data.newProvider != address(0)) {
+            console.log("\n=== Provider Update Details ===");
+            console.log("New provider address: %s", vm.toString(data.newProvider));
+
+            // Generate the transaction data for setting the new provider on vault
+            bytes memory setVaultProviderData = abi.encodeWithSelector(BaseVault.setProvider.selector, data.newProvider);
+
+            data.targets[data.txIndex] = address(vault);
+            data.values[data.txIndex] = 0;
+            data.calldatas[data.txIndex] = setVaultProviderData;
+            data.txIndex++;
+
+            console.log("Set provider transaction data for vault:");
+            console.logBytes(setVaultProviderData);
+            console.log("Target for vault setProvider: %s", vm.toString(address(vault)));
+        }
+
+        // Print out the arrays in comma-separated format
+        console.log("\n=== Batch Transaction Arrays ===");
+
+        // Print targets array
+        console.log("Targets: [");
+        printAddressArray(data.targets);
+        console.log("]");
+
+        // Print values array
+        console.log("Values: [");
+        printUintArray(data.values);
+        console.log("]");
+
+        // Print calldatas array
+        console.log("Calldatas: [");
+        printBytesArray(data.calldatas);
+        console.log("]");
+    }
+
+    function printAddressArray(address[] memory addresses) internal pure {
+        for (uint256 i = 0; i < addresses.length; i++) {
+            if (i < addresses.length - 1) {
+                console.log("  %s,", vm.toString(addresses[i]));
+            } else {
+                console.log("  %s", vm.toString(addresses[i]));
+            }
+        }
+    }
+
+    function printUintArray(uint256[] memory values) internal pure {
+        for (uint256 i = 0; i < values.length; i++) {
+            if (i < values.length - 1) {
+                console.log("  %s,", values[i]);
+            } else {
+                console.log("  %s", values[i]);
+            }
+        }
+    }
+
+    function printBytesArray(bytes[] memory data) internal pure {
+        for (uint256 i = 0; i < data.length; i++) {
+            if (i < data.length - 1) {
+                console.logBytes(data[i]);
+                console.log(",");
+            } else {
+                console.logBytes(data[i]);
+            }
+        }
     }
 }
