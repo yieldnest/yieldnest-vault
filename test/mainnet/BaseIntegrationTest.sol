@@ -27,7 +27,7 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         mockKernelVaultDepositLimit(MC.CLISBNB);
         mockKernelVaultDepositLimit(MC.SLISBNB);
 
-        upgradeVaults();
+        // upgradeVaults();
     }
 
     function upgradeVaults() public {
