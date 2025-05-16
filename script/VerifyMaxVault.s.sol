@@ -156,6 +156,10 @@ contract VerifyMaxVault is BaseScript, Test {
         // verify provider configuration
         VaultVerification.verifyProvider(vault, Provider(address(rateProvider)), contracts);
 
+        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.3.0");
+        console.log("\u2705 Vault version:          ", vault.VAULT_VERSION());
+        console.log("==============================================");
+
         // TODO: verify Withdrawer once deployed
         // Get withdrawer from vault assets
         // Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
