@@ -14,6 +14,7 @@ abstract contract BaseWithdrawer is BaseStrategy {
      * @param decimals_ The number of decimals for the vault token.
      * @param countNativeAsset_ Whether the vault should count the native asset.
      * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
+     * @param defaultAssetIndex_ The index of the default asset in the asset list.
      */
     function initialize(
         address admin,
@@ -21,38 +22,12 @@ abstract contract BaseWithdrawer is BaseStrategy {
         string memory symbol,
         uint8 decimals_,
         bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_
+        bool alwaysComputeTotalAssets_,
+        uint256 defaultAssetIndex_
     ) external virtual initializer {
-        _initialize(admin, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
-    }
-
-    /**
-     * @notice Internal function to initialize the strategy.
-     * @param admin The address of the admin.
-     * @param name The name of the vault.
-     * @param symbol The symbol of the vault.
-     * @param decimals_ The number of decimals for the vault token.
-     * @param countNativeAsset_ Whether the vault should count the native asset.
-     * @param alwaysComputeTotalAssets_ Whether the vault should always compute total assets.
-     */
-    function _initialize(
-        address admin,
-        string memory name,
-        string memory symbol,
-        uint8 decimals_,
-        bool countNativeAsset_,
-        bool alwaysComputeTotalAssets_
-    ) internal virtual {
-        __ERC20_init(name, symbol);
-        __AccessControl_init();
-        __ReentrancyGuard_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.paused = true;
-        vaultStorage.decimals = decimals_;
-        vaultStorage.countNativeAsset = countNativeAsset_;
-        vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
+        _initialize(
+            admin, name, symbol, decimals_, true, countNativeAsset_, alwaysComputeTotalAssets_, defaultAssetIndex_
+        );
     }
 
     /**

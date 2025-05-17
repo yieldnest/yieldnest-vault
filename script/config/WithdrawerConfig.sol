@@ -25,8 +25,11 @@ library WithdrawerConfig {
             uint8 decimals_ = 18;
             bool countNativeAsset_ = true;
             bool alwaysComputeTotalAssets_ = false;
+            uint256 defaultAssetIndex = 0;
 
-            vault.initialize(deployer, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_);
+            vault.initialize(
+                deployer, name, symbol, decimals_, countNativeAsset_, alwaysComputeTotalAssets_, defaultAssetIndex
+            );
         }
 
         {

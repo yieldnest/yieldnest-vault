@@ -10,8 +10,8 @@ import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {RulesVerification} from "script/verification/RulesVerification.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {Provider} from "src/module/Provider.sol";
-
 import {Test} from "lib/forge-std/src/Test.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script VerifyMaxVault
 contract VerifyMaxVault is BaseScript, Test {
@@ -55,6 +55,21 @@ contract VerifyMaxVault is BaseScript, Test {
         assertEq(asset.decimals, 18, "asset[0].decimals is invalid");
         assertEq(asset.active, true, "asset[0].active is invalid");
         assertEq(asset.index, 0, "asset[0].index is invalid");
+
+        {
+            // Verify proxy admin and implementation addresses
+            console.log("==============================================");
+            console.log("=        VERIFYING PROXY CONFIGURATION      =");
+            console.log("==============================================");
+
+            // Verify vault proxy configuration
+            address vaultImpl = ProxyUtils.getImplementation(address(vault));
+            address vaultAdmin = ProxyUtils.getProxyAdmin(address(vault));
+            assertEq(vaultImpl, address(implementation), "Vault implementation address mismatch");
+            assertEq(vaultAdmin, vaultProxyAdmin, "Vault proxy admin address mismatch");
+            console.log("\u2705 Vault implementation:     ", vaultImpl);
+            console.log("\u2705 Vault proxy admin:        ", vaultAdmin);
+        }
 
         {
             console.log("Verifying YNWBNBK.");
@@ -140,6 +155,10 @@ contract VerifyMaxVault is BaseScript, Test {
 
         // verify provider configuration
         VaultVerification.verifyProvider(vault, Provider(address(rateProvider)), contracts);
+
+        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.3.0");
+        console.log("\u2705 Vault version:          ", vault.VAULT_VERSION());
+        console.log("==============================================");
 
         // TODO: verify Withdrawer once deployed
         // Get withdrawer from vault assets

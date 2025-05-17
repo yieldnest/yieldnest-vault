@@ -13,7 +13,7 @@ import {IBaseStrategy} from "src/interface/IBaseStrategy.sol";
  */
 abstract contract BaseStrategy is BaseVault, IBaseStrategy {
     /// @notice The version of the strategy contract.
-    string public constant STRATEGY_VERSION = "0.1.0";
+    string public constant STRATEGY_VERSION = "0.2.0";
     /// @notice Role for allocator permissions
     bytes32 public constant ALLOCATOR_ROLE = keccak256("ALLOCATOR_ROLE");
     /// @notice Role for allocator manager permissions
@@ -104,7 +104,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      * @return maxAssets The maximum amount of assets.
      */
     function _maxWithdrawAsset(address asset_, address owner) internal view virtual returns (uint256 maxAssets) {
-        if (paused() || !_getAssetStorage().assets[asset_].active) {
+        if (paused() || !_getBaseStrategyStorage().isAssetWithdrawable[asset_]) {
             return 0;
         }
 
@@ -141,7 +141,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      * @return maxShares The maximum amount of shares.
      */
     function _maxRedeemAsset(address asset_, address owner) internal view virtual returns (uint256 maxShares) {
-        if (paused() || !_getAssetStorage().assets[asset_].active) {
+        if (paused() || !_getBaseStrategyStorage().isAssetWithdrawable[asset_]) {
             return 0;
         }
 

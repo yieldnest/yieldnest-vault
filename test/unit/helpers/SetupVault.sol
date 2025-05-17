@@ -22,11 +22,11 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         Vault vaultImplementation = new Vault();
 
-        // Deploy the proxy
-        bytes memory initData =
-            abi.encodeWithSelector(Vault.initialize.selector, ADMIN, name, symbol, 18, 0, true, false);
+        // Deploy the proxy without initialization data
+        TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, "");
 
-        TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, initData);
+        // Initialize the vault explicitly after deployment
+        Vault(payable(address(vaultProxy))).initialize(ADMIN, name, symbol, 18, 0, true, false, 0);
 
         vault = Vault(payable(address(vaultProxy)));
         weth = WETH9(payable(MC.WETH));

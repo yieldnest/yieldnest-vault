@@ -13,6 +13,9 @@ import {MainnetContracts} from "script/Contracts.sol";
 import {IStakerGateway} from "src/interface/external/kernel/IStakerGateway.sol";
 import {IKernelVault} from "src/interface/external/kernel/IKernelVault.sol";
 import {IKernelConfig} from "src/interface/external/kernel/IKernelConfig.sol";
+import {ProxyAdmin} from "src/Common.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
 
 contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
@@ -23,14 +26,33 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         mockKernelVaultDepositLimit(MC.WBNB);
         mockKernelVaultDepositLimit(MC.CLISBNB);
         mockKernelVaultDepositLimit(MC.SLISBNB);
+    }
+
+    function upgradeVaults() public {
+        // Get initial values to verify after upgrade
+        uint256 initialTotalAssets = vault.totalAssets();
+        uint256 initialTotalSupply = vault.totalSupply();
 
         // Deploy a new Provider
         Provider provider = new Provider();
 
         // Set the provider in the vault
         vm.startPrank(MC.TIMELOCK);
+
+        // Execute the Upgrade ATOMICALLY at upgrade time
+        {
+            Vault newVault = new Vault();
+            ProxyAdmin(ProxyUtils.getProxyAdmin(address(vault))).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(vault)), address(newVault), ""
+            );
+        }
+
         vault.setProvider(address(provider));
         vm.stopPrank();
+
+        // Assert that totalAssets and totalSupply stayed the same after upgrade
+        assertEq(vault.totalAssets(), initialTotalAssets, "Total assets should remain unchanged after upgrade");
+        assertEq(vault.totalSupply(), initialTotalSupply, "Total supply should remain unchanged after upgrade");
     }
 
     function mockKernelVaultDepositLimit(address asset) public {
