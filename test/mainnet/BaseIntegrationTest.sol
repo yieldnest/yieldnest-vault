@@ -26,6 +26,21 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         mockKernelVaultDepositLimit(MC.WBNB);
         mockKernelVaultDepositLimit(MC.CLISBNB);
         mockKernelVaultDepositLimit(MC.SLISBNB);
+
+        //
+        {
+            // Deploy a new Provider
+            Provider provider = new Provider();
+
+            // Set the provider in the vault
+            vm.startPrank(MC.TIMELOCK);
+
+            vault.setProvider(address(provider));
+
+            vault.addAsset(MC.EULER_EWBNB_6_VAULT, false);
+
+            vm.stopPrank();
+        }
     }
 
     function upgradeVaults() public {

@@ -50,6 +50,12 @@ contract ProviderTest is BaseIntegrationTest, Etches {
         assertEq(rate, expectedRateInBnb, "Rate for ClisBnb should match the previewRedeem rate");
     }
 
+    function test_Provider_GetRateEulerVault() public view {
+        uint256 expectedRate = IERC4626(MC.EULER_EWBNB_6_VAULT).convertToAssets(1e18);
+        uint256 rate = provider.getRate(MC.EULER_EWBNB_6_VAULT);
+        assertEq(rate, expectedRate, "Rate for Euler vault should match the convertToAssets rate");
+    }
+
     function test_Provider_UnsupportedAsset() public {
         address unsupportedAsset = address(0x123);
         vm.expectRevert();
