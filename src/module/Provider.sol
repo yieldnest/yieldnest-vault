@@ -41,7 +41,10 @@ contract Provider is IProvider {
     }
 
     function getRate(address asset) public view override returns (uint256) {
-        if (asset == MC.YNWBNBK || asset == MC.YNBNBK || asset == MC.YNCLISBNBK || asset == MC.YNASBNBK) {
+        if (
+            asset == MC.YNWBNBK || asset == MC.YNBNBK || asset == MC.YNCLISBNBK || asset == MC.YNASBNBK
+                || asset == MC.EULER_EWBNB_6_VAULT
+        ) {
             return IERC4626(asset).convertToAssets(1e18);
         }
 

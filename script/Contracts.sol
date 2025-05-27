@@ -49,6 +49,11 @@ library MainnetContracts {
     address public constant KERNEL_CONFIG = 0x45d7Bb73253A908E6160aa5FD9DA083F7Bc6faf5;
     address public constant KERNEL_CONFIG_ADMIN = 0x40f5f0f5E78289B33E450fBCA1cbD8700098cd23;
 
+    // euler
+
+    // EVK Vault eWETH-22 is used as the buffer for ynETHx
+    address public constant EULER_EWBNB_6_VAULT = address(0x8E01DB38a409D6E6B8A81fd21d84E05912e8730A);
+
     //// UNIT TEST ONLY references ////
     address public constant WETH = WBNB;
     address public constant STETH = SLISBNB;
