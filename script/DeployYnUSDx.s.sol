@@ -22,6 +22,7 @@ import {SuperUsdcRules} from "script/rules/SuperUsdcRules.sol";
  * @title DeployYnUSDx
  * @notice Script to deploy the YieldNest USDx vault and configure it for mainnet
  */
+ //TODO: this is incomplete, need to add wrappedUSDC to the vault
 contract DeployYnUSDx is Script, MainnetActors {
     // Constants
     uint256 public constant MAX_SLIPPAGE = 100; // 1% in basis points
@@ -108,7 +109,11 @@ contract DeployYnUSDx is Script, MainnetActors {
             deployer, 
             "Gauntlet USDC Core", 
             "ynUSDx buffer", // todo: do we follow any naming convention here 
-            6
+            6,
+            0,
+            false,
+            true,
+            1
         );
         
         TransparentUpgradeableProxy bufferStrategyProxy = new TransparentUpgradeableProxy(
@@ -117,8 +122,8 @@ contract DeployYnUSDx is Script, MainnetActors {
             bufferStrategyInitData
         );
         BufferStrategy bufferStrategy = BufferStrategy(payable(address(bufferStrategyProxy)));
-
-        Provider provider = new Provider();
+        // WrappedToken wrappedUSDC = new WrappedToken();
+        Provider provider = new Provider(address(0));
 
         address[] memory supportedTokensForParaswapValidator = new address[](7);
         supportedTokensForParaswapValidator[0] = MC.USDC;

@@ -74,9 +74,6 @@ library MainnetContracts {
     address public constant FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
 
     address public constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    address public constant USDE = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
-    address public constant SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
 
     address public constant CURVE_LP_YNETH_YNLSDE_POOL = 0x1f59cC10c6360DA918B0235c98E58008452816EB;
     address public constant CURVE_LP_YNETH_YNLSDE_CONNECTOR = 0xe66E34F9E3116ce497Cbd15268f175eC711539d5;

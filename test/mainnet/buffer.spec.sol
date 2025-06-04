@@ -11,11 +11,14 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseTest} from "test/mainnet/helpers/BaseTest.sol";
-import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 import {BufferStrategy} from "src/BufferStrategy.sol";
 import {Provider} from "src/module/Provider.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BaseVault} from "src/BaseVault.sol";
+import {IVault} from "src/interface/IVault.sol";
+import {console} from "forge-std/console.sol";
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 contract VaultBufferInvariantsTest is BaseTest {
     using SafeERC20 for IERC20;
@@ -24,16 +27,72 @@ contract VaultBufferInvariantsTest is BaseTest {
     BufferStrategy public bufferStrategy;
     Provider public provider;
 
-    string public constant VAULT_VERSION = "0.1.0";
-
     function setUp() public {
         (vault, bufferStrategy, provider) = BaseTest.deploy();
         // Process accounting to ensure vault is in sync
         vault.processAccounting();
+        bufferStrategy.processAccounting();
     }
 
-    function allocateToBuffer(uint256 depositAmount) public returns (uint256 bufferShares) {
-        // Allocate to buffer (MorphoGauntletUSDC vault)
+    function test_Strategy_ERC20_view_functions() public view {
+        assertEq(
+            bufferStrategy.name(), "Buffer Strategy YieldNest USD Max Vault", "Vault name should be 'Buffer Strategy YieldNest USD Max Vault'"
+        );
+
+        assertEq(bufferStrategy.symbol(), "Buffer Strategy ynUSDx", "Vault symbol should be 'Buffer Strategy ynUSDx'");
+
+        assertEq(bufferStrategy.decimals(), 18, "Vault decimals should be 18");
+
+        assertLe(
+            bufferStrategy.totalSupply(),
+            bufferStrategy.totalAssets(),
+            "Vault totalSupply should be less than or equal to totalAssets"
+        );
+    }
+
+    function test_Strategy_ERC4626_view_functions() public view {
+
+        assertEq(address(bufferStrategy.asset()), MC.USDC, "Vault asset should be USDC");
+
+        uint256 totalAssets = bufferStrategy.totalAssets();
+        uint256 totalSupply = bufferStrategy.totalSupply();
+        assertEq(totalAssets, 0, "TotalAssets should be 0");
+        assertEq(totalSupply, 0, "TotalSupply should be 0");
+
+        uint256 amount = 1e6;
+        uint256 shares = bufferStrategy.convertToShares(amount);
+        assertEq(shares, amount * 1e12, "Shares should be equal to amount deposited scaled by 1e12");
+
+        uint256 convertedAssets = bufferStrategy.convertToAssets(shares);
+        assertEq(convertedAssets, amount, "Converted assets should be equal to amount deposited");
+
+        uint256 maxDeposit = bufferStrategy.maxDeposit(address(this));
+        assertGt(maxDeposit, 0, "Max deposit should be greater than 0");
+
+        uint256 maxMint = bufferStrategy.maxMint(address(this));
+        assertGt(maxMint, 0, "Max mint should be greater than 0");
+
+        uint256 maxWithdraw = bufferStrategy.maxWithdraw(address(this));
+        assertEq(maxWithdraw, 0, "Max withdraw should be zero");
+
+        uint256 maxRedeem = bufferStrategy.maxRedeem(address(this));
+        assertEq(maxRedeem, 0, "Max redeem should be zero");
+    }
+
+    function test_buffer_strategy_view_functions() public view {
+        assertFalse(bufferStrategy.paused(), "Vault should not be paused");
+
+        address[] memory assets = bufferStrategy.getAssets();
+        assertEq(assets.length, 3, "There should be one asset in the vault");
+        assertEq(assets[0], address(wrappedUSDC), "First asset should be wrappedUSDC");
+        assertEq(assets[1], MC.USDC, "Second asset should be USDC");
+
+        assertEq(bufferStrategy.asset(), MC.USDC, "Vault asset should be USDC");
+        assertEq(bufferStrategy.defaultAssetIndex(), 1, "Default asset index should be 1");
+    }
+
+    function allocateToBuffer(uint256 depositAmount) public returns (uint256 bufferStrategySharesMinted) {
+        // Allocate to buffer (MorphoGauntletUSDC core vault)
         {
             address[] memory targets = new address[](2);
             uint256[] memory values = new uint256[](2);
@@ -45,171 +104,243 @@ contract VaultBufferInvariantsTest is BaseTest {
 
             targets[1] = address(bufferStrategy);
             values[1] = 0;
-            data[1] = abi.encodeCall(IERC4626.deposit, (depositAmount, address(vault)));
+            data[1] = abi.encodeCall(BaseVault.depositAsset, (MC.USDC, depositAmount, address(vault)));
 
             vm.startPrank(PROCESSOR);
             bytes[] memory returnData = vault.processor(targets, values, data);
             vm.stopPrank();
-        
-            bufferShares = abi.decode(returnData[1], (uint256));
+
+            bufferStrategySharesMinted = abi.decode(returnData[1], (uint256));
         }
         vault.processAccounting();
+        bufferStrategy.processAccounting();
     }
 
-    function test_Vault_4626Invariants_depositBase_WithBufferAllocation(uint256 assets, uint256 bufferAmount) public {
-        assets = bound(assets, 1, 1000_000 * 1e6);
-        bufferAmount = bound(bufferAmount, 1, assets);
+    function test_allocate_to_buffer_strategy_with_sync_deposit_on(uint256 userDepositAmount, uint256 bufferDepositAmount) public {
+        address alice = makeAddr("alice");
+        userDepositAmount = bound(userDepositAmount, 1000, 1_000_000 * 1e6);
+        bufferDepositAmount = bound(bufferDepositAmount, 1000, userDepositAmount);
+
+        uint256 expectedSharesToReceive = vault.previewDeposit(userDepositAmount);
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 totalSupplyBefore = vault.totalSupply();
+        deal(MC.USDC, alice, userDepositAmount);
+        _depositAssetToVault(MC.USDC, userDepositAmount, alice);
+
+        vault.processAccounting();
+        bufferStrategy.processAccounting();
+
+        console.log("totalAssets", vault.totalAssets());
+        console.log("totalSupply", vault.totalSupply());
+
+        assertEq(expectedSharesToReceive, userDepositAmount * 1e12, "Shares should be equal to amount deposited scaled by 1e12");
+        
+        totalSupplyInvariant(totalSupplyBefore + expectedSharesToReceive);
+        totalAssetsInvariant(totalAssetsBefore + userDepositAmount);
+        assertEq(vault.totalBaseAssets(), userDepositAmount * 1e12, "Vault should have the same total base assets as the user deposit amount scaled by 1e12");
+
+
+        totalAssetsBefore = vault.totalAssets();
+        totalSupplyBefore = vault.totalSupply();
+
+        uint256 bufferStrategySharesMinted;
+        uint256 expectedShareBalanceOfMorphoGauntletUsdcVault;
+        {
+            // allocate to buffer
+            uint256 usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
+            uint256 usdcBalanceOfBufferBefore = IERC20(MC.USDC).balanceOf(vault.buffer());
+            expectedShareBalanceOfMorphoGauntletUsdcVault = IERC4626(MC.MORPHO_GAUNTLET_USDC_VAULT).previewDeposit(bufferDepositAmount);
+
+            bufferStrategySharesMinted = allocateToBuffer(bufferDepositAmount);
+
+            uint256 usdcBalanceOfVaultAfter = IERC20(MC.USDC).balanceOf(address(vault));
+            uint256 usdcBalanceOfBufferAfter = IERC20(MC.USDC).balanceOf(vault.buffer());
+            assertEq(usdcBalanceOfVaultBefore - usdcBalanceOfVaultAfter, bufferDepositAmount, "USDC balance should decrease by amount deposited in buffer");
+            assertEq(usdcBalanceOfBufferAfter, 0, "Buffer balance should be allocated to usdc core vault due to sync deposit on");
+        }
+
+        assertGt(bufferStrategySharesMinted, 0, "Buffer shares should be greater than 0");
+        assertApproxEqAbs(bufferStrategy.totalAssets(), bufferDepositAmount, 1e6, "Buffer assets should equal buffer amount");
+        assertEq(IERC20(MC.MORPHO_GAUNTLET_USDC_VAULT).balanceOf(address(bufferStrategy)), expectedShareBalanceOfMorphoGauntletUsdcVault, "Incorrect gauntlet usdc vault balance in buffer strategy");
+        assertEq(bufferStrategy.balanceOf(address(vault)), bufferStrategySharesMinted, "Incorrect share amount of bufferStrategyShares in vault");
+        assertApproxEqAbs(vault.totalAssets(), totalAssetsBefore, 1e7, "Vault total assets should be similar to before ignorning rounding errors");
+        totalSupplyInvariant(totalSupplyBefore);
+        
+    }
+
+    function test_allocateToBuffer_syncDeposit_off(uint256 userDepositAmount, uint256 bufferDepositAmount) public {
+        vm.prank(DEPOSIT_MANAGER);
+        bufferStrategy.setSyncDeposit(false);
+
+        address alice = makeAddr("alice");
+
+        userDepositAmount = bound(userDepositAmount, 1000, 1_000_000 * 1e6);
+        bufferDepositAmount = bound(bufferDepositAmount, 1000, userDepositAmount);
+
+
+        // Make initial deposit
+        deal(MC.USDC, alice, userDepositAmount);
+        _depositAssetToVault(MC.USDC, userDepositAmount, alice);
+
+        // Process accounting
+        vault.processAccounting();
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
 
-        // Test the decimals function
-        assertEq(vault.decimals(), 18, "Decimals should be 18");
+        // Allocate to buffer
+        uint256 bufferStrategySharesMinted = allocateToBuffer(bufferDepositAmount);
+        bufferStrategy.processAccounting();
 
-        // Test the asset function
-        assertEq(vault.asset(), MC.USDC, "Asset address should be WETH");
-
-
-        // Test the convertToShares function
-        uint256 shares = vault.convertToShares(assets);
-        assertGt(shares, 0, "Shares should be greater than 0");
-
-        uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
-
-        uint256 previewedShares = vault.previewDeposit(assets);
-        assertEqThreshold(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
-
-        // Test the previewMint function
-        uint256 previewedAssets = vault.previewMint(shares);
-        assertEqThreshold(previewedAssets, assets, 3, "Previewed assets should equal the original assets");
-
-        {
-            // Test the depositAsset function
-            deal(MC.USDC, address(this), assets);
-            IERC20(MC.USDC).approve(address(vault), assets);
-
-            address receiver = address(this);
-            uint256 depositedShares = vault.deposit(assets, receiver);
-            assertEq(depositedShares, shares, "Deposited shares should equal the converted shares");
-        }
-
-        vault.processAccounting();
-
-        totalSupplyInvariant(initialSupply + shares);
-        uint256 rate = IProvider(vault.provider()).getRate(vault.asset());
-        uint256 baseAmount = Math.mulDiv(assets, rate, 10 ** ERC20(MC.USDC).decimals(), Math.Rounding.Floor);
-        totalAssetsInvariant(initialAssets + baseAmount);
-
-        initialAssets = vault.totalAssets();
-        initialSupply = vault.totalSupply();
-
-        uint256 bufferShares;
-        {
-            // allocate to buffer
-            uint256 balanceBefore = IERC20(MC.USDC).balanceOf(address(vault));
-            uint256 bufferBefore = IERC20(MC.USDC).balanceOf(vault.buffer());
-
-            bufferShares = allocateToBuffer(bufferAmount);
-
-            uint256 balanceAfter = IERC20(MC.USDC).balanceOf(address(vault));
-            uint256 bufferAfter = IERC20(MC.USDC).balanceOf(vault.buffer());
-            assertEq(balanceBefore - balanceAfter, bufferAmount, "USDC balance should decrease by buffer amount");
-            assertEq(bufferAfter - bufferBefore, 0, "Buffer balance should be allocated to usdc core vault");
-        }
-
-        assertGt(bufferShares, 0, "Buffer shares should be greater than 0");
-
-        uint256 bufferRate = IProvider(vault.provider()).getRate(vault.buffer());
-        uint256 bufferAssets = Math.mulDiv(bufferShares, bufferRate, 1e18, Math.Rounding.Floor);
-        bufferAmount = Math.mulDiv(bufferAmount, bufferRate, 1e6, Math.Rounding.Floor);
-
-        assertApproxEqRel(bufferAssets, bufferAmount, 1e13, "Buffer assets should equal buffer amount");
+        assertEq(IERC20(MC.USDC).balanceOf(vault.buffer()), bufferDepositAmount, "Buffer should have received USDC");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), userDepositAmount - bufferDepositAmount, "Vault should have received USDC");
+        assertEq(bufferStrategy.totalAssets(), bufferDepositAmount, "Buffer assets should equal buffer amount");
+        assertEq(bufferStrategy.balanceOf(address(vault)), bufferStrategySharesMinted, "Incorrect share amount of bufferStrategyShares in vault");
+        assertEq(bufferStrategy.totalSupply(), bufferStrategySharesMinted, "Buffer strategy total supply should equal buffer strategy shares minted");
 
         totalSupplyInvariant(initialSupply);
-        totalAssetsInvariant(initialAssets - bufferAmount + bufferAssets);
+        totalAssetsInvariant(initialAssets);
     }
 
-    function testDonationToBuffer_withoutBufferAllocation() public {
-        uint256 assets = 1000_000 * 1e6;
-        uint256 bufferAmount = 500_000 * 1e6;
+    function testDonationToBuffer_withoutBufferAllocation(uint256 userDepositAmount, uint256 bufferDonationAmount) public {
+        userDepositAmount = bound(userDepositAmount, 1000, 1_000_000 * 1e6);
+        bufferDonationAmount = bound(bufferDonationAmount, 1000, userDepositAmount);
+
+        address alice = makeAddr("alice");
 
         // Initial state
         uint256 initialSupply = vault.totalSupply();
         uint256 initialAssets = vault.totalAssets();
 
+        uint256 expectedSharesToReceive = vault.previewDeposit(userDepositAmount);
+
         // Make initial deposit
-        deal(MC.USDC, address(this), assets);
-        IERC20(MC.USDC).approve(address(vault), assets);
-        uint256 shares = vault.deposit(assets, address(this));
-        uint256 rate = IProvider(vault.provider()).getRate(vault.asset());
-        uint256 baseAmount = Math.mulDiv(assets, rate, 10 ** ERC20(vault.asset()).decimals(), Math.Rounding.Floor);
+        deal(MC.USDC, alice, userDepositAmount);
+        _depositAssetToVault(MC.USDC, userDepositAmount, alice);
 
         // Process accounting
         vault.processAccounting();
 
-        totalSupplyInvariant(initialSupply + shares);
-        totalAssetsInvariant(initialAssets + baseAmount);
+        totalSupplyInvariant(initialSupply + expectedSharesToReceive);
+        totalAssetsInvariant(initialAssets + userDepositAmount);
+
+        initialSupply = vault.totalSupply();
+        initialAssets = vault.totalAssets();
+
+        allocateToBuffer(userDepositAmount);
 
         // Donate directly to buffer
-        deal(MC.USDC, address(this), bufferAmount);
-        IERC20(MC.USDC).transfer(vault.buffer(), bufferAmount);
-        uint256 baseBufferAmount = Math.mulDiv(bufferAmount, rate, 10 ** ERC20(bufferStrategy.asset()).decimals(), Math.Rounding.Floor);
-
-        // Allocate to buffer
-        allocateToBuffer(bufferAmount);
+        deal(MC.USDC, address(this), bufferDonationAmount);
+        IERC20(MC.USDC).transfer(vault.buffer(), bufferDonationAmount);
 
         vault.processAccounting();
+        bufferStrategy.processAccounting();
 
-        totalSupplyInvariant(initialSupply + shares);
-        totalAssetsInvariant(initialAssets + baseAmount);
+        totalSupplyInvariant(initialSupply);
+        assertApproxEqAbs(vault.totalAssets(), initialAssets + bufferDonationAmount, 1e7, "Vault total assets should increase by buffer donation amount ignoring rounding errors");
     }
 
-    function test_allocateToBuffer_syncDeposit_off() public {
-        vm.prank(DEPOSIT_MANAGER);
-        bufferStrategy.setSyncDeposit(false);
+    function test_revert_nonAllocator_allocate_to_buffer() public {
+        address alice = makeAddr("alice");
+        uint256 amount = 1000e6;
+        deal(MC.USDC, alice, amount);
 
-        uint256 assets = 1000_000 * 1e6;
-        uint256 bufferAmount = 500_000 * 1e6;
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), amount);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, alice, bufferStrategy.ALLOCATOR_ROLE()
+            )
+        );
+        bufferStrategy.depositAsset(MC.USDC, amount, alice);
 
-        // Make initial deposit
-        deal(MC.USDC, address(this), assets);
-        IERC20(MC.USDC).approve(address(vault), assets);
-        uint256 shares = vault.deposit(assets, address(this));
+        deal(address(bufferStrategy), alice, amount);
+        deal(MC.USDC, address(bufferStrategy), amount);
 
-        // Process accounting
-        vault.processAccounting();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, alice, bufferStrategy.ALLOCATOR_ROLE()
+            )
+        );
+        bufferStrategy.withdrawAsset(MC.USDC, 1, alice, alice);
+        vm.stopPrank();
 
-        // Allocate to buffer
-        allocateToBuffer(bufferAmount);
-
-        assertEq(IERC20(MC.USDC).balanceOf(vault.buffer()), bufferAmount, "Buffer should have received USDC");
     }
 
-    function test_withdrawFromBuffer_notSyncWithdraw() public {
+    function test_withdrawFromBuffer_syncWithdraw_off(uint256 userDepositAmount) public {
         vm.prank(DEPOSIT_MANAGER);
         bufferStrategy.setSyncWithdraw(false);
 
-        uint256 depositAmount =  100_000e6;
+        userDepositAmount = bound(userDepositAmount, 1000, 1_000_000 * 1e6);
 
         address alice = makeAddr("alice");
-        deal(MC.USDC, alice, depositAmount);
+        deal(MC.USDC, alice, userDepositAmount);
+        _depositAssetToVault(MC.USDC, userDepositAmount, alice);
 
-        // Approve and deposit USDC
-        vm.startPrank(alice);
-        IERC20(MC.USDC).approve(address(vault), depositAmount);
-        vault.deposit(depositAmount, alice);
-        vm.stopPrank();
+        allocateToBuffer(userDepositAmount);
 
-        allocateToBuffer(depositAmount);
-
-        uint256 aliceSharesBefore = vault.balanceOf(alice);
-        vm.startPrank(alice);
+        uint256 vaultSharesOfAliceBefore = vault.balanceOf(alice);
         uint256 maxWithdraw = vault.maxWithdraw(alice);
+        vm.startPrank(alice);
         vault.withdraw(maxWithdraw, alice, alice);
         vm.stopPrank();
 
         assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "Alice should not receive USDC");
-        assertEq(vault.balanceOf(alice), aliceSharesBefore, "Alice should have same shares before");
+        assertEq(vault.balanceOf(alice), vaultSharesOfAliceBefore, "Alice should have same shares before");
+        assertEq(maxWithdraw, 0, "Max withdraw should be 0 due to sync withdraw off and no usdc in buffer");
+
+        vm.startPrank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVault.ExceededMaxWithdraw.selector, alice, maxWithdraw + 1, maxWithdraw));
+        vm.stopPrank();
+
+        // donate 1 usdc to buffer
+        deal(MC.USDC, address(bufferStrategy), 1e6);
+        vm.startPrank(alice);
+        vault.withdraw(1e6, alice, alice);
+        vm.stopPrank();
+
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 1e6, "Alice should receive 1 usdc");
+        assertEq(IERC20(MC.USDC).balanceOf(address(bufferStrategy)), 0, "Buffer should have 0 usdc due to sync deposit off");
+        assertLt(vault.balanceOf(alice), vaultSharesOfAliceBefore, "Alice should have less shares due to processing of withdraw");
+    }
+
+    function test_withdrawFromBuffer_syncWithdraw_on(uint256 userDepositAmount) public {
+        vm.prank(DEPOSIT_MANAGER);
+        bufferStrategy.setSyncWithdraw(true);
+
+        userDepositAmount = bound(userDepositAmount, 1000, 1_000_000 * 1e6);
+        address alice = makeAddr("alice");
+        
+        deal(MC.USDC, alice, userDepositAmount);
+        _depositAssetToVault(MC.USDC, userDepositAmount, alice);
+
+        allocateToBuffer(userDepositAmount);
+
+        uint256 vaultSharesOfAliceBefore = vault.balanceOf(alice);
+        uint256 withdrawableUSDC = vault.previewRedeem(vaultSharesOfAliceBefore);
+        vm.startPrank(alice);
+        vault.redeem(vaultSharesOfAliceBefore, alice, alice);
+        vm.stopPrank();
+
+        vault.processAccounting();
+        bufferStrategy.processAccounting();
+
+        assertEq(IERC20(MC.USDC).balanceOf(alice), withdrawableUSDC, "Alice should receive max withdraw amount");
+        assertApproxEqAbs(IERC20(MC.USDC).balanceOf(alice), userDepositAmount, 1e7, "Alice should receive approximately same amount of usdc as deposited");
+        assertGt(withdrawableUSDC, 0, "Max withdraw should be 0 due to sync withdraw off and no usdc in buffer");
+        assertEq(vault.balanceOf(alice), 0, "Alice should have same shares before");
+        assertEq(IERC20(MC.USDC).balanceOf(address(bufferStrategy)), 0, "Buffer should have 0 usdc due to sync deposit off");
+        assertEq(vault.balanceOf(alice), 0, "Alice should have 0 shares due to processing of withdraw");
+        assertEq(vault.totalSupply(), 0, "Vault total supply should be 0");
+        assertApproxEqAbs(vault.totalAssets(), 0, 1e7, "Vault total assets should be 0");
+        assertApproxEqAbs(bufferStrategy.totalSupply(), 0, 1e18, "Buffer strategy total supply should be 0");
+        assertApproxEqAbs(bufferStrategy.totalAssets(), 0, 1e7, "Buffer strategy total assets should be 0");
+    }
+
+    function _depositAssetToVault(address asset, uint256 amount, address user) internal {
+        vm.startPrank(user);
+        IERC20(asset).approve(address(vault), amount);
+        vault.depositAsset(asset, amount, user);
+        vm.stopPrank();
     }
 }

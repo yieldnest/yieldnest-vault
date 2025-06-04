@@ -5,36 +5,34 @@ import {SafeERC20, IERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
 import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import "forge-std/console.sol";
 
 contract BufferStrategy is BaseStrategy {
-
     struct BufferStrategyStorage {
         address usdcCoreVault;
     }
     /// @notice Role for morpho usdc core vault manager permissions
+
     bytes32 public constant MORPHO_USDC_CORE_VAULT_MANAGER_ROLE = keccak256("MORPHO_USDC_CORE_VAULT_MANAGER_ROLE");
-    
+
     /// @notice Role for deposit manager permissions
     bytes32 public constant DEPOSIT_MANAGER_ROLE = keccak256("DEPOSIT_MANAGER_ROLE");
-    /**
-     * @notice Initializes the Strategy Vault.
-     * @param admin The address of the admin.
-     * @param name The name of the vault.
-     * @param symbol The symbol of the vault.
-     * @param decimals_ The number of decimals for the vault token.
-     */
-    function initialize(address admin, string memory name, string memory symbol, uint8 decimals_)
-        external
-        initializer
-    {
-        __ERC20_init(name, symbol);
-        __AccessControl_init();
-        __ReentrancyGuard_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.paused = true;
-        vaultStorage.decimals = decimals_;
+    function initialize(
+        address admin,
+        string memory name,
+        string memory symbol,
+        uint8 decimals_,
+        bool paused_,
+        bool countNativeAsset_,
+        bool alwaysComputeTotalAssets_,
+        uint256 defaultAssetIndex_,
+        address usdcCoreVault_
+    ) external initializer {
+        BaseVault._initialize(
+            admin, name, symbol, decimals_, paused_, countNativeAsset_, alwaysComputeTotalAssets_, defaultAssetIndex_
+        );
+        _bufferStrategyStorage().usdcCoreVault = usdcCoreVault_;
     }
 
     /**
@@ -56,19 +54,14 @@ contract BufferStrategy is BaseStrategy {
         uint256 shares,
         uint256 baseAssets
     ) internal virtual override onlyAllocator {
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.totalAssets += baseAssets;
+        // call the base strategy deposit function for accounting
+        super._deposit(asset_, caller, receiver, assets, shares, baseAssets);
 
-        SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
-
-        if (_getSyncStrategyStorage().syncDeposit) {
-            address usdcCoreVault = _getBufferStrategyStorage().usdcCoreVault;
+        if (asset_ == asset() && _syncStrategyStorage().syncDeposit) {
+            address usdcCoreVault = _bufferStrategyStorage().usdcCoreVault;
             SafeERC20.safeIncreaseAllowance(IERC20(asset_), usdcCoreVault, assets);
             IERC4626(usdcCoreVault).deposit(assets, address(this));
         }
-
-        _mint(receiver, shares);
-        emit Deposit(caller, receiver, assets, shares);
     }
 
     /**
@@ -98,16 +91,17 @@ contract BufferStrategy is BaseStrategy {
             _spendAllowance(owner, caller, shares);
         }
 
-         uint256 vaultBalance = IERC20(asset_).balanceOf(address(this));
+        uint256 vaultBalance = IERC20(asset_).balanceOf(address(this));
 
-        if (vaultBalance < assets && _getSyncStrategyStorage().syncWithdraw) {
+        if (asset_ == asset() && vaultBalance < assets && _syncStrategyStorage().syncWithdraw) {
             uint256 amountToWithdraw = assets - vaultBalance;
-            address usdcCoreVault = _getBufferStrategyStorage().usdcCoreVault;
+            address usdcCoreVault = _bufferStrategyStorage().usdcCoreVault;
             IERC4626(usdcCoreVault).withdraw(amountToWithdraw, address(this), address(this));
         }
 
         // NOTE: burn shares before withdrawing the assets
         _burn(owner, shares);
+        console.log("shares burning", shares);
 
         SafeERC20.safeTransfer(IERC20(asset_), receiver, assets);
 
@@ -120,7 +114,13 @@ contract BufferStrategy is BaseStrategy {
      * @param owner The address of the owner.
      * @return maxAssets The maximum amount of assets.
      */
-    function _maxWithdrawAsset(address asset_, address owner) internal view virtual override returns (uint256 maxAssets) {
+    function _maxWithdrawAsset(address asset_, address owner)
+        internal
+        view
+        virtual
+        override
+        returns (uint256 maxAssets)
+    {
         if (paused() || !_getAssetStorage().assets[asset_].active) {
             return 0;
         }
@@ -132,15 +132,15 @@ contract BufferStrategy is BaseStrategy {
         maxAssets = availableAssets < maxAssets ? availableAssets : maxAssets;
     }
 
-     /**
+    /**
      * @notice Internal function to get the available amount of assets.
      * @param asset_ The address of the asset.
      * @return availableAssets The available amount of assets.
      */
     function _availableAssets(address asset_) internal view virtual override returns (uint256 availableAssets) {
         availableAssets = IERC20(asset_).balanceOf(address(this));
-        if (_getSyncStrategyStorage().syncWithdraw) {
-            address usdcCoreVault = _getBufferStrategyStorage().usdcCoreVault;
+        if (_syncStrategyStorage().syncWithdraw && asset_ == asset()) {
+            address usdcCoreVault = _bufferStrategyStorage().usdcCoreVault;
             uint256 usdcCoreVaultBalance = IERC4626(usdcCoreVault).balanceOf(address(this));
             uint256 availableAssetsInUSDCVault = IERC4626(usdcCoreVault).previewRedeem(usdcCoreVaultBalance);
             availableAssets += availableAssetsInUSDCVault;
@@ -153,7 +153,13 @@ contract BufferStrategy is BaseStrategy {
      * @param owner The address of the owner.
      * @return maxShares The maximum amount of shares.
      */
-    function _maxRedeemAsset(address asset_, address owner) internal view virtual override returns (uint256 maxShares) {
+    function _maxRedeemAsset(address asset_, address owner)
+        internal
+        view
+        virtual
+        override
+        returns (uint256 maxShares)
+    {
         if (paused() || !_getAssetStorage().assets[asset_].active) {
             return 0;
         }
@@ -167,18 +173,18 @@ contract BufferStrategy is BaseStrategy {
             : maxShares;
     }
 
-     /**
+    /**
      * @notice Retrieves the strategy storage structure.
      * @return $ The strategy storage structure.
      */
-    function _getSyncStrategyStorage() internal pure virtual returns (SyncStrategyStorage storage $) {
+    function _syncStrategyStorage() internal pure virtual returns (SyncStrategyStorage storage $) {
         assembly {
             // keccak256("yieldnest.storage.strategy.sync")
             $.slot := 0x023d1cf75a0b8417c3b567b13742795389a9b4d09bd3ca14ffeda95bbf3e6f7a
         }
     }
 
-    function _getBufferStrategyStorage() internal pure virtual returns (BufferStrategyStorage storage $) {
+    function _bufferStrategyStorage() internal pure virtual returns (BufferStrategyStorage storage $) {
         assembly {
             // keccak256("yieldnest.storage.strategy.buffer")
             $.slot := 0xfdc764d4e5946388ce23bfc295aa25f4722838debaa9bd7cf51f9c12ea870bf1
@@ -197,7 +203,7 @@ contract BufferStrategy is BaseStrategy {
         if (usdcCoreVault_ == address(0)) {
             revert ZeroAddress();
         }
-        _getBufferStrategyStorage().usdcCoreVault = usdcCoreVault_;
+        _bufferStrategyStorage().usdcCoreVault = usdcCoreVault_;
     }
 
     /**
@@ -205,7 +211,7 @@ contract BufferStrategy is BaseStrategy {
      * @param syncDeposit The new value for the sync deposit flag.
      */
     function setSyncDeposit(bool syncDeposit) external onlyRole(DEPOSIT_MANAGER_ROLE) {
-        _getSyncStrategyStorage().syncDeposit = syncDeposit;
+        _syncStrategyStorage().syncDeposit = syncDeposit;
     }
 
     /**
@@ -213,6 +219,6 @@ contract BufferStrategy is BaseStrategy {
      * @param syncWithdraw The new value for the sync withdraw flag.
      */
     function setSyncWithdraw(bool syncWithdraw) external onlyRole(DEPOSIT_MANAGER_ROLE) {
-        _getSyncStrategyStorage().syncWithdraw = syncWithdraw;
+        _syncStrategyStorage().syncWithdraw = syncWithdraw;
     }
 }

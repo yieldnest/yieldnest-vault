@@ -25,110 +25,159 @@ contract SuperUSDCTest is BaseTest {
         (vault, bufferStrategy, provider) = BaseTest.deploy();
         vm.stopPrank();
     }
-    
-    function test_deposit_to_superusdc_vault() public {
-        uint256 depositAmount = 10_000 * 1e6;
+
+    function test_deposit_fully_to_superusdc_vault(uint256 depositAmount) public {
+        depositAmount = bound(depositAmount, 1000, 50_000_000 * 1e6);
 
         address alice = makeAddr("alice");
         deal(MC.USDC, alice, depositAmount);
-        
-        vm.startPrank(alice);
-        IERC20(MC.USDC).approve(address(vault), depositAmount);
-        vault.depositAsset(MC.USDC, depositAmount, alice);
-        vm.stopPrank();
-        
+
+        _depositAssetToVault(MC.USDC, depositAmount, alice);
+
         // Process accounting
         vault.processAccounting();
+
+        assertEq(vault.totalAssets(), depositAmount, "Vault should have the same total assets as the deposit amount");
+        assertEq(vault.totalBaseAssets(), depositAmount * 1e12, "Vault should have the same total base assets as the deposit amount scaled by 1e12");
+        assertEq(vault.totalSupply(), depositAmount * 1e12, "Vault should have the same total supply as the deposit amount scaled by 1e12");
+        assertEq(vault.balanceOf(alice), depositAmount * 1e12, "Vault should have the same balance of alice as the deposit amount");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), depositAmount, "USDC balance of vault should decrease by deposit amount");
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "USDC balance of alice should be 0");
         
-        // Record initial vault state
+        // vault state before deposit to superusdc vault
         uint256 vaultAssetsBefore = vault.totalAssets();
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
-        uint256 usdcBalanceBefore = IERC20(MC.USDC).balanceOf(address(vault));
-        uint256 superUSDCBalanceBefore = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
-        
+        uint256 usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
+        uint256 superUSDCBalanceOfVaultBefore = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
+
         depositToSuperUSDCVault(depositAmount);
 
-        uint256 usdcBalanceAfter = IERC20(MC.USDC).balanceOf(address(vault));
-        uint256 superUSDCBalanceAfter = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
-        
+        uint256 usdcBalanceOfVaultAfter = IERC20(MC.USDC).balanceOf(address(vault));
+        uint256 superUSDCBalanceOfVaultAfter = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
+
         totalSupplyInvariant(vaultTotalSupplyBefore);
         totalAssetsInvariant(vaultAssetsBefore);
-        
-        assertTrue(superUSDCBalanceAfter > superUSDCBalanceBefore, "Vault should have SuperUSDC balance after deposit");
-        console.log(superUSDCBalanceAfter);
-        assertEq(
-            usdcBalanceBefore - usdcBalanceAfter,
-            depositAmount,
-            "USDC balance should decrease by deposit amount"
-        );
+
+        assertTrue(superUSDCBalanceOfVaultAfter > superUSDCBalanceOfVaultBefore, "Vault should have SuperUSDC balance after deposit");
+        assertEq(usdcBalanceOfVaultBefore - usdcBalanceOfVaultAfter, depositAmount, "USDC balance of vault should decrease by deposit amount");
     }
-    
-    function test_deposit_and_withdraw_from_superusdc_vault() public {
-        uint256 depositAmount = 10_000 * 1e6;
+
+    function test_deposit_partially_to_superusdc_vault(uint256 userDepositAmount, uint256 superUSDCVaultDepositAmount) public {
+        userDepositAmount = bound(userDepositAmount, 1000, 50_000_000 * 1e6);
+        superUSDCVaultDepositAmount = bound(superUSDCVaultDepositAmount, 1000, userDepositAmount);
+
+        address alice = makeAddr("alice");
+        deal(MC.USDC, alice, userDepositAmount);
+
+        _depositAssetToVault(MC.USDC, userDepositAmount, alice);
+
+        // Process accounting
+        vault.processAccounting();
+
+        assertEq(vault.totalAssets(), userDepositAmount, "Vault should have the same total assets as the user deposit amount");
+        assertEq(vault.totalBaseAssets(), userDepositAmount * 1e12, "Vault should have the same total base assets as the user deposit amount scaled by 1e12");
+        assertEq(vault.totalSupply(), userDepositAmount * 1e12, "Vault should have the same total supply as the user deposit amount scaled by 1e12");
+        assertEq(vault.balanceOf(alice), userDepositAmount * 1e12, "Vault should have the same balance of alice as the user deposit amount");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), userDepositAmount, "USDC balance of vault should decrease by user deposit amount");
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "USDC balance of alice should be 0");
+        
+        // vault state before deposit to superusdc vault
+        uint256 vaultAssetsBefore = vault.totalAssets();
+        uint256 vaultTotalSupplyBefore = vault.totalSupply();
+        uint256 usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
+        uint256 superUSDCBalanceOfVaultBefore = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
+
+        depositToSuperUSDCVault(superUSDCVaultDepositAmount);
+
+        uint256 usdcBalanceOfVaultAfter = IERC20(MC.USDC).balanceOf(address(vault));
+        uint256 superUSDCBalanceOfVaultAfter = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
+
+        totalSupplyInvariant(vaultTotalSupplyBefore);
+        totalAssetsInvariant(vaultAssetsBefore);
+
+        assertTrue(superUSDCBalanceOfVaultAfter > superUSDCBalanceOfVaultBefore, "Vault should have SuperUSDC balance after deposit");
+        assertEq(usdcBalanceOfVaultBefore - usdcBalanceOfVaultAfter, superUSDCVaultDepositAmount, "USDC balance of vault should decrease by superUSDC vault deposit amount");
+    }
+
+    function test_deposit_and_withdraw_from_superusdc_vault(uint256 depositAmount, uint256 withdrawAmount) public {
+        depositAmount = bound(depositAmount, 2e6, 5_000_000 * 1e6);
+        withdrawAmount = bound(withdrawAmount, 1e6, depositAmount - 1);
 
         address alice = makeAddr("alice");
         deal(MC.USDC, alice, depositAmount);
-        
-        vm.startPrank(alice);
-        IERC20(MC.USDC).approve(address(vault), depositAmount);
-        vault.depositAsset(MC.USDC, depositAmount, alice);
-        vm.stopPrank();
-        
+
+        _depositAssetToVault(MC.USDC, depositAmount, alice);
+
+        // Process accounting
         vault.processAccounting();
-        
+
+        assertEq(vault.totalAssets(), depositAmount, "Vault should have the same total assets as the deposit amount");
+        assertEq(vault.totalBaseAssets(), depositAmount * 1e12, "Vault should have the same total base assets as the deposit amount scaled by 1e12");
+        assertEq(vault.totalSupply(), depositAmount * 1e12, "Vault should have the same total supply as the deposit amount scaled by 1e12");
+        assertEq(vault.balanceOf(alice), depositAmount * 1e12, "Vault should have the same balance of alice as the deposit amount");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), depositAmount, "USDC balance of vault should decrease by deposit amount");
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "USDC balance of alice should be 0");
+
         uint256 vaultAssetsBefore = vault.totalAssets();
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
-        uint256 superUSDCBalanceBefore = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
-        
         depositToSuperUSDCVault(depositAmount);
-        
-        uint256 superUSDCShares = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
-        assertTrue(superUSDCShares > 0, "Vault should have SuperUSDC shares after deposit");
-        
+
+        uint256 superUSDCBalanceOfVaultBefore = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
+        uint256 usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
+        assertTrue(superUSDCBalanceOfVaultBefore > 0, "Vault should have SuperUSDC shares after deposit");
+
+        uint256 sharesToWithdraw = IERC4626(MC.SUPER_USDC_VAULT).previewWithdraw(withdrawAmount);
+
         // Withdraw from SuperUSDC vault
-        address[] memory withdrawTargets = new address[](1);
-        uint256[] memory withdrawValues = new uint256[](1);
-        bytes[] memory withdrawData = new bytes[](1);
-        
-        withdrawTargets[0] = MC.SUPER_USDC_VAULT;
-        withdrawValues[0] = 0;
-        withdrawData[0] = abi.encodeWithSignature("redeem(uint256,address,address,uint256)", superUSDCShares, address(vault), address(vault), 1);
-        
-        vm.startPrank(PROCESSOR);
-        vault.processor(withdrawTargets, withdrawValues, withdrawData);
-        vm.stopPrank();
-        
-        // Process accounting
-        vault.processAccounting();
-        
-        uint256 superUSDCBalanceAfter = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
-        
-        totalSupplyInvariant(vaultTotalSupplyBefore);
-        totalAssetsInvariant(vaultAssetsBefore);
-        
-        assertEq(superUSDCBalanceAfter, 0, "SuperUSDC balance should be 0 after full withdrawal");
-    }
-    
+        address[] memory targets = new address[](1);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory data = new bytes[](1);
 
-      function depositToSuperUSDCVault(uint256 depositAmount) internal {
-        
-        address[] memory targets = new address[](2);
-        uint256[] memory values = new uint256[](2);
-        bytes[] memory data = new bytes[](2);
-        
-        targets[0] = MC.USDC;
+        targets[0] = MC.SUPER_USDC_VAULT;
         values[0] = 0;
-        data[0] = abi.encodeCall(IERC20.approve, (MC.SUPER_USDC_VAULT, depositAmount));
-        
-        targets[1] = MC.SUPER_USDC_VAULT;
-        values[1] = 0;
-        data[1] = abi.encodeCall(IERC4626.deposit, (depositAmount, address(vault)));
-        
+        data[0] = abi.encodeWithSignature(
+            "redeem(uint256,address,address)", sharesToWithdraw, address(vault), address(vault)
+        );
+
         vm.startPrank(PROCESSOR);
         vault.processor(targets, values, data);
         vm.stopPrank();
-        
+
         // Process accounting
         vault.processAccounting();
+
+        uint256 superUSDCBalanceOfVaultAfter = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
+        assertEq(superUSDCBalanceOfVaultBefore - superUSDCBalanceOfVaultAfter, sharesToWithdraw, "SuperUSDC balance of vault should decrease by shares withdrawn");
+        assertApproxEqAbs(IERC20(MC.USDC).balanceOf(address(vault)) - usdcBalanceOfVaultBefore, withdrawAmount, 100, "USDC balance of vault should increase by withdraw amount");
+        totalSupplyInvariant(vaultTotalSupplyBefore);
+        totalAssetsInvariant(vaultAssetsBefore);
+    }
+
+    function depositToSuperUSDCVault(uint256 depositAmount) internal {
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory data = new bytes[](2);
+
+        targets[0] = MC.USDC;
+        values[0] = 0;
+        data[0] = abi.encodeCall(IERC20.approve, (MC.SUPER_USDC_VAULT, depositAmount));
+
+        targets[1] = MC.SUPER_USDC_VAULT;
+        values[1] = 0;
+        data[1] = abi.encodeCall(IERC4626.deposit, (depositAmount, address(vault)));
+
+        vm.startPrank(PROCESSOR);
+        vault.processor(targets, values, data);
+        vm.stopPrank();
+
+        // Process accounting
+        vault.processAccounting();
+    }
+
+    function _depositAssetToVault(address asset, uint256 amount, address user) internal {
+        vm.startPrank(user);
+        IERC20(asset).approve(address(vault), amount);
+        vault.depositAsset(asset, amount, user);
+        vm.stopPrank();
     }
 }

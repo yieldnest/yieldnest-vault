@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // AugustusV6.2 interface taken from Paraswap docs(https://developers.paraswap.network/augustus-swapper/augustus-v6.2)
 interface IAugustusV6 {
@@ -234,14 +234,7 @@ interface IAugustusV6 {
         uint256 partnerAndFee,
         bytes calldata permit,
         bytes calldata executorData
-    )
-        external
-        payable
-        returns (
-            uint256 receivedAmount,
-            uint256 paraswapShare,
-            uint256 partnerShare
-        );
+    ) external payable returns (uint256 receivedAmount, uint256 paraswapShare, uint256 partnerShare);
 
     /// @notice Executes a swapExactAmountIn on Balancer V2 pools
     /// @param balancerData Struct containing data for the swap
@@ -258,12 +251,8 @@ interface IAugustusV6 {
         uint256 partnerAndFee,
         bytes calldata permit,
         bytes calldata data
-    )
-        external
-        payable
-        returns (uint256 receivedAmount, uint256 paraswapShare, uint256 partnerShare);
+    ) external payable returns (uint256 receivedAmount, uint256 paraswapShare, uint256 partnerShare);
 
-    
     /// @notice Executes a swapExactAmountIn on Curve V1 pools
     /// @param curveV1Data Struct containing data for the swap
     /// @param partnerAndFee packed partner address and fee percentage, the first 12 bytes is the feeData and the last
@@ -272,11 +261,7 @@ interface IAugustusV6 {
     /// @return receivedAmount The amount of destToken received after fees
     /// @return paraswapShare The share of the fees for Paraswap
     /// @return partnerShare The share of the fees for the partner
-    function swapExactAmountInOnCurveV1(
-        CurveV1Data calldata curveV1Data,
-        uint256 partnerAndFee,
-        bytes calldata permit
-    )
+    function swapExactAmountInOnCurveV1(CurveV1Data calldata curveV1Data, uint256 partnerAndFee, bytes calldata permit)
         external
         payable
         returns (uint256 receivedAmount, uint256 paraswapShare, uint256 partnerShare);
@@ -289,11 +274,7 @@ interface IAugustusV6 {
     /// @return receivedAmount The amount of destToken received after fees
     /// @return paraswapShare The share of the fees for Paraswap
     /// @return partnerShare The share of the fees for the partner
-    function swapExactAmountInOnCurveV2(
-        CurveV2Data calldata curveV2Data,
-        uint256 partnerAndFee,
-        bytes calldata permit
-    )
+    function swapExactAmountInOnCurveV2(CurveV2Data calldata curveV2Data, uint256 partnerAndFee, bytes calldata permit)
         external
         payable
         returns (uint256 receivedAmount, uint256 paraswapShare, uint256 partnerShare);
@@ -306,11 +287,7 @@ interface IAugustusV6 {
     /// @return receivedAmount The amount of destToken received after fees
     /// @return paraswapShare The share of the fees for Paraswap
     /// @return partnerShare The share of the fees for the partner
-    function swapExactAmountInOnUniswapV2(
-        UniswapV2Data calldata uniData,
-        uint256 partnerAndFee,
-        bytes calldata permit
-    )
+    function swapExactAmountInOnUniswapV2(UniswapV2Data calldata uniData, uint256 partnerAndFee, bytes calldata permit)
         external
         payable
         returns (uint256 receivedAmount, uint256 paraswapShare, uint256 partnerShare);
@@ -323,14 +300,8 @@ interface IAugustusV6 {
     /// @return receivedAmount The amount of destToken received after fees
     /// @return paraswapShare The share of the fees for Paraswap
     /// @return partnerShare The share of the fees for the partner
-    function swapExactAmountInOnUniswapV3(
-        UniswapV3Data calldata uniData,
-        uint256 partnerAndFee,
-        bytes calldata permit
-    )
+    function swapExactAmountInOnUniswapV3(UniswapV3Data calldata uniData, uint256 partnerAndFee, bytes calldata permit)
         external
         payable
         returns (uint256 receivedAmount, uint256 paraswapShare, uint256 partnerShare);
-
-    
 }

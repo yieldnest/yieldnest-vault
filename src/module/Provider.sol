@@ -18,16 +18,25 @@ contract Provider is IProvider {
     error UnsupportedAsset(address asset);
     error RateIsNegative();
 
+    address public wrappedUSDC;
+
+    constructor(address wrappedUSDC_) {
+        wrappedUSDC = wrappedUSDC_;
+    }
+
     function isUSDStrategyVault(address asset) public view returns (bool) {
         try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
             address vaultAsset = IVault(asset).asset();
-            return keccak256(bytes(version)) == keccak256(bytes("0.1.0")) && vaultAsset == MC.USDC;
+            return keccak256(bytes(version)) == keccak256(bytes("0.2.0")) && vaultAsset == MC.USDC;
         } catch {
             return false;
         }
     }
 
     function getRate(address asset) public view virtual returns (uint256) {
+        if (asset == wrappedUSDC) {
+            return 1e18;
+        }
 
         if (asset == MC.USDC) {
             return 1e18;
@@ -46,7 +55,7 @@ contract Provider is IProvider {
         }
 
         if (asset == MC.SFRAX || asset == MC.SUSDE || asset == MC.SUSDS || asset == MC.SCRVUSD) {
-            return IERC4626(asset).convertToAssets(1e6) * 1e12;
+            return IERC4626(asset).convertToAssets(1e18);
         }
 
         if (asset == MC.SUPER_USDC_VAULT) {
@@ -60,7 +69,6 @@ contract Provider is IProvider {
 
         // buffer strategy
         if (isUSDStrategyVault(asset)) {
-            // base asset is USDC with 6 decimals. we scale it to 18 decimals
             return IERC4626(asset).convertToAssets(1e18) * 1e12;
         }
         revert UnsupportedAsset(asset);

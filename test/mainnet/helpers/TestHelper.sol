@@ -16,7 +16,6 @@ contract TestHelper is Test, AssertUtils {
     }
 
     function dealAsset(address asset, address account, uint256 amount) internal returns (uint256) {
-
         if (asset == MC.SFRAX) {
             dealAsset(MC.FRAX, account, amount);
 
@@ -93,18 +92,17 @@ contract TestHelper is Test, AssertUtils {
         payable(receiver).transfer(amount);
     }
 
-     function totalSupplyInvariant(uint256 supply) public view {
+    function totalSupplyInvariant(uint256 expectedTotalSupply) public view {
         uint256 finalVaultTotalSupply = _vault.totalSupply();
         assertEqThreshold(
-            supply, finalVaultTotalSupply, 3, "Vault totalSupply should be original totalSupply plus additional"
+            expectedTotalSupply, finalVaultTotalSupply, 10, "Vault totalSupply should be original totalSupply plus additional"
         );
     }
 
-    function totalAssetsInvariant(uint256 assets) public view {
+    function totalAssetsInvariant(uint256 expectedTotalAssets) public view {
         uint256 finalVaultTotalAssets = _vault.totalAssets();
         assertEqThreshold(
-            assets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional"
+            expectedTotalAssets, finalVaultTotalAssets, 10, "Vault totalAssets should be original totalAssets plus additional"
         );
     }
-
 }

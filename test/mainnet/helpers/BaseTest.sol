@@ -9,53 +9,66 @@ import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {IValidator} from "src/interface/IValidator.sol";
+// import {MockProvider} from "test/mocks/MockProvider.sol";
 import {Provider} from "src/module/Provider.sol";
 import {BufferStrategy} from "src/BufferStrategy.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ParaswapValidator} from "src/validator/ParaswapValidator.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
-
-import {Etches} from "test/mainnet/helpers/Etches.sol";
+import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {ParaswapRules} from "script/rules/ParaswapRules.sol";
 import {SuperUsdcRules} from "script/rules/SuperUsdcRules.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
-contract BaseTest is Test, MainnetActors, Etches, TestHelper {
-
+contract BaseTest is Test, MainnetActors, TestHelper {
     struct PsPResponse {
         address augustus;
         bytes swapCalldata;
     }
 
-    uint256 public constant MAX_SLIPPAGE = 1000;
-    uint256 public constant SLIPPAGE_PRECISION = 10000;
+    uint256 public constant MAX_SLIPPAGE = 100; // 1% max slippage during swap
+    uint256 public constant SLIPPAGE_PRECISION = 10000; // 10000 = 100%
+    WrappedToken public wrappedUSDC;
 
     function deploy() public returns (Vault, BufferStrategy, Provider) {
         // Deploy implementation contract
         Vault vaultImplementation = new Vault();
-
-        // Deploy transparent proxy
-        bytes memory vaultInitData = abi.encodeWithSelector(
-            Vault.initialize.selector, MainnetActors.ADMIN, "ynUSDx", "ynUSDx", 18, 0, false, true
+        Vault vault = Vault(
+            payable(
+                address(new TransparentUpgradeableProxy(address(vaultImplementation), address(MainnetActors.ADMIN), ""))
+            )
         );
-        TransparentUpgradeableProxy proxy =
-            new TransparentUpgradeableProxy(address(vaultImplementation), address(MainnetActors.ADMIN), vaultInitData);
+        vault.initialize(MainnetActors.ADMIN, "YieldNest USD Max Vault", "ynUSDx", 18, 0, false, true, 1);
 
-        // Cast proxy to Vault type
-        Vault vault = Vault(payable(address(proxy)));
+        wrappedUSDC =
+            WrappedToken(address(new TransparentUpgradeableProxy(address(new WrappedToken()), MainnetActors.ADMIN, "")));
+        wrappedUSDC.initialize(ERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
 
         TestHelper._initVault(vault);
 
-        assertEq(vault.symbol(), "ynUSDx");
-        
         BufferStrategy bufferStrategyImplementation = new BufferStrategy();
-        bytes memory bufferStrategyInitData = abi.encodeWithSelector(
-            BufferStrategy.initialize.selector, MainnetActors.ADMIN, "Buffer Strategy", "Buffer Strategy", 18, 0, false, true
+        BufferStrategy bufferStrategy = BufferStrategy(
+            payable(
+                address(
+                    new TransparentUpgradeableProxy(
+                        address(bufferStrategyImplementation), address(MainnetActors.ADMIN), ""
+                    )
+                )
+            )
         );
-        TransparentUpgradeableProxy bufferStrategyProxy =
-            new TransparentUpgradeableProxy(address(bufferStrategyImplementation), address(MainnetActors.ADMIN), bufferStrategyInitData);
+        bufferStrategy.initialize(
+            MainnetActors.ADMIN,
+            "Buffer Strategy YieldNest USD Max Vault",
+            "Buffer Strategy ynUSDx",
+            18,
+            true,
+            false,
+            true,
+            1,
+            MC.MORPHO_GAUNTLET_USDC_VAULT
+        );
 
         address[] memory supportedTokens = new address[](8);
         supportedTokens[0] = MC.USDC;
@@ -67,17 +80,22 @@ contract BaseTest is Test, MainnetActors, Etches, TestHelper {
         supportedTokens[6] = MC.SUSDS;
         supportedTokens[7] = MC.SFRAX;
 
-        BufferStrategy bufferStrategy = BufferStrategy(payable(address(bufferStrategyProxy)));
-        Provider provider = new Provider();
-        ParaswapValidator paraswapValidator = new ParaswapValidator(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(vault), address(provider), MAX_SLIPPAGE, supportedTokens);
-        
+        Provider provider = new Provider(address(wrappedUSDC));
+        ParaswapValidator paraswapValidator = new ParaswapValidator(
+            MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(vault), address(provider), MAX_SLIPPAGE, supportedTokens
+        );
+
         configureMainnet(vault, bufferStrategy, provider, paraswapValidator);
 
         return (vault, bufferStrategy, provider);
     }
 
-    function configureMainnet(Vault vault, BufferStrategy bufferStrategy, Provider provider, ParaswapValidator paraswapValidator) internal {
-        
+    function configureMainnet(
+        Vault vault,
+        BufferStrategy bufferStrategy,
+        Provider provider,
+        ParaswapValidator paraswapValidator
+    ) internal {
         vm.startPrank(ADMIN);
 
         vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
@@ -97,6 +115,8 @@ contract BaseTest is Test, MainnetActors, Etches, TestHelper {
         bufferStrategy.grantRole(bufferStrategy.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
         bufferStrategy.grantRole(bufferStrategy.MORPHO_USDC_CORE_VAULT_MANAGER_ROLE(), MORPHO_USDC_CORE_VAULT_MANAGER);
         bufferStrategy.grantRole(bufferStrategy.DEPOSIT_MANAGER_ROLE(), DEPOSIT_MANAGER);
+        bufferStrategy.grantRole(bufferStrategy.ALLOCATOR_MANAGER_ROLE(), ALLOCATOR_MANAGER);
+        bufferStrategy.grantRole(bufferStrategy.ALLOCATOR_ROLE(), address(vault));
 
         // test cannot unpause vault without provider
         vm.expectRevert();
@@ -104,7 +124,7 @@ contract BaseTest is Test, MainnetActors, Etches, TestHelper {
 
         vault.setProvider(address(provider));
 
-        // Add assets: Base asset always first
+        vault.addAsset(address(wrappedUSDC), true);
         vault.addAsset(MC.USDC, true);
         vault.addAsset(address(bufferStrategy), false);
         vault.addAsset(MC.USDT, false);
@@ -116,12 +136,14 @@ contract BaseTest is Test, MainnetActors, Etches, TestHelper {
         vault.addAsset(MC.SFRAX, false);
         vault.addAsset(MC.SUPER_USDC_VAULT, false);
 
+        bufferStrategy.addAsset(address(wrappedUSDC), 18, true, true);
         bufferStrategy.addAsset(MC.USDC, 6, true, true);
         bufferStrategy.addAsset(MC.MORPHO_GAUNTLET_USDC_VAULT, false, false);
         bufferStrategy.setProvider(address(provider));
         bufferStrategy.setUsdcCoreVault(MC.MORPHO_GAUNTLET_USDC_VAULT);
         bufferStrategy.setSyncDeposit(true);
         bufferStrategy.setSyncWithdraw(true);
+                bufferStrategy.setHasAllocator(true);
 
         configureVaultRules(vault, bufferStrategy);
         configureBufferStrategyRules(bufferStrategy);
@@ -130,19 +152,18 @@ contract BaseTest is Test, MainnetActors, Etches, TestHelper {
 
         vault.setBuffer(address(bufferStrategy));
 
-        // Unpause the vault
+        // Unpause the vault and buffer strategy
         vault.unpause();
         bufferStrategy.unpause();
 
         vm.stopPrank();
 
         vault.processAccounting();
-
-
+        bufferStrategy.processAccounting();
     }
 
     function configureVaultRules(Vault vault, BufferStrategy bufferStrategy) internal {
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](10);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](11);
         uint256 i = 0;
 
         address[] memory usdcApprovalAllowList = new address[](4);
@@ -153,6 +174,7 @@ contract BaseTest is Test, MainnetActors, Etches, TestHelper {
         rules[i++] = BaseRules.getDepositRule(address(bufferStrategy), address(vault));
         rules[i++] = BaseRules.getDepositRule(address(MC.SUPER_USDC_VAULT), address(vault));
         rules[i++] = BaseRules.getApprovalRule(MC.USDC, usdcApprovalAllowList);
+        rules[i++] = BaseRules.getDepositAssetRule(address(bufferStrategy), MC.USDC, address(vault));
         address[] memory usdtApprovalAllowList = new address[](2);
         usdtApprovalAllowList[0] = MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER;
         usdtApprovalAllowList[1] = 0x16C6521Dff6baB339122a0FE25a9116693265353;
@@ -172,7 +194,8 @@ contract BaseTest is Test, MainnetActors, Etches, TestHelper {
     }
 
     function configureParaswapRules(Vault vault, ParaswapValidator paraswapValidator) internal {
-        SafeRules.RuleParams[] memory rules = ParaswapRules.getParaswapRules(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(paraswapValidator));
+        SafeRules.RuleParams[] memory rules =
+            ParaswapRules.getParaswapRules(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(paraswapValidator));
         SafeRules.setProcessorRules(vault, rules, false);
     }
 
@@ -185,21 +208,20 @@ contract BaseTest is Test, MainnetActors, Etches, TestHelper {
     }
 
     function configureSuperUsdcRules(Vault vault) internal {
-        SafeRules.RuleParams[] memory rules = SuperUsdcRules.getSuperUsdcRedeemRules(MC.SUPER_USDC_VAULT, address(vault));
+        SafeRules.RuleParams[] memory rules =
+            SuperUsdcRules.getSuperUsdcRedeemRules(MC.SUPER_USDC_VAULT, address(vault));
         SafeRules.setProcessorRules(vault, rules, false);
     }
 
-    function _fetchPSPRoute(
-        address from,
-        address to,
-        uint256 amount,
-        address userAddress
-    ) internal returns (PsPResponse memory) {
+    function _fetchPSPRoute(address from, address to, uint256 amount, address userAddress)
+        internal
+        returns (PsPResponse memory)
+    {
         console.log("amount is", amount);
         console.log("from is", from);
         string[] memory inputs = new string[](11);
-        inputs[0] = 'node';
-        inputs[1] = 'test/scripts/paraswap.js';
+        inputs[0] = "node";
+        inputs[1] = "test/scripts/paraswap.js";
         inputs[2] = vm.toString(block.chainid);
         inputs[3] = vm.toString(from);
         inputs[4] = vm.toString(to);
@@ -208,9 +230,9 @@ contract BaseTest is Test, MainnetActors, Etches, TestHelper {
         inputs[7] = vm.toString(MAX_SLIPPAGE);
         inputs[8] = vm.toString(ERC20(from).decimals());
         inputs[9] = vm.toString(ERC20(to).decimals());
-        inputs[10] = 'false';
+        inputs[10] = "false";
 
-    bytes memory res = vm.ffi(inputs);
-    return abi.decode(res, (PsPResponse));
-  }
+        bytes memory res = vm.ffi(inputs);
+        return abi.decode(res, (PsPResponse));
+    }
 }
