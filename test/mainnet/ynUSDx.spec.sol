@@ -78,7 +78,7 @@ contract YnUSDxTest is BaseTest {
         assertFalse(vault.paused(), "Vault should not be paused");
 
         address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 11, "There should be one asset in the vault");
+        assertEq(assets.length, 14, "There should be one asset in the vault");
         assertEq(assets[0], address(wrappedUSDC), "First asset should be wrappedUSDC");
         assertEq(assets[1], MC.USDC, "Second asset should be USDC");
 

@@ -101,7 +101,7 @@ contract SwapTest is BaseTest {
             assertTrue(assetBalanceAfter > assetBalanceBefore, "Asset balance should increase after swap");
             assertTrue(assetBalanceAfter >= minRequiredQuotedAmount, "Asset balance should be within slippage tolerance");
             // asset balance should be within 0.2% of the expected amount
-            assertApproxEqRel(assetBalanceAfter, assetBalanceBefore, 0.2e16, "Asset balance should be within slippage tolerance");
+            assertApproxEqRel(vaultTotalAssetsAfter, vaultTotalAssetsBefore, 0.2e16, "Asset balance should be within slippage tolerance");
             totalSupplyInvariant(vaultTotalSupplyBefore);
         }
     }

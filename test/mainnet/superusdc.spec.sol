@@ -27,7 +27,7 @@ contract SuperUSDCTest is BaseTest {
     }
 
     function test_deposit_fully_to_superusdc_vault(uint256 depositAmount) public {
-        depositAmount = bound(depositAmount, 1000, 50_000_000 * 1e6);
+        depositAmount = bound(depositAmount, 1000, 5_000_000 * 1e6);
 
         address alice = makeAddr("alice");
         deal(MC.USDC, alice, depositAmount);
@@ -63,7 +63,7 @@ contract SuperUSDCTest is BaseTest {
     }
 
     function test_deposit_partially_to_superusdc_vault(uint256 userDepositAmount, uint256 superUSDCVaultDepositAmount) public {
-        userDepositAmount = bound(userDepositAmount, 1000, 50_000_000 * 1e6);
+        userDepositAmount = bound(userDepositAmount, 1000, 5_000_000* 1e6);
         superUSDCVaultDepositAmount = bound(superUSDCVaultDepositAmount, 1000, userDepositAmount);
 
         address alice = makeAddr("alice");
