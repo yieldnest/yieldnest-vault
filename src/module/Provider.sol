@@ -54,6 +54,18 @@ contract Provider is IProvider {
             return 1e18;
         }
 
+        if (asset == MC.CRVUSD) {
+            return 1e18;
+        }
+
+        if (asset == MC.USDS) {
+            return 1e18;
+        }
+
+        if (asset == MC.FRAX) {
+            return 1e18;
+        }
+
         if (asset == MC.SFRAX || asset == MC.SUSDE || asset == MC.SUSDS || asset == MC.SCRVUSD) {
             return IERC4626(asset).convertToAssets(1e18);
         }

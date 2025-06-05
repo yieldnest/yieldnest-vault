@@ -20,10 +20,10 @@ library MainnetContracts {
     address public constant SFRAX = 0xA663B02CF0a4b149d2aD41910CB81e23e1c41c32;
 
     address public constant SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
-    address public constant USDE = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
     address public constant SUSDS = 0xa3931d71877C0E7a3148CB7Eb4463524FEc27fbD;
     address public constant SCRVUSD = 0x0655977FEb2f289A4aB78af67BAB0d17aAb84367;
 
+    address public constant USDE = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
     address public constant FRAX = 0x853d955aCEf822Db058eb8505911ED77F175b99e;
     address public constant USDS = 0xdC035D45d973E3EC169d2276DDab16f1e407384F;
     address public constant CRVUSD = 0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E;

@@ -28,7 +28,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         bytes swapCalldata;
     }
 
-    uint256 public constant MAX_SLIPPAGE = 100; // 1% max slippage during swap
+    uint256 public constant MAX_SLIPPAGE = 20; // 0.2% max slippage during swap
     uint256 public constant SLIPPAGE_PRECISION = 10000; // 10000 = 100%
     WrappedToken public wrappedUSDC;
 
@@ -70,15 +70,14 @@ contract BaseTest is Test, MainnetActors, TestHelper {
             MC.MORPHO_GAUNTLET_USDC_VAULT
         );
 
-        address[] memory supportedTokens = new address[](8);
+        address[] memory supportedTokens = new address[](7);
         supportedTokens[0] = MC.USDC;
         supportedTokens[1] = MC.USDT;
         supportedTokens[2] = MC.GHO;
         supportedTokens[3] = MC.USDE;
-        supportedTokens[4] = MC.SUSDE;
-        supportedTokens[5] = MC.SCRVUSD;
-        supportedTokens[6] = MC.SUSDS;
-        supportedTokens[7] = MC.SFRAX;
+        supportedTokens[4] = MC.CRVUSD;
+        supportedTokens[5] = MC.USDS;
+        supportedTokens[6] = MC.FRAX;
 
         Provider provider = new Provider(address(wrappedUSDC));
         ParaswapValidator paraswapValidator = new ParaswapValidator(
@@ -132,8 +131,11 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         vault.addAsset(MC.USDE, false);
         vault.addAsset(MC.SUSDE, false);
         vault.addAsset(MC.SCRVUSD, false);
+        vault.addAsset(MC.CRVUSD, false);
+        vault.addAsset(MC.USDS, false);
         vault.addAsset(MC.SUSDS, false);
         vault.addAsset(MC.SFRAX, false);
+        vault.addAsset(MC.FRAX, false);
         vault.addAsset(MC.SUPER_USDC_VAULT, false);
 
         bufferStrategy.addAsset(address(wrappedUSDC), 18, true, true);
@@ -217,8 +219,6 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         internal
         returns (PsPResponse memory)
     {
-        console.log("amount is", amount);
-        console.log("from is", from);
         string[] memory inputs = new string[](11);
         inputs[0] = "node";
         inputs[1] = "test/scripts/paraswap.js";

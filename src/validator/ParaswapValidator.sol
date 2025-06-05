@@ -5,6 +5,7 @@ import {IValidator} from "src/interface/IValidator.sol";
 import {IAugustusV6} from "src/interface/IAugustusV6.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 error InvalidValue();
 error InvalidTarget();
@@ -56,7 +57,7 @@ contract ParaswapValidator is IValidator {
         IERC20 srcToken;
         IERC20 destToken;
         uint256 srcAmount;
-        uint256 destAmount;
+        uint256 quotedAmount;
 
         if (selector == IAugustusV6.swapExactAmountIn.selector) {
             (
@@ -70,7 +71,7 @@ contract ParaswapValidator is IValidator {
             srcToken = swapData.srcToken;
             destToken = swapData.destToken;
             srcAmount = swapData.fromAmount;
-            destAmount = swapData.toAmount;
+            quotedAmount = swapData.quotedAmount;
         } else if (selector == IAugustusV6.swapExactAmountInOnCurveV1.selector) {
             (IAugustusV6.CurveV1Data memory curveV1Data, uint256 partnerAndFee, bytes memory permit) =
                 abi.decode(data[4:], (IAugustusV6.CurveV1Data, uint256, bytes));
@@ -78,7 +79,7 @@ contract ParaswapValidator is IValidator {
             srcToken = curveV1Data.srcToken;
             destToken = curveV1Data.destToken;
             srcAmount = curveV1Data.fromAmount;
-            destAmount = curveV1Data.toAmount;
+            quotedAmount = curveV1Data.quotedAmount;
         } else if (selector == IAugustusV6.swapExactAmountInOnCurveV2.selector) {
             (IAugustusV6.CurveV2Data memory curveV2Data, uint256 partnerAndFee, bytes memory permit) =
                 abi.decode(data[4:], (IAugustusV6.CurveV2Data, uint256, bytes));
@@ -86,7 +87,7 @@ contract ParaswapValidator is IValidator {
             srcToken = curveV2Data.srcToken;
             destToken = curveV2Data.destToken;
             srcAmount = curveV2Data.fromAmount;
-            destAmount = curveV2Data.toAmount;
+            quotedAmount = curveV2Data.quotedAmount;
         } else if (selector == IAugustusV6.swapExactAmountInOnUniswapV2.selector) {
             (IAugustusV6.UniswapV2Data memory uniswapV2Data, uint256 partnerAndFee, bytes memory permit) =
                 abi.decode(data[4:], (IAugustusV6.UniswapV2Data, uint256, bytes));
@@ -94,7 +95,7 @@ contract ParaswapValidator is IValidator {
             srcToken = uniswapV2Data.srcToken;
             destToken = uniswapV2Data.destToken;
             srcAmount = uniswapV2Data.fromAmount;
-            destAmount = uniswapV2Data.toAmount;
+            quotedAmount = uniswapV2Data.quotedAmount;
         } else if (selector == IAugustusV6.swapExactAmountInOnUniswapV3.selector) {
             (IAugustusV6.UniswapV3Data memory uniswapV3Data, uint256 partnerAndFee, bytes memory permit) =
                 abi.decode(data[4:], (IAugustusV6.UniswapV3Data, uint256, bytes));
@@ -102,7 +103,7 @@ contract ParaswapValidator is IValidator {
             srcToken = uniswapV3Data.srcToken;
             destToken = uniswapV3Data.destToken;
             srcAmount = uniswapV3Data.fromAmount;
-            destAmount = uniswapV3Data.toAmount;
+            quotedAmount = uniswapV3Data.quotedAmount;
         } else {
             revert InvalidSelector();
         }
@@ -117,15 +118,23 @@ contract ParaswapValidator is IValidator {
 
         uint256 srcTokenRate = IProvider(provider).getRate(address(srcToken));
         uint256 destTokenRate = IProvider(provider).getRate(address(destToken));
+        uint256 srcTokenDecimals = ERC20(address(srcToken)).decimals();
+        uint256 destTokenDecimals = ERC20(address(destToken)).decimals();
 
         // Calculate expected amount without slippage first (convert from srcToken to destToken)
-        uint256 expectedDestAmountWithoutSlippage = (srcAmount * srcTokenRate) / destTokenRate;
+        uint256 expectedQuotedAmountWithoutSlippage = (srcAmount * srcTokenRate) / destTokenRate;
+
+        if (srcTokenDecimals > destTokenDecimals) {
+            expectedQuotedAmountWithoutSlippage = expectedQuotedAmountWithoutSlippage / 10 ** (srcTokenDecimals - destTokenDecimals);
+        } else {
+            expectedQuotedAmountWithoutSlippage = expectedQuotedAmountWithoutSlippage * 10 ** (destTokenDecimals - srcTokenDecimals);
+        }
 
         // Then apply maximum slippage to get minimum required amount
-        uint256 minRequiredDestAmount =
-            (expectedDestAmountWithoutSlippage * (SLIPPAGE_PRECISION - maxSlippage)) / SLIPPAGE_PRECISION;
+        uint256 minRequiredQuotedAmount =
+            (expectedQuotedAmountWithoutSlippage * (SLIPPAGE_PRECISION - maxSlippage)) / SLIPPAGE_PRECISION;
 
-        if (destAmount < minRequiredDestAmount) {
+        if (quotedAmount < minRequiredQuotedAmount) {
             revert SlippageTooHigh();
         }
     }

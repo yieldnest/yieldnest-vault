@@ -37,15 +37,11 @@ contract SwapTest is BaseTest {
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
 
         PsPResponse memory response = BaseTest._fetchPSPRoute(MC.USDC, MC.USDT, depositAmount, address(vault));
-        console.logBytes(response.swapCalldata);
         processSwap(response, MC.USDC, depositAmount);
         vault.processAccounting();
 
         uint256 usdtBalanceAfter = IERC20(MC.USDT).balanceOf(address(vault));
         uint256 vaultTotalAssetsAfter = vault.totalAssets();
-
-        console.log("usdtBalanceBefore", usdtBalanceBefore);
-        console.log("usdtBalanceAfter", usdtBalanceAfter);
 
         assertTrue(usdtBalanceAfter > usdtBalanceBefore, "USDT balance should increase after swap");
         uint256 minExpectedTotalAssets =
@@ -55,59 +51,60 @@ contract SwapTest is BaseTest {
         totalSupplyInvariant(vaultTotalSupplyBefore);
     }
 
-    // function test_generic_swap_from_assetA_to_assetB() public {
-    //     address[] memory assets = vault.getAssets();
+    function test_swap_from_USDC_to_other_supported_stable_coins() public {
+        address[] memory assets = new address[](5);
+        assets[0] = MC.USDT;
+        assets[1] = MC.GHO;
+        assets[2] = MC.USDE;
+        assets[3] = MC.CRVUSD;
+        assets[4] = MC.FRAX;
 
-    //     for (uint256 i = 0; i < assets.length; i++) {
-    //         for (uint256 j = 0; j < assets.length; j++) {
+        uint256 snapshotId = vm.snapshot();
 
-    //             if (i == j || i == 1 || j == 1) {
-    //                 continue;
-    //             }
+        for (uint256 i = 0; i < assets.length; i++) {
+            vm.revertToState(snapshotId);
+            uint256 depositAmount = 1000_00e6;
+            giveApprovalOfAssetToAugustus(MC.USDC, depositAmount);
 
-    //             address srcToken = assets[i];
-    //             address destToken = assets[j];
+            depositAmount = depositAssetToVault(MC.USDC, depositAmount, 0);
+            assertEq(vault.totalAssets(), depositAmount);
 
-    //             if (
-    //                 srcToken == address(bufferStrategy) || destToken == address(bufferStrategy) 
-    //                 || srcToken == address(wrappedUSDC) || destToken == address(wrappedUSDC)
-    //             ) {
-    //                 continue;
-    //             }
+            uint256 assetBalanceBefore = IERC20(assets[i]).balanceOf(address(vault));
+            uint256 vaultTotalAssetsBefore = vault.totalAssets();
+            uint256 vaultTotalSupplyBefore = vault.totalSupply();
 
-    //             uint256 depositAmount = 1_000_000 * 10 ** ERC20(srcToken).decimals();
+            PsPResponse memory response = BaseTest._fetchPSPRoute(MC.USDC, assets[i], depositAmount, address(vault));
+            processSwap(response, MC.USDC, depositAmount);
+            vault.processAccounting();
 
-    //             depositAmount = depositAssetToVault(srcToken, depositAmount, i);
-    //             giveApprovalOfAssetToAugustus(srcToken, depositAmount);
+            uint256 assetBalanceAfter = IERC20(assets[i]).balanceOf(address(vault));
+            uint256 vaultTotalAssetsAfter = vault.totalAssets();
 
-    //             uint256 destTokenBalanceOfVaultBefore = IERC20(destToken).balanceOf(address(vault));
-    //             uint256 vaultTotalAssetsBefore = vault.totalAssets();
-    //             uint256 vaultTotalSupplyBefore = vault.totalSupply();
+            uint256 srcTokenRate = provider.getRate(MC.USDC);
+            uint256 destTokenRate = provider.getRate(assets[i]);
+            uint256 srcTokenDecimals = ERC20(MC.USDC).decimals();
+            uint256 destTokenDecimals = ERC20(assets[i]).decimals();
 
-    //             PsPResponse memory response =
-    //                 BaseTest._fetchPSPRoute(srcToken, destToken, depositAmount, address(vault));
-    //             processSwap(response, srcToken, depositAmount);
-    //             vault.processAccounting();
+            // Calculate expected amount without slippage first (convert from srcToken to destToken)
+            uint256 expectedQuotedAmountWithoutSlippage = (depositAmount * srcTokenRate) / destTokenRate;
 
-    //             uint256 destTokenBalanceOfVaultAfter = IERC20(destToken).balanceOf(address(vault));
-    //             uint256 vaultTotalAssetsAfter = vault.totalAssets();
+            if (srcTokenDecimals > destTokenDecimals) {
+                expectedQuotedAmountWithoutSlippage = expectedQuotedAmountWithoutSlippage / 10 ** (srcTokenDecimals - destTokenDecimals);
+            } else {
+                expectedQuotedAmountWithoutSlippage = expectedQuotedAmountWithoutSlippage * 10 ** (destTokenDecimals - srcTokenDecimals);
+            }
 
-    //             assertTrue(
-    //                 destTokenBalanceOfVaultAfter > destTokenBalanceOfVaultBefore, "Dest token balance should increase after swap"
-    //             );
-    //             uint256 minExpectedTotalAssets =
-    //                 vaultTotalAssetsBefore * (SLIPPAGE_PRECISION - MAX_SLIPPAGE) / SLIPPAGE_PRECISION;
-    //             assertTrue(
-    //                 vaultTotalAssetsAfter >= minExpectedTotalAssets,
-    //                 "Vault total assets should be within slippage tolerance"
-    //             );
-    //             assertTrue(destTokenBalanceOfVaultAfter >= minExpectedTotalAssets, "Dest token balance should be within slippage tolerance");
-    //             totalSupplyInvariant(vaultTotalSupplyBefore);
+            // Then apply maximum slippage to get minimum required amount
+            uint256 minRequiredQuotedAmount =
+                (expectedQuotedAmountWithoutSlippage * (SLIPPAGE_PRECISION - MAX_SLIPPAGE)) / SLIPPAGE_PRECISION;
 
-    //             vm.sleep(2000);
-    //         }
-    //     }
-    // }
+            assertTrue(assetBalanceAfter > assetBalanceBefore, "Asset balance should increase after swap");
+            assertTrue(assetBalanceAfter >= minRequiredQuotedAmount, "Asset balance should be within slippage tolerance");
+            // asset balance should be within 0.2% of the expected amount
+            assertApproxEqRel(assetBalanceAfter, assetBalanceBefore, 0.2e16, "Asset balance should be within slippage tolerance");
+            totalSupplyInvariant(vaultTotalSupplyBefore);
+        }
+    }
 
     function depositAssetToVault(address asset, uint256 amount, uint256 assetIndex) internal returns (uint256) {
         if (!vault.getAsset(asset).active) {
@@ -139,52 +136,6 @@ contract SwapTest is BaseTest {
         bytes[] memory returnData = vault.processor(targets, values, data);
         vm.stopPrank();
     }
-    
-    // function giveInfiniteApprovalToAugustusRouter() internal {
-    //     address[] memory targets = new address[](9);
-    //     uint256[] memory values = new uint256[](9);
-    //     bytes[] memory data = new bytes[](9);
-
-    //     targets[0] = MC.USDC;
-    //     values[0] = 0;
-    //     data[0] = abi.encodeCall(IERC20.approve, (MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, type(uint256).max));
-
-    //     targets[1] = MC.USDT;
-    //     values[1] = 0;
-    //     data[1] = abi.encodeCall(IERC20.approve, (MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, type(uint256).max));
-
-    //     targets[2] = MC.SUSDE;
-    //     values[2] = 0;
-    //     data[2] = abi.encodeCall(IERC20.approve, (MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, type(uint256).max));
-
-    //     targets[3] = MC.SUSDS;
-    //     values[3] = 0;
-    //     data[3] = abi.encodeCall(IERC20.approve, (MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, type(uint256).max));
-
-    //     targets[4] = MC.SCRVUSD;
-    //     values[4] = 0;
-    //     data[4] = abi.encodeCall(IERC20.approve, (MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, type(uint256).max));
-
-    //     targets[5] = MC.USDE;
-    //     values[5] = 0;
-    //     data[5] = abi.encodeCall(IERC20.approve, (MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, type(uint256).max));
-
-    //     targets[6] = MC.GHO;
-    //     values[6] = 0;
-    //     data[6] = abi.encodeCall(IERC20.approve, (MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, type(uint256).max));
-
-    //     targets[7] = MC.SFRAX;
-    //     values[7] = 0;
-    //     data[7] = abi.encodeCall(IERC20.approve, (MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, type(uint256).max));
-
-    //     targets[8] = MC.USDT;
-    //     values[8] = 0;
-    //     data[8] = abi.encodeCall(IERC20.approve, (0x16C6521Dff6baB339122a0FE25a9116693265353, type(uint256).max));
-
-    //     vm.startPrank(PROCESSOR);
-    //     bytes[] memory returnData = vault.processor(targets, values, data);
-    //     vm.stopPrank();
-    // }
 
     function processSwap(PsPResponse memory response, address srcToken, uint256 amount) internal {
         {
