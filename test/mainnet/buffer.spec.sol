@@ -95,7 +95,6 @@ contract VaultBufferInvariantsTest is BaseTest {
         {
             // allocate to buffer
             uint256 usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
-            uint256 usdcBalanceOfBufferBefore = IERC20(MC.USDC).balanceOf(vault.buffer());
             expectedShareBalanceOfMorphoGauntletUsdcVault =
                 IERC4626(MC.MORPHO_GAUNTLET_USDC_VAULT).previewDeposit(bufferDepositAmount);
 
