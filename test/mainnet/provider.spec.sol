@@ -3,16 +3,14 @@ pragma solidity ^0.8.24;
 
 import {BaseTest} from "test/mainnet/helpers/BaseTest.sol";
 import {IERC4626} from "src/Common.sol";
-import {BufferStrategy} from "src/BufferStrategy.sol";
 import {Provider} from "src/module/Provider.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 
 contract ProviderTest is BaseTest {
     Provider public provider;
-    BufferStrategy public bufferStrategy;
 
     function setUp() public {
-        (, bufferStrategy, provider) = BaseTest.deploy();
+        (, provider) = BaseTest.deploy();
     }
 
     function test_getRate_Of_WrappedUSDC() public view {
@@ -72,9 +70,5 @@ contract ProviderTest is BaseTest {
             provider.getRate(MC.MORPHO_GAUNTLET_USDC_VAULT),
             IERC4626(MC.MORPHO_GAUNTLET_USDC_VAULT).convertToAssets(1e18) * 1e12
         );
-    }
-
-    function test_getRate_Of_USDStrategyVault() public view {
-        assertEq(provider.getRate(address(bufferStrategy)), IERC4626(bufferStrategy).convertToAssets(1e18) * 1e12);
     }
 }

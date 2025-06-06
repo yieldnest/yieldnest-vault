@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {BaseTest} from "test/mainnet/helpers/BaseTest.sol";
 import {Vault} from "src/Vault.sol";
-import {BufferStrategy} from "src/BufferStrategy.sol";
 import {Provider} from "src/module/Provider.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -21,11 +20,12 @@ contract YnUSDxTest is BaseTest {
     using SafeERC20 for IERC20;
 
     Vault public vault;
-    BufferStrategy public bufferStrategy;
+    address public bufferStrategy;
     Provider public provider;
 
     function setUp() public {
-        (vault, bufferStrategy, provider) = BaseTest.deploy();
+        (vault, provider) = BaseTest.deploy();
+        bufferStrategy = MC.MORPHO_GAUNTLET_USDC_VAULT;
         vm.stopPrank();
     }
 
@@ -176,7 +176,6 @@ contract YnUSDxTest is BaseTest {
         vm.stopPrank();
 
         vault.processAccounting();
-        bufferStrategy.processAccounting();
 
         // Check that the vault received the USDE
         assertEq(IERC20(MC.USDE).balanceOf(address(vault)), usdeDepositAmount, "Vault did not receive USDE");
@@ -229,7 +228,7 @@ contract YnUSDxTest is BaseTest {
 
             targets[1] = address(bufferStrategy);
             values[1] = 0;
-            data[1] = abi.encodeCall(BaseVault.depositAsset, (MC.USDC, depositAmount, address(vault)));
+            data[1] = abi.encodeCall(IERC4626.deposit, (depositAmount, address(vault)));
 
             vm.startPrank(PROCESSOR);
             bytes[] memory returnData = vault.processor(targets, values, data);
@@ -238,6 +237,5 @@ contract YnUSDxTest is BaseTest {
             bufferStrategySharesMinted = abi.decode(returnData[1], (uint256));
         }
         vault.processAccounting();
-        bufferStrategy.processAccounting();
     }
 }

@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {BaseTest} from "test/mainnet/helpers/BaseTest.sol";
 import {Vault} from "src/Vault.sol";
-import {BufferStrategy} from "src/BufferStrategy.sol";
 import {Provider} from "src/module/Provider.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -17,11 +16,12 @@ contract SwapTest is BaseTest {
     using SafeERC20 for IERC20;
 
     Vault public vault;
-    BufferStrategy public bufferStrategy;
+    address public bufferStrategy;
     Provider public provider;
 
     function setUp() public {
-        (vault, bufferStrategy, provider) = BaseTest.deploy();
+        (vault, provider) = BaseTest.deploy();
+        bufferStrategy = MC.MORPHO_GAUNTLET_USDC_VAULT;
         vault.processAccounting();
     }
 

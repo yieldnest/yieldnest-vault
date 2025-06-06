@@ -24,15 +24,6 @@ contract Provider is IProvider {
         wrappedUSDC = wrappedUSDC_;
     }
 
-    function isUSDStrategyVault(address asset) public view returns (bool) {
-        try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
-            address vaultAsset = IVault(asset).asset();
-            return keccak256(bytes(version)) == keccak256(bytes("0.2.0")) && vaultAsset == MC.USDC;
-        } catch {
-            return false;
-        }
-    }
-
     function getRate(address asset) public view virtual returns (uint256) {
         if (asset == wrappedUSDC) {
             return 1e18;
@@ -74,13 +65,9 @@ contract Provider is IProvider {
             return IERC4626(asset).convertToAssets(1e18);
         }
 
+        // buffer strategy
         if (asset == MC.MORPHO_GAUNTLET_USDC_VAULT) {
             // base asset is USDC with 6 decimals. we scale it to 18 decimals
-            return IERC4626(asset).convertToAssets(1e18) * 1e12;
-        }
-
-        // buffer strategy
-        if (isUSDStrategyVault(asset)) {
             return IERC4626(asset).convertToAssets(1e18) * 1e12;
         }
         revert UnsupportedAsset(asset);
