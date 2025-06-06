@@ -36,7 +36,9 @@ contract VaultBufferInvariantsTest is BaseTest {
 
     function test_Strategy_ERC20_view_functions() public view {
         assertEq(
-            bufferStrategy.name(), "Buffer Strategy YieldNest USD Max Vault", "Vault name should be 'Buffer Strategy YieldNest USD Max Vault'"
+            bufferStrategy.name(),
+            "Buffer Strategy YieldNest USD Max Vault",
+            "Vault name should be 'Buffer Strategy YieldNest USD Max Vault'"
         );
 
         assertEq(bufferStrategy.symbol(), "Buffer Strategy ynUSDx", "Vault symbol should be 'Buffer Strategy ynUSDx'");
@@ -51,7 +53,6 @@ contract VaultBufferInvariantsTest is BaseTest {
     }
 
     function test_Strategy_ERC4626_view_functions() public view {
-
         assertEq(address(bufferStrategy.asset()), MC.USDC, "Vault asset should be USDC");
 
         uint256 totalAssets = bufferStrategy.totalAssets();
@@ -116,7 +117,10 @@ contract VaultBufferInvariantsTest is BaseTest {
         bufferStrategy.processAccounting();
     }
 
-    function test_allocate_to_buffer_strategy_with_sync_deposit_on(uint256 userDepositAmount, uint256 bufferDepositAmount) public {
+    function test_allocate_to_buffer_strategy_with_sync_deposit_on(
+        uint256 userDepositAmount,
+        uint256 bufferDepositAmount
+    ) public {
         address alice = makeAddr("alice");
         userDepositAmount = bound(userDepositAmount, 1000, 1_000_000 * 1e6);
         bufferDepositAmount = bound(bufferDepositAmount, 1000, userDepositAmount);
@@ -133,12 +137,19 @@ contract VaultBufferInvariantsTest is BaseTest {
         console.log("totalAssets", vault.totalAssets());
         console.log("totalSupply", vault.totalSupply());
 
-        assertEq(expectedSharesToReceive, userDepositAmount * 1e12, "Shares should be equal to amount deposited scaled by 1e12");
-        
+        assertEq(
+            expectedSharesToReceive,
+            userDepositAmount * 1e12,
+            "Shares should be equal to amount deposited scaled by 1e12"
+        );
+
         totalSupplyInvariant(totalSupplyBefore + expectedSharesToReceive);
         totalAssetsInvariant(totalAssetsBefore + userDepositAmount);
-        assertEq(vault.totalBaseAssets(), userDepositAmount * 1e12, "Vault should have the same total base assets as the user deposit amount scaled by 1e12");
-
+        assertEq(
+            vault.totalBaseAssets(),
+            userDepositAmount * 1e12,
+            "Vault should have the same total base assets as the user deposit amount scaled by 1e12"
+        );
 
         totalAssetsBefore = vault.totalAssets();
         totalSupplyBefore = vault.totalSupply();
@@ -149,23 +160,46 @@ contract VaultBufferInvariantsTest is BaseTest {
             // allocate to buffer
             uint256 usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
             uint256 usdcBalanceOfBufferBefore = IERC20(MC.USDC).balanceOf(vault.buffer());
-            expectedShareBalanceOfMorphoGauntletUsdcVault = IERC4626(MC.MORPHO_GAUNTLET_USDC_VAULT).previewDeposit(bufferDepositAmount);
+            expectedShareBalanceOfMorphoGauntletUsdcVault =
+                IERC4626(MC.MORPHO_GAUNTLET_USDC_VAULT).previewDeposit(bufferDepositAmount);
 
             bufferStrategySharesMinted = allocateToBuffer(bufferDepositAmount);
 
             uint256 usdcBalanceOfVaultAfter = IERC20(MC.USDC).balanceOf(address(vault));
             uint256 usdcBalanceOfBufferAfter = IERC20(MC.USDC).balanceOf(vault.buffer());
-            assertEq(usdcBalanceOfVaultBefore - usdcBalanceOfVaultAfter, bufferDepositAmount, "USDC balance should decrease by amount deposited in buffer");
-            assertEq(usdcBalanceOfBufferAfter, 0, "Buffer balance should be allocated to usdc core vault due to sync deposit on");
+            assertEq(
+                usdcBalanceOfVaultBefore - usdcBalanceOfVaultAfter,
+                bufferDepositAmount,
+                "USDC balance should decrease by amount deposited in buffer"
+            );
+            assertEq(
+                usdcBalanceOfBufferAfter,
+                0,
+                "Buffer balance should be allocated to usdc core vault due to sync deposit on"
+            );
         }
 
         assertGt(bufferStrategySharesMinted, 0, "Buffer shares should be greater than 0");
-        assertApproxEqAbs(bufferStrategy.totalAssets(), bufferDepositAmount, 1e6, "Buffer assets should equal buffer amount");
-        assertEq(IERC20(MC.MORPHO_GAUNTLET_USDC_VAULT).balanceOf(address(bufferStrategy)), expectedShareBalanceOfMorphoGauntletUsdcVault, "Incorrect gauntlet usdc vault balance in buffer strategy");
-        assertEq(bufferStrategy.balanceOf(address(vault)), bufferStrategySharesMinted, "Incorrect share amount of bufferStrategyShares in vault");
-        assertApproxEqAbs(vault.totalAssets(), totalAssetsBefore, 1e7, "Vault total assets should be similar to before ignorning rounding errors");
+        assertApproxEqAbs(
+            bufferStrategy.totalAssets(), bufferDepositAmount, 1e6, "Buffer assets should equal buffer amount"
+        );
+        assertEq(
+            IERC20(MC.MORPHO_GAUNTLET_USDC_VAULT).balanceOf(address(bufferStrategy)),
+            expectedShareBalanceOfMorphoGauntletUsdcVault,
+            "Incorrect gauntlet usdc vault balance in buffer strategy"
+        );
+        assertEq(
+            bufferStrategy.balanceOf(address(vault)),
+            bufferStrategySharesMinted,
+            "Incorrect share amount of bufferStrategyShares in vault"
+        );
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            totalAssetsBefore,
+            1e7,
+            "Vault total assets should be similar to before ignorning rounding errors"
+        );
         totalSupplyInvariant(totalSupplyBefore);
-        
     }
 
     function test_allocateToBuffer_syncDeposit_off(uint256 userDepositAmount, uint256 bufferDepositAmount) public {
@@ -176,7 +210,6 @@ contract VaultBufferInvariantsTest is BaseTest {
 
         userDepositAmount = bound(userDepositAmount, 1000, 1_000_000 * 1e6);
         bufferDepositAmount = bound(bufferDepositAmount, 1000, userDepositAmount);
-
 
         // Make initial deposit
         deal(MC.USDC, alice, userDepositAmount);
@@ -193,16 +226,30 @@ contract VaultBufferInvariantsTest is BaseTest {
         bufferStrategy.processAccounting();
 
         assertEq(IERC20(MC.USDC).balanceOf(vault.buffer()), bufferDepositAmount, "Buffer should have received USDC");
-        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), userDepositAmount - bufferDepositAmount, "Vault should have received USDC");
+        assertEq(
+            IERC20(MC.USDC).balanceOf(address(vault)),
+            userDepositAmount - bufferDepositAmount,
+            "Vault should have received USDC"
+        );
         assertEq(bufferStrategy.totalAssets(), bufferDepositAmount, "Buffer assets should equal buffer amount");
-        assertEq(bufferStrategy.balanceOf(address(vault)), bufferStrategySharesMinted, "Incorrect share amount of bufferStrategyShares in vault");
-        assertEq(bufferStrategy.totalSupply(), bufferStrategySharesMinted, "Buffer strategy total supply should equal buffer strategy shares minted");
+        assertEq(
+            bufferStrategy.balanceOf(address(vault)),
+            bufferStrategySharesMinted,
+            "Incorrect share amount of bufferStrategyShares in vault"
+        );
+        assertEq(
+            bufferStrategy.totalSupply(),
+            bufferStrategySharesMinted,
+            "Buffer strategy total supply should equal buffer strategy shares minted"
+        );
 
         totalSupplyInvariant(initialSupply);
         totalAssetsInvariant(initialAssets);
     }
 
-    function testDonationToBuffer_withoutBufferAllocation(uint256 userDepositAmount, uint256 bufferDonationAmount) public {
+    function testDonationToBuffer_withoutBufferAllocation(uint256 userDepositAmount, uint256 bufferDonationAmount)
+        public
+    {
         userDepositAmount = bound(userDepositAmount, 1000, 1_000_000 * 1e6);
         bufferDonationAmount = bound(bufferDonationAmount, 1000, userDepositAmount);
 
@@ -237,7 +284,12 @@ contract VaultBufferInvariantsTest is BaseTest {
         bufferStrategy.processAccounting();
 
         totalSupplyInvariant(initialSupply);
-        assertApproxEqAbs(vault.totalAssets(), initialAssets + bufferDonationAmount, 1e7, "Vault total assets should increase by buffer donation amount ignoring rounding errors");
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            initialAssets + bufferDonationAmount,
+            1e7,
+            "Vault total assets should increase by buffer donation amount ignoring rounding errors"
+        );
     }
 
     function test_revert_nonAllocator_allocate_to_buffer() public {
@@ -264,7 +316,6 @@ contract VaultBufferInvariantsTest is BaseTest {
         );
         bufferStrategy.withdrawAsset(MC.USDC, 1, alice, alice);
         vm.stopPrank();
-
     }
 
     function test_withdrawFromBuffer_syncWithdraw_off(uint256 userDepositAmount) public {
@@ -290,7 +341,9 @@ contract VaultBufferInvariantsTest is BaseTest {
         assertEq(maxWithdraw, 0, "Max withdraw should be 0 due to sync withdraw off and no usdc in buffer");
 
         vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVault.ExceededMaxWithdraw.selector, alice, maxWithdraw + 1, maxWithdraw));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVault.ExceededMaxWithdraw.selector, alice, maxWithdraw + 1, maxWithdraw)
+        );
         vm.stopPrank();
 
         // donate 1 usdc to buffer
@@ -300,8 +353,14 @@ contract VaultBufferInvariantsTest is BaseTest {
         vm.stopPrank();
 
         assertEq(IERC20(MC.USDC).balanceOf(alice), 1e6, "Alice should receive 1 usdc");
-        assertEq(IERC20(MC.USDC).balanceOf(address(bufferStrategy)), 0, "Buffer should have 0 usdc due to sync deposit off");
-        assertLt(vault.balanceOf(alice), vaultSharesOfAliceBefore, "Alice should have less shares due to processing of withdraw");
+        assertEq(
+            IERC20(MC.USDC).balanceOf(address(bufferStrategy)), 0, "Buffer should have 0 usdc due to sync deposit off"
+        );
+        assertLt(
+            vault.balanceOf(alice),
+            vaultSharesOfAliceBefore,
+            "Alice should have less shares due to processing of withdraw"
+        );
     }
 
     function test_withdrawFromBuffer_syncWithdraw_on(uint256 userDepositAmount) public {
@@ -310,7 +369,7 @@ contract VaultBufferInvariantsTest is BaseTest {
 
         userDepositAmount = bound(userDepositAmount, 1000, 1_000_000 * 1e6);
         address alice = makeAddr("alice");
-        
+
         deal(MC.USDC, alice, userDepositAmount);
         _depositAssetToVault(MC.USDC, userDepositAmount, alice);
 
@@ -326,10 +385,17 @@ contract VaultBufferInvariantsTest is BaseTest {
         bufferStrategy.processAccounting();
 
         assertEq(IERC20(MC.USDC).balanceOf(alice), withdrawableUSDC, "Alice should receive max withdraw amount");
-        assertApproxEqAbs(IERC20(MC.USDC).balanceOf(alice), userDepositAmount, 1e7, "Alice should receive approximately same amount of usdc as deposited");
+        assertApproxEqAbs(
+            IERC20(MC.USDC).balanceOf(alice),
+            userDepositAmount,
+            1e7,
+            "Alice should receive approximately same amount of usdc as deposited"
+        );
         assertGt(withdrawableUSDC, 0, "Max withdraw should be 0 due to sync withdraw off and no usdc in buffer");
         assertEq(vault.balanceOf(alice), 0, "Alice should have same shares before");
-        assertEq(IERC20(MC.USDC).balanceOf(address(bufferStrategy)), 0, "Buffer should have 0 usdc due to sync deposit off");
+        assertEq(
+            IERC20(MC.USDC).balanceOf(address(bufferStrategy)), 0, "Buffer should have 0 usdc due to sync deposit off"
+        );
         assertEq(vault.balanceOf(alice), 0, "Alice should have 0 shares due to processing of withdraw");
         assertEq(vault.totalSupply(), 0, "Vault total supply should be 0");
         assertApproxEqAbs(vault.totalAssets(), 0, 1e7, "Vault total assets should be 0");

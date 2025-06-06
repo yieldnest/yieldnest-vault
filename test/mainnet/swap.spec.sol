@@ -37,7 +37,7 @@ contract SwapTest is BaseTest {
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
 
         PsPResponse memory response = BaseTest._fetchPSPRoute(MC.USDC, MC.USDT, depositAmount, address(vault));
-        processSwap(response, MC.USDC, depositAmount);
+        processSwap(response);
         vault.processAccounting();
 
         uint256 usdtBalanceAfter = IERC20(MC.USDT).balanceOf(address(vault));
@@ -74,7 +74,7 @@ contract SwapTest is BaseTest {
             uint256 vaultTotalSupplyBefore = vault.totalSupply();
 
             PsPResponse memory response = BaseTest._fetchPSPRoute(MC.USDC, assets[i], depositAmount, address(vault));
-            processSwap(response, MC.USDC, depositAmount);
+            processSwap(response);
             vault.processAccounting();
 
             uint256 assetBalanceAfter = IERC20(assets[i]).balanceOf(address(vault));
@@ -89,9 +89,11 @@ contract SwapTest is BaseTest {
             uint256 expectedQuotedAmountWithoutSlippage = (depositAmount * srcTokenRate) / destTokenRate;
 
             if (srcTokenDecimals > destTokenDecimals) {
-                expectedQuotedAmountWithoutSlippage = expectedQuotedAmountWithoutSlippage / 10 ** (srcTokenDecimals - destTokenDecimals);
+                expectedQuotedAmountWithoutSlippage =
+                    expectedQuotedAmountWithoutSlippage / 10 ** (srcTokenDecimals - destTokenDecimals);
             } else {
-                expectedQuotedAmountWithoutSlippage = expectedQuotedAmountWithoutSlippage * 10 ** (destTokenDecimals - srcTokenDecimals);
+                expectedQuotedAmountWithoutSlippage =
+                    expectedQuotedAmountWithoutSlippage * 10 ** (destTokenDecimals - srcTokenDecimals);
             }
 
             // Then apply maximum slippage to get minimum required amount
@@ -99,9 +101,16 @@ contract SwapTest is BaseTest {
                 (expectedQuotedAmountWithoutSlippage * (SLIPPAGE_PRECISION - MAX_SLIPPAGE)) / SLIPPAGE_PRECISION;
 
             assertTrue(assetBalanceAfter > assetBalanceBefore, "Asset balance should increase after swap");
-            assertTrue(assetBalanceAfter >= minRequiredQuotedAmount, "Asset balance should be within slippage tolerance");
+            assertTrue(
+                assetBalanceAfter >= minRequiredQuotedAmount, "Asset balance should be within slippage tolerance"
+            );
             // asset balance should be within 0.2% of the expected amount
-            assertApproxEqRel(vaultTotalAssetsAfter, vaultTotalAssetsBefore, 0.2e16, "Asset balance should be within slippage tolerance");
+            assertApproxEqRel(
+                vaultTotalAssetsAfter,
+                vaultTotalAssetsBefore,
+                0.2e16,
+                "Asset balance should be within slippage tolerance"
+            );
             totalSupplyInvariant(vaultTotalSupplyBefore);
         }
     }
@@ -133,11 +142,11 @@ contract SwapTest is BaseTest {
         data[0] = abi.encodeCall(IERC20.approve, (MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, amount));
 
         vm.startPrank(PROCESSOR);
-        bytes[] memory returnData = vault.processor(targets, values, data);
+        vault.processor(targets, values, data);
         vm.stopPrank();
     }
 
-    function processSwap(PsPResponse memory response, address srcToken, uint256 amount) internal {
+    function processSwap(PsPResponse memory response) internal {
         {
             address[] memory targets = new address[](1);
             uint256[] memory values = new uint256[](1);
@@ -148,7 +157,7 @@ contract SwapTest is BaseTest {
             data[0] = response.swapCalldata;
 
             vm.startPrank(PROCESSOR);
-            bytes[] memory returnData = vault.processor(targets, values, data);
+            vault.processor(targets, values, data);
             vm.stopPrank();
         }
     }

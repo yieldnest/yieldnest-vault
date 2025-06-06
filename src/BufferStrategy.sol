@@ -5,7 +5,6 @@ import {SafeERC20, IERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
 import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
-import "forge-std/console.sol";
 
 contract BufferStrategy is BaseStrategy {
     struct BufferStrategyStorage {
@@ -101,7 +100,6 @@ contract BufferStrategy is BaseStrategy {
 
         // NOTE: burn shares before withdrawing the assets
         _burn(owner, shares);
-        console.log("shares burning", shares);
 
         SafeERC20.safeTransfer(IERC20(asset_), receiver, assets);
 

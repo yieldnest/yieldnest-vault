@@ -60,20 +60,15 @@ contract ParaswapValidator is IValidator {
         uint256 quotedAmount;
 
         if (selector == IAugustusV6.swapExactAmountIn.selector) {
-            (
-                address executor,
-                IAugustusV6.GenericData memory swapData,
-                uint256 partnerAndFee,
-                bytes memory permit,
-                bytes memory executorData
-            ) = abi.decode(data[4:], (address, IAugustusV6.GenericData, uint256, bytes, bytes));
+            (, IAugustusV6.GenericData memory swapData,,,) =
+                abi.decode(data[4:], (address, IAugustusV6.GenericData, uint256, bytes, bytes));
             beneficiary = swapData.beneficiary;
             srcToken = swapData.srcToken;
             destToken = swapData.destToken;
             srcAmount = swapData.fromAmount;
             quotedAmount = swapData.quotedAmount;
         } else if (selector == IAugustusV6.swapExactAmountInOnCurveV1.selector) {
-            (IAugustusV6.CurveV1Data memory curveV1Data, uint256 partnerAndFee, bytes memory permit) =
+            (IAugustusV6.CurveV1Data memory curveV1Data,,) =
                 abi.decode(data[4:], (IAugustusV6.CurveV1Data, uint256, bytes));
             beneficiary = curveV1Data.beneficiary;
             srcToken = curveV1Data.srcToken;
@@ -81,7 +76,7 @@ contract ParaswapValidator is IValidator {
             srcAmount = curveV1Data.fromAmount;
             quotedAmount = curveV1Data.quotedAmount;
         } else if (selector == IAugustusV6.swapExactAmountInOnCurveV2.selector) {
-            (IAugustusV6.CurveV2Data memory curveV2Data, uint256 partnerAndFee, bytes memory permit) =
+            (IAugustusV6.CurveV2Data memory curveV2Data,,) =
                 abi.decode(data[4:], (IAugustusV6.CurveV2Data, uint256, bytes));
             beneficiary = curveV2Data.beneficiary;
             srcToken = curveV2Data.srcToken;
@@ -89,7 +84,7 @@ contract ParaswapValidator is IValidator {
             srcAmount = curveV2Data.fromAmount;
             quotedAmount = curveV2Data.quotedAmount;
         } else if (selector == IAugustusV6.swapExactAmountInOnUniswapV2.selector) {
-            (IAugustusV6.UniswapV2Data memory uniswapV2Data, uint256 partnerAndFee, bytes memory permit) =
+            (IAugustusV6.UniswapV2Data memory uniswapV2Data,,) =
                 abi.decode(data[4:], (IAugustusV6.UniswapV2Data, uint256, bytes));
             beneficiary = uniswapV2Data.beneficiary;
             srcToken = uniswapV2Data.srcToken;
@@ -97,7 +92,7 @@ contract ParaswapValidator is IValidator {
             srcAmount = uniswapV2Data.fromAmount;
             quotedAmount = uniswapV2Data.quotedAmount;
         } else if (selector == IAugustusV6.swapExactAmountInOnUniswapV3.selector) {
-            (IAugustusV6.UniswapV3Data memory uniswapV3Data, uint256 partnerAndFee, bytes memory permit) =
+            (IAugustusV6.UniswapV3Data memory uniswapV3Data,,) =
                 abi.decode(data[4:], (IAugustusV6.UniswapV3Data, uint256, bytes));
             beneficiary = uniswapV3Data.beneficiary;
             srcToken = uniswapV3Data.srcToken;
@@ -125,9 +120,11 @@ contract ParaswapValidator is IValidator {
         uint256 expectedQuotedAmountWithoutSlippage = (srcAmount * srcTokenRate) / destTokenRate;
 
         if (srcTokenDecimals > destTokenDecimals) {
-            expectedQuotedAmountWithoutSlippage = expectedQuotedAmountWithoutSlippage / 10 ** (srcTokenDecimals - destTokenDecimals);
+            expectedQuotedAmountWithoutSlippage =
+                expectedQuotedAmountWithoutSlippage / 10 ** (srcTokenDecimals - destTokenDecimals);
         } else {
-            expectedQuotedAmountWithoutSlippage = expectedQuotedAmountWithoutSlippage * 10 ** (destTokenDecimals - srcTokenDecimals);
+            expectedQuotedAmountWithoutSlippage =
+                expectedQuotedAmountWithoutSlippage * 10 ** (destTokenDecimals - srcTokenDecimals);
         }
 
         // Then apply maximum slippage to get minimum required amount

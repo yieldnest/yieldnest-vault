@@ -19,7 +19,6 @@ import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 
 abstract contract BaseScript is Script {
-
     using stdJson for string;
 
     uint256 public minDelay;
@@ -42,7 +41,6 @@ abstract contract BaseScript is Script {
     IVaultViewer public viewerProxy;
     IVaultViewer public viewerImplementation;
     address public viewerProxyAdmin;
-
 
     error UnsupportedChain();
     error InvalidSetup();
@@ -83,7 +81,6 @@ abstract contract BaseScript is Script {
         timelock = new TimelockController(minDelay, proposers, executors, admin);
     }
 
-
     function _loadDeployment() internal virtual {
         if (!vm.isFile(_deploymentFilePath())) {
             return;
@@ -103,14 +100,22 @@ abstract contract BaseScript is Script {
             Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-implementation")))));
         vaultProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxyAdmin")));
 
-        bufferStrategyProxy = BufferStrategy(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-bufferStrategy-proxy")))));
-        bufferStrategyImplementation =
-            BufferStrategy(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-bufferStrategy-implementation")))));
-        bufferStrategyProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-bufferStrategy-proxyAdmin")));
+        bufferStrategyProxy = BufferStrategy(
+            payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-bufferStrategy-proxy"))))
+        );
+        bufferStrategyImplementation = BufferStrategy(
+            payable(
+                address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-bufferStrategy-implementation")))
+            )
+        );
+        bufferStrategyProxyAdmin =
+            address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-bufferStrategy-proxyAdmin")));
 
         wrappedUSDCProxy = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-wrappedUSDC-proxy")));
-        wrappedUSDCImplementation = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-wrappedUSDC-implementation")));
-        wrappedUSDCProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-wrappedUSDC-proxyAdmin")));
+        wrappedUSDCImplementation =
+            address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-wrappedUSDC-implementation")));
+        wrappedUSDCProxyAdmin =
+            address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-wrappedUSDC-proxyAdmin")));
     }
 
     function _deploymentFilePath() internal view virtual returns (string memory) {
@@ -131,16 +136,17 @@ abstract contract BaseScript is Script {
         vm.serializeAddress(symbol(), "viewerProxyAdmin", ProxyUtils.getProxyAdmin(address(viewerProxy)));
         vm.serializeAddress(symbol(), "bufferStrategyProxy", address(bufferStrategyProxy));
         vm.serializeAddress(symbol(), "bufferStrategyImplementation", address(bufferStrategyImplementation));
-        vm.serializeAddress(symbol(), "bufferStrategyProxyAdmin", ProxyUtils.getProxyAdmin(address(bufferStrategyProxy)));
+        vm.serializeAddress(
+            symbol(), "bufferStrategyProxyAdmin", ProxyUtils.getProxyAdmin(address(bufferStrategyProxy))
+        );
 
         vm.serializeAddress(
             symbol(), string.concat(symbol(), "-proxyAdmin"), ProxyUtils.getProxyAdmin(address(vaultProxy))
         );
         vm.serializeAddress(symbol(), string.concat(symbol(), "-proxy"), address(vaultProxy));
 
-        string memory jsonOutput = vm.serializeAddress(
-            symbol(), string.concat(symbol(), "-implementation"), address(vaultImplementation)
-        );
+        string memory jsonOutput =
+            vm.serializeAddress(symbol(), string.concat(symbol(), "-implementation"), address(vaultImplementation));
 
         vm.writeJson(jsonOutput, _deploymentFilePath());
     }

@@ -20,9 +20,16 @@ library BaseRoles {
         vault.grantRole(vault.FEE_MANAGER_ROLE(), timelock);
     }
 
-    function configureDefaultRolesForBufferStrategy(BufferStrategy bufferStrategy, address vault, address timelock, IActors actors) internal {
+    function configureDefaultRolesForBufferStrategy(
+        BufferStrategy bufferStrategy,
+        address vault,
+        address timelock,
+        IActors actors
+    ) internal {
         configureDefaultRoles(Vault(payable(address(bufferStrategy))), timelock, actors);
-        bufferStrategy.grantRole(bufferStrategy.MORPHO_USDC_CORE_VAULT_MANAGER_ROLE(), actors.MORPHO_USDC_CORE_VAULT_MANAGER());
+        bufferStrategy.grantRole(
+            bufferStrategy.MORPHO_USDC_CORE_VAULT_MANAGER_ROLE(), actors.MORPHO_USDC_CORE_VAULT_MANAGER()
+        );
         bufferStrategy.grantRole(bufferStrategy.DEPOSIT_MANAGER_ROLE(), actors.DEPOSIT_MANAGER());
         bufferStrategy.grantRole(bufferStrategy.ALLOCATOR_MANAGER_ROLE(), actors.ALLOCATOR_MANAGER());
         bufferStrategy.grantRole(bufferStrategy.ALLOCATOR_ROLE(), vault);
@@ -52,8 +59,7 @@ library BaseRoles {
 
     function configureTemporaryRolesForMaxVault(Vault vault, address deployer) internal {
         configureTemporaryRoles(vault, deployer);
-            vault.grantRole(vault.FEE_MANAGER_ROLE(), deployer);
-
+        vault.grantRole(vault.FEE_MANAGER_ROLE(), deployer);
     }
 
     function renounceTemporaryRolesForBufferStrategy(BufferStrategy bufferStrategy, address deployer) internal {
@@ -76,7 +82,6 @@ library BaseRoles {
 
     function renounceTemporaryRolesForMaxVault(Vault vault, address deployer) internal {
         renounceTemporaryRoles(vault, deployer);
-            vault.renounceRole(vault.FEE_MANAGER_ROLE(), deployer);
-
+        vault.renounceRole(vault.FEE_MANAGER_ROLE(), deployer);
     }
 }

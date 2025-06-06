@@ -30,23 +30,18 @@ contract YnUSDxTest is BaseTest {
     }
 
     function test_Vault_ERC20_view_functions() public view {
-        assertEq(
-            vault.name(), "YieldNest USD Max Vault", "Vault name should be 'YieldNest USD Max Vault'"
-        );
+        assertEq(vault.name(), "YieldNest USD Max Vault", "Vault name should be 'YieldNest USD Max Vault'");
 
         assertEq(vault.symbol(), "ynUSDx", "Vault symbol should be 'ynUSDx'");
 
         assertEq(vault.decimals(), 18, "Vault decimals should be 18");
 
         assertLe(
-            vault.totalSupply(),
-            vault.totalAssets(),
-            "Vault totalSupply should be less than or equal to totalAssets"
+            vault.totalSupply(), vault.totalAssets(), "Vault totalSupply should be less than or equal to totalAssets"
         );
     }
 
     function test_Vault_ERC4626_view_functions() public view {
-
         assertEq(address(vault.asset()), MC.USDC, "Vault asset should be USDC");
 
         uint256 totalAssets = vault.totalAssets();
@@ -90,20 +85,20 @@ contract YnUSDxTest is BaseTest {
         initialDepositAmount = bound(initialDepositAmount, 1000, 1_000_000e6);
         donationAmount = bound(donationAmount, 1000, 1_000_000e6);
         withdrawalFee = uint64(bound(withdrawalFee, 1, 1e6));
-        
+
         vm.startPrank(ADMIN);
         vault.setBaseWithdrawalFee(withdrawalFee);
         vm.stopPrank();
 
         address alice = makeAddr("alice");
         address donator = makeAddr("donator");
-        
+
         vm.startPrank(alice);
         deal(MC.USDC, alice, initialDepositAmount);
         IERC20(MC.USDC).approve(address(vault), initialDepositAmount);
         uint256 shares = vault.deposit(initialDepositAmount, alice);
         vm.stopPrank();
-        
+
         vm.startPrank(donator);
         deal(MC.USDC, donator, donationAmount);
         IERC20(MC.USDC).transfer(address(vault), donationAmount);
@@ -114,22 +109,33 @@ contract YnUSDxTest is BaseTest {
 
         uint256 expectedRedemption = vault.previewRedeem(shares);
         uint256 fees = FeeMath.feeOnTotal(initialDepositAmount + donationAmount, withdrawalFee);
-        
+
         vm.startPrank(alice);
         uint256 usdcBalanceOfAliceBefore = IERC20(MC.USDC).balanceOf(alice);
         vault.redeem(shares, alice, alice);
         uint256 usdcBalanceOfAliceAfter = IERC20(MC.USDC).balanceOf(alice);
         vm.stopPrank();
-        
+
         uint256 actualUSDCReceivedByAlice = usdcBalanceOfAliceAfter - usdcBalanceOfAliceBefore;
-        
-        assertApproxEqAbs(actualUSDCReceivedByAlice, expectedRedemption, 1e2,"User should receive amount minus withdrawal fee");
-        assertApproxEqAbs(actualUSDCReceivedByAlice, initialDepositAmount + donationAmount - fees, 1e8,"User should receive amount minus withdrawal fee");
+
+        assertApproxEqAbs(
+            actualUSDCReceivedByAlice, expectedRedemption, 1e2, "User should receive amount minus withdrawal fee"
+        );
+        assertApproxEqAbs(
+            actualUSDCReceivedByAlice,
+            initialDepositAmount + donationAmount - fees,
+            1e8,
+            "User should receive amount minus withdrawal fee"
+        );
         assertEq(vault.balanceOf(alice), 0, "User should have no shares left");
         assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 0, "Vault should have no USDC left");
     }
 
-    function test_Vault_withdrawUSDC_afterUSDEDeposit(uint256 usdcDepositAmount, uint256 usdeDepositAmount, uint256 usdcWithdrawAmount) public {
+    function test_Vault_withdrawUSDC_afterUSDEDeposit(
+        uint256 usdcDepositAmount,
+        uint256 usdeDepositAmount,
+        uint256 usdcWithdrawAmount
+    ) public {
         usdcDepositAmount = bound(usdcDepositAmount, 1001, 1_000_000e6); // 6 decimals
         usdeDepositAmount = bound(usdeDepositAmount, 1001, 1_000_000e18); // 18 decimals
         usdcWithdrawAmount = bound(usdcWithdrawAmount, 1, usdcDepositAmount - 1000); // 6 decimals
@@ -183,16 +189,24 @@ contract YnUSDxTest is BaseTest {
         uint256 assetsWithdrawn = vault.redeem(sharesToBurn, alice, alice);
         vm.stopPrank();
 
-
         // Check that Alice's USDC balance increased
         assertEq(IERC20(MC.USDC).balanceOf(alice), assetsWithdrawn, "Alice's USDC balance did not increase correctly");
         assertApproxEqAbs(assetsWithdrawn, usdcWithdrawAmount, 1e6, "Alice should receive USDC deposit amount");
 
         // Check that all shares from USDC deposit were burned
-        assertEq(vault.balanceOf(alice), sharesMintedFromUSDE + sharesMintedFromUSDC - sharesToBurn, "Alice's shares from USDC were not burned correctly");
+        assertEq(
+            vault.balanceOf(alice),
+            sharesMintedFromUSDE + sharesMintedFromUSDC - sharesToBurn,
+            "Alice's shares from USDC were not burned correctly"
+        );
 
         // Check that total assets decreased by the USD value of USDC
-        assertApproxEqAbs(vault.totalAssets(), usdeDepositAmount / 1e12 + usdcDepositAmount - usdcWithdrawAmount, 1e6, "Total assets did not decrease correctly");
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            usdeDepositAmount / 1e12 + usdcDepositAmount - usdcWithdrawAmount,
+            1e6,
+            "Total assets did not decrease correctly"
+        );
         // Check that the total base assets in the vault match the expected value
         assertApproxEqAbs(
             vault.totalBaseAssets(),

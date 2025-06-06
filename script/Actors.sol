@@ -34,7 +34,7 @@ interface IActors {
 
     function MORPHO_USDC_CORE_VAULT_MANAGER() external view returns (address);
 
-    function DEPOSIT_MANAGER() external view returns (address); 
+    function DEPOSIT_MANAGER() external view returns (address);
 
     function ALLOCATOR_MANAGER() external view returns (address);
 }

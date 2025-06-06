@@ -26,7 +26,6 @@ import {BaseRoles} from "script/roles/BaseRoles.sol";
  * @notice Script to deploy the YieldNest USDx vault and configure it for mainnet
  */
 contract DeployYnUSDx is BaseScript, MainnetActors {
-
     // Constants
     uint256 public constant MAX_SLIPPAGE = 20; // 0.2% in basis points
     uint256 public constant SLIPPAGE_PRECISION = 10000; // 100% in basis points
@@ -34,7 +33,6 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
     error InvalidWrappedUSDC();
     error InvalidRateProvider();
     error InvalidTimelock();
-
 
     function symbol() public pure override returns (string memory) {
         return "ynUSDx";
@@ -44,14 +42,15 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         rateProvider = IProvider(address(new Provider(_wrappedUSDC)));
     }
 
-    function deployWrappedUSDC() internal returns(address) {
+    function deployWrappedUSDC() internal returns (address) {
         wrappedUSDCImplementation = address(new WrappedToken());
 
         if (address(timelock) == address(0)) {
             revert InvalidTimelock();
         }
 
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(wrappedUSDCImplementation), address(timelock), "");
+        TransparentUpgradeableProxy proxy =
+            new TransparentUpgradeableProxy(address(wrappedUSDCImplementation), address(timelock), "");
         wrappedUSDCProxy =
             address(new TransparentUpgradeableProxy(address(wrappedUSDCImplementation), address(timelock), ""));
         WrappedToken(wrappedUSDCProxy).initialize(IERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
@@ -72,7 +71,6 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
     }
 
     function run() public {
-
         vm.startBroadcast();
 
         _setup();
@@ -93,24 +91,22 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
      * @notice Deploy the vault system including Vault, BufferStrategy, Provider, and Validators
      */
     function deployVaultSystem() internal {
-
         address admin = msg.sender;
 
         vaultImplementation = new Vault();
         vaultProxyAdmin = address(timelock);
-        vaultProxy = Vault(
-            payable(
-                address(new TransparentUpgradeableProxy(address(vaultImplementation), vaultProxyAdmin, ""))
-            )
-        );
+        vaultProxy =
+            Vault(payable(address(new TransparentUpgradeableProxy(address(vaultImplementation), vaultProxyAdmin, ""))));
         // TODO: set base withdrawal fee parameters correctly
         vaultProxy.initialize(admin, "YieldNest USD Max Vault", "ynUSDx", 18, 0, false, false, 1);
-    
+
         bufferStrategyImplementation = new BufferStrategy();
         bufferStrategyProxyAdmin = address(timelock);
         bufferStrategyProxy = BufferStrategy(
             payable(
-                address(new TransparentUpgradeableProxy(address(bufferStrategyImplementation), bufferStrategyProxyAdmin, ""))
+                address(
+                    new TransparentUpgradeableProxy(address(bufferStrategyImplementation), bufferStrategyProxyAdmin, "")
+                )
             )
         );
         bufferStrategyProxy.initialize(
@@ -136,7 +132,11 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         supportedTokensForParaswapValidator[7] = MC.USDS;
 
         ParaswapValidator paraswapValidator = new ParaswapValidator(
-            MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(vaultProxy), address(rateProvider), MAX_SLIPPAGE, supportedTokensForParaswapValidator
+            MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER,
+            address(vaultProxy),
+            address(rateProvider),
+            MAX_SLIPPAGE,
+            supportedTokensForParaswapValidator
         );
 
         // 7. Configure the deployed contracts
@@ -151,9 +151,9 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
      * @param paraswapValidator The deployed ParaswapValidator contract
      */
     function configureVaultSystem(
-        Vault vault, 
-        BufferStrategy bufferStrategy, 
-        IProvider provider, 
+        Vault vault,
+        BufferStrategy bufferStrategy,
+        IProvider provider,
         ParaswapValidator paraswapValidator
     ) internal {
         // 1. Set up roles for the Vault
@@ -192,7 +192,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         bufferStrategy.setSyncDeposit(true);
         bufferStrategy.setSyncWithdraw(true);
         bufferStrategy.setHasAllocator(true);
-        
+
         // 5.1 grant allocator role to vault
         bufferStrategy.grantRole(bufferStrategy.ALLOCATOR_ROLE(), address(vault));
         bufferStrategy.grantRole(bufferStrategy.ALLOCATOR_ROLE(), actors.BOOTSTRAPPER());
@@ -256,7 +256,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
      * @param paraswapValidator The ParaswapValidator contract
      */
     function configureParaswapRules(Vault vault, ParaswapValidator paraswapValidator) internal {
-         SafeRules.RuleParams[] memory rules =
+        SafeRules.RuleParams[] memory rules =
             ParaswapRules.getParaswapRules(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(paraswapValidator));
         SafeRules.setProcessorRules(vault, rules, false);
     }
@@ -271,7 +271,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
 
         rules[i++] = BaseRules.getDepositRule(address(MC.MORPHO_GAUNTLET_USDC_VAULT), address(bufferStrategy));
         rules[i++] = BaseRules.getApprovalRule(MC.USDC, address(MC.MORPHO_GAUNTLET_USDC_VAULT));
-        
+
         SafeRules.setProcessorRules(bufferStrategy, rules, false);
     }
 
@@ -280,10 +280,8 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
      * @param vault The Vault contract
      */
     function configureSuperUsdcRules(Vault vault) internal {
-        SafeRules.RuleParams[] memory rules = SuperUsdcRules.getSuperUsdcRedeemRules(
-            MC.SUPER_USDC_VAULT, 
-            address(vault)
-        );
+        SafeRules.RuleParams[] memory rules =
+            SuperUsdcRules.getSuperUsdcRedeemRules(MC.SUPER_USDC_VAULT, address(vault));
         SafeRules.setProcessorRules(vault, rules, false);
     }
-} 
+}

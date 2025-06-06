@@ -146,7 +146,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         bufferStrategy.setUsdcCoreVault(MC.MORPHO_GAUNTLET_USDC_VAULT);
         bufferStrategy.setSyncDeposit(true);
         bufferStrategy.setSyncWithdraw(true);
-                bufferStrategy.setHasAllocator(true);
+        bufferStrategy.setHasAllocator(true);
 
         configureVaultRules(vault, bufferStrategy);
         configureBufferStrategyRules(bufferStrategy);
@@ -204,6 +204,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         rules[i++] = BaseRules.getDepositRule(address(MC.MORPHO_GAUNTLET_USDC_VAULT), address(bufferStrategy));
         rules[i++] = BaseRules.getApprovalRule(MC.USDC, address(MC.MORPHO_GAUNTLET_USDC_VAULT));
+        SafeRules.setProcessorRules(bufferStrategy, rules, false);
     }
 
     function configureSuperUsdcRules(Vault vault) internal {
