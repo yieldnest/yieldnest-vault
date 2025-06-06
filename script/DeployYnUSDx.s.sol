@@ -48,8 +48,6 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
             revert InvalidTimelock();
         }
 
-        TransparentUpgradeableProxy proxy =
-            new TransparentUpgradeableProxy(address(wrappedUSDCImplementation), address(timelock), "");
         wrappedUSDCProxy =
             address(new TransparentUpgradeableProxy(address(wrappedUSDCImplementation), address(timelock), ""));
         WrappedToken(wrappedUSDCProxy).initialize(IERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
@@ -131,7 +129,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         // 1. Set up roles for the Vault
         BaseRoles.configureDefaultRoles(vault, address(timelock), actors);
         // 2. Configure temporary roles for the Vault
-        BaseRoles.configureTemporaryRoles(vault);
+        BaseRoles.configureTemporaryRoles(vault, deployer);
 
         // 3. Set Provider for Vault
         vault.setProvider(address(provider));

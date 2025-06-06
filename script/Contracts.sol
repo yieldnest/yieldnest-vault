@@ -14,6 +14,7 @@ interface IContracts {
     function FRAX() external pure returns (address);
     function USDS() external pure returns (address);
     function CRVUSD() external pure returns (address);
+    function YNUSDx() external pure returns (address);
 }
 
 library MainnetContracts {
@@ -36,50 +37,12 @@ library MainnetContracts {
     address public constant PROVIDER = 0x56D43f8C6c3891d081AD93B27419c37394857117; // TODO: Update with deployed Provider
     address public constant BUFFER = address(987654321); // TODO: Update with deployed buffer
 
-    address public constant YNETHX_VIEWER = 0x514d0aC9BFAf631AC7b303564bA1C822bC52F365;
-
-    // EVK Vault eWETH-22 is used as the buffer for ynETHx
-    address public constant EULER_WETH_22_VAULT = address(0x45c3B59d53e2e148Aaa6a857521059676D5c0489);
-    address public constant TIMELOCK = 0xb5b52c63067E490982874B0d0F559668Bbe0c36B;
-
     address public constant PARASWAP_AUGUSTUS_SWAPPER_ROUTER = 0x6A000F20005980200259B80c5102003040001068;
-
-    address public constant CURVE_LP_SCRVUSD_SUSDE_POOL = 0xd29f8980852c2c76fC3f6E96a7Aa06E0BedCC1B1;
-
-    address public constant CONVEX_BOOSTER = 0xF403C135812408BFbE8713b5A23a04b3D48AAE31;
 
     // Morpho Gauntlet USDC Vault is used as the buffer for ynUSDCx
     address public constant MORPHO_GAUNTLET_USDC_VAULT = address(0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458);
 
     address public constant SUPER_USDC_VAULT = 0xF7DE3c70F2db39a188A81052d2f3C8e3e217822a;
-
-    address public constant WSTETH_WITHDRAWAL_QUEUE = 0x889edC2eDab5f40e902b864aD4d7AdE8E412F9B1;
-
-    address public constant YNLSDE_WITHDRAWAL_QUEUE_MANAGER = 0x8Face3283E20b19d98a7a132274B69C1304D60b4;
-    address public constant YNLSDE_REDEMPTION_ASSETS_VAULT = 0x73bC33999C34a5126CA19dC900F22690C288D55e;
-
-    address public constant YNETH_WITHDRAWAL_QUEUE_MANAGER = 0x0BC9BC81aD379810B36AD5cC95387112990AA67b;
-    address public constant YNETH_REDEMPTION_ASSETS_VAULT = 0x5D6e53c42E3B37f82F693937BC508940769c5caf;
-
-    address public constant OETH_VAULT = 0x39254033945AA2E4809Cc2977E7087BEE48bd7Ab;
-
-    address public constant CURVE_REGISTRY = 0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c;
-
-    address public constant CURVE_TWOCRYPTO_FACTORY = 0x98EE851a00abeE0d95D08cF4CA2BdCE32aeaAF7F;
-
-    address public constant METH_STAKING_MANAGER = 0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f;
-
-    address public constant SFRXETH = 0xac3E018457B222d93114458476f3E3416Abbe38F;
-    address public constant FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
-
-    address public constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-
-    address public constant CURVE_LP_YNETH_YNLSDE_POOL = 0x1f59cC10c6360DA918B0235c98E58008452816EB;
-    address public constant CURVE_LP_YNETH_YNLSDE_CONNECTOR = 0xe66E34F9E3116ce497Cbd15268f175eC711539d5;
-    address public constant CURVE_LP_YNETH_YNLSDE_STRATEGY = 0x823976dA34aC45C23a8DfEa51B3Ff1Ae0D980213;
-
-    // Smokehouse WSTETH
-    address public constant SMOKEHOUSE_WSTETH = 0x833AdaeF212c5cD3f78906B44bBfb18258F238F0;
 }
 
 contract L1Contracts is IContracts {
@@ -125,5 +88,9 @@ contract L1Contracts is IContracts {
 
     function CRVUSD() external pure override returns (address) {
         return MainnetContracts.CRVUSD;
+    }
+
+    function YNUSDx() external pure override returns (address) {
+        return MainnetContracts.YNUSDx;
     }
 }
