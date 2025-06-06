@@ -63,7 +63,7 @@ contract SwapTest is BaseTest {
 
         for (uint256 i = 0; i < assets.length; i++) {
             vm.revertToState(snapshotId);
-            uint256 depositAmount = 1000_00e6;
+            uint256 depositAmount = 1000_000e6;
             giveApprovalOfAssetToAugustus(MC.USDC, depositAmount);
 
             depositAmount = depositAssetToVault(MC.USDC, depositAmount, 0);

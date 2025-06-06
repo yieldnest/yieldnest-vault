@@ -11,6 +11,9 @@ interface IContracts {
     function USDE() external pure returns (address);
     function SUSDS() external pure returns (address);
     function SCRVUSD() external pure returns (address);
+    function FRAX() external pure returns (address);
+    function USDS() external pure returns (address);
+    function CRVUSD() external pure returns (address);
 }
 
 library MainnetContracts {
@@ -40,10 +43,6 @@ library MainnetContracts {
     address public constant TIMELOCK = 0xb5b52c63067E490982874B0d0F559668Bbe0c36B;
 
     address public constant PARASWAP_AUGUSTUS_SWAPPER_ROUTER = 0x6A000F20005980200259B80c5102003040001068;
-
-    address public constant CURVE_LP_SCRVUSD_SUSDE_STRATEGY = 0x0000000000000000000000000000000000000000; // TODO: Update with deployed strategy
-
-    address public constant CURVE_LP_SCRVUSD_SUSDE_CONNECTOR = 0x0000000000000000000000000000000000000000; // TODO: Update with deployed connector
 
     address public constant CURVE_LP_SCRVUSD_SUSDE_POOL = 0xd29f8980852c2c76fC3f6E96a7Aa06E0BedCC1B1; 
 
@@ -114,5 +113,17 @@ contract L1Contracts is IContracts {
 
     function SCRVUSD() external pure override returns (address) {
         return MainnetContracts.SCRVUSD;
+    }
+
+    function FRAX() external pure override returns (address) {
+        return MainnetContracts.FRAX;
+    }
+
+    function USDS() external pure override returns (address) {
+        return MainnetContracts.USDS;
+    }
+
+    function CRVUSD() external pure override returns (address) {
+        return MainnetContracts.CRVUSD;
     }
 }

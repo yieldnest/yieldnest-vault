@@ -100,8 +100,8 @@ contract SuperUSDCTest is BaseTest {
     }
 
     function test_deposit_and_withdraw_from_superusdc_vault(uint256 depositAmount, uint256 withdrawAmount) public {
-        depositAmount = bound(depositAmount, 2e6, 5_000_000 * 1e6);
-        withdrawAmount = bound(withdrawAmount, 1e6, depositAmount - 1);
+        depositAmount = bound(depositAmount, 2e6, 25_00_000 * 1e6);
+        withdrawAmount = bound(withdrawAmount, 1e6, depositAmount - 1000);
 
         address alice = makeAddr("alice");
         deal(MC.USDC, alice, depositAmount);

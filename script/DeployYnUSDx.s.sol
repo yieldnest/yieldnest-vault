@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity 0.8.24;
 
-import {Script} from "lib/forge-std/src/Script.sol";
+import {BaseScript} from "script/BaseScript.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
 import {Vault} from "src/Vault.sol";
@@ -12,120 +12,120 @@ import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {Provider} from "src/module/Provider.sol";
 import {BufferStrategy} from "src/BufferStrategy.sol";
 import {ParaswapValidator} from "src/validator/ParaswapValidator.sol";
-
+import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {ParaswapRules} from "script/rules/ParaswapRules.sol";
 import {SuperUsdcRules} from "script/rules/SuperUsdcRules.sol";
+import {IProvider} from "src/interface/IProvider.sol";
+import {BaseRoles} from "script/roles/BaseRoles.sol";
 
 /**
  * @title DeployYnUSDx
  * @notice Script to deploy the YieldNest USDx vault and configure it for mainnet
  */
- //TODO: this is incomplete, need to add wrappedUSDC to the vault
-contract DeployYnUSDx is Script, MainnetActors {
+contract DeployYnUSDx is BaseScript, MainnetActors {
+
     // Constants
-    uint256 public constant MAX_SLIPPAGE = 100; // 1% in basis points
+    uint256 public constant MAX_SLIPPAGE = 20; // 0.2% in basis points
     uint256 public constant SLIPPAGE_PRECISION = 10000; // 100% in basis points
 
-    // Deployed contract addresses for verification and logging
-    address public vaultProxy;
-    address public vaultImplementation;
-    address public bufferStrategyProxy;
-    address public bufferStrategyImplementation;
-    address public providerAddress;
-    address public paraswapValidatorAddress;
-    address public deployer;
+    error InvalidWrappedUSDC();
+    error InvalidRateProvider();
+    error InvalidTimelock();
+
+
+    function symbol() public pure override returns (string memory) {
+        return "ynUSDx";
+    }
+
+    function deployRateProvider(address _wrappedUSDC) internal {
+        rateProvider = IProvider(address(new Provider(_wrappedUSDC)));
+    }
+
+    function deployWrappedUSDC() internal returns(address) {
+        wrappedUSDCImplementation = address(new WrappedToken());
+
+        if (address(timelock) == address(0)) {
+            revert InvalidTimelock();
+        }
+
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(wrappedUSDCImplementation), address(timelock), "");
+        wrappedUSDCProxy =
+            address(new TransparentUpgradeableProxy(address(wrappedUSDCImplementation), address(timelock), ""));
+        WrappedToken(wrappedUSDCProxy).initialize(IERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
+
+        return address(wrappedUSDCProxy);
+    }
+
+    function _verifySetup() public view override {
+        super._verifySetup();
+
+        if (wrappedUSDCProxy == address(0)) {
+            revert InvalidWrappedUSDC();
+        }
+
+        if (address(rateProvider) == address(0)) {
+            revert InvalidRateProvider();
+        }
+    }
 
     function run() public {
-        
-        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
 
-        deployer = vm.addr(deployerPrivateKey);
+        vm.startBroadcast();
+
+        _setup();
+        _deployTimelockController();
+        address wrappedUSDCProxy = deployWrappedUSDC();
+        deployRateProvider(wrappedUSDCProxy);
+
+        _verifySetup();
 
         // Deploy and configure the vault system
-        (
-            Vault vault, 
-            BufferStrategy bufferStrategy, 
-            Provider provider,
-            ParaswapValidator paraswapValidator
-        ) = deployVaultSystem();
-
-        // Log deployed contract addresses
-        console.log("Vault Proxy:", address(vault));
-        console.log("Vault Implementation:", vaultImplementation);
-        console.log("Buffer Strategy Proxy:", address(bufferStrategy));
-        console.log("Buffer Strategy Implementation:", bufferStrategyImplementation);
-        console.log("Provider:", address(provider));
-        console.log("Paraswap Validator:", address(paraswapValidator));
-
-        // Store addresses for verification
-        vaultProxy = address(vault);
-        bufferStrategyProxy = address(bufferStrategy);
-        providerAddress = address(provider);
-        paraswapValidatorAddress = address(paraswapValidator);
+        deployVaultSystem();
+        _saveDeployment();
 
         vm.stopBroadcast();
     }
 
     /**
      * @notice Deploy the vault system including Vault, BufferStrategy, Provider, and Validators
-     * @return Deployed contracts
      */
-    function deployVaultSystem() internal returns (
-        Vault, 
-        BufferStrategy, 
-        Provider, 
-        ParaswapValidator
-    ) {
+    function deployVaultSystem() internal {
 
-        Vault _vaultImplementation = new Vault();
-        vaultImplementation = address(_vaultImplementation);
+        address admin = msg.sender;
 
-        bytes memory vaultInitData = abi.encodeWithSelector(
-            Vault.initialize.selector, 
-            deployer, 
-            "ynUSD MAX", 
-            "ynUSDx", 
-            6, 
-            0,  // todo: to be set
-            false, 
-            true
+        vaultImplementation = new Vault();
+        vaultProxyAdmin = address(timelock);
+        vaultProxy = Vault(
+            payable(
+                address(new TransparentUpgradeableProxy(address(vaultImplementation), vaultProxyAdmin, ""))
+            )
         );
-        
-        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(
-            address(vaultImplementation), 
-            address(MainnetActors.ADMIN), 
-            vaultInitData
+        // TODO: set base withdrawal fee parameters correctly
+        vaultProxy.initialize(admin, "YieldNest USD Max Vault", "ynUSDx", 18, 0, false, false, 1);
+    
+        bufferStrategyImplementation = new BufferStrategy();
+        bufferStrategyProxyAdmin = address(timelock);
+        bufferStrategyProxy = BufferStrategy(
+            payable(
+                address(new TransparentUpgradeableProxy(address(bufferStrategyImplementation), bufferStrategyProxyAdmin, ""))
+            )
         );
-        Vault vault = Vault(payable(address(vaultProxy)));
-
-        BufferStrategy _bufferStrategyImplementation = new BufferStrategy();
-        bufferStrategyImplementation = address(_bufferStrategyImplementation);
-
-        bytes memory bufferStrategyInitData = abi.encodeWithSelector(
-            BufferStrategy.initialize.selector, 
-            deployer, 
-            "Gauntlet USDC Core", 
-            "ynUSDx buffer", // todo: do we follow any naming convention here 
-            6,
-            0,
-            false,
+        bufferStrategyProxy.initialize(
+            admin,
+            "Buffer Strategy YieldNest USD Max Vault",
+            "Buffer Strategy ynUSDx",
+            18,
             true,
-            1
+            false,
+            false,
+            1,
+            MC.MORPHO_GAUNTLET_USDC_VAULT
         );
-        
-        TransparentUpgradeableProxy bufferStrategyProxy = new TransparentUpgradeableProxy(
-            address(bufferStrategyImplementation), 
-            address(MainnetActors.ADMIN), 
-            bufferStrategyInitData
-        );
-        BufferStrategy bufferStrategy = BufferStrategy(payable(address(bufferStrategyProxy)));
-        // WrappedToken wrappedUSDC = new WrappedToken();
-        Provider provider = new Provider(address(0));
 
-        address[] memory supportedTokensForParaswapValidator = new address[](7);
+        address[] memory supportedTokensForParaswapValidator = new address[](8);
         supportedTokensForParaswapValidator[0] = MC.USDC;
         supportedTokensForParaswapValidator[1] = MC.USDT;
         supportedTokensForParaswapValidator[2] = MC.GHO;
@@ -133,19 +133,14 @@ contract DeployYnUSDx is Script, MainnetActors {
         supportedTokensForParaswapValidator[4] = MC.CRVUSD;
         supportedTokensForParaswapValidator[5] = MC.USDS;
         supportedTokensForParaswapValidator[6] = MC.FRAX;
+        supportedTokensForParaswapValidator[7] = MC.USDS;
 
         ParaswapValidator paraswapValidator = new ParaswapValidator(
-            MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, 
-            address(vault), 
-            address(provider), 
-            MAX_SLIPPAGE, 
-            supportedTokensForParaswapValidator
+            MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(vaultProxy), address(rateProvider), MAX_SLIPPAGE, supportedTokensForParaswapValidator
         );
 
         // 7. Configure the deployed contracts
-        configureVaultSystem(vault, bufferStrategy, provider, paraswapValidator);
-
-        return (vault, bufferStrategy, provider, paraswapValidator);
+        configureVaultSystem(vaultProxy, bufferStrategyProxy, rateProvider, paraswapValidator);
     }
 
     /**
@@ -158,53 +153,49 @@ contract DeployYnUSDx is Script, MainnetActors {
     function configureVaultSystem(
         Vault vault, 
         BufferStrategy bufferStrategy, 
-        Provider provider, 
+        IProvider provider, 
         ParaswapValidator paraswapValidator
     ) internal {
         // 1. Set up roles for the Vault
-        vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), ADMIN);
-        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
-        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
-        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
-        vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
+        BaseRoles.configureDefaultRoles(vault, address(timelock), actors);
+        BaseRoles.configureTemporaryRoles(vault);
 
         // 2. Set up roles for the BufferStrategy
-        bufferStrategy.grantRole(bufferStrategy.DEFAULT_ADMIN_ROLE(), ADMIN);
-        bufferStrategy.grantRole(bufferStrategy.PROCESSOR_ROLE(), PROCESSOR);
-        bufferStrategy.grantRole(bufferStrategy.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
-        bufferStrategy.grantRole(bufferStrategy.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
-        bufferStrategy.grantRole(bufferStrategy.PAUSER_ROLE(), PAUSER);
-        bufferStrategy.grantRole(bufferStrategy.UNPAUSER_ROLE(), UNPAUSER);
-        bufferStrategy.grantRole(bufferStrategy.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
-        bufferStrategy.grantRole(bufferStrategy.MORPHO_USDC_CORE_VAULT_MANAGER_ROLE(), MORPHO_USDC_CORE_VAULT_MANAGER);
-        bufferStrategy.grantRole(bufferStrategy.DEPOSIT_MANAGER_ROLE(), DEPOSIT_MANAGER);
+        BaseRoles.configureDefaultRolesForBufferStrategy(bufferStrategy, address(vault), address(timelock), actors);
+        BaseRoles.configureTemporaryRolesForBufferStrategy(bufferStrategy);
 
         // 3. Set Provider for Vault
         vault.setProvider(address(provider));
 
         // 4. Add assets to Vault
-        vault.addAsset(MC.USDC, true); // Base asset
-        vault.addAsset(address(bufferStrategy), false);
+        vault.addAsset(address(wrappedUSDCProxy), true);
+        vault.addAsset(MC.USDC, true);
+        vault.addAsset(address(bufferStrategyProxy), false);
         vault.addAsset(MC.USDT, false);
         vault.addAsset(MC.GHO, false);
         vault.addAsset(MC.USDE, false);
         vault.addAsset(MC.SUSDE, false);
         vault.addAsset(MC.SCRVUSD, false);
+        vault.addAsset(MC.CRVUSD, false);
+        vault.addAsset(MC.USDS, false);
         vault.addAsset(MC.SUSDS, false);
         vault.addAsset(MC.SFRAX, false);
+        vault.addAsset(MC.FRAX, false);
         vault.addAsset(MC.SUPER_USDC_VAULT, false);
 
         // 5. Configure BufferStrategy
+        bufferStrategy.addAsset(address(wrappedUSDCProxy), 18, true, true);
         bufferStrategy.addAsset(MC.USDC, 6, true, true);
         bufferStrategy.addAsset(MC.MORPHO_GAUNTLET_USDC_VAULT, false, false);
         bufferStrategy.setProvider(address(provider));
         bufferStrategy.setUsdcCoreVault(MC.MORPHO_GAUNTLET_USDC_VAULT);
         bufferStrategy.setSyncDeposit(true);
         bufferStrategy.setSyncWithdraw(true);
+        bufferStrategy.setHasAllocator(true);
+        
+        // 5.1 grant allocator role to vault
+        bufferStrategy.grantRole(bufferStrategy.ALLOCATOR_ROLE(), address(vault));
+        bufferStrategy.grantRole(bufferStrategy.ALLOCATOR_ROLE(), actors.BOOTSTRAPPER());
 
         // 6. Configure rules
         configureVaultRules(vault, bufferStrategy);
@@ -221,6 +212,10 @@ contract DeployYnUSDx is Script, MainnetActors {
 
         // 9. Process initial accounting
         vault.processAccounting();
+        bufferStrategy.processAccounting();
+
+        BaseRoles.renounceTemporaryRoles(vault, deployer);
+        BaseRoles.renounceTemporaryRolesForBufferStrategy(bufferStrategy, deployer);
     }
 
     /**
@@ -229,27 +224,24 @@ contract DeployYnUSDx is Script, MainnetActors {
      * @param bufferStrategy The BufferStrategy contract
      */
     function configureVaultRules(Vault vault, BufferStrategy bufferStrategy) internal {
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](9);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](11);
         uint256 i = 0;
 
-        // USDC approval rules
         address[] memory usdcApprovalAllowList = new address[](3);
         usdcApprovalAllowList[0] = address(bufferStrategy);
         usdcApprovalAllowList[1] = MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER;
         usdcApprovalAllowList[2] = MC.SUPER_USDC_VAULT;
-        
-        // Buffer and SuperUSDC deposit rules
         rules[i++] = BaseRules.getDepositRule(address(bufferStrategy), address(vault));
         rules[i++] = BaseRules.getDepositRule(address(MC.SUPER_USDC_VAULT), address(vault));
-        
-        // Asset approval rules
         rules[i++] = BaseRules.getApprovalRule(MC.USDC, usdcApprovalAllowList);
+        rules[i++] = BaseRules.getDepositAssetRule(address(bufferStrategy), MC.USDC, address(vault));
         rules[i++] = BaseRules.getApprovalRule(MC.USDT, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
         rules[i++] = BaseRules.getApprovalRule(MC.GHO, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
         rules[i++] = BaseRules.getApprovalRule(MC.USDE, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
-        rules[i++] = BaseRules.getApprovalRule(MC.CRVUSD, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
-        rules[i++] = BaseRules.getApprovalRule(MC.USDS, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
-        rules[i++] = BaseRules.getApprovalRule(MC.FRAX, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        rules[i++] = BaseRules.getApprovalRule(MC.SUSDE, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        rules[i++] = BaseRules.getApprovalRule(MC.SCRVUSD, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        rules[i++] = BaseRules.getApprovalRule(MC.SUSDS, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        rules[i++] = BaseRules.getApprovalRule(MC.SFRAX, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
 
         if (i != rules.length) {
             revert("rules length mismatch");
@@ -264,10 +256,8 @@ contract DeployYnUSDx is Script, MainnetActors {
      * @param paraswapValidator The ParaswapValidator contract
      */
     function configureParaswapRules(Vault vault, ParaswapValidator paraswapValidator) internal {
-        SafeRules.RuleParams[] memory rules = ParaswapRules.getParaswapRules(
-            MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, 
-            address(paraswapValidator)
-        );
+         SafeRules.RuleParams[] memory rules =
+            ParaswapRules.getParaswapRules(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(paraswapValidator));
         SafeRules.setProcessorRules(vault, rules, false);
     }
 

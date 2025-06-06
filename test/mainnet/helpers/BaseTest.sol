@@ -70,7 +70,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
             MC.MORPHO_GAUNTLET_USDC_VAULT
         );
 
-        address[] memory supportedTokens = new address[](7);
+        address[] memory supportedTokens = new address[](8);
         supportedTokens[0] = MC.USDC;
         supportedTokens[1] = MC.USDT;
         supportedTokens[2] = MC.GHO;
@@ -78,6 +78,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         supportedTokens[4] = MC.CRVUSD;
         supportedTokens[5] = MC.USDS;
         supportedTokens[6] = MC.FRAX;
+        supportedTokens[7] = MC.USDS;
 
         Provider provider = new Provider(address(wrappedUSDC));
         ParaswapValidator paraswapValidator = new ParaswapValidator(
@@ -168,19 +169,15 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](11);
         uint256 i = 0;
 
-        address[] memory usdcApprovalAllowList = new address[](4);
+        address[] memory usdcApprovalAllowList = new address[](3);
         usdcApprovalAllowList[0] = address(bufferStrategy);
         usdcApprovalAllowList[1] = MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER;
-        usdcApprovalAllowList[2] = MC.MORPHO_GAUNTLET_USDC_VAULT;
-        usdcApprovalAllowList[3] = MC.SUPER_USDC_VAULT;
+        usdcApprovalAllowList[2] = MC.SUPER_USDC_VAULT;
         rules[i++] = BaseRules.getDepositRule(address(bufferStrategy), address(vault));
         rules[i++] = BaseRules.getDepositRule(address(MC.SUPER_USDC_VAULT), address(vault));
         rules[i++] = BaseRules.getApprovalRule(MC.USDC, usdcApprovalAllowList);
         rules[i++] = BaseRules.getDepositAssetRule(address(bufferStrategy), MC.USDC, address(vault));
-        address[] memory usdtApprovalAllowList = new address[](2);
-        usdtApprovalAllowList[0] = MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER;
-        usdtApprovalAllowList[1] = 0x16C6521Dff6baB339122a0FE25a9116693265353;
-        rules[i++] = BaseRules.getApprovalRule(MC.USDT, usdtApprovalAllowList);
+        rules[i++] = BaseRules.getApprovalRule(MC.USDT, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
         rules[i++] = BaseRules.getApprovalRule(MC.GHO, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
         rules[i++] = BaseRules.getApprovalRule(MC.USDE, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
         rules[i++] = BaseRules.getApprovalRule(MC.SUSDE, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
