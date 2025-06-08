@@ -31,7 +31,7 @@ contract DeployMaxVault is BaseScript {
 
     function deployRateProvider() internal {
         if (block.chainid == 1) {
-            rateProvider = IProvider(new Provider());
+            rateProvider = IProvider(new Provider(address(wusdc)));
         }
     }
 
@@ -44,7 +44,6 @@ contract DeployMaxVault is BaseScript {
 
         _setup();
         _deployTimelockController();
-        deployRateProvider();
 
         _verifySetup();
 
@@ -83,7 +82,7 @@ contract DeployMaxVault is BaseScript {
         maxVaultViewer.renounceRole(maxVaultViewer.UPDATER_ROLE(), msg.sender);
     }
 
-    function deploy() internal {
+    function deploy() public {
         implementation = new Vault();
 
         address admin = msg.sender;
@@ -120,6 +119,8 @@ contract DeployMaxVault is BaseScript {
             new TransparentUpgradeableProxy(address(wusdcImplementation), address(timelock), "");
 
         wusdc = WrappedToken(payable(address(wusdcProxy)));
+
+        deployRateProvider();
 
         wusdc.initialize(IERC20(contracts.USDC()), "Wrapped USDC", "wUSDC", 18, 12);
 

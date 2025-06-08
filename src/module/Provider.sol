@@ -28,7 +28,17 @@ contract Provider is IProvider {
     error UnsupportedAsset(address asset);
     error RateIsNegative();
 
+    address public immutable WUSDC;
+
+    constructor(address _wusdc) {
+        WUSDC = _wusdc;
+    }
+
     function getRate(address asset) public view virtual returns (uint256) {
+        if (asset == WUSDC) {
+            return 1e18;
+        }
+
         if (asset == MC.USDC) {
             return 1e18;
         }
