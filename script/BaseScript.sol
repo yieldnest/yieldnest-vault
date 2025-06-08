@@ -55,6 +55,47 @@ abstract contract BaseScript is Script {
         contracts = IContracts(new L1Contracts());
     }
 
+    function _verifySetup() public view virtual {
+        if (block.chainid != 1) {
+            revert UnsupportedChain();
+        }
+        if (
+            address(actors) == address(0) || address(contracts) == address(0) || address(rateProvider) == address(0)
+                || address(timelock) == address(0)
+        ) {
+            revert InvalidSetup();
+        }
+    }
+
+    function _deployViewer(address viewerImplementation_) internal virtual {
+        if (address(vault) == address(0) || address(viewerImplementation_) == address(0)) {
+            revert InvalidSetup();
+        }
+
+        viewerImplementation = IVaultViewer(payable(viewerImplementation_));
+
+        bytes memory initData = abi.encodeWithSelector(BaseVaultViewer.initialize.selector, address(vault));
+
+        TransparentUpgradeableProxy proxy =
+            new TransparentUpgradeableProxy(address(viewerImplementation), actors.ADMIN(), initData);
+
+        viewer = IVaultViewer(payable(address(proxy)));
+
+        viewerProxyAdmin = ProxyUtils.getProxyAdmin(address(viewer));
+    }
+
+    function _deployTimelockController() internal virtual {
+        address[] memory proposers = new address[](1);
+        proposers[0] = actors.PROPOSER_1();
+
+        address[] memory executors = new address[](1);
+        executors[0] = actors.EXECUTOR_1();
+
+        address admin = actors.ADMIN();
+
+        timelock = new TimelockController(minDelay, proposers, executors, admin);
+    }
+
     function _loadDeployment() internal virtual {
         if (!vm.isFile(_deploymentFilePath())) {
             return;
@@ -82,5 +123,25 @@ abstract contract BaseScript is Script {
 
     function _deploymentFilePath() internal view virtual returns (string memory) {
         return string.concat(vm.projectRoot(), "/deployments/", symbol(), "-", Strings.toString(block.chainid), ".json");
+    }
+
+    function _saveDeployment() internal virtual {
+        vm.serializeString(symbol(), "symbol", symbol());
+        vm.serializeAddress(symbol(), "deployer", deployer);
+        vm.serializeAddress(symbol(), "admin", actors.ADMIN());
+        vm.serializeAddress(symbol(), "timelock", address(timelock));
+        vm.serializeAddress(symbol(), "rateProvider", address(rateProvider));
+
+        vm.serializeAddress(symbol(), "viewer-proxyAdmin", ProxyUtils.getProxyAdmin(address(viewer)));
+        vm.serializeAddress(symbol(), "viewer-proxy", address(viewer));
+        vm.serializeAddress(symbol(), "viewer-implementation", address(viewerImplementation));
+
+        vm.serializeAddress(symbol(), string.concat(symbol(), "-proxyAdmin"), ProxyUtils.getProxyAdmin(address(vault)));
+        vm.serializeAddress(symbol(), string.concat(symbol(), "-proxy"), address(vault));
+
+        string memory jsonOutput =
+            vm.serializeAddress(symbol(), string.concat(symbol(), "-implementation"), address(implementation));
+
+        vm.writeJson(jsonOutput, _deploymentFilePath());
     }
 }

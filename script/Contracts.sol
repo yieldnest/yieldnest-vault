@@ -13,6 +13,7 @@ interface IContracts {
     function WOETH() external pure returns (address);
     function METH() external pure returns (address);
     function SFRXETH() external pure returns (address);
+    function USDC() external pure returns (address);
 }
 
 library MainnetContracts {
@@ -116,5 +117,9 @@ contract L1Contracts is IContracts {
 
     function SFRXETH() external pure override returns (address) {
         return MainnetContracts.SFRXETH;
+    }
+
+    function USDC() external pure override returns (address) {
+        return MainnetContracts.USDC;
     }
 }

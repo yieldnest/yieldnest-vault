@@ -79,6 +79,5 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
 
         vault.addAsset(address(wusdc), true);
         vault.addAsset(MC.USDC, true); // USDC mocked at WETH address
-        vault.addAsset(MC.BUFFER, false);
     }
 }

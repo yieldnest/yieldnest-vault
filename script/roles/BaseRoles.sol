@@ -20,6 +20,11 @@ library BaseRoles {
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), timelock);
     }
 
+    function configureDefaultRolesForMaxVault(BaseVault vault, address timelock, IActors actors) internal {
+        configureDefaultRoles(vault, timelock, actors);
+        vault.grantRole(Vault(payable(address(vault))).FEE_MANAGER_ROLE(), actors.FEE_MANAGER());
+    }
+
     function configureTemporaryRoles(BaseVault vault) internal {
         configureTemporaryRoles(vault, address(this));
     }
