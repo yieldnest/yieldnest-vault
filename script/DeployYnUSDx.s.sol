@@ -19,6 +19,8 @@ import {ParaswapRules} from "script/rules/ParaswapRules.sol";
 import {SuperUsdcRules} from "script/rules/SuperUsdcRules.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseRoles} from "script/roles/BaseRoles.sol";
+import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
+import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 
 /**
  * @title DeployYnUSDx
@@ -79,6 +81,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
 
         // Deploy and configure the vault system
         deployVaultSystem();
+        _deployViewer();
         _saveDeployment();
 
         vm.stopBroadcast();
@@ -95,7 +98,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         vaultProxy =
             Vault(payable(address(new TransparentUpgradeableProxy(address(vaultImplementation), vaultProxyAdmin, ""))));
         // TODO: set base withdrawal fee parameters correctly
-        vaultProxy.initialize(admin, "YieldNest USD Max Vault", "ynUSDx", 18, 0, false, false, 1);
+        vaultProxy.initialize(admin, "YieldNest USD Max Vault", "ynUSDx", 18, 100000, false, false, 1);
 
         address[] memory supportedTokensForParaswapValidator = new address[](8);
         supportedTokensForParaswapValidator[0] = MC.USDC;
@@ -119,6 +122,27 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         configureVaultSystem(vaultProxy, rateProvider, paraswapValidator);
     }
 
+    function _deployViewer() internal {
+        viewerImplementation = new MaxVaultViewer();
+
+        viewerProxy = IVaultViewer(payable(address(new TransparentUpgradeableProxy(address(viewerImplementation), actors.ADMIN(), ""))));
+
+        MaxVaultViewer(payable(address(viewerProxy))).initialize(address(vaultProxy), msg.sender);
+
+        MaxVaultViewer maxVaultViewer = MaxVaultViewer(payable(address(viewerProxy)));
+
+        maxVaultViewer.grantRole(maxVaultViewer.UPDATER_ROLE(), actors.UPDATER());
+        maxVaultViewer.grantRole(maxVaultViewer.DEFAULT_ADMIN_ROLE(), actors.ADMIN());
+
+        maxVaultViewer.grantRole(maxVaultViewer.UPDATER_ROLE(), msg.sender);
+        address[] memory underlyingAssets = new address[](1);
+        underlyingAssets[0] = MC.USDC;
+        maxVaultViewer.addUnderlyingAssets(underlyingAssets);
+
+        maxVaultViewer.renounceRole(maxVaultViewer.DEFAULT_ADMIN_ROLE(), msg.sender);
+        maxVaultViewer.renounceRole(maxVaultViewer.UPDATER_ROLE(), msg.sender);
+    }
+
     /**
      * @notice Configure the vault system after deployment
      * @param vault The deployed Vault contract
@@ -138,16 +162,16 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         vault.addAsset(address(wrappedUSDCProxy), true);
         vault.addAsset(MC.USDC, true);
         vault.addAsset(MC.MORPHO_GAUNTLET_USDC_VAULT, false);
-        vault.addAsset(MC.USDT, false);
-        vault.addAsset(MC.GHO, false);
-        vault.addAsset(MC.USDE, false);
-        vault.addAsset(MC.SUSDE, false);
-        vault.addAsset(MC.SCRVUSD, false);
-        vault.addAsset(MC.CRVUSD, false);
-        vault.addAsset(MC.USDS, false);
-        vault.addAsset(MC.SUSDS, false);
-        vault.addAsset(MC.SFRAX, false);
-        vault.addAsset(MC.FRAX, false);
+        // vault.addAsset(MC.USDT, false);
+        // vault.addAsset(MC.GHO, false);
+        // vault.addAsset(MC.USDE, false);
+        // vault.addAsset(MC.SUSDE, false);
+        // vault.addAsset(MC.SCRVUSD, false);
+        // vault.addAsset(MC.CRVUSD, false);
+        // vault.addAsset(MC.USDS, false);
+        // vault.addAsset(MC.SUSDS, false);
+        // vault.addAsset(MC.SFRAX, false);
+        // vault.addAsset(MC.FRAX, false);
         vault.addAsset(MC.SUPER_USDC_VAULT, false);
 
         // 5. Configure rules
@@ -172,7 +196,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
      * @param vault The Vault contract
      */
     function configureVaultRules(Vault vault) internal {
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](10);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](3);
         uint256 i = 0;
 
         address[] memory usdcApprovalAllowList = new address[](3);
@@ -182,13 +206,13 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         rules[i++] = BaseRules.getDepositRule(MC.MORPHO_GAUNTLET_USDC_VAULT, address(vault));
         rules[i++] = BaseRules.getDepositRule(MC.SUPER_USDC_VAULT, address(vault));
         rules[i++] = BaseRules.getApprovalRule(MC.USDC, usdcApprovalAllowList);
-        rules[i++] = BaseRules.getApprovalRule(MC.USDT, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
-        rules[i++] = BaseRules.getApprovalRule(MC.GHO, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
-        rules[i++] = BaseRules.getApprovalRule(MC.USDE, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
-        rules[i++] = BaseRules.getApprovalRule(MC.SUSDE, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
-        rules[i++] = BaseRules.getApprovalRule(MC.SCRVUSD, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
-        rules[i++] = BaseRules.getApprovalRule(MC.SUSDS, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
-        rules[i++] = BaseRules.getApprovalRule(MC.SFRAX, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        // rules[i++] = BaseRules.getApprovalRule(MC.USDT, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        // rules[i++] = BaseRules.getApprovalRule(MC.GHO, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        // rules[i++] = BaseRules.getApprovalRule(MC.USDE, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        // rules[i++] = BaseRules.getApprovalRule(MC.SUSDE, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        // rules[i++] = BaseRules.getApprovalRule(MC.SCRVUSD, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        // rules[i++] = BaseRules.getApprovalRule(MC.SUSDS, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        // rules[i++] = BaseRules.getApprovalRule(MC.SFRAX, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
 
         if (i != rules.length) {
             revert("rules length mismatch");

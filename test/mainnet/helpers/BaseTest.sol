@@ -38,7 +38,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
                 address(new TransparentUpgradeableProxy(address(vaultImplementation), address(MainnetActors.ADMIN), ""))
             )
         );
-        vault.initialize(MainnetActors.ADMIN, "YieldNest USD Max Vault", "ynUSDx", 18, 0, false, true, 1);
+        vault.initialize(MainnetActors.ADMIN, "YieldNest USD Max Vault", "ynUSDx", 18, 0, false, false, 1);
 
         wrappedUSDC =
             WrappedToken(address(new TransparentUpgradeableProxy(address(new WrappedToken()), MainnetActors.ADMIN, "")));

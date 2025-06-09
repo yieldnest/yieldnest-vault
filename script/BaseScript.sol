@@ -113,12 +113,14 @@ abstract contract BaseScript is Script {
         vm.serializeAddress(symbol(), "admin", actors.ADMIN());
         vm.serializeAddress(symbol(), "timelock", address(timelock));
         vm.serializeAddress(symbol(), "rateProvider", address(rateProvider));
+
         vm.serializeAddress(symbol(), "wrappedUSDCProxy", address(wrappedUSDCProxy));
         vm.serializeAddress(symbol(), "wrappedUSDCImplementation", address(wrappedUSDCImplementation));
         vm.serializeAddress(symbol(), "wrappedUSDCProxyAdmin", ProxyUtils.getProxyAdmin(address(wrappedUSDCProxy)));
-        vm.serializeAddress(symbol(), "viewerProxy", address(viewerProxy));
-        vm.serializeAddress(symbol(), "viewerImplementation", address(viewerImplementation));
-        vm.serializeAddress(symbol(), "viewerProxyAdmin", ProxyUtils.getProxyAdmin(address(viewerProxy)));
+
+        vm.serializeAddress(symbol(), "viewer-proxy", address(viewerProxy));
+        vm.serializeAddress(symbol(), "viewer-implementation", address(viewerImplementation));
+        vm.serializeAddress(symbol(), "viewer-proxyAdmin", ProxyUtils.getProxyAdmin(address(viewerProxy)));
 
         vm.serializeAddress(
             symbol(), string.concat(symbol(), "-proxyAdmin"), ProxyUtils.getProxyAdmin(address(vaultProxy))
