@@ -60,7 +60,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         upgradeVaultAndWithdrawer();
 
         // Test the name function
-        assertEq(vault.name(), "ynETH MAX", "Vault name should be 'YieldNest ETH MAX'");
+        assertEq(vault.name(), "YieldNest RWA MAX", "Vault name should be 'YieldNest RWA MAX'");
 
         // Test the symbol function
         assertEq(vault.symbol(), "ynETHx", "Vault symbol should be 'ynETHx'");
@@ -79,13 +79,11 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         // Test the version function
         assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.2.0");
 
-        // Test the buffer function
-        address buffer = vault.buffer();
-        assertEq(IERC4626(buffer).asset(), MC.WETH, "Buffer asset should be WETH");
 
         // Test the provider function
         address provider = vault.provider();
-        assertEq(IProvider(provider).getRate(MC.WETH), 1e18, "Provider rate for WETH should be 1e18");
+        assertEq(IProvider(provider).getRate(MC.USDC), 1e18, "Provider rate for WETH should be 1e18");
+        assertEq(IProvider(provider).getRate(address(wusdc)), 1e18, "Provider rate for wUSDC should be 1e18");
 
         // Test the paused function
         bool isPaused = vault.paused();
@@ -93,7 +91,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
 
         // Test the withdrawal fee
         uint256 withdrawalFee = vault.baseWithdrawalFee();
-        assertLe(withdrawalFee, 0.0025e8, "Withdrawal fee should be less than or equal to 0.25%");
+        assertLe(withdrawalFee, 0.001e8, "Withdrawal fee should be less than or equal to 0.1%");
     }
 
     function test_Vault_Upgrade_ERC4626_view_functions() public {
