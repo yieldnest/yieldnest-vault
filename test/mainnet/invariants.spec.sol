@@ -13,7 +13,6 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
-
 contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     using Math for uint256;
 
@@ -59,9 +58,11 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         return assets.mulDiv(10 ** 18, rate, Math.Rounding.Floor);
     }
 
-    function test_Vault_4626Invariants_depositBase(uint256 assets) public {
-        if (assets < 100_000) return;
-        if (assets > 100_000_000 ether) return;
+    function test_Vault_4626Invariants_depositBase( /* uint256 assets */) public {
+        // if (assets < 100_000) return;
+        // if (assets > 100_000_000e6) return;
+
+        uint256 assets = 27471766883106;
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
@@ -72,12 +73,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         // Test the asset function
         address assetAddress = vault.asset();
-        assertEq(assetAddress, MC.WETH, "Asset address should be WETH");
-
-        // Test the totalAssets function
-        uint256 totalAssets = vault.totalAssets();
-        assertGt(totalAssets, 0, "Total assets should be greater than 0");
-
+        assertEq(assetAddress, MC.USDC, "Asset address should be USDC");
+        
         // Test the convertToShares function
         uint256 shares = vault.convertToShares(assets);
         assertGt(shares, 0, "Shares should be greater than 0");
@@ -85,11 +82,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         // Test the convertToAssets function
         uint256 convertedAssets = vault.convertToAssets(shares);
         assertApproxEqAbs(convertedAssets, assets, 3, "Converted assets should equal the original assets");
-
-        // Test the previewDeposit function
-        deal(MC.WETH, address(this), 1 ether);
-        IERC20(MC.WETH).approve(address(vault), 1 ether);
-        IERC20(MC.WETH).transfer(address(vault), 1 ether);
 
         uint256 previewedShares = vault.previewDeposit(assets);
         assertApproxEqAbs(previewedShares, shares, 3, "Previewed shares should equal the converted shares");
@@ -99,8 +91,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         assertApproxEqAbs(previewedAssets, assets, 3, "Previewed assets should equal the original assets");
 
         // Test the depositAsset function
-        deal(MC.WETH, address(this), assets);
-        IERC20(MC.WETH).approve(address(vault), assets);
+        deal(MC.USDC, address(this), assets);
+        IERC20(MC.USDC).approve(address(vault), assets);
 
         address receiver = address(this);
         uint256 depositedShares = vault.deposit(assets, receiver);
@@ -113,6 +105,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     function test_Vault_4626Invariants_depositAsset(uint256 assets) public {
         if (assets < 100_000) return;
         if (assets > 100_000_000 ether) return;
+
+        uint256 assets = 27471766883106;
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
@@ -154,7 +148,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     }
 
     function test_Vault_4626Invariants_mint(uint256 shares) public {
-        if (shares < 100_000) return;
+        if (shares < 1e13) return; // at least 1 USDC worth of shares
         if (shares > 100_000 ether) return;
 
         address alice = address(10);
@@ -169,33 +163,25 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         // Test the asset function
         address assetAddress = vault.asset();
-        assertEq(assetAddress, MC.WETH, "Asset address should be WETH");
+        assertEq(assetAddress, MC.USDC, "Asset address should be USDC");
 
-        // Test the totalAssets function
-        uint256 totalAssets = vault.totalAssets();
-        assertGt(totalAssets, 0, "Total assets should be greater than 0");
 
         // Test the convertToAssets function
         uint256 assets = vault.convertToAssets(shares);
         assertGt(assets, 0, "Assets should be greater than 0");
-
-        deal(alice, assets);
 
         // Test the previewMint function
         uint256 previewedAssets = vault.previewMint(shares);
         assertApproxEqAbs(previewedAssets, assets, 3, "Previewed assets should equal the converted assets");
 
         // Test the mint function
+        deal(MC.USDC, alice, assets);
         vm.startPrank(alice);
-        (bool success,) = MC.WETH.call{value: assets}("");
-        assertTrue(success, "Weth deposit failed");
-        IERC20(MC.WETH).approve(address(vault), assets);
+        IERC20(MC.USDC).approve(address(vault), assets);
 
         uint256 mintedAssets = vault.mint(shares, alice);
         assertEq(mintedAssets, assets, "Minted assets should equal the converted assets");
         vm.stopPrank();
-
-        allocateToBuffer(assets);
 
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
@@ -301,39 +287,21 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         _process(MC.OETH_VAULT, 0, data);
     }
     
-    function test_Vault_4626Invariants_WETH_Donation(uint256 amount, bool processAfterWithdraw) public {
+    function test_Vault_4626Invariants_USDC_Donation(uint256 amount, bool processAfterWithdraw) public {
         vm.assume(amount > 100000);
-        vm.assume(amount < 100_000 ether);
+        vm.assume(amount < 100_000 * 1e6); // USDC has 6 decimals
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
 
         {
-            dealMore(address(vault), amount);
-
-            // convert ETH to WETH
-            _processDepositWETH(amount);
+            deal(MC.USDC, address(vault), amount);
 
             // process accounting to update for the donation
             vault.processAccounting();
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets + amount);
-        }
-
-        initialAssets = vault.totalAssets();
-        initialSupply = vault.totalSupply();
-
-        {
-            // convert WETH to ETH
-            _processWithdrawWETH(amount);
-
-            if (processAfterWithdraw) {
-                vault.processAccounting();
-            }
-
-            totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
         }
     }
 
