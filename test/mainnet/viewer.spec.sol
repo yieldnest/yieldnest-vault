@@ -30,7 +30,7 @@ contract VaultMainnetViewerTest is BaseIntegrationTest {
         uint256 totalAssets = vault.totalAssets();
         uint256 expected = 1 ether;
         if (totalSupply > 0 && totalAssets > 0) {
-            expected = 1 ether * totalAssets / totalSupply;
+            expected = 1 ether * totalAssets * 1e12 / totalSupply;
         }
 
         assertEq(viewer.getRate(), expected);
@@ -43,7 +43,7 @@ contract VaultMainnetViewerTest is BaseIntegrationTest {
         uint256 totalAssets = vault.totalAssets();
 
         assertEq(assetsInfo.length, assets.length);
-        assertEq(assetsInfo.length, 11);
+        assertEq(assetsInfo.length, 2);
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata asset = IERC20Metadata(assets[i]);

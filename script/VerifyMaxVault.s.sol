@@ -70,11 +70,9 @@ contract VerifyMaxVault is BaseScript, Test {
 
         console.log("Verifying WETH deposit and withdraw rules.");
 
-
         assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.3.0");
         console.log("\u2705 Vault version:          ", vault.VAULT_VERSION());
         console.log("==============================================");
-
 
         // Verify provider configuration
         VaultVerification.verifyProvider(Provider(address(rateProvider)), withdrawer);
