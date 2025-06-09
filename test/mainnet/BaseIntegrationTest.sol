@@ -22,10 +22,12 @@ import {ProxyUtils} from "script/ProxyUtils.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
+import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
     WrappedToken public wusdc;
+    MaxVaultViewer public viewer;
 
     function setUp() public virtual {
                 string memory name = "YieldNest RWA MAX";
@@ -54,7 +56,26 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         wusdc = WrappedToken(address(new TUProxy(address(new WrappedToken()), ADMIN, "")));
         wusdc.initialize(IERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
 
+
+        MaxVaultViewer viewerImplementation = new MaxVaultViewer();
+        TUProxy viewerProxy = new TUProxy(address(viewerImplementation), ADMIN, "");
+
+
+        
+
+
         configureMainnet(vault);
+
+        {
+            viewer = MaxVaultViewer(address(viewerProxy));
+            viewer.initialize(address(vault), ADMIN);
+
+            vm.startPrank(ADMIN);
+            viewer.grantRole(viewer.UPDATER_ROLE(), ADMIN);
+            address[] memory underlyingAssets = new address[](1);
+            underlyingAssets[0] = MC.USDC;
+            viewer.addUnderlyingAssets(underlyingAssets);
+        }
     } 
 
     function configureMainnet(Vault vault) internal {
