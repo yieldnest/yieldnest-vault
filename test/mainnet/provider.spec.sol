@@ -49,7 +49,7 @@ contract ProviderTest is BaseIntegrationTest, Etches {
         vm.stopPrank();
 
         // Deploy a new Provider instance
-        Provider newProvider = new Provider();
+        Provider newProvider = new Provider(address(wusdc));
 
         // Set the new provider in the mock strategy
         vm.prank(admin);

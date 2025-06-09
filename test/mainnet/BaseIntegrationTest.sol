@@ -71,7 +71,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
         vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
 
-        Provider provider = new Provider();
+        Provider provider = new Provider(address(wusdc));
         // Set the provider to the 6 decimals provider
         vault.setProvider(address(provider));
 
