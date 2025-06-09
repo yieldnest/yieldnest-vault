@@ -23,6 +23,7 @@ import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
+import {DeployMaxVault} from "script/DeployMaxVault.s.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
@@ -32,7 +33,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     function setUp() public virtual {
                 string memory name = "YieldNest RWA MAX";
         string memory symbol = "ynRWAx";
-
+        
         Vault vaultImplementation = new PublicViewsVault();
 
         // Deploy the proxy
@@ -61,9 +62,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         TUProxy viewerProxy = new TUProxy(address(viewerImplementation), ADMIN, "");
 
 
-        
-
-
+    
         configureMainnet(vault);
 
         {

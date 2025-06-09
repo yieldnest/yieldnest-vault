@@ -58,11 +58,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         return assets.mulDiv(10 ** 18, rate, Math.Rounding.Floor);
     }
 
-    function test_Vault_4626Invariants_depositBase( /* uint256 assets */) public {
-        // if (assets < 100_000) return;
-        // if (assets > 100_000_000e6) return;
-
-        uint256 assets = 27471766883106;
+    function test_Vault_4626Invariants_depositBase(uint256 assets) public {
+        if (assets < 1e3) return; // USDC amount
+        if (assets > 100_000_000e6) return;
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
@@ -91,12 +89,16 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         assertApproxEqAbs(previewedAssets, assets, 3, "Previewed assets should equal the original assets");
 
         // Test the depositAsset function
-        deal(MC.USDC, address(this), assets);
+        address alice = address(10);
+        vm.label(alice, "Alice");
+        
+        deal(MC.USDC, alice, assets);
+        vm.startPrank(alice);
         IERC20(MC.USDC).approve(address(vault), assets);
 
-        address receiver = address(this);
-        uint256 depositedShares = vault.deposit(assets, receiver);
+        uint256 depositedShares = vault.deposit(assets, alice);
         assertEq(depositedShares, shares, "Deposited shares should equal the converted shares");
+        vm.stopPrank();
 
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
@@ -105,8 +107,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     function test_Vault_4626Invariants_depositAsset(uint256 assets) public {
         if (assets < 100_000) return;
         if (assets > 100_000_000 ether) return;
-
-        uint256 assets = 27471766883106;
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
@@ -136,12 +136,16 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         assertApproxEqAbs(previewedAssets, assets, 3, "Previewed assets should equal the original assets");
 
         // Test the depositAsset function
-        deal(MC.USDC, address(this), assets);
+        address alice = address(10);
+        vm.label(alice, "Alice");
+        
+        deal(MC.USDC, alice, assets);
+        vm.startPrank(alice);
         IERC20(MC.USDC).approve(address(vault), assets);
 
-        address receiver = address(this);
-        uint256 depositedShares = vault.depositAsset(assetAddress, assets, receiver);
+        uint256 depositedShares = vault.depositAsset(assetAddress, assets, alice);
         assertEq(depositedShares, shares, "Deposited shares should equal the converted shares");
+        vm.stopPrank();
 
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
