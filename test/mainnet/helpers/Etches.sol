@@ -10,14 +10,7 @@ import {Test} from "lib/forge-std/src/Test.sol";
 
 contract Etches is Test, MainnetActors {
     function mockAll() public {
-        mockProvider();
         mockBuffer();
-    }
-
-    function mockProvider() public {
-        Provider provider = new Provider();
-        bytes memory code = address(provider).code;
-        vm.etch(MC.PROVIDER, code);
     }
 
     function mockBuffer() public {

@@ -15,7 +15,7 @@ import {MockERC20CustomDecimals} from "test/unit/mocks/MockERC20CustomDecimals.s
 import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
+import {IProvider} from "src/interface/IProvider.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
 
 contract Etches is Test {
@@ -110,7 +110,7 @@ contract Etches is Test {
     }
 
     function mockProvider() public {
-        Provider provider = new MockProvider();
+        IProvider provider = new MockProvider();
         bytes memory code = address(provider).code;
         vm.etch(MainnetContracts.PROVIDER, code);
     }

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {Provider} from "src/module/Provider.sol";
+import {ETHProvider} from "test/unit/mocks/ETHProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-contract MockProvider is Provider {
+contract MockProvider is ETHProvider {
     using Math for uint256;
 
     mapping(address => uint256) private _mockRates;
