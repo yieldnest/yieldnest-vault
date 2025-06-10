@@ -17,6 +17,7 @@ import {TransparentUpgradeableProxy} from
 import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
+import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 
 abstract contract BaseScript is Script {
     using stdJson for string;
@@ -36,9 +37,9 @@ abstract contract BaseScript is Script {
     IVaultViewer public viewerImplementation;
     address public viewerProxyAdmin;
 
-    Withdrawer public withdrawer;
-    Withdrawer public withdrawerImplementation;
-    address public withdrawerProxyAdmin;
+    WrappedToken public wusdc;
+    WrappedToken public wusdcImplementation;
+    address public wusdcProxyAdmin;
 
     error UnsupportedChain();
     error InvalidSetup(string message);
@@ -112,10 +113,9 @@ abstract contract BaseScript is Script {
             Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-implementation")))));
         vaultProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxyAdmin")));
 
-        withdrawer = Withdrawer(payable(address(vm.parseJsonAddress(jsonInput, ".withdrawer-proxy"))));
-        withdrawerImplementation =
-            Withdrawer(payable(address(vm.parseJsonAddress(jsonInput, ".withdrawer-implementation"))));
-        withdrawerProxyAdmin = address(vm.parseJsonAddress(jsonInput, ".withdrawer-proxyAdmin"));
+        wusdc = WrappedToken(payable(address(vm.parseJsonAddress(jsonInput, ".wusdc-proxy"))));
+        wusdcImplementation = WrappedToken(payable(address(vm.parseJsonAddress(jsonInput, ".wusdc-implementation"))));
+        wusdcProxyAdmin = address(vm.parseJsonAddress(jsonInput, ".wusdc-proxyAdmin"));
     }
 
     function _deploymentFilePath() internal view virtual returns (string memory) {
@@ -135,6 +135,10 @@ abstract contract BaseScript is Script {
 
         vm.serializeAddress(symbol(), string.concat(symbol(), "-proxyAdmin"), ProxyUtils.getProxyAdmin(address(vault)));
         vm.serializeAddress(symbol(), string.concat(symbol(), "-proxy"), address(vault));
+
+        vm.serializeAddress(symbol(), "wusdc-proxyAdmin", ProxyUtils.getProxyAdmin(address(wusdc)));
+        vm.serializeAddress(symbol(), "wusdc-proxy", address(wusdc));
+        vm.serializeAddress(symbol(), "wusdc-implementation", address(wusdcImplementation));
 
         string memory jsonOutput =
             vm.serializeAddress(symbol(), string.concat(symbol(), "-implementation"), address(implementation));

@@ -31,8 +31,6 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     MaxVaultViewer public viewer;
 
     function setUp() public virtual {
-                string memory name = "YieldNest RWA MAX";
-        string memory symbol = "ynRWAx";
 
         DeployMaxVault deployMaxVault = new DeployMaxVault(); 
         deployMaxVault.run();
@@ -42,32 +40,4 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         viewer = MaxVaultViewer(address(deployMaxVault.viewer()));
         wusdc = deployMaxVault.wusdc();
     } 
-
-    function configureMainnet(Vault vault) internal {
-
-        vm.startPrank(ADMIN);
-
-        // Grant roles
-        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
-        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
-        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
-        vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
-
-        Provider provider = new Provider(address(wusdc));
-        // Set the provider to the 6 decimals provider
-        vault.setProvider(address(provider));
-
-        // Add assets: Base asset (USDC) first, then WBTC and an 18 decimal asset
-
-        vault.addAsset(address(wusdc), true);
-        vault.addAsset(MC.USDC, true); // USDC mocked at WETH address
-
-        vault.unpause();
-
-        vm.stopPrank();
-    }
 }

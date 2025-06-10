@@ -24,8 +24,6 @@ import {console} from "forge-std/console.sol";
 contract DeployMaxVault is BaseScript {
     error InvalidRules();
 
-    WrappedToken public wusdc;
-
     function symbol() public pure override returns (string memory) {
         return "ynRWAx";
     }
