@@ -141,8 +141,6 @@ contract DeployMaxVault is BaseScript {
         vault.addAsset(address(wusdc), false);
         vault.addAsset(contracts.USDC(), true);
 
-        // SafeRules.setProcessorRules(vault, rules, false);
-
         vault.unpause();
 
         vault.processAccounting();
