@@ -110,7 +110,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         supportedTokensForParaswapValidator[6] = MC.FRAX;
         supportedTokensForParaswapValidator[7] = MC.USDS;
 
-        ParaswapValidator paraswapValidator = new ParaswapValidator(
+        ParaswapValidator _paraswapValidator = new ParaswapValidator(
             MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER,
             address(vaultProxy),
             address(rateProvider),
@@ -118,8 +118,10 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
             supportedTokensForParaswapValidator
         );
 
+        paraswapValidator = address(_paraswapValidator);
+
         // 7. Configure the deployed contracts
-        configureVaultSystem(vaultProxy, rateProvider, paraswapValidator);
+        configureVaultSystem(vaultProxy, rateProvider, _paraswapValidator);
     }
 
     function _deployViewer() internal {

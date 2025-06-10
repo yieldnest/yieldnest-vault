@@ -11,12 +11,12 @@ library BaseRoles {
         vault.grantRole(vault.PROCESSOR_ROLE(), actors.PROCESSOR());
         vault.grantRole(vault.PAUSER_ROLE(), actors.PAUSER());
         vault.grantRole(vault.UNPAUSER_ROLE(), actors.UNPAUSER());
+        vault.grantRole(vault.FEE_MANAGER_ROLE(), actors.FEE_MANAGER());
         // set timelock roles
         vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), timelock);
         vault.grantRole(vault.ASSET_MANAGER_ROLE(), timelock);
         vault.grantRole(vault.BUFFER_MANAGER_ROLE(), timelock);
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), timelock);
-        vault.grantRole(vault.FEE_MANAGER_ROLE(), timelock);
     }
 
     function configureTemporaryRoles(Vault vault) internal {

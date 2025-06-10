@@ -38,6 +38,8 @@ abstract contract BaseScript is Script {
     IVaultViewer public viewerImplementation;
     address public viewerProxyAdmin;
 
+    address public paraswapValidator;
+
     error UnsupportedChain();
     error InvalidSetup();
 
@@ -96,11 +98,11 @@ abstract contract BaseScript is Script {
             Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-implementation")))));
         vaultProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxyAdmin")));
 
-        wrappedUSDCProxy = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-wrappedUSDC-proxy")));
+        wrappedUSDCProxy = address(vm.parseJsonAddress(jsonInput, string.concat(".", "wrappedUSDCProxy")));
         wrappedUSDCImplementation =
-            address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-wrappedUSDC-implementation")));
+            address(vm.parseJsonAddress(jsonInput, string.concat(".", "wrappedUSDCImplementation")));
         wrappedUSDCProxyAdmin =
-            address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-wrappedUSDC-proxyAdmin")));
+            address(vm.parseJsonAddress(jsonInput, string.concat(".", "wrappedUSDCProxyAdmin")));
     }
 
     function _deploymentFilePath() internal view virtual returns (string memory) {
@@ -121,6 +123,8 @@ abstract contract BaseScript is Script {
         vm.serializeAddress(symbol(), "viewer-proxy", address(viewerProxy));
         vm.serializeAddress(symbol(), "viewer-implementation", address(viewerImplementation));
         vm.serializeAddress(symbol(), "viewer-proxyAdmin", ProxyUtils.getProxyAdmin(address(viewerProxy)));
+
+        vm.serializeAddress(symbol(), "paraswapValidator", address(paraswapValidator));
 
         vm.serializeAddress(
             symbol(), string.concat(symbol(), "-proxyAdmin"), ProxyUtils.getProxyAdmin(address(vaultProxy))
