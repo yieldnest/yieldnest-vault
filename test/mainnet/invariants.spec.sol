@@ -13,9 +13,9 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
+
 contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     using Math for uint256;
-
 
     IProvider public provider;
 
@@ -72,7 +72,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         // Test the asset function
         address assetAddress = vault.asset();
         assertEq(assetAddress, MC.USDC, "Asset address should be USDC");
-        
+
         // Test the convertToShares function
         uint256 shares = vault.convertToShares(assets);
         assertGt(shares, 0, "Shares should be greater than 0");
@@ -91,7 +91,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         // Test the depositAsset function
         address alice = address(10);
         vm.label(alice, "Alice");
-        
+
         deal(MC.USDC, alice, assets);
         vm.startPrank(alice);
         IERC20(MC.USDC).approve(address(vault), assets);
@@ -138,7 +138,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         // Test the depositAsset function
         address alice = address(10);
         vm.label(alice, "Alice");
-        
+
         deal(MC.USDC, alice, assets);
         vm.startPrank(alice);
         IERC20(MC.USDC).approve(address(vault), assets);
@@ -169,7 +169,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         address assetAddress = vault.asset();
         assertEq(assetAddress, MC.USDC, "Asset address should be USDC");
 
-
         // Test the convertToAssets function
         uint256 assets = vault.convertToAssets(shares);
         assertGt(assets, 0, "Assets should be greater than 0");
@@ -190,8 +189,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
     }
-
-
 
     function _process(address target, uint256 value, bytes memory data) internal returns (bytes memory returnData) {
         address[] memory targets = new address[](1);
@@ -290,7 +287,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         bytes memory data = abi.encodeWithSignature("mint(address,uint256,uint256)", MC.WETH, amount, amount);
         _process(MC.OETH_VAULT, 0, data);
     }
-    
+
     function test_Vault_4626Invariants_USDC_Donation(uint256 amount, bool processAfterWithdraw) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 * 1e6); // USDC has 6 decimals
@@ -335,5 +332,4 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             totalAssetsInvariant(initialAssets + amount);
         }
     }
-
 }

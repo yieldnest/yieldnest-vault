@@ -16,7 +16,8 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ITransparentUpgradeableProxy} from
+    "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     // Implementation addresses
@@ -28,9 +29,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     }
 
     function upgradeVaultAndWithdrawer() internal {
-
         if (TIMELOCK != address(0x0)) {
-
             vaultImplementation = new Vault();
             UpgradeUtils.timelockUpgrade(
                 TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(vaultImplementation)
@@ -38,17 +37,17 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         } else {
             // Direct upgrade using proxy admin impersonation
             vaultImplementation = new Vault();
-            
+
             // Get the proxy admin address
             address vaultProxyAdmin = ProxyUtils.getProxyAdmin(address(vault));
-            
+
             // Upgrade vault implementation
             vm.startPrank(ProxyAdmin(vaultProxyAdmin).owner());
-            ProxyAdmin(vaultProxyAdmin).upgradeAndCall(ITransparentUpgradeableProxy(address(vault)), address(vaultImplementation), "");
+            ProxyAdmin(vaultProxyAdmin).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(vault)), address(vaultImplementation), ""
+            );
             vm.stopPrank();
-
         }
-
     }
 
     function test_Vault_Upgrade_Implementation_Set_Correctly() public {

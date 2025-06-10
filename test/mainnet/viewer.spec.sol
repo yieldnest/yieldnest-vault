@@ -13,8 +13,6 @@ import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transpa
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
 contract VaultMainnetViewerTest is BaseIntegrationTest {
-
-
     function setUp() public override {
         super.setUp();
     }

@@ -31,13 +31,12 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     MaxVaultViewer public viewer;
 
     function setUp() public virtual {
-
-        DeployMaxVault deployMaxVault = new DeployMaxVault(); 
+        DeployMaxVault deployMaxVault = new DeployMaxVault();
         deployMaxVault.run();
 
         vault = deployMaxVault.vault();
 
         viewer = MaxVaultViewer(address(deployMaxVault.viewer()));
         wusdc = deployMaxVault.wusdc();
-    } 
+    }
 }
