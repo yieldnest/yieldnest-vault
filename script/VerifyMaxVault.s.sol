@@ -64,6 +64,14 @@ contract VerifyMaxVault is BaseScript, Test {
             assertEq(vaultAdmin, vaultProxyAdmin, "Vault proxy admin address mismatch");
             console.log("\u2705 Vault implementation:     ", vaultImpl);
             console.log("\u2705 Vault proxy admin:        ", vaultAdmin);
+
+            // Verify wusdc proxy configuration
+            address wusdcImpl = ProxyUtils.getImplementation(address(wusdc));
+            address wusdcAdmin = ProxyUtils.getProxyAdmin(address(wusdc));
+            assertEq(wusdcImpl, address(wusdcImplementation), "WUSDC implementation address mismatch");
+            assertEq(wusdcAdmin, wusdcProxyAdmin, "WUSDC proxy admin address mismatch");
+            console.log("\u2705 WUSDC implementation:     ", wusdcImpl);
+            console.log("\u2705 WUSDC proxy admin:        ", wusdcAdmin);
         }
 
         IVault.AssetParams memory asset;
@@ -99,6 +107,9 @@ contract VerifyMaxVault is BaseScript, Test {
         // verify viewer roles
         console.log("Verifying proxy roles on viewer");
         RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.ADMIN());
+
+        console.log("Verifying wusdc proxy roles");
+        RolesVerification.verifyProxyRoles(address(wusdc), wusdcProxyAdmin, address(timelock));
 
         // verify timelock roles
         RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
