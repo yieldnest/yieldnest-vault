@@ -41,7 +41,7 @@ abstract contract BaseScript is Script {
     address public withdrawerProxyAdmin;
 
     error UnsupportedChain();
-    error InvalidSetup();
+    error InvalidSetup(string message);
 
     // needs to be overriden by child script
     function symbol() public view virtual returns (string memory);
@@ -59,17 +59,14 @@ abstract contract BaseScript is Script {
         if (block.chainid != 1) {
             revert UnsupportedChain();
         }
-        if (
-            address(actors) == address(0) || address(contracts) == address(0) || address(rateProvider) == address(0)
-                || address(timelock) == address(0)
-        ) {
-            revert InvalidSetup();
+        if (address(actors) == address(0) || address(contracts) == address(0) || address(timelock) == address(0)) {
+            revert InvalidSetup("Required contracts not initialized");
         }
     }
 
     function _deployViewer(address viewerImplementation_) internal virtual {
         if (address(vault) == address(0) || address(viewerImplementation_) == address(0)) {
-            revert InvalidSetup();
+            revert InvalidSetup("Vault or viewer implementation not set");
         }
 
         viewerImplementation = IVaultViewer(payable(viewerImplementation_));
