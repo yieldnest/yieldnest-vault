@@ -100,9 +100,6 @@ contract GenerateVaultUpgradeTxData is BaseScript {
         console.log("Contract address: %s", vm.toString(address(vault)));
         console.log("New implementation: %s", vm.toString(data.newImplementation));
 
-        // Get withdrawer from vault assets
-        data.withdrawer = VaultVerification.getWithdrawer(vault);
-
         data.proxyAddress = address(vault);
         data.proxy = ITransparentUpgradeableProxy(data.proxyAddress);
         data.proxyAdmin = ProxyUtils.getProxyAdmin(address(data.proxy));
