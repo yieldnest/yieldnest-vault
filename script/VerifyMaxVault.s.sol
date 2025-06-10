@@ -122,6 +122,8 @@ contract VerifyMaxVault is BaseScript, Test {
             MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.USDC()), "WETH should be an underlying asset"
         );
 
+        VaultVerification.verifyWusdc(address(wusdc));
+
         // Verify configurer does not have DEFAULT_ADMIN_ROLE
         assertFalse(
             vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B),

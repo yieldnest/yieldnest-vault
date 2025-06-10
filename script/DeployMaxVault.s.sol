@@ -125,7 +125,7 @@ contract DeployMaxVault is BaseScript {
 
         deployRateProvider();
 
-        wusdc.initialize(IERC20(contracts.USDC()), "Wrapped USDC", "wUSDC", 18, 12);
+        wusdc.initialize(IERC20(contracts.USDC()), "Wrapped USDC", "WUSDC", 18, 12);
 
         configureVault();
     }
