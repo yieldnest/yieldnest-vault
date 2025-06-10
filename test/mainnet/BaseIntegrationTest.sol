@@ -33,48 +33,14 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     function setUp() public virtual {
                 string memory name = "YieldNest RWA MAX";
         string memory symbol = "ynRWAx";
-        
-        Vault vaultImplementation = new PublicViewsVault();
 
-        // Deploy the proxy
-        TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, "");
+        DeployMaxVault deployMaxVault = new DeployMaxVault(); 
+        deployMaxVault.run();
 
-        vault = Vault(payable(address(vaultProxy)));
+        vault = deployMaxVault.vault();
 
-        // Initialize the vault
-        // Initialize the vault with the following parameters:
-        // ADMIN: The address that will have admin privileges
-        // name: The name of the vault token ("YieldNest RWA MAX")
-        // symbol: The symbol of the vault token ("ynRWAx")
-        // 18: The number of decimals for the vault token
-        // 0: The withdrawal fee in basis points (0 = no fee)
-        // false: Whether to count native assets (ETH) in the vault
-        // true: Whether to always compute total assets (instead of tracking incrementally)
-        // 1: The default asset index to use (the second asset added will be default)
-        vault.initialize(ADMIN, name, symbol, 18, 0, false, true, 1);
-
-
-        wusdc = WrappedToken(address(new TUProxy(address(new WrappedToken()), ADMIN, "")));
-        wusdc.initialize(IERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
-
-
-        MaxVaultViewer viewerImplementation = new MaxVaultViewer();
-        TUProxy viewerProxy = new TUProxy(address(viewerImplementation), ADMIN, "");
-
-
-    
-        configureMainnet(vault);
-
-        {
-            viewer = MaxVaultViewer(address(viewerProxy));
-            viewer.initialize(address(vault), ADMIN);
-
-            vm.startPrank(ADMIN);
-            viewer.grantRole(viewer.UPDATER_ROLE(), ADMIN);
-            address[] memory underlyingAssets = new address[](1);
-            underlyingAssets[0] = MC.USDC;
-            viewer.addUnderlyingAssets(underlyingAssets);
-        }
+        viewer = MaxVaultViewer(address(deployMaxVault.viewer()));
+        wusdc = deployMaxVault.wusdc();
     } 
 
     function configureMainnet(Vault vault) internal {

@@ -18,6 +18,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {BaseRoles} from "script/roles/BaseRoles.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {console} from "forge-std/console.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script DeployMaxVault
 contract DeployMaxVault is BaseScript {
@@ -40,7 +41,9 @@ contract DeployMaxVault is BaseScript {
     }
 
     function run() public {
-        vm.startBroadcast();
+        deployer = msg.sender;
+
+        vm.startBroadcast(deployer);
 
         _setup();
         _deployTimelockController();
@@ -86,6 +89,8 @@ contract DeployMaxVault is BaseScript {
         implementation = new Vault();
 
         address admin = msg.sender;
+
+        console.log("Provisional admin:", admin);
 
         string memory name = "YieldNest RWA MAX";
         string memory symbol_ = "ynRWAx";
