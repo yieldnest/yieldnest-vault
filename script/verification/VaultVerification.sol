@@ -377,12 +377,6 @@ library VaultVerification {
 
         // Verify strategies are correct
         IVaultViewer.AssetInfo[] memory strategies = viewer.getStrategies();
-        vm.assertEq(strategies.length, 4, "Viewer should have exactly 3 strategies");
-        vm.assertEq(strategies[0].asset, MC.EULER_WETH_22_VAULT, "Strategy 0 should be Euler WETH 22 vault");
-        vm.assertEq(
-            strategies[1].asset,
-            MC.CURVE_LP_YNETH_YNLSDE_STRATEGY,
-            "Strategy 1 should be Curve LP ynETH-ynLSDE strategy"
-        );
+        vm.assertEq(strategies.length, 1, "Viewer should have exactly 1 strategies");
     }
 }

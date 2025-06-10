@@ -94,9 +94,11 @@ contract VerifyMaxVault is BaseScript, Test {
         );
 
         // verify proxy roles
+        console.log("Verifying proxy roles on vault");
         RolesVerification.verifyProxyRoles(address(vault), vaultProxyAdmin, address(timelock));
         // verify viewer roles
-        RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.UPDATER());
+        console.log("Verifying proxy roles on viewer");
+        RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.ADMIN());
 
         // verify timelock roles
         RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
@@ -106,7 +108,7 @@ contract VerifyMaxVault is BaseScript, Test {
 
         VaultVerification.verifyViewer(MaxVaultViewer(address(viewer)), vault);
         assertTrue(
-            MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
+            MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.USDC()), "WETH should be an underlying asset"
         );
 
         // Verify configurer does not have DEFAULT_ADMIN_ROLE
