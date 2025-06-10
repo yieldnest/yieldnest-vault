@@ -124,6 +124,8 @@ contract VerifyMaxVault is BaseScript, Test {
 
         VaultVerification.verifyWusdc(address(wusdc));
 
+        VaultVerification.verifyProvider(Provider(address(rateProvider)), address(wusdc));
+
         // Verify configurer does not have DEFAULT_ADMIN_ROLE
         assertFalse(
             vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B),
