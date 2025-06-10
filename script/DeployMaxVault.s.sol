@@ -116,7 +116,7 @@ contract DeployMaxVault is BaseScript {
             defaultAssetIndex
         );
 
-        WrappedToken wusdcImplementation = new WrappedToken();
+        wusdcImplementation = new WrappedToken();
 
         TransparentUpgradeableProxy wusdcProxy =
             new TransparentUpgradeableProxy(address(wusdcImplementation), address(timelock), "");
