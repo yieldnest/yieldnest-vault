@@ -74,7 +74,7 @@ contract HoleskyActors is IActors {
 
 contract MainnetActors is IActors {
     address public constant YnSecurityCouncil = 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975;
-    address public constant YnProcessor = 0x56866A6D5655C9E534320DA95fbBB82Fb3bF3D7D;
+    address public constant YnProcessor = 0x7e92AbC00F58Eb325C7fC95Ed52ACdf74584Be2c;
     address public constant YnDev = 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3;
     address public constant YnBootstrapper = 0x832e0D8e7A7Bdfe181f30df614383FAA4B5C2924;
 
