@@ -19,11 +19,24 @@ import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
+import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
+import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
+import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
+import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
+import {DeployMaxVault} from "script/DeployMaxVault.s.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
+    WrappedToken public wusdc;
+    MaxVaultViewer public viewer;
 
     function setUp() public virtual {
-        vault = Vault(payable(MC.YNETHX));
+        DeployMaxVault deployMaxVault = new DeployMaxVault();
+        deployMaxVault.run();
+
+        vault = deployMaxVault.vault();
+
+        viewer = MaxVaultViewer(address(deployMaxVault.viewer()));
+        wusdc = deployMaxVault.wusdc();
     }
 }
