@@ -32,7 +32,9 @@ library MainnetContracts {
     address public constant USDS = 0xdC035D45d973E3EC169d2276DDab16f1e407384F;
     address public constant CRVUSD = 0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E;
 
-    address public constant YNUSDx = 0x110a5e75D8885Ecbd43a6aA978FeaE2b32B70DE5; // TODO: Update with deployed YnUSDx
+    address public constant WRAPPED_USDC = 0xdA7d2025c7f1f1A1d34AB3F4dF01102d0428E574;
+
+    address public constant YNUSDx = address(1); // TODO: Update with deployed YnUSDx
 
     address public constant PROVIDER = 0x56D43f8C6c3891d081AD93B27419c37394857117; // TODO: Update with deployed Provider
     address public constant BUFFER = address(987654321); // TODO: Update with deployed buffer

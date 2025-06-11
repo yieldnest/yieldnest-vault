@@ -11,7 +11,6 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {Provider} from "src/module/Provider.sol";
 import {ParaswapValidator} from "src/validator/ParaswapValidator.sol";
-import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
@@ -31,7 +30,6 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
     uint256 public constant MAX_SLIPPAGE = 20; // 0.2% in basis points
     uint256 public constant SLIPPAGE_PRECISION = 10000; // 100% in basis points
 
-    error InvalidWrappedUSDC();
     error InvalidRateProvider();
     error InvalidTimelock();
 
@@ -39,30 +37,12 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         return "ynUSDx";
     }
 
-    function deployRateProvider(address _wrappedUSDC) internal {
-        rateProvider = IProvider(address(new Provider(_wrappedUSDC)));
-    }
-
-    function deployWrappedUSDC() internal returns (address) {
-        wrappedUSDCImplementation = address(new WrappedToken());
-
-        if (address(timelock) == address(0)) {
-            revert InvalidTimelock();
-        }
-
-        wrappedUSDCProxy =
-            address(new TransparentUpgradeableProxy(address(wrappedUSDCImplementation), address(timelock), ""));
-        WrappedToken(wrappedUSDCProxy).initialize(IERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
-
-        return address(wrappedUSDCProxy);
+    function deployRateProvider() internal {
+        rateProvider = IProvider(address(new Provider(MC.WRAPPED_USDC)));
     }
 
     function _verifySetup() public view override {
         super._verifySetup();
-
-        if (wrappedUSDCProxy == address(0)) {
-            revert InvalidWrappedUSDC();
-        }
 
         if (address(rateProvider) == address(0)) {
             revert InvalidRateProvider();
@@ -74,8 +54,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
 
         _setup();
         _deployTimelockController();
-        address wrappedUSDCProxy = deployWrappedUSDC();
-        deployRateProvider(wrappedUSDCProxy);
+        deployRateProvider();
 
         _verifySetup();
 
@@ -163,7 +142,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         vault.setProvider(address(provider));
 
         // 4. Add assets to Vault
-        vault.addAsset(address(wrappedUSDCProxy), true);
+        vault.addAsset(MC.WRAPPED_USDC, false);
         vault.addAsset(MC.USDC, true);
         vault.addAsset(MC.MORPHO_GAUNTLET_USDC_VAULT, false);
         // vault.addAsset(MC.USDT, false);

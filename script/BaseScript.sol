@@ -31,9 +31,6 @@ abstract contract BaseScript is Script {
     Vault public vaultImplementation;
     address public vaultProxyAdmin;
 
-    address public wrappedUSDCProxy;
-    address public wrappedUSDCImplementation;
-    address public wrappedUSDCProxyAdmin;
     IVaultViewer public viewerProxy;
     IVaultViewer public viewerImplementation;
     address public viewerProxyAdmin;
@@ -61,7 +58,7 @@ abstract contract BaseScript is Script {
         }
         if (
             address(actors) == address(0) || address(contracts) == address(0) || address(rateProvider) == address(0)
-                || address(timelock) == address(0) || address(wrappedUSDCProxy) == address(0)
+                || address(timelock) == address(0)
         ) {
             revert InvalidSetup();
         }
@@ -97,11 +94,6 @@ abstract contract BaseScript is Script {
         vaultImplementation =
             Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-implementation")))));
         vaultProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxyAdmin")));
-
-        wrappedUSDCProxy = address(vm.parseJsonAddress(jsonInput, string.concat(".", "wrappedUSDCProxy")));
-        wrappedUSDCImplementation =
-            address(vm.parseJsonAddress(jsonInput, string.concat(".", "wrappedUSDCImplementation")));
-        wrappedUSDCProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", "wrappedUSDCProxyAdmin")));
     }
 
     function _deploymentFilePath() internal view virtual returns (string memory) {
@@ -114,10 +106,6 @@ abstract contract BaseScript is Script {
         vm.serializeAddress(symbol(), "admin", actors.ADMIN());
         vm.serializeAddress(symbol(), "timelock", address(timelock));
         vm.serializeAddress(symbol(), "rateProvider", address(rateProvider));
-
-        vm.serializeAddress(symbol(), "wrappedUSDCProxy", address(wrappedUSDCProxy));
-        vm.serializeAddress(symbol(), "wrappedUSDCImplementation", address(wrappedUSDCImplementation));
-        vm.serializeAddress(symbol(), "wrappedUSDCProxyAdmin", ProxyUtils.getProxyAdmin(address(wrappedUSDCProxy)));
 
         vm.serializeAddress(symbol(), "viewer-proxy", address(viewerProxy));
         vm.serializeAddress(symbol(), "viewer-implementation", address(viewerImplementation));

@@ -49,8 +49,8 @@ contract VerifyMaxVault is BaseScript, Test {
         IVault.AssetParams memory asset;
         address[] memory assets = vaultProxy.getAssets();
 
-        assertEq(assets[0], wrappedUSDCProxy, "assets[0] is invalid");
-        asset = vaultProxy.getAsset(wrappedUSDCProxy);
+        assertEq(assets[0], MC.WRAPPED_USDC, "assets[0] is invalid");
+        asset = vaultProxy.getAsset(MC.WRAPPED_USDC);
         assertEq(asset.decimals, 18, "asset[0].decimals is invalid");
         assertEq(asset.active, true, "asset[0].active is invalid");
         assertEq(asset.index, 0, "asset[0].index is invalid");
