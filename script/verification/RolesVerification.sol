@@ -11,6 +11,7 @@ import {TimelockController} from "lib/openzeppelin-contracts/contracts/governanc
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
+import {Vault} from "src/Vault.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -32,7 +33,13 @@ library RolesVerification {
         verifyRole(vault, actors.PROCESSOR(), vault.PROCESSOR_ROLE(), true, "Processor has PROCESSOR_ROLE");
         verifyRole(vault, actors.PAUSER(), vault.PAUSER_ROLE(), true, "Pauser has PAUSER_ROLE");
         verifyRole(vault, actors.UNPAUSER(), vault.UNPAUSER_ROLE(), true, "Unpauser has UNPAUSER_ROLE");
-        verifyRole(vault, actors.FEE_MANAGER(), vault.FEE_MANAGER_ROLE(), true, "Fee manager has FEE_MANAGER_ROLE");
+        verifyRole(
+            vault,
+            actors.FEE_MANAGER(),
+            Vault(payable(address(vault))).FEE_MANAGER_ROLE(),
+            true,
+            "Fee manager has FEE_MANAGER_ROLE"
+        );
         // verify timelock roles
         verifyRole(vault, address(timelock), vault.PROVIDER_MANAGER_ROLE(), true, "Timelock has PROVIDER_MANAGER_ROLE");
         verifyRole(vault, address(timelock), vault.ASSET_MANAGER_ROLE(), true, "Timelock has ASSET_MANAGER_ROLE");
