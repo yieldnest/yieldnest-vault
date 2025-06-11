@@ -11,7 +11,6 @@ import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 
 library VaultVerification {
-
     function verifyProvider(Vault vault, Provider provider) internal view {
         Vm vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -43,8 +42,6 @@ library VaultVerification {
             vm.assertEq(assets[i].canDeposit, vault.getAsset(assertsList[i]).active);
         }
 
-        vm.assertTrue(
-            MaxVaultViewer(address(viewer)).isUnderlyingAsset(MC.USDC), "USDC should be an underlying asset"
-        );
+        vm.assertTrue(MaxVaultViewer(address(viewer)).isUnderlyingAsset(MC.USDC), "USDC should be an underlying asset");
     }
 }

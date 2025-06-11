@@ -78,8 +78,12 @@ contract VerifyMaxVault is BaseScript, Test {
         }
 
         console.log("Verifying deposit and approval rules.");
-        RulesVerification.verifyProcessorRule(vaultProxy, BaseRules.getDepositRule(MC.MORPHO_GAUNTLET_USDC_VAULT, address(vaultProxy)));
-        RulesVerification.verifyProcessorRule(vaultProxy, BaseRules.getDepositRule(MC.SUPER_USDC_VAULT, address(vaultProxy)));
+        RulesVerification.verifyProcessorRule(
+            vaultProxy, BaseRules.getDepositRule(MC.MORPHO_GAUNTLET_USDC_VAULT, address(vaultProxy))
+        );
+        RulesVerification.verifyProcessorRule(
+            vaultProxy, BaseRules.getDepositRule(MC.SUPER_USDC_VAULT, address(vaultProxy))
+        );
         address[] memory usdcApprovalAllowList = new address[](3);
         usdcApprovalAllowList[0] = MC.MORPHO_GAUNTLET_USDC_VAULT;
         usdcApprovalAllowList[1] = MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER;
@@ -87,13 +91,15 @@ contract VerifyMaxVault is BaseScript, Test {
         RulesVerification.verifyProcessorRule(vaultProxy, BaseRules.getApprovalRule(MC.USDC, usdcApprovalAllowList));
 
         console.log("Verifying paraswap rules.");
-        SafeRules.RuleParams[] memory rules = ParaswapRules.getParaswapRules(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(paraswapValidator));
-        for (uint256 i; i < rules.length; i++) {    
+        SafeRules.RuleParams[] memory rules =
+            ParaswapRules.getParaswapRules(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(paraswapValidator));
+        for (uint256 i; i < rules.length; i++) {
             RulesVerification.verifyProcessorRule(vaultProxy, rules[i]);
         }
 
         console.log("Verifying super usdc rules.");
-        SafeRules.RuleParams[] memory superUsdcRules = SuperUsdcRules.getSuperUsdcRedeemRules(MC.SUPER_USDC_VAULT, address(vaultProxy));
+        SafeRules.RuleParams[] memory superUsdcRules =
+            SuperUsdcRules.getSuperUsdcRedeemRules(MC.SUPER_USDC_VAULT, address(vaultProxy));
         for (uint256 i; i < superUsdcRules.length; i++) {
             RulesVerification.verifyProcessorRule(vaultProxy, superUsdcRules[i]);
         }

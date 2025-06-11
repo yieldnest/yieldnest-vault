@@ -101,8 +101,7 @@ abstract contract BaseScript is Script {
         wrappedUSDCProxy = address(vm.parseJsonAddress(jsonInput, string.concat(".", "wrappedUSDCProxy")));
         wrappedUSDCImplementation =
             address(vm.parseJsonAddress(jsonInput, string.concat(".", "wrappedUSDCImplementation")));
-        wrappedUSDCProxyAdmin =
-            address(vm.parseJsonAddress(jsonInput, string.concat(".", "wrappedUSDCProxyAdmin")));
+        wrappedUSDCProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", "wrappedUSDCProxyAdmin")));
     }
 
     function _deploymentFilePath() internal view virtual returns (string memory) {

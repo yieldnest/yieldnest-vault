@@ -127,7 +127,9 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
     function _deployViewer() internal {
         viewerImplementation = new MaxVaultViewer();
 
-        viewerProxy = IVaultViewer(payable(address(new TransparentUpgradeableProxy(address(viewerImplementation), actors.ADMIN(), ""))));
+        viewerProxy = IVaultViewer(
+            payable(address(new TransparentUpgradeableProxy(address(viewerImplementation), actors.ADMIN(), "")))
+        );
 
         MaxVaultViewer(payable(address(viewerProxy))).initialize(address(vaultProxy), msg.sender);
 
