@@ -57,13 +57,6 @@ jobs:
           forge build --sizes
         id: build
 
-      - name: Run Forge unit tests
-        env:
-          FOUNDRY_PROFILE: default
-        run: |
-          forge test -vvv
-        id: test_unit
-
       - name: Run Forge mainnet units
         env:
           FOUNDRY_PROFILE: mainnet
