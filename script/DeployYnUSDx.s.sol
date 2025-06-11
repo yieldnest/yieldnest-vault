@@ -144,7 +144,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         vault.addAsset(MC.WRAPPED_USDC, false);
         vault.addAsset(MC.USDC, true);
         vault.addAsset(MC.MORPHO_GAUNTLET_USDC_VAULT, false);
-        // vault.addAsset(MC.USDT, false);
+        vault.addAsset(MC.USDT, false);
         // vault.addAsset(MC.GHO, false);
         // vault.addAsset(MC.USDE, false);
         // vault.addAsset(MC.SUSDE, false);
@@ -176,7 +176,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
      * @param vault The Vault contract
      */
     function configureVaultRules(Vault vault) internal {
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](10);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](11);
         uint256 i = 0;
 
         address[] memory usdcApprovalAllowList = new address[](3);
@@ -200,7 +200,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         for (; i < superUsdcRules.length; i++) {
             rules[i++] = superUsdcRules[i];
         }
-        // rules[i++] = BaseRules.getApprovalRule(MC.USDT, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+        rules[i++] = BaseRules.getApprovalRule(MC.USDT, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
         // rules[i++] = BaseRules.getApprovalRule(MC.GHO, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
         // rules[i++] = BaseRules.getApprovalRule(MC.USDE, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
         // rules[i++] = BaseRules.getApprovalRule(MC.SUSDE, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
