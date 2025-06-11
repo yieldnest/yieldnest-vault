@@ -31,9 +31,6 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     MaxVaultViewer public viewer;
 
     function setUp() public virtual {
-        DeployMaxVault deployMaxVault = new DeployMaxVault();
-        deployMaxVault.run();
-
         vault = Vault(payable(MC.YNRWAX));
 
         viewer = MaxVaultViewer(MC.YNRWAX_VIEWER);
