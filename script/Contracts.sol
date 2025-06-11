@@ -66,7 +66,6 @@ library MainnetContracts {
     address public constant FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
 
     address public constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
-    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address public constant USDE = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
     address public constant SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
 
@@ -76,6 +75,12 @@ library MainnetContracts {
 
     // Smokehouse WSTETH
     address public constant SMOKEHOUSE_WSTETH = 0x833AdaeF212c5cD3f78906B44bBfb18258F238F0;
+
+    // RWA
+    address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant YNRWAX = 0x01Ba69727E2860b37bc1a2bd56999c1aFb4C15D8;
+    address public constant YNRWAX_VIEWER = 0x0F2b81368781f1c846c8B2ad48BaCB45a0bea74e;
+    address public constant WUSDC = 0xdA7d2025c7f1f1A1d34AB3F4dF01102d0428E574;
 }
 
 contract L1Contracts is IContracts {

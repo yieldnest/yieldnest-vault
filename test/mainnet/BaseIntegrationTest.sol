@@ -34,9 +34,9 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         DeployMaxVault deployMaxVault = new DeployMaxVault();
         deployMaxVault.run();
 
-        vault = deployMaxVault.vault();
+        vault = Vault(payable(MC.YNRWAX));
 
-        viewer = MaxVaultViewer(address(deployMaxVault.viewer()));
-        wusdc = deployMaxVault.wusdc();
+        viewer = MaxVaultViewer(MC.YNRWAX_VIEWER);
+        wusdc = WrappedToken(MC.WUSDC);
     }
 }

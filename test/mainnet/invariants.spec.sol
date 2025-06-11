@@ -288,15 +288,21 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         _process(MC.OETH_VAULT, 0, data);
     }
 
-    function test_Vault_4626Invariants_USDC_Donation(uint256 amount, bool processAfterWithdraw) public {
+    function test_Vault_4626Invariants_USDC_Donation(uint256 amount) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 * 1e6); // USDC has 6 decimals
 
         uint256 initialAssets = vault.totalAssets();
+
         uint256 initialSupply = vault.totalSupply();
 
         {
-            deal(MC.USDC, address(vault), amount);
+            address alice = address(10);
+            deal(MC.USDC, alice, amount);
+
+            vm.startPrank(alice);
+            IERC20(MC.USDC).transfer(address(vault), amount);
+            vm.stopPrank();
 
             // process accounting to update for the donation
             vault.processAccounting();
