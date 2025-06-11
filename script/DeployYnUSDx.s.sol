@@ -100,7 +100,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         paraswapValidator = address(_paraswapValidator);
 
         // 7. Configure the deployed contracts
-        configureVaultSystem(vaultProxy, rateProvider, _paraswapValidator);
+        configureVaultSystem(vaultProxy, rateProvider);
     }
 
     function _deployViewer() internal {
@@ -130,9 +130,8 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
      * @notice Configure the vault system after deployment
      * @param vault The deployed Vault contract
      * @param provider The deployed Provider contract
-     * @param paraswapValidator The deployed ParaswapValidator contract
      */
-    function configureVaultSystem(Vault vault, IProvider provider, ParaswapValidator paraswapValidator) internal {
+    function configureVaultSystem(Vault vault, IProvider provider) internal {
         // 1. Set up roles for the Vault
         BaseRoles.configureDefaultRoles(vault, address(timelock), actors);
         // 2. Configure temporary roles for the Vault
@@ -159,8 +158,6 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
 
         // 5. Configure rules
         configureVaultRules(vault);
-        configureParaswapRules(vault, paraswapValidator);
-        configureSuperUsdcRules(vault);
 
         // 6. Set Buffer for Vault
         vault.setBuffer(MC.MORPHO_GAUNTLET_USDC_VAULT);
@@ -179,16 +176,30 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
      * @param vault The Vault contract
      */
     function configureVaultRules(Vault vault) internal {
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](3);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](10);
         uint256 i = 0;
 
         address[] memory usdcApprovalAllowList = new address[](3);
         usdcApprovalAllowList[0] = MC.MORPHO_GAUNTLET_USDC_VAULT;
         usdcApprovalAllowList[1] = MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER;
         usdcApprovalAllowList[2] = MC.SUPER_USDC_VAULT;
+        // set deposit rules
         rules[i++] = BaseRules.getDepositRule(MC.MORPHO_GAUNTLET_USDC_VAULT, address(vault));
         rules[i++] = BaseRules.getDepositRule(MC.SUPER_USDC_VAULT, address(vault));
+        // set approval rules
         rules[i++] = BaseRules.getApprovalRule(MC.USDC, usdcApprovalAllowList);
+        // set paraswap rules
+        SafeRules.RuleParams[] memory paraswapRules =
+            ParaswapRules.getParaswapRules(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(paraswapValidator));
+        for (; i < paraswapRules.length; i++) {
+            rules[i++] = paraswapRules[i];
+        }
+        // set super usdc rules
+        SafeRules.RuleParams[] memory superUsdcRules =
+            SuperUsdcRules.getSuperUsdcRedeemRules(MC.SUPER_USDC_VAULT, address(vault));
+        for (; i < superUsdcRules.length; i++) {
+            rules[i++] = superUsdcRules[i];
+        }
         // rules[i++] = BaseRules.getApprovalRule(MC.USDT, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
         // rules[i++] = BaseRules.getApprovalRule(MC.GHO, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
         // rules[i++] = BaseRules.getApprovalRule(MC.USDE, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
@@ -201,27 +212,6 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
             revert("rules length mismatch");
         }
 
-        SafeRules.setProcessorRules(vault, rules, false);
-    }
-
-    /**
-     * @notice Configure ParaswapRules
-     * @param vault The Vault contract
-     * @param paraswapValidator The ParaswapValidator contract
-     */
-    function configureParaswapRules(Vault vault, ParaswapValidator paraswapValidator) internal {
-        SafeRules.RuleParams[] memory rules =
-            ParaswapRules.getParaswapRules(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(paraswapValidator));
-        SafeRules.setProcessorRules(vault, rules, false);
-    }
-
-    /**
-     * @notice Configure SuperUSDC rules
-     * @param vault The Vault contract
-     */
-    function configureSuperUsdcRules(Vault vault) internal {
-        SafeRules.RuleParams[] memory rules =
-            SuperUsdcRules.getSuperUsdcRedeemRules(MC.SUPER_USDC_VAULT, address(vault));
         SafeRules.setProcessorRules(vault, rules, false);
     }
 }
