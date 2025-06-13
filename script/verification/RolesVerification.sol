@@ -10,6 +10,8 @@ import {ProxyUtils} from "script/ProxyUtils.sol";
 import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
+import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
+import {Vault} from "src/Vault.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -31,7 +33,13 @@ library RolesVerification {
         verifyRole(vault, actors.PROCESSOR(), vault.PROCESSOR_ROLE(), true, "Processor has PROCESSOR_ROLE");
         verifyRole(vault, actors.PAUSER(), vault.PAUSER_ROLE(), true, "Pauser has PAUSER_ROLE");
         verifyRole(vault, actors.UNPAUSER(), vault.UNPAUSER_ROLE(), true, "Unpauser has UNPAUSER_ROLE");
-
+        verifyRole(
+            vault,
+            actors.FEE_MANAGER(),
+            Vault(payable(address(vault))).FEE_MANAGER_ROLE(),
+            true,
+            "Fee manager has FEE_MANAGER_ROLE"
+        );
         // verify timelock roles
         verifyRole(vault, address(timelock), vault.PROVIDER_MANAGER_ROLE(), true, "Timelock has PROVIDER_MANAGER_ROLE");
         verifyRole(vault, address(timelock), vault.ASSET_MANAGER_ROLE(), true, "Timelock has ASSET_MANAGER_ROLE");
@@ -54,6 +62,13 @@ library RolesVerification {
         verifyRole(vault, deployer, vault.UNPAUSER_ROLE(), false, "Deployer does not have UNPAUSER_ROLE");
         verifyRole(vault, deployer, vault.PAUSER_ROLE(), false, "Deployer does not have PAUSER_ROLE");
         verifyRole(vault, deployer, vault.PROCESSOR_ROLE(), false, "Deployer does not have PROCESSOR_ROLE");
+    }
+
+    function verifyViewerRoles(MaxVaultViewer viewer, IActors actors, address deployer) internal view {
+        verifyRole(viewer, actors.ADMIN(), viewer.DEFAULT_ADMIN_ROLE(), true, "Admin has DEFAULT_ADMIN_ROLE");
+        verifyRole(viewer, actors.UPDATER(), viewer.UPDATER_ROLE(), true, "Updated has UPDATER_ROLE");
+        verifyRole(viewer, deployer, viewer.DEFAULT_ADMIN_ROLE(), false, "Deployer does not have DEFAULT_ADMIN_ROLE");
+        verifyRole(viewer, deployer, viewer.UPDATER_ROLE(), false, "Deployer does not have UPDATER_ROLE");
     }
 
     function verifyProxyRoles(address proxy, address proxyAdmin, address proxyAdminOwner) internal view {

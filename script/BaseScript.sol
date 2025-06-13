@@ -9,7 +9,6 @@ import {L1Contracts, IContracts} from "script/Contracts.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
 import {Vault} from "src/Vault.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 
 import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -28,17 +27,15 @@ abstract contract BaseScript is Script {
     address public deployer;
     TimelockController public timelock;
     IProvider public rateProvider;
-    Vault public vault;
-    Vault public implementation;
+    Vault public vaultProxy;
+    Vault public vaultImplementation;
     address public vaultProxyAdmin;
 
-    IVaultViewer public viewer;
+    IVaultViewer public viewerProxy;
     IVaultViewer public viewerImplementation;
     address public viewerProxyAdmin;
 
-    Withdrawer public withdrawer;
-    Withdrawer public withdrawerImplementation;
-    address public withdrawerProxyAdmin;
+    address public paraswapValidator;
 
     error UnsupportedChain();
     error InvalidSetup();
@@ -55,6 +52,30 @@ abstract contract BaseScript is Script {
         contracts = IContracts(new L1Contracts());
     }
 
+    function _verifySetup() public view virtual {
+        if (block.chainid != 1) {
+            revert UnsupportedChain();
+        }
+        if (
+            address(actors) == address(0) || address(contracts) == address(0) || address(rateProvider) == address(0)
+                || address(timelock) == address(0)
+        ) {
+            revert InvalidSetup();
+        }
+    }
+
+    function _deployTimelockController() internal virtual {
+        address[] memory proposers = new address[](1);
+        proposers[0] = actors.PROPOSER_1();
+
+        address[] memory executors = new address[](1);
+        executors[0] = actors.EXECUTOR_1();
+
+        address admin = actors.ADMIN();
+
+        timelock = new TimelockController(minDelay, proposers, executors, admin);
+    }
+
     function _loadDeployment() internal virtual {
         if (!vm.isFile(_deploymentFilePath())) {
             return;
@@ -65,22 +86,41 @@ abstract contract BaseScript is Script {
         timelock = TimelockController(payable(address(vm.parseJsonAddress(jsonInput, ".timelock"))));
         rateProvider = IProvider(payable(address(vm.parseJsonAddress(jsonInput, ".rateProvider"))));
 
-        viewer = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-proxy"))));
+        viewerProxy = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-proxy"))));
         viewerImplementation = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-implementation"))));
         viewerProxyAdmin = address(vm.parseJsonAddress(jsonInput, ".viewer-proxyAdmin"));
 
-        vault = Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxy")))));
-        implementation =
+        vaultProxy = Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxy")))));
+        vaultImplementation =
             Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-implementation")))));
         vaultProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxyAdmin")));
-
-        withdrawer = Withdrawer(payable(address(vm.parseJsonAddress(jsonInput, ".withdrawer-proxy"))));
-        withdrawerImplementation =
-            Withdrawer(payable(address(vm.parseJsonAddress(jsonInput, ".withdrawer-implementation"))));
-        withdrawerProxyAdmin = address(vm.parseJsonAddress(jsonInput, ".withdrawer-proxyAdmin"));
     }
 
     function _deploymentFilePath() internal view virtual returns (string memory) {
         return string.concat(vm.projectRoot(), "/deployments/", symbol(), "-", Strings.toString(block.chainid), ".json");
+    }
+
+    function _saveDeployment() internal virtual {
+        vm.serializeString(symbol(), "symbol", symbol());
+        vm.serializeAddress(symbol(), "deployer", deployer);
+        vm.serializeAddress(symbol(), "admin", actors.ADMIN());
+        vm.serializeAddress(symbol(), "timelock", address(timelock));
+        vm.serializeAddress(symbol(), "rateProvider", address(rateProvider));
+
+        vm.serializeAddress(symbol(), "viewer-proxy", address(viewerProxy));
+        vm.serializeAddress(symbol(), "viewer-implementation", address(viewerImplementation));
+        vm.serializeAddress(symbol(), "viewer-proxyAdmin", ProxyUtils.getProxyAdmin(address(viewerProxy)));
+
+        vm.serializeAddress(symbol(), "paraswapValidator", address(paraswapValidator));
+
+        vm.serializeAddress(
+            symbol(), string.concat(symbol(), "-proxyAdmin"), ProxyUtils.getProxyAdmin(address(vaultProxy))
+        );
+        vm.serializeAddress(symbol(), string.concat(symbol(), "-proxy"), address(vaultProxy));
+
+        string memory jsonOutput =
+            vm.serializeAddress(symbol(), string.concat(symbol(), "-implementation"), address(vaultImplementation));
+
+        vm.writeJson(jsonOutput, _deploymentFilePath());
     }
 }

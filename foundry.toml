@@ -2,7 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-test = "test/unit"
+test = "test"
 evm_version = "cancun"
 optimizer = true
 optimizer-runs = 200
@@ -13,6 +13,16 @@ fs_permissions = [
   { access = "read-write", path = "./deployments" },
   { access = "read", path = "./" },
 ]
+
+[profile.ci]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test/unit"
+evm_version = "cancun"
+optimizer = true
+optimizer-runs = 200
+solc_version = "0.8.24"
 
 [profile.mainnet]
 src = "src"

@@ -39,6 +39,11 @@ jobs:
         run: |
           forge fmt --check
         id: fmt_default
+      
+      - name: Install dependencies
+        run: |
+          yarn install
+        id: install_dependencies
 
       - name: Run Forge fmt mainnet tests
         env:
@@ -52,16 +57,16 @@ jobs:
           forge build --sizes
         id: build
 
-      - name: Run Forge unit tests
+      - name: Run Forge test units
         env:
-          FOUNDRY_PROFILE: default
+          FOUNDRY_PROFILE: ci
         run: |
-          forge test -vvv
+          forge test -vvv --ffi
         id: test_unit
 
       - name: Run Forge mainnet units
         env:
           FOUNDRY_PROFILE: mainnet
         run: |
-          forge test -vvv
+          forge test -vvv --ffi
         id: test_mainnet
