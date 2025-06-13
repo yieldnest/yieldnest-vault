@@ -47,7 +47,7 @@ contract VerifyMaxVault is BaseScript, Test {
         console.log("Verifying vault at:       ", address(vaultProxy));
         console.log("==============================================");
 
-        assertEq(vaultProxy.name(), "YieldNest USD Max Vault", "name is invalid");
+        assertEq(vaultProxy.name(), "ynUSD Max", "name is invalid");
         assertEq(vaultProxy.symbol(), "ynUSDx", "symbol is invalid");
         assertEq(vaultProxy.decimals(), 18, "decimals is invalid");
         assertEq(vaultProxy.provider(), address(rateProvider), "provider is invalid");
