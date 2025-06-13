@@ -76,8 +76,7 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         vaultProxyAdmin = address(timelock);
         vaultProxy =
             Vault(payable(address(new TransparentUpgradeableProxy(address(vaultImplementation), vaultProxyAdmin, ""))));
-        // TODO: set base withdrawal fee parameters correctly
-        vaultProxy.initialize(admin, "YieldNest USD Max Vault", "ynUSDx", 18, 100000, false, false, 1);
+        vaultProxy.initialize(admin, "ynUSD Max", "ynUSDx", 18, 100000, false, false, 1);
 
         address[] memory supportedTokensForParaswapValidator = new address[](8);
         supportedTokensForParaswapValidator[0] = MC.USDC;
@@ -191,14 +190,14 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
         // set paraswap rules
         SafeRules.RuleParams[] memory paraswapRules =
             ParaswapRules.getParaswapRules(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(paraswapValidator));
-        for (; i < paraswapRules.length; i++) {
-            rules[i++] = paraswapRules[i];
+        for (uint256 j = 0; j < paraswapRules.length; j++) {
+            rules[i++] = paraswapRules[j];
         }
         // set super usdc rules
         SafeRules.RuleParams[] memory superUsdcRules =
             SuperUsdcRules.getSuperUsdcRedeemRules(MC.SUPER_USDC_VAULT, address(vault));
-        for (; i < superUsdcRules.length; i++) {
-            rules[i++] = superUsdcRules[i];
+        for (uint256 j = 0; j < superUsdcRules.length; j++) {
+            rules[i++] = superUsdcRules[j];
         }
         rules[i++] = BaseRules.getApprovalRule(MC.USDT, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
         // rules[i++] = BaseRules.getApprovalRule(MC.GHO, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
