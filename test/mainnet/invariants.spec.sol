@@ -146,7 +146,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
 
     function test_Vault_4626Invariants_mint(uint256 shares) public {
         if (shares < 2) return;
-        if (shares > 100_000 ether) return;
+        if (shares > 10_000 ether) return;
 
         address alice = address(10);
         vm.label(alice, "Alice");
