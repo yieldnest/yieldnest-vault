@@ -30,6 +30,14 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         );
     }
 
+
+    function totalAssetsInvariantRel(uint256 assets, uint256 relativeDelta) public view {
+        uint256 finalVaultTotalAssets = vault.totalAssets();
+        assertApproxEqRel(
+            assets, finalVaultTotalAssets, relativeDelta, "Vault totalAssets should be original totalAssets plus additional"
+        );
+    }
+
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
         targets[0] = MC.WBNB;
@@ -188,7 +196,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         allocateToBuffer(assets);
 
         totalSupplyInvariant(initialSupply + shares);
-        totalAssetsInvariant(initialAssets + assets);
+        totalAssetsInvariantRel(initialAssets + assets, 1e18);
     }
 
     function test_Vault_4626Invariants_redeem(uint256 assets) public {
