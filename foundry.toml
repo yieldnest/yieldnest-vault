@@ -14,6 +14,16 @@ fs_permissions = [
   { access = "read", path = "./" },
 ]
 
+[profile.ci]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test/unit"
+evm_version = "cancun"
+optimizer = true
+optimizer-runs = 200
+solc_version = "0.8.24"
+
 [profile.mainnet]
 src = "src"
 out = "out"

@@ -57,6 +57,13 @@ jobs:
           forge build --sizes
         id: build
 
+      - name: Run Forge test units
+        env:
+          FOUNDRY_PROFILE: ci
+        run: |
+          forge test -vvv --ffi
+        id: test_unit
+
       - name: Run Forge mainnet units
         env:
           FOUNDRY_PROFILE: mainnet
