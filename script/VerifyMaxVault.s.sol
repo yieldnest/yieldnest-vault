@@ -19,6 +19,12 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script VerifyMaxVault
 contract VerifyMaxVault is BaseScript, Test {
+    bool public isTestEnv = false;
+
+    function setIsTestEnv(bool _isTestEnv) public {
+        isTestEnv = _isTestEnv;
+    }
+
     function symbol() public view virtual override returns (string memory) {
         return "ynUSDx";
     }
@@ -26,7 +32,9 @@ contract VerifyMaxVault is BaseScript, Test {
     function run() public {
         _setup();
         _loadDeployment();
-        assertNotEq(msg.sender, deployer, "msg.sender should not be deploye as this is a verifier script.");
+        if (!isTestEnv) {
+            assertNotEq(msg.sender, deployer, "msg.sender should not be deploye as this is a verifier script.");
+        }
         verify();
     }
 
