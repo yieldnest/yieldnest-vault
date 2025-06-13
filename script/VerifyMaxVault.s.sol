@@ -60,7 +60,7 @@ contract VerifyMaxVault is BaseScript, Test {
         assertEq(assets[0], MC.WRAPPED_USDC, "assets[0] is invalid");
         asset = vaultProxy.getAsset(MC.WRAPPED_USDC);
         assertEq(asset.decimals, 18, "asset[0].decimals is invalid");
-        assertEq(asset.active, true, "asset[0].active is invalid");
+        assertEq(asset.active, false, "asset[0].active is invalid");
         assertEq(asset.index, 0, "asset[0].index is invalid");
 
         assertEq(assets[1], MC.USDC, "assets[1] is invalid");

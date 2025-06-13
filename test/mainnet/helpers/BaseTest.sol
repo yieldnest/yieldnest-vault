@@ -84,7 +84,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         vault.setProvider(address(provider));
 
-        vault.addAsset(address(wrappedUSDC), true);
+        vault.addAsset(address(wrappedUSDC), false);
         vault.addAsset(MC.USDC, true);
         vault.addAsset(MC.MORPHO_GAUNTLET_USDC_VAULT, false);
         vault.addAsset(MC.USDT, false);
