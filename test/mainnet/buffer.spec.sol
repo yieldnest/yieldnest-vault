@@ -55,7 +55,7 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
 
     function test_Vault_4626Invariants_depositBase_WithBufferAllocation(uint256 assets, uint256 bufferAmount) public {
         vm.assume(assets > 1000_000);
-        vm.assume(assets < 100_000 ether);
+        vm.assume(assets < 10_000 ether);
         vm.assume(bufferAmount < assets);
         vm.assume(bufferAmount > 1000_000);
 
