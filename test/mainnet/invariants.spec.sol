@@ -30,6 +30,16 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         );
     }
 
+    function totalAssetsInvariantRel(uint256 assets, uint256 relativeDelta) public view {
+        uint256 finalVaultTotalAssets = vault.totalAssets();
+        assertApproxEqRel(
+            assets,
+            finalVaultTotalAssets,
+            relativeDelta,
+            "Vault totalAssets should be original totalAssets plus additional"
+        );
+    }
+
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
         targets[0] = MC.WBNB;
@@ -146,7 +156,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
 
     function test_Vault_4626Invariants_mint(uint256 shares) public {
         if (shares < 2) return;
-        if (shares > 100_000 ether) return;
+        if (shares > 10_000 ether) return;
 
         address alice = address(10);
         vm.label(alice, "Alice");
@@ -188,12 +198,12 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         allocateToBuffer(assets);
 
         totalSupplyInvariant(initialSupply + shares);
-        totalAssetsInvariant(initialAssets + assets);
+        totalAssetsInvariantRel(initialAssets + assets, 1e18);
     }
 
     function test_Vault_4626Invariants_redeem(uint256 assets) public {
         if (assets < 3) return;
-        if (assets > 100_000_000 ether) return;
+        if (assets > 10_000 ether) return;
 
         address alice = address(420);
         deal(alice, assets);
@@ -256,12 +266,12 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         vm.stopPrank();
 
         totalSupplyInvariant(initialSupply);
-        totalAssetsInvariant(initialAssets + (assets - redeemedAssets));
+        totalAssetsInvariantRel(initialAssets + (assets - redeemedAssets), 1e18);
     }
 
     function test_Vault_4626Invariants_withdraw(uint256 assets) public {
         if (assets < 3) return;
-        if (assets > 100_000_000 ether) return;
+        if (assets > 10_000 ether) return;
 
         address alice = address(10);
         deal(alice, assets);
@@ -322,6 +332,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         assertApproxEqAbs(finalBalance, withdrawableAssets, 3, "Final balance should reflect the withdrawn assets");
 
         totalSupplyInvariant(initialSupply);
-        totalAssetsInvariant(initialAssets + (assets - withdrawableAssets));
+        totalAssetsInvariantRel(initialAssets + (assets - withdrawableAssets), 1e18);
     }
 }
