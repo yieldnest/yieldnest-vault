@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import {IVault} from "src/BaseVault.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {Provider} from "src/module/Provider.sol";

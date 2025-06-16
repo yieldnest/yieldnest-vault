@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Provider} from "src/module/Provider.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {Vault} from "src/Vault.sol";
 import {TimelockController, TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";

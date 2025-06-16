@@ -9,7 +9,6 @@ import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
