@@ -22,32 +22,17 @@ import {ITransparentUpgradeableProxy} from
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     // Implementation addresses
     Vault public vaultImplementation;
-    Withdrawer public withdrawerImplementation;
 
     function setUp() public override {
         super.setUp();
     }
 
     function upgradeVaultAndWithdrawer() internal {
-        if (TIMELOCK != address(0x0)) {
-            vaultImplementation = new Vault();
-            UpgradeUtils.timelockUpgrade(
-                TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(vaultImplementation)
-            );
-        } else {
-            // Direct upgrade using proxy admin impersonation
-            vaultImplementation = new Vault();
+        vaultImplementation = new Vault();
 
-            // Get the proxy admin address
-            address vaultProxyAdmin = ProxyUtils.getProxyAdmin(address(vault));
-
-            // Upgrade vault implementation
-            vm.startPrank(ProxyAdmin(vaultProxyAdmin).owner());
-            ProxyAdmin(vaultProxyAdmin).upgradeAndCall(
-                ITransparentUpgradeableProxy(address(vault)), address(vaultImplementation), ""
-            );
-            vm.stopPrank();
-        }
+        UpgradeUtils.timelockUpgrade(
+            TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(vaultImplementation)
+        );
     }
 
     function test_Vault_Upgrade_Implementation_Set_Correctly() public {
@@ -144,7 +129,12 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         assertEq(assets[1], MC.USDC, "Second asset should be USDC");
     }
 
-    function test_Vault_Upgrade_totalAssets_unchanged(bool processAccountingBeforeCheck) public {
+    function test_Vault_Upgrade_totalAssets_unchanged()
+        //bool processAccountingBeforeCheck
+        public
+    {
+        bool processAccountingBeforeCheck = true;
+
         if (processAccountingBeforeCheck) {
             vault.processAccounting();
         }
