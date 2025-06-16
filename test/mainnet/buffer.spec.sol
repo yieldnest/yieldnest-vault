@@ -65,17 +65,16 @@ contract VaultBufferInvariantsTest is BaseTest {
         uint256 expectedSharesToReceive = vault.previewDeposit(userDepositAmount);
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 totalSupplyBefore = vault.totalSupply();
+        uint256 baseAssetsOfVaultBefore = vault.totalBaseAssets();
         deal(MC.USDC, alice, userDepositAmount);
         _depositAssetToVault(MC.USDC, userDepositAmount, alice);
 
         vault.processAccounting();
 
-        console.log("totalAssets", vault.totalAssets());
-        console.log("totalSupply", vault.totalSupply());
-
-        assertEq(
+        assertApproxEqAbs(
             expectedSharesToReceive,
             userDepositAmount * 1e12,
+            1e18,
             "Shares should be equal to amount deposited scaled by 1e12"
         );
 
@@ -83,7 +82,7 @@ contract VaultBufferInvariantsTest is BaseTest {
         totalAssetsInvariant(totalAssetsBefore + userDepositAmount);
         assertEq(
             vault.totalBaseAssets(),
-            userDepositAmount * 1e12,
+            userDepositAmount * 1e12 + baseAssetsOfVaultBefore,
             "Vault should have the same total base assets as the user deposit amount scaled by 1e12"
         );
 
@@ -92,9 +91,12 @@ contract VaultBufferInvariantsTest is BaseTest {
 
         uint256 bufferStrategySharesMinted;
         uint256 expectedShareBalanceOfMorphoGauntletUsdcVault;
+        uint256 bufferStrategyBalanceOfVaultBefore = IERC20(bufferStrategy).balanceOf(address(vault));
+        uint256 initialSharesOfMorphoGauntletUsdcVault;
         {
             // allocate to buffer
             uint256 usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
+            initialSharesOfMorphoGauntletUsdcVault = IERC20(MC.MORPHO_GAUNTLET_USDC_VAULT).balanceOf(address(vault));
             expectedShareBalanceOfMorphoGauntletUsdcVault =
                 IERC4626(MC.MORPHO_GAUNTLET_USDC_VAULT).previewDeposit(bufferDepositAmount);
 
@@ -117,12 +119,12 @@ contract VaultBufferInvariantsTest is BaseTest {
         assertGt(bufferStrategySharesMinted, 0, "Buffer shares should be greater than 0");
         assertEq(
             IERC20(MC.MORPHO_GAUNTLET_USDC_VAULT).balanceOf(address(vault)),
-            expectedShareBalanceOfMorphoGauntletUsdcVault,
+            expectedShareBalanceOfMorphoGauntletUsdcVault + initialSharesOfMorphoGauntletUsdcVault,
             "Incorrect gauntlet usdc vault balance in buffer strategy"
         );
         assertEq(
             IERC20(bufferStrategy).balanceOf(address(vault)),
-            bufferStrategySharesMinted,
+            bufferStrategySharesMinted + bufferStrategyBalanceOfVaultBefore,
             "Incorrect share amount of bufferStrategyShares in vault"
         );
         assertApproxEqAbs(

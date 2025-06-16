@@ -89,7 +89,7 @@ contract MainnetActors is IActors {
     address public constant YnDev = 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3;
     address public constant YnBootstrapper = 0x832e0D8e7A7Bdfe181f30df614383FAA4B5C2924;
 
-    address public constant TIMELOCK = address(0); // TODO: set new timelock
+    address public constant TIMELOCK = 0x739711358Ee02d0D6d6eE51D6A07dc862ddB132d;
 
     address public constant ADMIN = YnSecurityCouncil;
     address public constant PROCESSOR = YnProcessor;

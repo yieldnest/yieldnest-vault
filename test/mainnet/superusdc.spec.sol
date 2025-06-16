@@ -32,30 +32,36 @@ contract SuperUSDCTest is BaseTest {
         address alice = makeAddr("alice");
         deal(MC.USDC, alice, depositAmount);
 
+        uint256 totalAssetsOfVaultBefore = vault.totalAssets();
+        uint256 totalBaseAssetsOfVaultBefore = vault.totalBaseAssets();
+        uint256 totalSupplyOfVaultBefore = vault.totalSupply();
+        uint256 initialUSDCBalanceOfVault = IERC20(MC.USDC).balanceOf(address(vault));
+        uint256 expectedSharesToReceive = IERC4626(vault).previewDeposit(depositAmount);
+
         _depositAssetToVault(MC.USDC, depositAmount, alice);
 
         // Process accounting
         vault.processAccounting();
 
-        assertEq(vault.totalAssets(), depositAmount, "Vault should have the same total assets as the deposit amount");
+        assertEq(
+            vault.totalAssets(),
+            depositAmount + totalAssetsOfVaultBefore,
+            "Vault should have the same total assets as the deposit amount"
+        );
         assertEq(
             vault.totalBaseAssets(),
-            depositAmount * 1e12,
+            depositAmount * 1e12 + totalBaseAssetsOfVaultBefore,
             "Vault should have the same total base assets as the deposit amount scaled by 1e12"
         );
         assertEq(
             vault.totalSupply(),
-            depositAmount * 1e12,
-            "Vault should have the same total supply as the deposit amount scaled by 1e12"
+            expectedSharesToReceive + totalSupplyOfVaultBefore,
+            "Vault should have the same total supply as the expected shares to receive"
         );
-        assertEq(
-            vault.balanceOf(alice),
-            depositAmount * 1e12,
-            "Vault should have the same balance of alice as the deposit amount"
-        );
+        assertGt(vault.balanceOf(alice), 0, "Alice should have received shares of vault");
         assertEq(
             IERC20(MC.USDC).balanceOf(address(vault)),
-            depositAmount,
+            depositAmount + initialUSDCBalanceOfVault,
             "USDC balance of vault should decrease by deposit amount"
         );
         assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "USDC balance of alice should be 0");
@@ -94,32 +100,36 @@ contract SuperUSDCTest is BaseTest {
         address alice = makeAddr("alice");
         deal(MC.USDC, alice, userDepositAmount);
 
+        uint256 totalAssetsOfVaultBefore = vault.totalAssets();
+        uint256 totalBaseAssetsOfVaultBefore = vault.totalBaseAssets();
+        uint256 totalSupplyOfVaultBefore = vault.totalSupply();
+        uint256 usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
+        uint256 expectedSharesToReceive = IERC4626(vault).previewDeposit(userDepositAmount);
+
         _depositAssetToVault(MC.USDC, userDepositAmount, alice);
 
         // Process accounting
         vault.processAccounting();
 
         assertEq(
-            vault.totalAssets(), userDepositAmount, "Vault should have the same total assets as the user deposit amount"
+            vault.totalAssets(),
+            userDepositAmount + totalAssetsOfVaultBefore,
+            "Vault should have the same total assets as the user deposit amount"
         );
         assertEq(
             vault.totalBaseAssets(),
-            userDepositAmount * 1e12,
+            userDepositAmount * 1e12 + totalBaseAssetsOfVaultBefore,
             "Vault should have the same total base assets as the user deposit amount scaled by 1e12"
         );
         assertEq(
             vault.totalSupply(),
-            userDepositAmount * 1e12,
-            "Vault should have the same total supply as the user deposit amount scaled by 1e12"
+            expectedSharesToReceive + totalSupplyOfVaultBefore,
+            "Vault should have the same total supply as the expected shares to receive"
         );
-        assertEq(
-            vault.balanceOf(alice),
-            userDepositAmount * 1e12,
-            "Vault should have the same balance of alice as the user deposit amount"
-        );
+        assertGt(vault.balanceOf(alice), 0, "Alice should have received shares of vault");
         assertEq(
             IERC20(MC.USDC).balanceOf(address(vault)),
-            userDepositAmount,
+            userDepositAmount + usdcBalanceOfVaultBefore,
             "USDC balance of vault should decrease by user deposit amount"
         );
         assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "USDC balance of alice should be 0");
@@ -127,7 +137,7 @@ contract SuperUSDCTest is BaseTest {
         // vault state before deposit to superusdc vault
         uint256 vaultAssetsBefore = vault.totalAssets();
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
-        uint256 usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
+        usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
         uint256 superUSDCBalanceOfVaultBefore = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
 
         depositToSuperUSDCVault(superUSDCVaultDepositAmount);
@@ -155,41 +165,48 @@ contract SuperUSDCTest is BaseTest {
 
         address alice = makeAddr("alice");
         deal(MC.USDC, alice, depositAmount);
+        uint256 usdcBalanceOfVaultBefore;
+        {
+            uint256 totalAssetsOfVaultBefore = vault.totalAssets();
+            uint256 totalBaseAssetsOfVaultBefore = vault.totalBaseAssets();
+            uint256 totalSupplyOfVaultBefore = vault.totalSupply();
+            usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
+            uint256 expectedSharesToReceive = IERC4626(vault).previewDeposit(depositAmount);
+            _depositAssetToVault(MC.USDC, depositAmount, alice);
 
-        _depositAssetToVault(MC.USDC, depositAmount, alice);
+            // Process accounting
+            vault.processAccounting();
 
-        // Process accounting
-        vault.processAccounting();
-
-        assertEq(vault.totalAssets(), depositAmount, "Vault should have the same total assets as the deposit amount");
-        assertEq(
-            vault.totalBaseAssets(),
-            depositAmount * 1e12,
-            "Vault should have the same total base assets as the deposit amount scaled by 1e12"
-        );
-        assertEq(
-            vault.totalSupply(),
-            depositAmount * 1e12,
-            "Vault should have the same total supply as the deposit amount scaled by 1e12"
-        );
-        assertEq(
-            vault.balanceOf(alice),
-            depositAmount * 1e12,
-            "Vault should have the same balance of alice as the deposit amount"
-        );
-        assertEq(
-            IERC20(MC.USDC).balanceOf(address(vault)),
-            depositAmount,
-            "USDC balance of vault should decrease by deposit amount"
-        );
-        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "USDC balance of alice should be 0");
+            assertEq(
+                vault.totalAssets(),
+                depositAmount + totalAssetsOfVaultBefore,
+                "Vault should have the same total assets as the deposit amount"
+            );
+            assertEq(
+                vault.totalBaseAssets(),
+                depositAmount * 1e12 + totalBaseAssetsOfVaultBefore,
+                "Vault should have the same total base assets as the deposit amount scaled by 1e12"
+            );
+            assertEq(
+                vault.totalSupply(),
+                expectedSharesToReceive + totalSupplyOfVaultBefore,
+                "Vault should have the same total supply as the expected shares to receive"
+            );
+            assertGt(vault.balanceOf(alice), 0, "Alice should have received shares of vault");
+            assertEq(
+                IERC20(MC.USDC).balanceOf(address(vault)),
+                depositAmount + usdcBalanceOfVaultBefore,
+                "USDC balance of vault should decrease by deposit amount"
+            );
+            assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "USDC balance of alice should be 0");
+        }
 
         uint256 vaultAssetsBefore = vault.totalAssets();
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
         depositToSuperUSDCVault(depositAmount);
 
         uint256 superUSDCBalanceOfVaultBefore = IERC20(MC.SUPER_USDC_VAULT).balanceOf(address(vault));
-        uint256 usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
+        usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
         assertTrue(superUSDCBalanceOfVaultBefore > 0, "Vault should have SuperUSDC shares after deposit");
 
         uint256 sharesToWithdraw = IERC4626(MC.SUPER_USDC_VAULT).previewWithdraw(withdrawAmount);

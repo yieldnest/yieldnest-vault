@@ -29,8 +29,9 @@ contract SwapTest is BaseTest {
         uint256 depositAmount = 100000e6;
         giveApprovalOfAssetToAugustus(MC.USDC, depositAmount);
 
+        uint256 totalAssetsBefore = vault.totalAssets();
         depositAmount = depositAssetToVault(MC.USDC, depositAmount, 0);
-        assertEq(vault.totalAssets(), depositAmount);
+        assertEq(vault.totalAssets(), depositAmount + totalAssetsBefore);
 
         uint256 usdtBalanceBefore = IERC20(MC.USDT).balanceOf(address(vault));
         uint256 vaultTotalAssetsBefore = vault.totalAssets();
@@ -66,8 +67,9 @@ contract SwapTest is BaseTest {
             uint256 depositAmount = 1000_000e6;
             giveApprovalOfAssetToAugustus(MC.USDC, depositAmount);
 
+            uint256 totalAssetsBefore = vault.totalAssets();
             depositAmount = depositAssetToVault(MC.USDC, depositAmount, 0);
-            assertEq(vault.totalAssets(), depositAmount);
+            assertEq(vault.totalAssets(), depositAmount + totalAssetsBefore);
 
             uint256 assetBalanceBefore = IERC20(assets[i]).balanceOf(address(vault));
             uint256 vaultTotalAssetsBefore = vault.totalAssets();

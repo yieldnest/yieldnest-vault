@@ -31,63 +31,18 @@ contract BaseTest is Test, MainnetActors, TestHelper {
     WrappedToken public wrappedUSDC;
 
     function deploy() public returns (Vault, Provider) {
-        // Deploy implementation contract
-        Vault vaultImplementation = new Vault();
-        Vault vault = Vault(
-            payable(
-                address(new TransparentUpgradeableProxy(address(vaultImplementation), address(MainnetActors.ADMIN), ""))
-            )
-        );
-        vault.initialize(MainnetActors.ADMIN, "YieldNest USD Max Vault", "ynUSDx", 18, 0, false, false, 1);
-
-        wrappedUSDC =
-            WrappedToken(address(new TransparentUpgradeableProxy(address(new WrappedToken()), MainnetActors.ADMIN, "")));
-        wrappedUSDC.initialize(ERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
+        Vault vault = Vault(payable(0x3DB228FE836D99Ccb25Ec4dfdC80ED6d2CDdCB4b));
+        Provider provider = Provider(0x084c2159eC1612A82b16711cC45A003EA162EC85);
+        wrappedUSDC = WrappedToken(MC.WRAPPED_USDC);
 
         TestHelper._initVault(vault);
 
-        address[] memory supportedTokens = new address[](8);
-        supportedTokens[0] = MC.USDC;
-        supportedTokens[1] = MC.USDT;
-        supportedTokens[2] = MC.GHO;
-        supportedTokens[3] = MC.USDE;
-        supportedTokens[4] = MC.CRVUSD;
-        supportedTokens[5] = MC.USDS;
-        supportedTokens[6] = MC.FRAX;
-        supportedTokens[7] = MC.USDS;
-
-        Provider provider = new Provider(address(wrappedUSDC));
-        ParaswapValidator paraswapValidator = new ParaswapValidator(
-            MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(vault), address(provider), MAX_SLIPPAGE, supportedTokens
-        );
-
-        configureMainnet(vault, provider, paraswapValidator);
-
+        configureMainnet(vault);
         return (vault, provider);
     }
 
-    function configureMainnet(Vault vault, Provider provider, ParaswapValidator paraswapValidator) internal {
-        vm.startPrank(ADMIN);
-
-        vault.grantRole(vault.PROCESSOR_ROLE(), PROCESSOR);
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
-        vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
-        vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
-        vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
-
-        // test cannot unpause vault without provider
-        vm.expectRevert();
-        vault.unpause();
-
-        vault.setProvider(address(provider));
-
-        vault.addAsset(address(wrappedUSDC), false);
-        vault.addAsset(MC.USDC, true);
-        vault.addAsset(MC.MORPHO_GAUNTLET_USDC_VAULT, false);
-        vault.addAsset(MC.USDT, false);
+    function configureMainnet(Vault vault) internal {
+        vm.startPrank(TIMELOCK);
         vault.addAsset(MC.GHO, false);
         vault.addAsset(MC.USDE, false);
         vault.addAsset(MC.SUSDE, false);
@@ -97,16 +52,6 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         vault.addAsset(MC.SUSDS, false);
         vault.addAsset(MC.SFRAX, false);
         vault.addAsset(MC.FRAX, false);
-        vault.addAsset(MC.SUPER_USDC_VAULT, false);
-
-        configureVaultRules(vault);
-        configureParaswapRules(vault, paraswapValidator);
-        configureSuperUsdcRules(vault);
-
-        vault.setBuffer(MC.MORPHO_GAUNTLET_USDC_VAULT);
-
-        // Unpause the vault and buffer strategy
-        vault.unpause();
 
         vm.stopPrank();
 
