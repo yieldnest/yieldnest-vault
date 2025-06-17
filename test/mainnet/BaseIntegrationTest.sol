@@ -37,11 +37,11 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
             // Set the provider in the vault
             vm.startPrank(MC.TIMELOCK);
 
-            vault.setProvider(address(provider));
+            // vault.setProvider(address(provider));
 
-            vault.addAsset(MC.EULER_EWBNB_6_VAULT, false);
+            // vault.addAsset(MC.EULER_EWBNB_6_VAULT, false);
 
-            vault.setBuffer(MC.EULER_EWBNB_6_VAULT);
+            // vault.setBuffer(MC.EULER_EWBNB_6_VAULT);
 
             vm.stopPrank();
         }
