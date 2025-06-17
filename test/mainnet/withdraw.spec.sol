@@ -8,7 +8,6 @@ import {IVault} from "src/interface/IVault.sol";
 import {IERC20, TransparentUpgradeableProxy, IERC4626, Math} from "src/Common.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";

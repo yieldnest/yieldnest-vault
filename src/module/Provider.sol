@@ -1,17 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {
-    IProvider,
-    IStETH,
-    IMETH,
-    IsfrxETH,
-    IRETH,
-    IswETH,
-    IFrxEthWethDualOracle,
-    IynLSDe,
-    ICurveLpConnector
-} from "src/interface/IProvider.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IVault} from "src/interface/IVault.sol";

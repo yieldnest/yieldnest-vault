@@ -9,7 +9,6 @@ import {L1Contracts, IContracts} from "script/Contracts.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
 import {Vault} from "src/Vault.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 
 import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";

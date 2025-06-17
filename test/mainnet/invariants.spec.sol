@@ -8,7 +8,6 @@ import {IVault} from "src/interface/IVault.sol";
 import {IERC20, TransparentUpgradeableProxy, IERC4626, Math} from "src/Common.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
@@ -31,7 +30,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
     function allocateToBuffer(uint256 amount) public {
         address[] memory targets = new address[](2);
-        targets[0] = MC.WETH;
+        targets[0] = MC.USDC;
         targets[1] = vault.buffer();
 
         uint256[] memory values = new uint256[](2);
@@ -245,58 +244,21 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         (assets) = abi.decode(returnData, (uint256));
     }
 
-    function _processDepositWETH(uint256 amount) internal {
-        bytes memory data = abi.encodeWithSignature("deposit()");
-        _process(MC.WETH, amount, data);
-    }
-
-    function _processWithdrawWETH(uint256 amount) internal {
-        bytes memory data = abi.encodeWithSignature("withdraw(uint256)", amount);
-        _process(MC.WETH, 0, data);
-    }
-
-    function _processSubmitETH(uint256 amount) internal returns (uint256 amountSTETH) {
-        bytes memory data = abi.encodeWithSignature("submit(address)", address(vault));
-        bytes memory returnData = _process(MC.STETH, amount, data);
-        (amountSTETH) = abi.decode(returnData, (uint256));
-    }
-
-    function _processWrapSTETH(uint256 amount) internal returns (uint256 amountWSTETH) {
-        bytes memory data = abi.encodeWithSignature("wrap(uint256)", amount);
-        bytes memory returnData = _process(MC.WSTETH, 0, data);
-        (amountWSTETH) = abi.decode(returnData, (uint256));
-    }
-
-    function _processUnwrapWSTETH(uint256 amount) internal returns (uint256 amountSTETH) {
-        bytes memory data = abi.encodeWithSignature("unwrap(uint256)", amount);
-        bytes memory returnData = _process(MC.WSTETH, 0, data);
-        (amountSTETH) = abi.decode(returnData, (uint256));
-    }
-
-    function _processYnETHDepositETH(uint256 amount) internal {
-        bytes memory data = abi.encodeWithSignature("depositETH(address)", address(vault));
-        _process(MC.YNETH, amount, data);
-    }
-
-    function _processYnEigenDeposit(address erc4626, address asset, uint256 amount) internal {
-        bytes memory data = abi.encodeWithSignature("deposit(address,uint256,address)", asset, amount, address(vault));
-        _process(erc4626, 0, data);
-    }
-
-    function _processMintOETH(uint256 amount) internal {
-        bytes memory data = abi.encodeWithSignature("mint(address,uint256,uint256)", MC.WETH, amount, amount);
-        _process(MC.OETH_VAULT, 0, data);
-    }
-
-    function test_Vault_4626Invariants_USDC_Donation(uint256 amount, bool processAfterWithdraw) public {
+    function test_Vault_4626Invariants_USDC_Donation(uint256 amount) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 * 1e6); // USDC has 6 decimals
 
         uint256 initialAssets = vault.totalAssets();
+
         uint256 initialSupply = vault.totalSupply();
 
         {
-            deal(MC.USDC, address(vault), amount);
+            address alice = address(10);
+            deal(MC.USDC, alice, amount);
+
+            vm.startPrank(alice);
+            IERC20(MC.USDC).transfer(address(vault), amount);
+            vm.stopPrank();
 
             // process accounting to update for the donation
             vault.processAccounting();

@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import {IVault} from "src/BaseVault.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {Provider} from "src/module/Provider.sol";
@@ -128,8 +127,7 @@ contract VerifyMaxVault is BaseScript, Test {
 
         // Verify configurer does not have DEFAULT_ADMIN_ROLE
         assertFalse(
-            vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B),
-            "Configurer should not have DEFAULT_ADMIN_ROLE"
+            vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), deployer), "Configurer should not have DEFAULT_ADMIN_ROLE"
         );
         console.log(
             "\u2705 Configurer ROLE CHECK - should not have DEFAULT_ADMIN_ROLE: OK for 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B"

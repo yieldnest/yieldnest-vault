@@ -6,14 +6,11 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IERC4626} from "src/Common.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Etches} from "test/mainnet/helpers/Etches.sol";
-import {IStETH, IMETH, IRETH, IynLSDe} from "src/interface/IProvider.sol";
-import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
+import {MockStrategy} from "test/mainnet/mocks/MockStrategy.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "src/Common.sol";
 import {Vault} from "src/Vault.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
-
-import {IswETH, IsfrxETH, IFrxEthWethDualOracle, ICurveLpConnector} from "src/interface/IProvider.sol";
 
 contract ProviderTest is BaseIntegrationTest, Etches {
     Provider public provider;
@@ -28,8 +25,8 @@ contract ProviderTest is BaseIntegrationTest, Etches {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), admin, "");
         mockStrategy = MockStrategy(payable(address(proxy)));
         mockStrategy.initialize(
-            "Mock WETH Strategy",
-            "mWETH",
+            "Mock USDE Strategy",
+            "mUSDE",
             admin,
             true, // alwaysComputeTotalAssets
             0 // defaultAssetIndex
@@ -37,7 +34,7 @@ contract ProviderTest is BaseIntegrationTest, Etches {
 
         vm.startPrank(admin);
         mockStrategy.grantRole(mockStrategy.ASSET_MANAGER_ROLE(), admin);
-        mockStrategy.addAsset(MC.WETH, true);
+        mockStrategy.addAsset(MC.USDE, true);
         vm.stopPrank();
 
         assertEq(
@@ -59,5 +56,10 @@ contract ProviderTest is BaseIntegrationTest, Etches {
     function test_Provider_GetRateUSDC() public view {
         uint256 rate = provider.getRate(MC.USDC);
         assertEq(rate, 1e18, "Rate for USDC should be 1e18");
+    }
+
+    function test_Provider_GetRateWUSDC() public view {
+        uint256 rate = provider.getRate(address(wusdc));
+        assertEq(rate, 1e18, "Rate for WUSDC should be 1e18");
     }
 }
