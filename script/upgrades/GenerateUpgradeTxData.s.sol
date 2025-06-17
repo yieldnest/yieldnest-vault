@@ -42,7 +42,6 @@ import {VaultVerification} from "script/verification/VaultVerification.sol";
  * The script will then generate and display the necessary transaction data for the upgrade process.
  * --------
  */
-
 contract GenerateVaultUpgradeTxData is BaseScript {
     string internal _tokenSymbol;
 

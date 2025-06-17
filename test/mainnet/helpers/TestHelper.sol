@@ -26,7 +26,6 @@ contract TestHelper is Test {
     /// @return The actual amount of asset received after conversion
 
     function dealAsset(address asset, address account, uint256 amount) internal returns (uint256) {
-
         deal(asset, account, amount);
 
         return amount;

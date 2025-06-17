@@ -7,7 +7,6 @@ interface IContracts {
 }
 
 library MainnetContracts {
-
     address public constant PROVIDER = address(123456789); // TODO: Update with deployed Provider
     address public constant BUFFER = address(987654321); // TODO: Update with deployed buffer
 
@@ -21,7 +20,6 @@ library MainnetContracts {
 }
 
 contract L1Contracts is IContracts {
-
     function USDC() external pure override returns (address) {
         return MainnetContracts.USDC;
     }
