@@ -1,0 +1,16 @@
+{
+  "admin": "0xfcad670592a3b24869C0b51a6c6FDED4F95D6975",
+  "deployer": "0xa1E340bd1e3ea09B3981164BBB4AfeDdF0e7bA0D",
+  "rateProvider": "0x671698e3d6817c6EE3D13b19fca364d00Ca142B1",
+  "symbol": "ynRWAx",
+  "timelock": "0x0971628c7D3C6009D309165fEDCc47A12e5158F1",
+  "viewer-implementation": "0xEED274cdfa4568BEdE1d0FA5a8F41b0B059e5C81",
+  "viewer-proxy": "0x0F2b81368781f1c846c8B2ad48BaCB45a0bea74e",
+  "viewer-proxyAdmin": "0x173ef707203B87e959bC7a5d8003A396B5256685",
+  "wusdc-implementation": "0x3f574ff13a9540c3e7844704e962b1b186c31e58",
+  "wusdc-proxy": "0xdA7d2025c7f1f1A1d34AB3F4dF01102d0428E574",
+  "wusdc-proxyAdmin": "0x6461205616F55f01523183617c5AeC818415417b",
+  "ynRWAx-implementation": "0xc1C5B18774d0282949331b719b5EA4A21CbC62C8",
+  "ynRWAx-proxy": "0x01Ba69727E2860b37bc1a2bd56999c1aFb4C15D8",
+  "ynRWAx-proxyAdmin": "0x90ae998b7920F7C5eB27d792F710Ac5EaCf5c7DC"
+}

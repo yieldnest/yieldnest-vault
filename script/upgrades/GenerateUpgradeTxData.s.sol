@@ -10,8 +10,8 @@ import {ProxyUtils} from "script/ProxyUtils.sol";
 import {Vault} from "src/Vault.sol";
 import {Provider} from "src/module/Provider.sol";
 import {BaseVault} from "src/BaseVault.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
+
 /**
  * @title GenerateVaultUpgradeTxData
  * @dev This script generates the transaction data needed to upgrade a specific contract in the YnLSDe system.
@@ -42,7 +42,6 @@ import {VaultVerification} from "script/verification/VaultVerification.sol";
  * The script will then generate and display the necessary transaction data for the upgrade process.
  * --------
  */
-
 contract GenerateVaultUpgradeTxData is BaseScript {
     string internal _tokenSymbol;
 
@@ -50,11 +49,8 @@ contract GenerateVaultUpgradeTxData is BaseScript {
     struct UpgradeData {
         address newImplementation;
         address newProvider;
-        address newWithdrawerImplementation;
         address proxyAddress;
         address proxyAdmin;
-        address withdrawerProxyAdmin;
-        Withdrawer withdrawer;
         ITransparentUpgradeableProxy proxy;
         bytes txData;
         uint256 txCount;
@@ -88,20 +84,11 @@ contract GenerateVaultUpgradeTxData is BaseScript {
             data.newProvider = address(0);
         }
 
-        try vm.envAddress("WITHDRAWER_IMPLEMENTATION") returns (address withdrawerImpl) {
-            data.newWithdrawerImplementation = withdrawerImpl;
-        } catch {
-            data.newWithdrawerImplementation = address(0);
-        }
-
         _loadDeployment();
 
         console.log("=== Contract Upgrade Details ===");
         console.log("Contract address: %s", vm.toString(address(vault)));
         console.log("New implementation: %s", vm.toString(data.newImplementation));
-
-        // Get withdrawer from vault assets
-        data.withdrawer = VaultVerification.getWithdrawer(vault);
 
         data.proxyAddress = address(vault);
         data.proxy = ITransparentUpgradeableProxy(data.proxyAddress);
@@ -123,15 +110,11 @@ contract GenerateVaultUpgradeTxData is BaseScript {
         data.txCount = 1; // Start with the vault implementation upgrade
 
         if (data.newProvider != address(0)) {
-            data.txCount += 2; // One for vault provider, one for withdrawer provider
+            data.txCount += 1; // One for vault provider
         }
 
-        if (data.newWithdrawerImplementation != address(0)) {
-            data.txCount += 1; // One for withdrawer implementation upgrade
-        }
-
-        // Add 2 more transactions for processAccounting on withdrawer and vault
-        data.txCount += 2;
+        // Add 1 more transaction for processAccounting on vault
+        data.txCount += 1;
 
         // Create arrays for the batch transaction
         data.targets = new address[](data.txCount);
@@ -144,26 +127,6 @@ contract GenerateVaultUpgradeTxData is BaseScript {
         data.values[data.txIndex] = 0;
         data.calldatas[data.txIndex] = data.txData;
         data.txIndex++;
-
-        // Add withdrawer implementation upgrade if needed
-        if (data.newWithdrawerImplementation != address(0)) {
-            console.log("\n=== Withdrawer Upgrade Details ===");
-            console.log("New withdrawer implementation: %s", vm.toString(data.newWithdrawerImplementation));
-
-            data.withdrawerProxyAdmin = ProxyUtils.getProxyAdmin(address(data.withdrawer));
-            bytes memory withdrawerUpgradeData = abi.encodeWithSelector(
-                ProxyAdmin.upgradeAndCall.selector, address(data.withdrawer), data.newWithdrawerImplementation, ""
-            );
-
-            data.targets[data.txIndex] = data.withdrawerProxyAdmin;
-            data.values[data.txIndex] = 0;
-            data.calldatas[data.txIndex] = withdrawerUpgradeData;
-            data.txIndex++;
-
-            console.log("Withdrawer upgrade transaction data:");
-            console.logBytes(withdrawerUpgradeData);
-            console.log("Target ProxyAdmin for withdrawer: %s", vm.toString(data.withdrawerProxyAdmin));
-        }
 
         // Add provider updates if needed
         if (data.newProvider != address(0)) {
@@ -178,37 +141,13 @@ contract GenerateVaultUpgradeTxData is BaseScript {
             data.calldatas[data.txIndex] = setVaultProviderData;
             data.txIndex++;
 
-            // Generate the transaction data for setting the new provider on withdrawer
-            bytes memory setWithdrawerProviderData =
-                abi.encodeWithSelector(BaseVault.setProvider.selector, data.newProvider);
-
-            data.targets[data.txIndex] = address(data.withdrawer);
-            data.values[data.txIndex] = 0;
-            data.calldatas[data.txIndex] = setWithdrawerProviderData;
-            data.txIndex++;
-
             console.log("Set provider transaction data for vault:");
             console.logBytes(setVaultProviderData);
             console.log("Target for vault setProvider: %s", vm.toString(address(vault)));
-
-            console.log("Set provider transaction data for withdrawer:");
-            console.logBytes(setWithdrawerProviderData);
-            console.log("Target for withdrawer setProvider: %s", vm.toString(address(data.withdrawer)));
         }
 
-        // Add processAccounting for withdrawer
-        console.log("\n=== Process Accounting Details ===");
-        bytes memory processAccountingWithdrawerData = abi.encodeWithSelector(BaseVault.processAccounting.selector);
-        data.targets[data.txIndex] = address(data.withdrawer);
-        data.values[data.txIndex] = 0;
-        data.calldatas[data.txIndex] = processAccountingWithdrawerData;
-        data.txIndex++;
-
-        console.log("Process accounting transaction data for withdrawer:");
-        console.logBytes(processAccountingWithdrawerData);
-        console.log("Target for withdrawer processAccounting: %s", vm.toString(address(data.withdrawer)));
-
         // Add processAccounting for vault
+        console.log("\n=== Process Accounting Details ===");
         bytes memory processAccountingVaultData = abi.encodeWithSelector(BaseVault.processAccounting.selector);
         data.targets[data.txIndex] = address(vault);
         data.values[data.txIndex] = 0;
