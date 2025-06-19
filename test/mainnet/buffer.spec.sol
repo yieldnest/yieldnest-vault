@@ -71,11 +71,7 @@ contract VaultBufferInvariantsTest is BaseTest {
 
         vault.processAccounting();
 
-        assertEq(
-            expectedSharesToReceive,
-            vault.balanceOf(alice),
-            "Shares should be equal to previewDeposit"
-        );
+        assertEq(expectedSharesToReceive, vault.balanceOf(alice), "Shares should be equal to previewDeposit");
 
         totalSupplyInvariant(totalSupplyBefore + expectedSharesToReceive);
         totalAssetsInvariant(totalAssetsBefore + userDepositAmount);
