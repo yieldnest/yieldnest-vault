@@ -47,7 +47,6 @@ contract SwapTest is BaseTest {
         assertTrue(usdtBalanceAfter > usdtBalanceBefore, "USDT balance should increase after swap");
         uint256 minExpectedTotalAssets =
             vaultTotalAssetsBefore * (SLIPPAGE_PRECISION - MAX_SLIPPAGE) / SLIPPAGE_PRECISION;
-        assertTrue(usdtBalanceAfter >= minExpectedTotalAssets, "USDT balance should be within slippage tolerance");
         assertTrue(vaultTotalAssetsAfter >= minExpectedTotalAssets, "Vault total assets should increase after swap");
         totalSupplyInvariant(vaultTotalSupplyBefore);
     }

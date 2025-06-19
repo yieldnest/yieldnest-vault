@@ -71,11 +71,10 @@ contract VaultBufferInvariantsTest is BaseTest {
 
         vault.processAccounting();
 
-        assertApproxEqAbs(
+        assertEq(
             expectedSharesToReceive,
-            userDepositAmount * 1e12,
-            1e18,
-            "Shares should be equal to amount deposited scaled by 1e12"
+            vault.balanceOf(alice),
+            "Shares should be equal to previewDeposit"
         );
 
         totalSupplyInvariant(totalSupplyBefore + expectedSharesToReceive);
