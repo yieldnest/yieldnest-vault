@@ -6,62 +6,91 @@ import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IVault} from "src/interface/IVault.sol";
 
-/*
-    The Provider fetches state from other contracts.
-*/
-
 interface IBaseStrategy {
     function STRATEGY_VERSION() external view returns (string memory);
 }
 
+/**
+ * @title Provider
+ * @notice The Provider is a contract that provides a rate for a given asset in terms of base asset of the vault.
+ * @dev The base asset for ynUSDx is Wrapped USDC with 18 decimals.
+ * @dev This contract returns the rate of 1 unit of asset(with X decimals) denominated in 1 unit of base asset(with 18 decimals).
+ */
 contract Provider is IProvider {
     error UnsupportedAsset(address asset);
     error RateIsNegative();
 
     address public wrappedUSDC;
 
+    /**
+     * @notice Constructor
+     * @param wrappedUSDC_ The address of the wrapped USDC asset
+     */
     constructor(address wrappedUSDC_) {
         wrappedUSDC = wrappedUSDC_;
     }
 
+    /**
+     * @notice Get the rate of a given asset in terms of base asset
+     * @param asset The address of the asset
+     * @return rate The rate of 1 unit of asset in terms of 1 unit of base asset
+     */
     function getRate(address asset) public view virtual returns (uint256) {
         if (asset == wrappedUSDC) {
             return 1e18;
         }
 
+        // 1 USDC = 1 Wrapped USDC
+        // 1 unit of USDC with 6 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
         if (asset == MC.USDC) {
             return 1e18;
         }
 
+        // 1 USDT = 1 Wrapped USDC
+        // 1 unit of USDT with 6 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
         if (asset == MC.USDT) {
             return 1e18;
         }
 
+        // 1 GHO = 1 Wrapped USDC
+        // 1 unit of GHO with 18 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
         if (asset == MC.GHO) {
             return 1e18;
         }
 
+        // 1 USDE = 1 Wrapped USDC
+        // 1 unit of USDE with 18 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
         if (asset == MC.USDE) {
             return 1e18;
         }
 
+        // 1 CRVUSD = 1 Wrapped USDC
+        // 1 unit of CRVUSD with 18 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
         if (asset == MC.CRVUSD) {
             return 1e18;
         }
 
+        // 1 USDS = 1 Wrapped USDC
+        // 1 unit of USDS with 6 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
         if (asset == MC.USDS) {
             return 1e18;
         }
 
+        // 1 FRAX = 1 Wrapped USDC
+        // 1 unit of FRAX with 18 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
         if (asset == MC.FRAX) {
             return 1e18;
         }
 
+        // base asset of SFRAX, SUSDE, SUSDS, SCRVUSD is FRAX, USDE, USDS, CRVUSD respectively with 18 decimals.
+        // we need rate in terms of 18 decimals(denominated in Wrapped USDC) so we query it for 1e18 Wrapped USDC
         if (asset == MC.SFRAX || asset == MC.SUSDE || asset == MC.SUSDS || asset == MC.SCRVUSD) {
             return IERC4626(asset).convertToAssets(1e18);
         }
 
         if (asset == MC.SUPER_USDC_VAULT) {
+            // baseAsset of superUSDC vault is USDC with 6 decimals.
+            // we need rate in terms of 18 decimals so we query it for 1e18 Wrapped USDC
             return IERC4626(asset).convertToAssets(1e18);
         }
 
