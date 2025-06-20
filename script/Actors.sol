@@ -31,6 +31,12 @@ interface IActors {
     function BOOTSTRAPPER() external view returns (address);
 
     function TIMELOCK() external view returns (address);
+
+    function MORPHO_USDC_CORE_VAULT_MANAGER() external view returns (address);
+
+    function DEPOSIT_MANAGER() external view returns (address);
+
+    function ALLOCATOR_MANAGER() external view returns (address);
 }
 
 abstract contract LocalActors is IActors {
@@ -49,6 +55,9 @@ abstract contract LocalActors is IActors {
     address public constant BOOTSTRAPPER = address(13);
     address public constant UNAUTHORIZED = address(0);
     address public constant TIMELOCK = address(14);
+    address public constant MORPHO_USDC_CORE_VAULT_MANAGER = address(15);
+    address public constant DEPOSIT_MANAGER = address(16);
+    address public constant ALLOCATOR_MANAGER = address(17);
 }
 
 contract HoleskyActors is IActors {
@@ -64,12 +73,14 @@ contract HoleskyActors is IActors {
     address public constant PROCESSOR_MANAGER = HoleskyAdmin;
     address public constant PAUSER = HoleskyAdmin;
     address public constant UNPAUSER = HoleskyAdmin;
-    address public constant ALLOCATOR_MANAGER = HoleskyAdmin;
     address public constant UPDATER = HoleskyAdmin;
     address public constant FEE_MANAGER = HoleskyAdmin;
     address public constant BOOTSTRAPPER = HoleskyAdmin;
     address public constant UNAUTHORIZED = address(0);
     address public constant TIMELOCK = HoleskyAdmin;
+    address public constant MORPHO_USDC_CORE_VAULT_MANAGER = HoleskyAdmin;
+    address public constant DEPOSIT_MANAGER = HoleskyAdmin;
+    address public constant ALLOCATOR_MANAGER = HoleskyAdmin;
 }
 
 contract MainnetActors is IActors {
@@ -78,7 +89,7 @@ contract MainnetActors is IActors {
     address public constant YnDev = 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3;
     address public constant YnBootstrapper = 0x832e0D8e7A7Bdfe181f30df614383FAA4B5C2924;
 
-    address public constant TIMELOCK = 0xb5b52c63067E490982874B0d0F559668Bbe0c36B;
+    address public constant TIMELOCK = 0x739711358Ee02d0D6d6eE51D6A07dc862ddB132d;
 
     address public constant ADMIN = YnSecurityCouncil;
     address public constant PROCESSOR = YnProcessor;
@@ -91,7 +102,9 @@ contract MainnetActors is IActors {
     address public constant PROCESSOR_MANAGER = YnSecurityCouncil;
     address public constant PAUSER = YnDev;
     address public constant UNPAUSER = YnSecurityCouncil;
+    address public constant MORPHO_USDC_CORE_VAULT_MANAGER = YnSecurityCouncil;
     address public constant FEE_MANAGER = YnSecurityCouncil;
+    address public constant DEPOSIT_MANAGER = YnSecurityCouncil;
 
     address public constant ALLOCATOR_MANAGER = YnSecurityCouncil;
 

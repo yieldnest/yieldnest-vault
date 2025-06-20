@@ -245,15 +245,12 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (paused()) {
             return 0;
         }
-
         uint256 bufferAssets = IStrategy(buffer()).maxWithdraw(address(this));
         if (bufferAssets == 0) {
             return 0;
         }
-
         uint256 ownerShares = balanceOf(owner);
         uint256 maxAssets = previewRedeem(ownerShares);
-
         return bufferAssets < maxAssets ? bufferAssets : maxAssets;
     }
 

@@ -1,113 +1,104 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {
-    IProvider,
-    IStETH,
-    IMETH,
-    IsfrxETH,
-    IRETH,
-    IswETH,
-    IFrxEthWethDualOracle,
-    IynLSDe,
-    ICurveLpConnector
-} from "src/interface/IProvider.sol";
+import {IProvider} from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IVault} from "src/interface/IVault.sol";
-
-/*
-    The Provider fetches state from other contracts.
-*/
 
 interface IBaseStrategy {
     function STRATEGY_VERSION() external view returns (string memory);
 }
 
+/**
+ * @title Provider
+ * @notice The Provider is a contract that provides a rate for a given asset in terms of base asset of the vault.
+ * @dev The base asset for ynUSDx is Wrapped USDC with 18 decimals.
+ * @dev This contract returns the rate of 1 unit of asset(with X decimals) denominated in 1 unit of base asset(with 18 decimals).
+ */
 contract Provider is IProvider {
     error UnsupportedAsset(address asset);
     error RateIsNegative();
 
-    function isETHStrategyVault(address asset) public view returns (bool) {
-        try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
-            address vaultAsset = IVault(asset).asset();
-            return (
-                keccak256(bytes(version)) == keccak256(bytes("0.1.0"))
-                    || keccak256(bytes(version)) == keccak256(bytes("0.2.0"))
-            ) && vaultAsset == MC.WETH;
-        } catch {
-            return false;
-        }
+    address public wrappedUSDC;
+
+    /**
+     * @notice Constructor
+     * @param wrappedUSDC_ The address of the wrapped USDC asset
+     */
+    constructor(address wrappedUSDC_) {
+        wrappedUSDC = wrappedUSDC_;
     }
 
+    /**
+     * @notice Get the rate of a given asset in terms of base asset
+     * @param asset The address of the asset
+     * @return rate The rate of 1 unit of asset in terms of 1 unit of base asset
+     */
     function getRate(address asset) public view virtual returns (uint256) {
-        if (asset == MC.WETH) {
+        if (asset == wrappedUSDC) {
             return 1e18;
         }
 
-        if (asset == MC.STETH) {
+        // 1 USDC = 1 Wrapped USDC
+        // 1 unit of USDC with 6 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
+        if (asset == MC.USDC) {
             return 1e18;
         }
 
-        if (asset == MC.OETH) {
+        // 1 USDT = 1 Wrapped USDC
+        // 1 unit of USDT with 6 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
+        if (asset == MC.USDT) {
             return 1e18;
         }
 
-        if (asset == MC.BUFFER || asset == MC.YNETH || asset == MC.WOETH || asset == MC.EULER_WETH_22_VAULT) {
+        // 1 GHO = 1 Wrapped USDC
+        // 1 unit of GHO with 18 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
+        if (asset == MC.GHO) {
+            return 1e18;
+        }
+
+        // 1 USDE = 1 Wrapped USDC
+        // 1 unit of USDE with 18 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
+        if (asset == MC.USDE) {
+            return 1e18;
+        }
+
+        // 1 CRVUSD = 1 Wrapped USDC
+        // 1 unit of CRVUSD with 18 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
+        if (asset == MC.CRVUSD) {
+            return 1e18;
+        }
+
+        // 1 USDS = 1 Wrapped USDC
+        // 1 unit of USDS with 6 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
+        if (asset == MC.USDS) {
+            return 1e18;
+        }
+
+        // 1 FRAX = 1 Wrapped USDC
+        // 1 unit of FRAX with 18 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
+        if (asset == MC.FRAX) {
+            return 1e18;
+        }
+
+        // base asset of SFRAX, SUSDE, SUSDS, SCRVUSD is FRAX, USDE, USDS, CRVUSD respectively with 18 decimals.
+        // we need rate in terms of 18 decimals(denominated in Wrapped USDC) so we query it for 1e18 Wrapped USDC
+        if (asset == MC.SFRAX || asset == MC.SUSDE || asset == MC.SUSDS || asset == MC.SCRVUSD) {
             return IERC4626(asset).convertToAssets(1e18);
         }
 
-        if (asset == MC.YNLSDE) {
-            // ynLSDe does not expose convertToAssets, use previewRedeem instead
-            return IynLSDe(asset).previewRedeem(1e18);
-        }
-
-        if (asset == MC.SMOKEHOUSE_WSTETH) {
-            return IStETH(MC.STETH).getPooledEthByShares(IERC4626(asset).convertToAssets(1e18));
-        }
-
-        if (asset == MC.WSTETH) {
-            return IStETH(MC.STETH).getPooledEthByShares(1e18);
-        }
-
-        if (asset == MC.METH) {
-            return IMETH(MC.METH_STAKING_MANAGER).mETHToETH(1e18);
-        }
-
-        if (asset == MC.RETH) {
-            return IRETH(MC.RETH).getExchangeRate();
-        }
-
-        if (asset == MC.SWELL) {
-            return IswETH(MC.SWELL).swETHToETHRate();
-        }
-
-        if (asset == MC.SFRXETH) {
-            /* 
-            
-            The deposit asset for sfrxETH is frxETH and not ETH. 
-            In order to account for any frxETH/ETH rate fluctuations,
-            an frxETH/ETH oracle is used as provided by Frax.
-
-            Documentation: https://docs.frax.finance/frax-oracle/advanced-concepts
-            */
-            uint256 frxETHPriceInETH = IFrxEthWethDualOracle(MC.FRX_ETH_WETH_DUAL_ORACLE).getCurveEmaEthPerFrxEth();
-            return IsfrxETH(MC.SFRXETH).pricePerShare() * frxETHPriceInETH / 1e18;
-        }
-
-        if (asset == MC.CURVE_LP_YNETH_YNLSDE_STRATEGY) {
-            (int256 strategyRate,) = ICurveLpConnector(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR).rate();
-            if (strategyRate < 0) {
-                revert RateIsNegative();
-            }
-
-            return uint256(strategyRate);
-        }
-
-        if (isETHStrategyVault(asset)) {
+        if (asset == MC.SUPER_USDC_VAULT) {
+            // baseAsset of superUSDC vault is USDC with 6 decimals.
+            // we need rate in terms of 18 decimals so we query it for 1e18 Wrapped USDC
             return IERC4626(asset).convertToAssets(1e18);
         }
 
+        // buffer strategy
+        if (asset == MC.MORPHO_GAUNTLET_USDC_VAULT) {
+            // base asset is USDC with 6 decimals. we scale it to 18 decimals
+            return IERC4626(asset).convertToAssets(1e18) * 1e12;
+        }
         revert UnsupportedAsset(asset);
     }
 }

@@ -4,44 +4,71 @@ pragma solidity ^0.8.24;
 import {IVault} from "src/BaseVault.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
+import {BaseScript} from "script/BaseScript.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";
+import {RulesVerification} from "script/verification/RulesVerification.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
 import {Provider} from "src/module/Provider.sol";
-import {BaseScript} from "script/BaseScript.sol";
-import {ProxyUtils} from "script/ProxyUtils.sol";
-
 import {Test} from "lib/forge-std/src/Test.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
+import {ParaswapRules} from "script/rules/ParaswapRules.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
+import {SuperUsdcRules} from "script/rules/SuperUsdcRules.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script VerifyMaxVault
 contract VerifyMaxVault is BaseScript, Test {
+    bool public isTestEnv = false;
+
+    function setIsTestEnv(bool _isTestEnv) public {
+        isTestEnv = _isTestEnv;
+    }
+
     function symbol() public view virtual override returns (string memory) {
-        return "ynETHx";
+        return "ynUSDx";
     }
 
     function run() public {
         _setup();
         _loadDeployment();
-        assertNotEq(msg.sender, deployer, "msg.sender should not be deploye as this is a verifier script.");
+        if (!isTestEnv) {
+            assertNotEq(msg.sender, deployer, "msg.sender should not be deploye as this is a verifier script.");
+        }
         verify();
     }
 
     function verify() public view {
-        assertNotEq(address(vault), address(0), "vault is not set");
+        assertNotEq(address(vaultProxy), address(0), "vault is not set");
 
         console.log("==============================================");
-        console.log("=          VERIFYING VAULT SETUP            =");
+        console.log("=          VERIFYING VAULT SETUP             =");
         console.log("==============================================");
-        console.log("Verifying vault at:       ", address(vault));
+        console.log("Verifying vault at:       ", address(vaultProxy));
         console.log("==============================================");
 
-        assertEq(vault.name(), "ynETH MAX", "name is invalid");
-        assertEq(vault.symbol(), "ynETHx", "symbol is invalid");
-        assertEq(vault.decimals(), 18, "decimals is invalid");
-        assertEq(vault.provider(), address(rateProvider), "provider is invalid");
-        assertEq(vault.baseWithdrawalFee(), 250000, "base withdrawal fee is invalid");
-        assertEq(vault.countNativeAsset(), true, "count native asset is invalid");
-        assertFalse(vault.alwaysComputeTotalAssets(), "always compute total assets is invalid");
+        assertEq(vaultProxy.name(), "ynUSD Max", "name is invalid");
+        assertEq(vaultProxy.symbol(), "ynUSDx", "symbol is invalid");
+        assertEq(vaultProxy.decimals(), 18, "decimals is invalid");
+        assertEq(vaultProxy.provider(), address(rateProvider), "provider is invalid");
+        assertEq(vaultProxy.baseWithdrawalFee(), 100000, "base withdrawal fee is invalid");
+        assertEq(vaultProxy.countNativeAsset(), false, "count native asset is invalid");
+        assertFalse(vaultProxy.alwaysComputeTotalAssets(), "always compute total assets is invalid");
+        IVault.AssetParams memory asset;
+        address[] memory assets = vaultProxy.getAssets();
+
+        assertEq(assets[0], MC.WRAPPED_USDC, "assets[0] is invalid");
+        asset = vaultProxy.getAsset(MC.WRAPPED_USDC);
+        assertEq(asset.decimals, 18, "asset[0].decimals is invalid");
+        assertEq(asset.active, false, "asset[0].active is invalid");
+        assertEq(asset.index, 0, "asset[0].index is invalid");
+
+        assertEq(assets[1], MC.USDC, "assets[1] is invalid");
+        asset = vaultProxy.getAsset(MC.USDC);
+        assertEq(asset.active, true, "asset[1].active is invalid");
+        assertEq(asset.index, 1, "asset[1].index is invalid");
+
+        assertEq(vaultProxy.asset(), MC.USDC, "asset is invalid");
 
         {
             // Verify proxy admin and implementation addresses
@@ -50,112 +77,65 @@ contract VerifyMaxVault is BaseScript, Test {
             console.log("==============================================");
 
             // Verify vault proxy configuration
-            address vaultImpl = ProxyUtils.getImplementation(address(vault));
-            address vaultAdmin = ProxyUtils.getProxyAdmin(address(vault));
-            assertEq(vaultImpl, address(implementation), "Vault implementation address mismatch");
+            address vaultImpl = ProxyUtils.getImplementation(address(vaultProxy));
+            address vaultAdmin = ProxyUtils.getProxyAdmin(address(vaultProxy));
+            assertEq(vaultImpl, address(vaultImplementation), "Vault implementation address mismatch");
             assertEq(vaultAdmin, vaultProxyAdmin, "Vault proxy admin address mismatch");
             console.log("\u2705 Vault implementation:     ", vaultImpl);
             console.log("\u2705 Vault proxy admin:        ", vaultAdmin);
-
-            // Verify withdrawer proxy configuration
-            address withdrawerImpl = ProxyUtils.getImplementation(address(withdrawer));
-            address withdrawerAdmin = ProxyUtils.getProxyAdmin(address(withdrawer));
-
-            assertEq(withdrawerImpl, address(withdrawerImplementation), "Withdrawer implementation address mismatch");
-            assertEq(withdrawerAdmin, withdrawerProxyAdmin, "Withdrawer proxy admin address mismatch");
-            console.log("\u2705 Withdrawer implementation:", withdrawerImpl);
-            console.log("\u2705 Withdrawer proxy admin:   ", withdrawerAdmin);
-            console.log("==============================================");
         }
 
-        IVault.AssetParams memory asset;
-        address[] memory assets = vault.getAssets();
+        console.log("Verifying deposit and approval rules.");
+        RulesVerification.verifyProcessorRule(
+            vaultProxy, BaseRules.getDepositRule(MC.MORPHO_GAUNTLET_USDC_VAULT, address(vaultProxy))
+        );
+        RulesVerification.verifyProcessorRule(
+            vaultProxy, BaseRules.getDepositRule(MC.SUPER_USDC_VAULT, address(vaultProxy))
+        );
+        address[] memory usdcApprovalAllowList = new address[](3);
+        usdcApprovalAllowList[0] = MC.MORPHO_GAUNTLET_USDC_VAULT;
+        usdcApprovalAllowList[1] = MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER;
+        usdcApprovalAllowList[2] = MC.SUPER_USDC_VAULT;
+        RulesVerification.verifyProcessorRule(vaultProxy, BaseRules.getApprovalRule(MC.USDC, usdcApprovalAllowList));
 
-        assertEq(assets[0], contracts.WETH(), "assets[0] is invalid");
+        console.log("Verifying paraswap rules.");
+        SafeRules.RuleParams[] memory rules =
+            ParaswapRules.getParaswapRules(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(paraswapValidator));
+        for (uint256 i; i < rules.length; i++) {
+            RulesVerification.verifyProcessorRule(vaultProxy, rules[i]);
+        }
 
-        asset = vault.getAsset(contracts.WETH());
-        assertEq(asset.decimals, 18, "asset[0].decimals is invalid");
-        assertEq(asset.active, true, "asset[0].active is invalid");
-        assertEq(asset.index, 0, "asset[0].index is invalid");
+        console.log("Verifying super usdc rules.");
+        SafeRules.RuleParams[] memory superUsdcRules =
+            SuperUsdcRules.getSuperUsdcRedeemRules(MC.SUPER_USDC_VAULT, address(vaultProxy));
+        for (uint256 i; i < superUsdcRules.length; i++) {
+            RulesVerification.verifyProcessorRule(vaultProxy, superUsdcRules[i]);
+        }
 
-        console.log("Verifying WETH deposit and withdraw rules.");
-
-        // Get withdrawer from vault assets
-        Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
-
-        console.log("==============================================");
-        console.log("=        VERIFYING WITHDRAWER SETUP         =");
-        console.log("==============================================");
-        console.log("Verifying withdrawer at:   ", address(withdrawer));
-        console.log("==============================================");
-
-        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.3.0");
-        console.log("\u2705 Vault version:          ", vault.VAULT_VERSION());
-        console.log("==============================================");
-
-        assertEq(withdrawer.STRATEGY_VERSION(), "0.2.0", "Strategy version should be 0.2.0");
-        console.log("\u2705 Strategy version:       ", withdrawer.STRATEGY_VERSION());
-
-        // Verify provider configuration
-        VaultVerification.verifyProvider(Provider(address(rateProvider)), withdrawer);
-
-        // Verify vault configuration using VaultVerification library
-        VaultVerification.verifyVaultConfiguration(vault, withdrawer);
-
-        // Verify processor rules
-        VaultVerification.verifyRules(vault);
-
-        // verify actors  & timelock roles on vault
-        RolesVerification.verifyDefaultRoles(vault, timelock, actors);
+        RolesVerification.verifyDefaultRoles(vaultProxy, timelock, actors);
         RolesVerification.verifyRole(
-            vault, actors.FEE_MANAGER(), vault.FEE_MANAGER_ROLE(), true, "Fee Manager has FEE_MANAGER_ROLE"
+            vaultProxy, actors.FEE_MANAGER(), vaultProxy.FEE_MANAGER_ROLE(), true, "Fee Manager has FEE_MANAGER_ROLE"
         );
 
-        // Verify withdrawer configuration
-        VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
+        RolesVerification.verifyProxyRoles(address(vaultProxy), vaultProxyAdmin, address(timelock));
 
-        // Verify withdrawer rules
-        VaultVerification.verifyWithdrawerRules(withdrawer);
+        assertFalse(vaultProxy.paused(), "Vault should not be paused");
 
-        // verify actors & timelock roles on withdrawer
-        RolesVerification.verifyDefaultRoles(withdrawer, timelock, actors);
-        RolesVerification.verifyRole(
-            withdrawer, address(vault), withdrawer.ALLOCATOR_ROLE(), true, "YnETHx has ALLOCATOR_ROLE"
-        );
-
-        address withdrawerProxyAdmin = ProxyUtils.getProxyAdmin(address(withdrawer));
-
-        // verify proxy roles on withdrawer
-        RolesVerification.verifyProxyRoles(address(withdrawer), withdrawerProxyAdmin, address(timelock));
-
-        // verify proxy roles
-        RolesVerification.verifyProxyRoles(address(vault), vaultProxyAdmin, address(timelock));
-        // verify viewer roles
-        RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.UPDATER());
-
-        // verify timelock roles
         RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
 
-        // verify temporary roles
-        RolesVerification.verifyTemporaryRoles(vault, deployer);
-        RolesVerification.verifyTemporaryRoles(withdrawer, deployer);
+        RolesVerification.verifyTemporaryRoles(vaultProxy, deployer);
 
-        VaultVerification.verifyViewer(MaxVaultViewer(address(viewer)), vault);
-        assertTrue(
-            MaxVaultViewer(address(viewer)).isUnderlyingAsset(contracts.WETH()), "WETH should be an underlying asset"
-        );
+        VaultVerification.verifyProvider(vaultProxy, Provider(address(rateProvider)));
 
-        // Verify configurer does not have DEFAULT_ADMIN_ROLE
-        assertFalse(
-            vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B),
-            "Configurer should not have DEFAULT_ADMIN_ROLE"
-        );
-        console.log(
-            "\u2705 Configurer ROLE CHECK - should not have DEFAULT_ADMIN_ROLE: OK for 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B"
-        );
+        assertEq(vaultProxy.VAULT_VERSION(), "0.3.0", "Vault version should be 0.3.0");
+        console.log("\u2705 Vault version:          ", vaultProxy.VAULT_VERSION());
+        console.log("==============================================");
 
-        assertFalse(withdrawer.paused(), "Withdrawer should not be paused");
-        assertFalse(vault.paused(), "Vault should not be paused");
+        VaultVerification.verifyViewer(viewerProxy, vaultProxy);
+
+        RolesVerification.verifyViewerRoles(MaxVaultViewer(address(viewerProxy)), actors, deployer);
+
+        RolesVerification.verifyProxyRoles(address(viewerProxy), viewerProxyAdmin, actors.ADMIN());
 
         console.log("==============================================");
         console.log("MANUAL VERIFICATION REQUIRED");
@@ -169,27 +149,12 @@ contract VerifyMaxVault is BaseScript, Test {
         console.log("TOTAL ASSETS AND VAULT RATE:");
         console.log("==============================================");
 
-        uint256 totalAssets = vault.totalAssets();
+        uint256 totalAssets = vaultProxy.totalAssets();
         console.log("Total assets:", totalAssets);
 
         // Print rate by converting 1e18 shares to assets
         uint256 oneShare = 1e18;
-        uint256 assetAmount = vault.convertToAssets(oneShare);
+        uint256 assetAmount = vaultProxy.convertToAssets(oneShare);
         console.log("Vault rate (1 share in assets):", assetAmount);
-    }
-
-    function _checkForAsset(address asset) internal view returns (bool isIncluded, uint256 index) {
-        address[] memory assets = vault.getAssets();
-
-        for (uint256 i; i < assets.length;) {
-            if (assets[i] == asset) {
-                isIncluded = true;
-                index = i;
-                break;
-            }
-            {
-                i++;
-            }
-        }
     }
 }

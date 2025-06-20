@@ -6,7 +6,6 @@ import {Vm} from "lib/forge-std/src/Vm.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
 
 library UpgradeUtils {
-
     address internal constant CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
 
     function timelockUpgrade(
@@ -17,15 +16,10 @@ library UpgradeUtils {
     ) external {
         Vm vm = Vm(CHEATCODE_ADDRESS);
 
-
         address proxyAdmin = ProxyUtils.getProxyAdmin(target);
 
-        bytes memory _data = abi.encodeWithSignature(
-            "upgradeAndCall(address,address,bytes)",
-            target,
-            newImplementation,
-            ""
-        );
+        bytes memory _data =
+            abi.encodeWithSignature("upgradeAndCall(address,address,bytes)", target, newImplementation, "");
         vm.startPrank(owner);
         timelockController.schedule(
             proxyAdmin, // target
@@ -50,5 +44,4 @@ library UpgradeUtils {
         );
         vm.stopPrank();
     }
-
 }
