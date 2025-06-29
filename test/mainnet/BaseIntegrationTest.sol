@@ -28,48 +28,6 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         mockKernelVaultDepositLimit(MC.WBNB);
         mockKernelVaultDepositLimit(MC.CLISBNB);
         mockKernelVaultDepositLimit(MC.SLISBNB);
-
-        //
-        {
-            // Deploy a new Provider
-            Provider provider = new Provider();
-
-            // Set the provider in the vault
-            vm.startPrank(MC.TIMELOCK);
-
-            vault.setProvider(address(provider));
-
-            vault.addAsset(MC.EULER_EWBNB_6_VAULT, false);
-
-            vault.setBuffer(MC.EULER_EWBNB_6_VAULT);
-
-            vm.stopPrank();
-        }
-
-        {
-            SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](2);
-            {
-                bytes4 approveSelector = bytes4(keccak256("approve(address,uint256)"));
-                Vault.FunctionRule memory currentRule = vault.getProcessorRule(MC.WBNB, approveSelector);
-
-                address[] memory currentWhitelist = currentRule.paramRules[0].allowList;
-                // Initialize the new whitelist with size + 1
-                address[] memory whitelist = new address[](currentWhitelist.length + 1);
-
-                for (uint256 i = 0; i < currentWhitelist.length; i++) {
-                    whitelist[i] = currentWhitelist[i];
-                }
-
-                // Add the new target address
-                whitelist[currentWhitelist.length] = MC.EULER_EWBNB_6_VAULT;
-                rules[0] = BaseRules.getApprovalRule(MC.WBNB, whitelist);
-            }
-
-            rules[1] = BaseRules.getDepositRule(MC.EULER_EWBNB_6_VAULT, address(vault));
-            vm.startPrank(MC.TIMELOCK);
-            SafeRules.setProcessorRules(vault, rules, true);
-            vm.stopPrank();
-        }
     }
 
     function upgradeVaults() public {
