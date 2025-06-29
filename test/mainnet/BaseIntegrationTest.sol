@@ -16,6 +16,8 @@ import {IKernelConfig} from "src/interface/external/kernel/IKernelConfig.sol";
 import {ProxyAdmin} from "src/Common.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
+import {SafeRules} from "script/rules/SafeRules.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
 
 contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     Vault public vault;

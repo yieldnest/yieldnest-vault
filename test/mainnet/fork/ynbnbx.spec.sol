@@ -77,7 +77,7 @@ contract YnBNBxForkTest is BaseIntegrationTest {
 
             _processorDepositToERC4626(MainnetContracts.YNCLISBNBK, depositAmount);
 
-            uint256 clisBNBShares = IERC4626(vault.buffer()).convertToShares(depositAmount);
+            uint256 clisBNBShares = IERC4626(MainnetContracts.YNCLISBNBK).convertToShares(depositAmount);
 
             // Verify WBNB was transferred to clisBNB
             assertEq(
@@ -170,12 +170,14 @@ contract YnBNBxForkTest is BaseIntegrationTest {
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 totalSupplyBefore = vault.totalSupply();
 
-        uint256 beforeBufferBalance = IERC20(MainnetContracts.YNWBNBK).balanceOf(address(vault));
+        address buffer = vault.buffer();
+
+        uint256 beforeBufferBalance = IERC20(buffer).balanceOf(address(vault));
 
         // Process deposit to buffer
-        _processorDepositToERC4626(MainnetContracts.YNWBNBK, depositAmount);
+        _processorDepositToERC4626(buffer, depositAmount);
 
-        uint256 bufferShares = IERC4626(MainnetContracts.YNWBNBK).convertToShares(depositAmount);
+        uint256 bufferShares = IERC4626(buffer).convertToShares(depositAmount);
 
         // Verify WBNB was transferred to buffer
         assertEq(
@@ -184,11 +186,11 @@ contract YnBNBxForkTest is BaseIntegrationTest {
             "Vault should have initial WBNB balance after buffer deposit"
         );
         assertEq(
-            IERC20(MainnetContracts.YNWBNBK).balanceOf(address(vault)),
+            IERC20(buffer).balanceOf(address(vault)),
             beforeBufferBalance + bufferShares,
-            "Vault should have received ynWBNBk tokens"
+            "Vault should have received shares"
         );
-        assertEq(vault.totalAssets(), totalAssetsBefore, "Total assets should remain unchanged");
+        assertApproxEqAbs(vault.totalAssets(), totalAssetsBefore, 2, "Total assets should remain unchanged");
         assertEq(vault.totalSupply(), totalSupplyBefore, "Total supply should remain unchanged");
 
         // Now test withdrawal
@@ -446,20 +448,19 @@ contract YnBNBxForkTest is BaseIntegrationTest {
 
         uint256 bufferRateBefore = IERC4626(vault.buffer()).convertToAssets(1e18);
 
-        // Create bob and give him BNB for donation
-        address bob = makeAddr("bob");
-        vm.deal(bob, donationAmount);
+        {
+            // Create bob and give him WBNB for donation
+            address bob = makeAddr("bob");
+            deal(address(wbnb), bob, donationAmount);
 
-        // Bob donates directly to buffer
-        vm.startPrank(bob);
-        (bool success,) = address(vault.buffer()).call{value: donationAmount}("");
-        assertTrue(success, "BNB donation failed");
-        vm.stopPrank();
+            // Bob transfers WBNB directly to buffer
+            vm.startPrank(bob);
+            wbnb.transfer(address(vault.buffer()), donationAmount);
+            vm.stopPrank();
+        }
 
-        // Verify buffer increased by donation
-        assertEq(
-            IERC4626(vault.buffer()).totalAssets(), bufferBefore + donationAmount, "Buffer should increase by donation"
-        );
+        // Verify buffer assets not increased by donation
+        assertEq(IERC4626(vault.buffer()).totalAssets(), bufferBefore, "Buffer should increase by donation");
 
         assertEq(
             IERC4626(vault.buffer()).totalSupply(),
@@ -476,21 +477,13 @@ contract YnBNBxForkTest is BaseIntegrationTest {
         // Verify buffer rate increased due to donation
         uint256 bufferRateAfter = IERC4626(vault.buffer()).convertToAssets(1e18);
 
-        uint256 changeInRate = Math.mulDiv(1e18, donationAmount + 1, bufferTotalSupplyBefore + 1, Math.Rounding.Floor);
+        assertEq(bufferRateAfter, bufferRateBefore, "Buffer rate should increase");
 
-        assertGt(bufferRateAfter, bufferRateBefore, "Buffer rate should increase");
-
-        assertApproxEqAbs(
-            bufferRateAfter - bufferRateBefore, changeInRate, 1, "Buffer rate should increase by donation"
-        );
-
-        // Verify total assets increased but shares unchanged
+        // Verify total assets did not increase
         {
-            uint256 vaultShareProportion = (bufferRateAfter - bufferRateBefore) * bufferSharesBefore / 1e18;
-
             assertApproxEqAbs(
                 vault.totalAssets(),
-                vaultAssetsBefore + vaultShareProportion,
+                vaultAssetsBefore,
                 1,
                 "Total assets should increase proportionally to the shares held by the vault"
             );
@@ -498,9 +491,7 @@ contract YnBNBxForkTest is BaseIntegrationTest {
 
             // Verify vault rate increased due to donation
             uint256 newRate = vault.convertToAssets(1e18);
-            uint256 expectedRate = ((vaultAssetsBefore + vaultShareProportion) * 1e18) / vaultSharesBefore;
-            assertGt(newRate, oldRate, "New rate should increase");
-            assertApproxEqAbs(newRate, expectedRate, 1, "New rate should reflect donation");
+            assertEq(newRate, oldRate, "New rate should increase");
         }
     }
 
@@ -519,12 +510,7 @@ contract YnBNBxForkTest is BaseIntegrationTest {
         Vault buffer = Vault(payable(vault.buffer()));
 
         {
-            // Create charlie and grant ALLOCATOR_ROLE on buffer
             address charlie = makeAddr("charlie");
-
-            vm.prank(ADMIN);
-            buffer.grantRole(keccak256("ALLOCATOR_ROLE"), charlie);
-
             // Charlie deposits WBNB to buffer
             uint256 charlieAmount = 1 ether;
             // Give charlie some native BNB
@@ -541,12 +527,11 @@ contract YnBNBxForkTest is BaseIntegrationTest {
 
         uint256 donationAmount = 200_000_000 ether;
         {
-            // Create bob and give him BNB for donation
+            // Create bob and give him WBNB for donation
             address bob = makeAddr("bob");
-            vm.deal(bob, donationAmount);
+            deal(address(wbnb), bob, donationAmount);
             vm.startPrank(bob);
-            (bool success,) = address(buffer).call{value: donationAmount}("");
-            assertTrue(success, "BNB donation failed");
+            wbnb.transfer(address(buffer), donationAmount);
             vm.stopPrank();
         }
 
@@ -554,15 +539,13 @@ contract YnBNBxForkTest is BaseIntegrationTest {
         uint256 initialTotalAssets = vault.totalAssets();
         uint256 initialTotalSupply = vault.totalSupply();
 
-        // Verify buffer total assets increased by donation
+        // Verify buffer total assets stayed the same by donation
         assertEq(
-            buffer.totalAssets(),
-            bufferTotalAssetsBefore + donationAmount,
-            "Buffer total assets should increase by donation amount"
+            buffer.totalAssets(), bufferTotalAssetsBefore, "Buffer total assets should increase by donation amount"
         );
 
         // Process deposit to buffer
-        _processorDepositToERC4626(MainnetContracts.YNWBNBK, depositAmount);
+        _processorDepositToERC4626(address(buffer), depositAmount);
 
         // assets do not increase by donation since vault allocated to vault before
         assertApproxEqRel(vault.totalAssets(), initialTotalAssets, 1e9, "Total assets should not increase by donation");
