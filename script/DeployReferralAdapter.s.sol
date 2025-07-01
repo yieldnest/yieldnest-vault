@@ -9,6 +9,7 @@ import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "./ProxyUtils.sol";
+import {MainnetActors} from "script/Actors.sol";
 
 contract DeployReferralAdapter is Script {
     using stdJson for string;
@@ -42,7 +43,7 @@ contract DeployReferralAdapter is Script {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             implementation,
             // TODO: add your ADMIN address here
-            0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
+            (new MainnetActors()).ADMIN(),
             ""
         );
         referralAdapter = XReferralAdapter(address(proxy));
