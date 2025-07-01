@@ -36,18 +36,18 @@ contract VaultReferralsTest is BaseIntegrationTest {
         xReferralAdapter = XReferralAdapter(address(proxy));
     }
 
-    function test_depositWithReferral() public  {
+    function test_depositWithReferral(uint256 depositAmount, uint256 donationAmount) public {
         // Assuming the Vault contract has a deposit function that accepts a referral code
         address usdcTokenAddress = MC.USDC; // Assuming MC.USDC is the address of the USDC token
-        uint256 depositAmount = 1000 * 10**6; // Example deposit amount in USDC (assuming 6 decimals)
-        address referralCode = address(xReferralAdapter); // Using the xReferralAdapter as the referral code
+        address referralCode = address(0xA000A); // Using the xReferralAdapter as the referral code
+
+        // Ensure depositAmount and donationAmount are within reasonable bounds
+        depositAmount = bound(depositAmount, 1 * 10**6, 1_000_000 * 10**6); // Bound depositAmount between 1 USDC and 10,000 USDC
+        donationAmount = bound(donationAmount, 1 * 10**6, 5_000_000 * 10**6); // Bound donationAmount between 1 USDC and 5,000 USDC
 
         {
             // Define Charlie's address
             address charlie = address(0xC0C); // Example address for Charlie
-
-            // Define the donation amount
-            uint256 donationAmount = 500 * 10**6; // Example donation amount in USDC (assuming 6 decimals)
 
             // Ensure Charlie has enough USDC balance
             deal(usdcTokenAddress, charlie, donationAmount);
@@ -59,7 +59,6 @@ contract VaultReferralsTest is BaseIntegrationTest {
         // Ensure Bob has enough USDC balance
         address bob = address(0xB0B); // Example address for Bob
 
-  
         // Use the `deal` function to set Bob's USDC balance to ensure he has enough for the deposit
         deal(usdcTokenAddress, bob, depositAmount);
         uint256 bobInitialBalance = IERC20(usdcTokenAddress).balanceOf(bob);

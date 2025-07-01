@@ -40,12 +40,8 @@ contract DeployReferralAdapter is Script {
 
         vm.startBroadcast();
         address implementation = address(new XReferralAdapter());
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            implementation,
-            // TODO: add your ADMIN address here
-            (new MainnetActors()).ADMIN(),
-            ""
-        );
+        TransparentUpgradeableProxy proxy =
+            new TransparentUpgradeableProxy(implementation, (new MainnetActors()).ADMIN(), "");
         referralAdapter = XReferralAdapter(address(proxy));
         vm.stopBroadcast();
 
