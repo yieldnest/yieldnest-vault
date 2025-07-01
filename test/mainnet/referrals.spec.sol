@@ -21,7 +21,6 @@ import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract VaultReferralsTest is BaseIntegrationTest {
-
     XReferralAdapter xReferralAdapter;
 
     function setUp() public override {
@@ -36,8 +35,8 @@ contract VaultReferralsTest is BaseIntegrationTest {
         address referralCode = address(0xA000A); // Using the xReferralAdapter as the referral code
 
         // Ensure depositAmount and donationAmount are within reasonable bounds
-        depositAmount = bound(depositAmount, 1 * 10**6, 1_000_000 * 10**6); // Bound depositAmount between 1 USDC and 10,000 USDC
-        donationAmount = bound(donationAmount, 1 * 10**6, 5_000_000 * 10**6); // Bound donationAmount between 1 USDC and 5,000 USDC
+        depositAmount = bound(depositAmount, 1 * 10 ** 6, 1_000_000 * 10 ** 6); // Bound depositAmount between 1 USDC and 10,000 USDC
+        donationAmount = bound(donationAmount, 1 * 10 ** 6, 5_000_000 * 10 ** 6); // Bound donationAmount between 1 USDC and 5,000 USDC
 
         {
             // Define Charlie's address
@@ -69,11 +68,11 @@ contract VaultReferralsTest is BaseIntegrationTest {
         vm.startPrank(bob); // Use vm.prank to simulate the call from Bob's address
         IERC20(usdcTokenAddress).approve(address(xReferralAdapter), depositAmount);
         uint256 sharesReceived = xReferralAdapter.depositAssetWithReferral(
-            address(vault),              // _vault
-            usdcTokenAddress,            // asset
-            depositAmount,               // assets
-            referralCode,                // referrer
-            bob                          // receiver
+            address(vault), // _vault
+            usdcTokenAddress, // asset
+            depositAmount, // assets
+            referralCode, // referrer
+            bob // receiver
         );
         vm.stopPrank();
 
@@ -83,14 +82,26 @@ contract VaultReferralsTest is BaseIntegrationTest {
 
         // Assert that Bob has less assets
         uint256 bobFinalBalance = IERC20(usdcTokenAddress).balanceOf(bob);
-        assertEq(bobFinalBalance, bobInitialBalance - depositAmount, "Bob's final balance does not match the expected balance after deposit");
+        assertEq(
+            bobFinalBalance,
+            bobInitialBalance - depositAmount,
+            "Bob's final balance does not match the expected balance after deposit"
+        );
 
         // Assert that totalSupply increased
         uint256 totalSupply = IERC20(address(vault)).totalSupply();
-        assertEq(totalSupply, initialTotalSupply + expectedShares, "Total supply does not match the expected shares after deposit");
+        assertEq(
+            totalSupply,
+            initialTotalSupply + expectedShares,
+            "Total supply does not match the expected shares after deposit"
+        );
 
         // Assert that totalAssets increased
         uint256 totalAssets = vault.totalAssets();
-        assertEq(totalAssets, initialTotalAssets + depositAmount, "Total assets do not match the deposit amount after deposit");
+        assertEq(
+            totalAssets,
+            initialTotalAssets + depositAmount,
+            "Total assets do not match the deposit amount after deposit"
+        );
     }
 }
