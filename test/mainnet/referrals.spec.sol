@@ -27,13 +27,7 @@ contract VaultReferralsTest is BaseIntegrationTest {
     function setUp() public override {
         super.setUp();
 
-        address implementation = address(new XReferralAdapter());
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            implementation,
-            (new MainnetActors()).ADMIN(),
-            ""
-        );
-        xReferralAdapter = XReferralAdapter(address(proxy));
+        xReferralAdapter = XReferralAdapter(MC.X_REFERRAL_ADAPTER);
     }
 
     function test_depositWithReferral(uint256 depositAmount, uint256 donationAmount) public {
