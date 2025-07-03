@@ -34,4 +34,10 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         viewer = MaxVaultViewer(MC.YNRWAX_VIEWER);
         wusdc = WrappedToken(MC.WUSDC);
     }
+
+    function upgradeVault(address newVault) public {
+        vm.startPrank(TIMELOCK); // Prank as the current contract
+        vault.setBuffer(vault.buffer()); // Set the new buffer to the provided newVault address
+        vm.stopPrank();
+    }
 }
