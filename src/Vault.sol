@@ -74,7 +74,7 @@ contract Vault is BaseVault {
     function _feeOnRaw(uint256 assets) public view override returns (uint256) {
         FeeStorage storage fees = _getFeeStorage();
         uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;
-        if (baseWithdrawalFee_ == 0) {
+        if (baseWithdrawalFee_ == 0 || fees.withdrawalFeeExempted[msg.sender]) {
             return 0;
         }
         return FeeMath.feeOnRaw(assets, baseWithdrawalFee_);
@@ -90,7 +90,7 @@ contract Vault is BaseVault {
     function _feeOnTotal(uint256 assets) public view override returns (uint256) {
         FeeStorage storage fees = _getFeeStorage();
         uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;
-        if (baseWithdrawalFee_ == 0) {
+        if (baseWithdrawalFee_ == 0 || fees.withdrawalFeeExempted[msg.sender]) {
             return 0;
         }
         return FeeMath.feeOnTotal(assets, baseWithdrawalFee_);
@@ -105,6 +105,27 @@ contract Vault is BaseVault {
      */
     function setBaseWithdrawalFee(uint64 baseWithdrawalFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
         _setBaseWithdrawalFee(baseWithdrawalFee_);
+    }
+
+    /**
+     * @notice Sets whether the withdrawal fee is exempted for a user
+     * @param user_ The address of the user
+     * @param isExempted_ Whether the user is exempted from the withdrawal fee
+     * @dev Only callable by accounts with FEE_MANAGER_ROLE
+     */
+    function setWithdrawalFeeExempted(address user_, bool isExempted_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+        _setWithdrawalFeeExempted(user_, isExempted_);
+    }
+
+    /**
+     * @notice Internal function to set whether the withdrawal fee is exempted for a user
+     * @param user_ The address of the user
+     * @param isExempted_ Whether the user is exempted from the withdrawal fee
+     */
+    function _setWithdrawalFeeExempted(address user_, bool isExempted_) internal virtual {
+        FeeStorage storage fees = _getFeeStorage();
+        fees.withdrawalFeeExempted[user_] = isExempted_;
+        emit SetWithdrawalFeeExempted(user_, isExempted_);
     }
 
     /**
