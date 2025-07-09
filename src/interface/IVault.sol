@@ -17,6 +17,9 @@ interface IVault is IERC4626 {
         /// The default asset is vault.asset(), used for deposit, withdraw, redeem, mint as default.
         /// If defaultAssetIndex is 0, the vault will use the base asset as default asset.
         uint256 defaultAssetIndex;
+        uint256 accountedExchangeRateInWad; // the exchange rate already accounted after the performance fee in wad
+        uint256 accountedTotalSupply; // the total supply already accounted after the performance fee
+        uint256 maximumAccountedExchangeRateInWad; // the maximum exchange rate that can be accounted
     }
 
     struct AssetParams {
@@ -38,6 +41,9 @@ interface IVault is IERC4626 {
         /// @notice The base withdrawal fee in basis points (1e8 = 100%)
         uint64 baseWithdrawalFee;
         mapping(address user => bool isExempted) withdrawalFeeExempted;
+        /// @notice The performance fee in basis points (1e18 = 100%)
+        uint256 performanceFee;
+        address performanceFeeRecipient;
     }
 
     enum ParamType {
@@ -90,6 +96,7 @@ interface IVault is IERC4626 {
     error InvalidNativeAssetDecimals(uint256 decimals);
     error InvalidAssetDecimals(uint256 decimals);
     error InvalidDefaultAssetIndex(uint256 index);
+    error ExceedsMaxPerformanceFee(uint256 value);
     error BaseAsset();
 
     event DepositAsset(
@@ -113,6 +120,7 @@ interface IVault is IERC4626 {
     event DeleteAsset(uint256 indexed index, address indexed asset);
     event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
     event SetWithdrawalFeeExempted(address indexed user, bool isExempted);
+    event SetPerformanceFee(uint256 newFee);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);
