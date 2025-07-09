@@ -779,22 +779,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         uint256 currentTotalBaseBalance = computeTotalAssets();
         uint256 currentTotalSupply = totalSupply();
 
-        uint256 totalSupplyDuringLastAccounting = _getVaultStorage().accountedTotalSupply;
-        uint256 maximumAccountedExchangeRateInWad = _getVaultStorage().maximumAccountedExchangeRateInWad;
+        uint256 maximumAccountedExchangeRate = _getVaultStorage().maximumAccountedExchangeRate;
 
         uint256 currentExchangeRateBeforePerformanceFee = currentTotalBaseBalance * (10 ** decimals()) / currentTotalSupply;
         uint256 totalSupplyAfterPerformanceFee = currentTotalSupply;
 
         {
-                if (currentExchangeRateBeforePerformanceFee > maximumAccountedExchangeRateInWad) {
-                // use minimum of currentTotalSupply and totalSupplyDuringLastAccounting to avoid overestimating the exchange rate
-                // exchangeRate will only be updated through processAccounting() call
-                // if there is deposit in between two processAccounting() calls, we use smaller totalSupply because amount deposited is not allocated to strategy
-                // so yieldEarned should not include new shares minted for deposit as those shares are not productive
-                // if there is withdraw in between two processAccounting() calls, we use smaller totalSupply because amount withdrawn is not productive
-                // so yieldEarned should not include shares burned for withdraw as those shares are not productive
-                uint256 shareSupplyToUse = totalSupplyDuringLastAccounting > currentTotalSupply ? currentTotalSupply : totalSupplyDuringLastAccounting;
-                uint256 yieldEarned = (currentExchangeRateBeforePerformanceFee - maximumAccountedExchangeRateInWad) * shareSupplyToUse / (10 ** decimals());
+                if (currentExchangeRateBeforePerformanceFee > maximumAccountedExchangeRate) {
+                uint256 yieldEarned = (currentExchangeRateBeforePerformanceFee - maximumAccountedExchangeRate) * currentTotalSupply / (10 ** decimals());
 
                 uint256 performanceFee = (yieldEarned * _getFeeStorage().performanceFee) / FeeMath.WAD;
                 
@@ -807,14 +799,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
                 totalSupplyAfterPerformanceFee = totalSupply();
                 uint256 currentExchangeRateAfterPerformanceFee = currentTotalBaseBalance * (10 ** decimals()) / totalSupplyAfterPerformanceFee;
 
-                if (currentExchangeRateAfterPerformanceFee > maximumAccountedExchangeRateInWad) {
-                    _getVaultStorage().maximumAccountedExchangeRateInWad = currentExchangeRateAfterPerformanceFee;
+                if (currentExchangeRateAfterPerformanceFee > maximumAccountedExchangeRate) {
+                    _getVaultStorage().maximumAccountedExchangeRate = currentExchangeRateAfterPerformanceFee;
                 }
             }
         }
 
         _getVaultStorage().totalAssets = currentTotalBaseBalance;
-        _getVaultStorage().accountedTotalSupply = totalSupplyAfterPerformanceFee;
 
         // solhint-disable-next-line not-rely-on-time
         emit ProcessAccounting(block.timestamp, currentTotalBaseBalance);

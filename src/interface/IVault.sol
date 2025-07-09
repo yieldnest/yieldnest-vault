@@ -17,9 +17,7 @@ interface IVault is IERC4626 {
         /// The default asset is vault.asset(), used for deposit, withdraw, redeem, mint as default.
         /// If defaultAssetIndex is 0, the vault will use the base asset as default asset.
         uint256 defaultAssetIndex;
-        uint256 accountedExchangeRateInWad; // the exchange rate already accounted after the performance fee in wad
-        uint256 accountedTotalSupply; // the total supply already accounted after the performance fee
-        uint256 maximumAccountedExchangeRateInWad; // the maximum exchange rate that can be accounted
+        uint256 maximumAccountedExchangeRate; // the maximum exchange rate in scale of vault decimals(i.e. 18)
     }
 
     struct AssetParams {
