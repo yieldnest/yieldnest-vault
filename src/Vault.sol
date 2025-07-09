@@ -21,13 +21,6 @@ contract Vault is BaseVault {
     string public constant VAULT_VERSION = "0.3.0";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
-    /**
-     * @notice Internal function to get the fee storage.
-     * @return $ The fee storage.
-     */
-    function _getFeeStorage() internal pure returns (FeeStorage storage) {
-        return VaultLib.getFeeStorage();
-    }
 
     /**
      * @notice Initializes the vault.
@@ -105,6 +98,17 @@ contract Vault is BaseVault {
      */
     function setBaseWithdrawalFee(uint64 baseWithdrawalFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
         _setBaseWithdrawalFee(baseWithdrawalFee_);
+    }
+
+    function setPerformanceFee(uint256 performanceFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+        _setPerformanceFee(performanceFee_);
+    }
+
+    function _setPerformanceFee(uint256 performanceFee_) internal virtual {
+        if (performanceFee_ > FeeMath.WAD) revert ExceedsMaxPerformanceFee(performanceFee_);
+        FeeStorage storage fees = _getFeeStorage();
+        fees.performanceFee = performanceFee_;
+        emit SetPerformanceFee(performanceFee_);
     }
 
     /**
