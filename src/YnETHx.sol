@@ -45,4 +45,9 @@ contract YnETHx is Vault {
         erc4626Storage._asset = IERC20(0x0000000000000000000000000000000000000000);
         erc4626Storage._underlyingDecimals = 0;
     }
+
+    function initializeV3(address performanceFeeRecipient, uint256 performanceFee) external reinitializer(3) {
+        _setPerformanceFeeRecipient(performanceFeeRecipient);
+        _setPerformanceFee(performanceFee);
+    }
 }
