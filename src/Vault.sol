@@ -100,6 +100,17 @@ contract Vault is BaseVault {
         _setBaseWithdrawalFee(baseWithdrawalFee_);
     }
 
+    function setPerformanceFeeRecipient(address performanceFeeRecipient_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+        _setPerformanceFeeRecipient(performanceFeeRecipient_);
+    }
+
+    function _setPerformanceFeeRecipient(address performanceFeeRecipient_) internal virtual {
+        if (performanceFeeRecipient_ == address(0)) revert ZeroAddress();
+        FeeStorage storage fees = _getFeeStorage();
+        fees.performanceFeeRecipient = performanceFeeRecipient_;
+        emit SetPerformanceFeeRecipient(performanceFeeRecipient_);
+    }
+
     function setPerformanceFee(uint256 performanceFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
         _setPerformanceFee(performanceFee_);
     }

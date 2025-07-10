@@ -119,6 +119,7 @@ interface IVault is IERC4626 {
     event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
     event SetWithdrawalFeeExempted(address indexed user, bool isExempted);
     event SetPerformanceFee(uint256 newFee);
+    event SetPerformanceFeeRecipient(address indexed newRecipient);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);
