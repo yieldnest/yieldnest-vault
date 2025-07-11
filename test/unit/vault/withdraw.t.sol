@@ -69,9 +69,6 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches {
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
 
-        vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
-
         vm.prank(alice);
         uint256 depositShares = vault.deposit(assets, alice);
 

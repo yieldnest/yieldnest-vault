@@ -91,6 +91,11 @@ contract SetupVault is Test, Etches, MainnetActors {
         // Unpause the vault
         vault.unpause();
         vm.stopPrank();
+
+        vm.startPrank(FEE_MANAGER);
+        vault.setPerformanceFeeRecipient(FEE_MANAGER);
+        vault.setPerformanceFee(1e17); // 10%
+        vm.stopPrank();
     }
 
     function configureMainnet(Vault vault) internal {

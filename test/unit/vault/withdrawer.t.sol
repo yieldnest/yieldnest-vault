@@ -57,12 +57,9 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
         assertEq(amount, assets);
     }
 
-    function test_Vault_withdraw_success(uint256 assets, bool alwaysComputeTotalAssets) external {
+    function test_Vault_withdraw_success(uint256 assets) external {
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
-
-        vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         vm.prank(alice);
         uint256 depositShares = vault.depositAsset(address(weth), assets, alice);
