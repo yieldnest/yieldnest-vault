@@ -18,6 +18,8 @@ import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 
+import {console} from "lib/forge-std/src/console.sol";
+
 /**
  * @title BaseVault
  * @notice Base contract for vault implementations that support multiple assets
@@ -780,35 +782,44 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         uint256 currentTotalSupply = totalSupply();
 
         uint256 maximumAccountedExchangeRate = _getVaultStorage().maximumAccountedExchangeRate;
+        if (maximumAccountedExchangeRate == 0) {
+            maximumAccountedExchangeRate = 10 ** decimals();
+        }
 
+        if (currentTotalSupply > 0) {
         uint256 currentExchangeRateBeforePerformanceFee = currentTotalBaseBalance * (10 ** decimals()) / currentTotalSupply;
+        
         uint256 totalSupplyAfterPerformanceFee = currentTotalSupply;
 
         {
                 if (currentExchangeRateBeforePerformanceFee > maximumAccountedExchangeRate) {
                 uint256 yieldEarned = (currentExchangeRateBeforePerformanceFee - maximumAccountedExchangeRate) * currentTotalSupply / (10 ** decimals());
-
                 uint256 performanceFee = (yieldEarned * _getFeeStorage().performanceFee) / FeeMath.WAD;
-                
                 uint256 sharesToMint = previewDeposit(performanceFee);
                 address performanceFeeRecipient = _getFeeStorage().performanceFeeRecipient;
-
+                console.log("sharesToMint");
+                console.log(sharesToMint);
+                console.log("yieldEarned");
+                console.log(yieldEarned);
                 if (performanceFeeRecipient != address(0)) {
                     _mint(performanceFeeRecipient, sharesToMint);
                 }
                 totalSupplyAfterPerformanceFee = totalSupply();
                 uint256 currentExchangeRateAfterPerformanceFee = currentTotalBaseBalance * (10 ** decimals()) / totalSupplyAfterPerformanceFee;
-
                 if (currentExchangeRateAfterPerformanceFee > maximumAccountedExchangeRate) {
                     _getVaultStorage().maximumAccountedExchangeRate = currentExchangeRateAfterPerformanceFee;
                 }
             }
         }
-
+        }
         _getVaultStorage().totalAssets = currentTotalBaseBalance;
 
         // solhint-disable-next-line not-rely-on-time
         emit ProcessAccounting(block.timestamp, currentTotalBaseBalance);
+    }
+
+    function performanceFee() public view virtual returns (uint256) {
+        return _getFeeStorage().performanceFee;
     }
 
     /**
