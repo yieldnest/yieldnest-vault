@@ -41,6 +41,13 @@ contract SuperUSDCTest is BaseTest {
         deal(USDC, alice, 1000e6);
         vm.startPrank(alice);
         IERC20(USDC).approve(MORPHO, 1000e6);
-        morpho.supply(marketParams, 1000e6, 0, alice, "");
+        (, uint256 sharesSupplied) = morpho.supply(marketParams, 1000e6, 0, alice, "");
+        console.log("sharesSupplied", sharesSupplied);
+
+        morpho.withdraw(marketParams, 0, sharesSupplied, alice, alice);
+
+        vm.stopPrank();
+
+        assertEq(0, morpho.position(Id.wrap(MARKET_ID), alice).supplyShares);
     }
 }
