@@ -20,6 +20,7 @@ import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {BaseWithdrawerMainnetTest} from "test/mainnet/BaseWithdrawerTest.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
+import {IynEigen} from "test/interface/external/yieldnest/IynEigen.sol";
 
 /**
  * @notice Tests for the Withdrawer contract deployed with ynETHx
@@ -42,5 +43,61 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
 
         // Assert that the Withdrawer contract has the correct version
         assertEq(withdrawer.STRATEGY_VERSION(), "0.2.0", "Withdrawer should have version 0.2.0");
+    }
+
+    function test_withdraw_ynLSDE(uint256 depositAmount) public {
+        vm.assume(depositAmount > 1e9);
+        vm.assume(depositAmount < 100_000 ether);
+        address asset = MC.YNLSDE;
+        uint256 initialVaultYnLSDE = IERC20(asset).balanceOf(address(vault));
+        uint256 initialWithdrawerYnLSDE = IERC20(asset).balanceOf(address(withdrawer));
+
+        address alice = makeAddr("alice");
+
+        // Get wstETH and deposit into ynLSDE
+        deal(MC.WSTETH, alice, depositAmount);
+        vm.startPrank(alice);
+        IERC20(MC.WSTETH).approve(MC.YNLSDE, depositAmount);
+        IynEigen(MC.YNLSDE).deposit(MC.WSTETH, depositAmount, alice);
+
+        // Deposit ynLSDE into ynETHx vault
+        uint256 ynLSDeBalance = IERC20(MC.YNLSDE).balanceOf(alice);
+        IERC20(MC.YNLSDE).approve(address(vault), ynLSDeBalance);
+        vault.depositAsset(MC.YNLSDE, ynLSDeBalance, address(this));
+        vm.stopPrank();
+
+        vault.processAccounting();
+
+        // Have processor send ynLSDE to withdrawer
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory data = new bytes[](2);
+
+        targets[0] = MC.YNLSDE;
+        values[0] = 0;
+        data[0] = abi.encodeCall(IERC20.approve, (address(withdrawer), ynLSDeBalance));
+
+        targets[1] = address(withdrawer);
+        values[1] = 0;
+        data[1] = abi.encodeCall(IVault.depositAsset, (MC.YNLSDE, ynLSDeBalance, address(vault)));
+
+        vm.startPrank(PROCESSOR);
+        vault.processor(targets, values, data);
+        vm.stopPrank();
+
+        assertEq(
+            IERC20(MC.YNLSDE).balanceOf(address(vault)),
+            initialVaultYnLSDE,
+            "Vault ynLSDE balance should match initial balance"
+        );
+
+        assertEq(
+            IERC20(MC.YNLSDE).balanceOf(address(withdrawer)),
+            initialWithdrawerYnLSDE + ynLSDeBalance,
+            "Withdrawer ynLSDE balance should match initial plus deposited amount"
+        );
+
+        withdrawer.processAccounting();
+        vault.processAccounting();
     }
 }
