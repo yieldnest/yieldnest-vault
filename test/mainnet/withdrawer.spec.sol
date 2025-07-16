@@ -21,6 +21,7 @@ import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {BaseWithdrawerMainnetTest} from "test/mainnet/BaseWithdrawerTest.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {IynEigen} from "test/interface/external/yieldnest/IynEigen.sol";
+import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
 
 /**
  * @notice Tests for the Withdrawer contract deployed with ynETHx
@@ -99,5 +100,43 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
 
         withdrawer.processAccounting();
         vault.processAccounting();
+        {
+            uint256 vaultTotalAssetsBefore = vault.totalAssets();
+            uint256 withdrawerTotalAssetsBefore = withdrawer.totalAssets();
+
+            // Approve and request withdrawal for ynLSDE
+            targets = new address[](2);
+            values = new uint256[](2);
+            data = new bytes[](2);
+
+            targets[0] = MC.YNLSDE;
+            values[0] = 0;
+            data[0] = abi.encodeCall(IERC20.approve, (MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, ynLSDeBalance));
+
+            targets[1] = MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER;
+            values[1] = 0;
+            data[1] = abi.encodeWithSignature("requestWithdrawal(uint256)", ynLSDeBalance);
+
+            vm.startPrank(PROCESSOR);
+            withdrawer.processor(targets, values, data);
+            vm.stopPrank();
+
+            withdrawer.processAccounting();
+            vault.processAccounting();
+
+            assertApproxEqRel(
+                vault.totalAssets(),
+                vaultTotalAssetsBefore,
+                1e10,
+                "Vault total assets should not change after requesting withdrawal"
+            );
+
+            assertApproxEqRel(
+                withdrawer.totalAssets(),
+                withdrawerTotalAssetsBefore,
+                1e10,
+                "Withdrawer total assets should not change after requesting withdrawal"
+            );
+        }
     }
 }
