@@ -28,6 +28,8 @@ import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol
  *
  */
 contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
+    uint256 ERROR_MARGIN = 1e4;
+
     function getWithdrawer() public override returns (Withdrawer) {
         Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
 
@@ -49,13 +51,6 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
     function test_withdraw_ynLSDE(uint256 depositAmount) public {
         vm.assume(depositAmount > 1e9);
         vm.assume(depositAmount < 100_000 ether);
-
-        // TODO: remove
-        {
-            // Set withdrawal fee to 0 for testing
-            vm.prank(ADMIN);
-            IWithdrawalQueueManager(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER).setWithdrawalFee(0);
-        }
 
         address asset = MC.YNLSDE;
         uint256 initialVaultYnLSDE = IERC20(asset).balanceOf(address(vault));
@@ -115,7 +110,7 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
             assertApproxEqRel(
                 vault.totalAssets(),
                 vaultTotalAssetsBefore,
-                1e4,
+                ERROR_MARGIN,
                 "Vault total assets should not change after transfer to withdrawer"
             );
         }
@@ -151,14 +146,14 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
             assertApproxEqRel(
                 vault.totalAssets(),
                 vaultTotalAssetsBefore,
-                1e4,
+                ERROR_MARGIN,
                 "Vault total assets should not change after requesting withdrawal"
             );
 
             assertApproxEqRel(
                 withdrawer.totalAssets(),
                 withdrawerTotalAssetsBefore,
-                1e4,
+                ERROR_MARGIN,
                 "Withdrawer total assets should not change after requesting withdrawal"
             );
         }
