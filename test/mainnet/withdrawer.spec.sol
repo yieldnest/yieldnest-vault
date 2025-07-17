@@ -22,6 +22,7 @@ import {BaseWithdrawerMainnetTest} from "test/mainnet/BaseWithdrawerTest.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {IynEigen} from "test/interface/external/yieldnest/IynEigen.sol";
 import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
+import {console} from "forge-std/console.sol";
 
 /**
  * @notice Tests for the Withdrawer contract deployed with ynETHx
