@@ -36,6 +36,8 @@ interface IWithdrawalQueueManager {
         returns (uint256[] memory, WithdrawalRequest[] memory);
     function calculateFee(uint256 amount, uint256 requestWithdrawalFee) external pure returns (uint256);
     function withdrawalRequest(uint256 tokenId) external view returns (WithdrawalRequest memory request);
+
+    function setWithdrawalFee(uint256 feePercentage) external;
 }
 
 interface IAssetRegistry {

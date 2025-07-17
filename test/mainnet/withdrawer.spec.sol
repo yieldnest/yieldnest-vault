@@ -49,6 +49,14 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
     function test_withdraw_ynLSDE(uint256 depositAmount) public {
         vm.assume(depositAmount > 1e9);
         vm.assume(depositAmount < 100_000 ether);
+
+        // TODO: remove
+        {
+            // Set withdrawal fee to 0 for testing
+            vm.prank(ADMIN);
+            IWithdrawalQueueManager(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER).setWithdrawalFee(0);
+        }
+
         address asset = MC.YNLSDE;
         uint256 initialVaultYnLSDE = IERC20(asset).balanceOf(address(vault));
         uint256 initialWithdrawerYnLSDE = IERC20(asset).balanceOf(address(withdrawer));
@@ -69,38 +77,54 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
 
         vault.processAccounting();
 
-        // Have processor send ynLSDE to withdrawer
-        address[] memory targets = new address[](2);
-        uint256[] memory values = new uint256[](2);
-        bytes[] memory data = new bytes[](2);
-
-        targets[0] = MC.YNLSDE;
-        values[0] = 0;
-        data[0] = abi.encodeCall(IERC20.approve, (address(withdrawer), ynLSDeBalance));
-
-        targets[1] = address(withdrawer);
-        values[1] = 0;
-        data[1] = abi.encodeCall(IVault.depositAsset, (MC.YNLSDE, ynLSDeBalance, address(vault)));
-
-        vm.startPrank(PROCESSOR);
-        vault.processor(targets, values, data);
-        vm.stopPrank();
-
-        assertEq(
-            IERC20(MC.YNLSDE).balanceOf(address(vault)),
-            initialVaultYnLSDE,
-            "Vault ynLSDE balance should match initial balance"
-        );
-
-        assertEq(
-            IERC20(MC.YNLSDE).balanceOf(address(withdrawer)),
-            initialWithdrawerYnLSDE + ynLSDeBalance,
-            "Withdrawer ynLSDE balance should match initial plus deposited amount"
-        );
-
-        withdrawer.processAccounting();
-        vault.processAccounting();
         {
+            // Have processor send ynLSDE to withdrawer
+            uint256 vaultTotalAssetsBefore = vault.totalAssets();
+
+            address[] memory targets = new address[](2);
+            uint256[] memory values = new uint256[](2);
+            bytes[] memory data = new bytes[](2);
+
+            targets[0] = MC.YNLSDE;
+            values[0] = 0;
+            data[0] = abi.encodeCall(IERC20.approve, (address(withdrawer), ynLSDeBalance));
+
+            targets[1] = address(withdrawer);
+            values[1] = 0;
+            data[1] = abi.encodeCall(IVault.depositAsset, (MC.YNLSDE, ynLSDeBalance, address(vault)));
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets, values, data);
+            vm.stopPrank();
+
+            assertEq(
+                IERC20(MC.YNLSDE).balanceOf(address(vault)),
+                initialVaultYnLSDE,
+                "Vault ynLSDE balance should match initial balance"
+            );
+
+            assertEq(
+                IERC20(MC.YNLSDE).balanceOf(address(withdrawer)),
+                initialWithdrawerYnLSDE + ynLSDeBalance,
+                "Withdrawer ynLSDE balance should match initial plus deposited amount"
+            );
+
+            withdrawer.processAccounting();
+            vault.processAccounting();
+
+            assertApproxEqRel(
+                vault.totalAssets(),
+                vaultTotalAssetsBefore,
+                1e4,
+                "Vault total assets should not change after transfer to withdrawer"
+            );
+        }
+
+        {
+            address[] memory targets = new address[](2);
+            uint256[] memory values = new uint256[](2);
+            bytes[] memory data = new bytes[](2);
+
             uint256 vaultTotalAssetsBefore = vault.totalAssets();
             uint256 withdrawerTotalAssetsBefore = withdrawer.totalAssets();
 
@@ -127,14 +151,14 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
             assertApproxEqRel(
                 vault.totalAssets(),
                 vaultTotalAssetsBefore,
-                1e10,
+                1e4,
                 "Vault total assets should not change after requesting withdrawal"
             );
 
             assertApproxEqRel(
                 withdrawer.totalAssets(),
                 withdrawerTotalAssetsBefore,
-                1e10,
+                1e4,
                 "Withdrawer total assets should not change after requesting withdrawal"
             );
         }
