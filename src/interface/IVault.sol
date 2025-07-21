@@ -17,7 +17,6 @@ interface IVault is IERC4626 {
         /// The default asset is vault.asset(), used for deposit, withdraw, redeem, mint as default.
         /// If defaultAssetIndex is 0, the vault will use the base asset as default asset.
         uint256 defaultAssetIndex;
-        uint256 maximumAccountedExchangeRate; // the maximum exchange rate in scale of vault decimals(i.e. 18)
     }
 
     struct AssetParams {
@@ -39,9 +38,7 @@ interface IVault is IERC4626 {
         /// @notice The base withdrawal fee in basis points (1e8 = 100%)
         uint64 baseWithdrawalFee;
         mapping(address user => bool isExempted) withdrawalFeeExempted;
-        /// @notice The performance fee in basis points (1e18 = 100%)
-        uint256 performanceFee;
-        address performanceFeeRecipient;
+        address feeModule;
     }
 
     enum ParamType {
@@ -96,6 +93,7 @@ interface IVault is IERC4626 {
     error InvalidDefaultAssetIndex(uint256 index);
     error ExceedsMaxPerformanceFee(uint256 value);
     error BaseAsset();
+    error CallerNotFeeModule();
 
     event DepositAsset(
         address indexed sender,
@@ -120,6 +118,7 @@ interface IVault is IERC4626 {
     event SetWithdrawalFeeExempted(address indexed user, bool isExempted);
     event SetPerformanceFee(uint256 newFee);
     event SetPerformanceFeeRecipient(address indexed newRecipient);
+    event SetFeeModule(address indexed feeModule);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);
@@ -130,7 +129,7 @@ interface IVault is IERC4626 {
     function provider() external view returns (address);
     function buffer() external view returns (address);
     function totalBaseAssets() external view returns (uint256);
-    function performanceFee() external view returns (uint256);
+    function feeModule() external view returns (address);
 
     // ADMIN
     function setProvider(address provider) external;
