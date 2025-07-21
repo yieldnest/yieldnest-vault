@@ -46,8 +46,7 @@ contract YnETHx is Vault {
         erc4626Storage._underlyingDecimals = 0;
     }
 
-    function initializeV3(address performanceFeeRecipient, uint256 performanceFee) external reinitializer(3) {
-        _setPerformanceFeeRecipient(performanceFeeRecipient);
-        _setPerformanceFee(performanceFee);
+    function initializeV3(address feeModule_) external reinitializer(3) {
+        _setFeeModule(feeModule_);
     }
 }

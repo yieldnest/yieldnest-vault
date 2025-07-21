@@ -19,6 +19,7 @@ import {IStrategy} from "src/interface/IStrategy.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
+import {IFeeModule} from "src/interface/IFeeModule.sol";
 
 /**
  * @title BaseVault
@@ -778,48 +779,30 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _processAccounting() internal virtual {
-        uint256 currentTotalBaseBalance = computeTotalAssets();
-        uint256 currentTotalSupply = totalSupply();
+        uint256 totalBaseBalance = computeTotalAssets();
 
-        uint256 maximumAccountedExchangeRate = _getVaultStorage().maximumAccountedExchangeRate;
-        if (maximumAccountedExchangeRate == 0) {
-            maximumAccountedExchangeRate = 10 ** decimals();
-        }
-
-        if (currentTotalSupply > 0) {
-        uint256 currentExchangeRateBeforePerformanceFee = currentTotalBaseBalance * (10 ** decimals()) / currentTotalSupply;
-        
-        uint256 totalSupplyAfterPerformanceFee = currentTotalSupply;
-
-        {
-                if (currentExchangeRateBeforePerformanceFee > maximumAccountedExchangeRate) {
-                uint256 yieldEarned = (currentExchangeRateBeforePerformanceFee - maximumAccountedExchangeRate) * currentTotalSupply / (10 ** decimals());
-                uint256 performanceFee = (yieldEarned * _getFeeStorage().performanceFee) / FeeMath.WAD;
-                uint256 sharesToMint = previewDeposit(performanceFee);
-                address performanceFeeRecipient = _getFeeStorage().performanceFeeRecipient;
-                console.log("sharesToMint");
-                console.log(sharesToMint);
-                console.log("yieldEarned");
-                console.log(yieldEarned);
-                if (performanceFeeRecipient != address(0)) {
-                    _mint(performanceFeeRecipient, sharesToMint);
-                }
-                totalSupplyAfterPerformanceFee = totalSupply();
-                uint256 currentExchangeRateAfterPerformanceFee = currentTotalBaseBalance * (10 ** decimals()) / totalSupplyAfterPerformanceFee;
-                if (currentExchangeRateAfterPerformanceFee > maximumAccountedExchangeRate) {
-                    _getVaultStorage().maximumAccountedExchangeRate = currentExchangeRateAfterPerformanceFee;
-                }
-            }
-        }
-        }
-        _getVaultStorage().totalAssets = currentTotalBaseBalance;
-
+        _getVaultStorage().totalAssets = totalBaseBalance;
         // solhint-disable-next-line not-rely-on-time
-        emit ProcessAccounting(block.timestamp, currentTotalBaseBalance);
+        emit ProcessAccounting(block.timestamp, totalBaseBalance);
+
+        address feeModule_ = feeModule();
+        if (feeModule_ != address(0)) {
+            IFeeModule(feeModule_).chargePerformanceFee();
+        }
     }
 
-    function performanceFee() public view virtual returns (uint256) {
-        return _getFeeStorage().performanceFee;
+    function mintPerformanceFeeShares(address recipient, uint256 shares) external {
+        address feeModule_ = feeModule();
+
+        if (msg.sender != feeModule_) {
+            revert CallerNotFeeModule();
+        }
+
+        _mint(recipient, shares);
+    }
+
+    function feeModule() public view returns (address) {
+        return _getFeeStorage().feeModule;
     }
 
     /**

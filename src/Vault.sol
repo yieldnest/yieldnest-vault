@@ -21,7 +21,6 @@ contract Vault is BaseVault {
     string public constant VAULT_VERSION = "0.3.0";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
-
     /**
      * @notice Initializes the vault.
      * @param admin The address of the admin.
@@ -100,26 +99,14 @@ contract Vault is BaseVault {
         _setBaseWithdrawalFee(baseWithdrawalFee_);
     }
 
-    function setPerformanceFeeRecipient(address performanceFeeRecipient_) external virtual onlyRole(FEE_MANAGER_ROLE) {
-        _setPerformanceFeeRecipient(performanceFeeRecipient_);
+    function setFeeModule(address feeModule_) external virtual onlyRole(FEE_MANAGER_ROLE) {
+        _setFeeModule(feeModule_);
     }
 
-    function _setPerformanceFeeRecipient(address performanceFeeRecipient_) internal virtual {
-        if (performanceFeeRecipient_ == address(0)) revert ZeroAddress();
-        FeeStorage storage fees = _getFeeStorage();
-        fees.performanceFeeRecipient = performanceFeeRecipient_;
-        emit SetPerformanceFeeRecipient(performanceFeeRecipient_);
-    }
-
-    function setPerformanceFee(uint256 performanceFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
-        _setPerformanceFee(performanceFee_);
-    }
-
-    function _setPerformanceFee(uint256 performanceFee_) internal virtual {
-        if (performanceFee_ > FeeMath.WAD) revert ExceedsMaxPerformanceFee(performanceFee_);
-        FeeStorage storage fees = _getFeeStorage();
-        fees.performanceFee = performanceFee_;
-        emit SetPerformanceFee(performanceFee_);
+    function _setFeeModule(address feeModule_) internal virtual {
+        FeeStorage storage feesStorage = _getFeeStorage();
+        feesStorage.feeModule = feeModule_;
+        emit SetFeeModule(feeModule_);
     }
 
     /**
