@@ -20,6 +20,7 @@ import {IVault} from "src/interface/IVault.sol";
 import {IynEigen} from "test/interface/external/yieldnest/IynEigen.sol";
 import {IWithdrawalsProcessor} from "test/interface/external/yieldnest/IWithdrawalsProcessor.sol";
 import {console} from "forge-std/console.sol";
+import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
 
 contract ProcessorIntegrationTest is BaseIntegrationTest {
     Withdrawer public withdrawer;
@@ -102,6 +103,10 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
             uint256 withdrawerTotalAssetsBefore = withdrawer.totalAssets();
 
             // Approve and request withdrawal for ynLSDE
+            targets = new address[](2);
+            values = new uint256[](2);
+            data = new bytes[](2);
+
             targets[0] = MC.YNLSDE;
             values[0] = 0;
             data[0] = abi.encodeCall(IERC20.approve, (MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, ynLSDeBalance));
@@ -130,6 +135,18 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
                 ERROR_MARGIN,
                 "Withdrawer total assets should not change after requesting withdrawal"
             );
+
+            // Assert that the ynLSDe balance in withdrawer is 0
+            assertEq(IERC20(MC.YNLSDE).balanceOf(address(withdrawer)), 0, "ynLSDe balance in withdrawer should be 0 after withdrawal request");
+
+            {
+                uint256 lastTokenId = IWithdrawalQueueManager(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER)._tokenIdCounter() - 1;
+                IWithdrawalQueueManager.WithdrawalRequest memory withdrawalRequest = IWithdrawalQueueManager(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER).withdrawalRequest(lastTokenId);
+                assertEq(withdrawalRequest.amount, ynLSDeBalance, "Withdrawal request amount should match requested amount");
+                assertEq(withdrawalRequest.feeAtRequestTime, IWithdrawalQueueManager(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER).withdrawalFee(), "Withdrawal request fee should match current withdrawal fee");
+                assertEq(withdrawalRequest.processed, false, "Withdrawal request should not be processed immediately after creation");
+            }
+
         }
 
 

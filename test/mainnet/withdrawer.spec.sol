@@ -116,6 +116,50 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
             );
         }
 
+
+        {
+            address[] memory targets = new address[](2);
+            uint256[] memory values = new uint256[](2);
+            bytes[] memory data = new bytes[](2);
+
+            uint256 vaultTotalAssetsBefore = vault.totalAssets();
+            uint256 withdrawerTotalAssetsBefore = withdrawer.totalAssets();
+
+            // Approve and request withdrawal for ynLSDE
+            targets = new address[](2);
+            values = new uint256[](2);
+            data = new bytes[](2);
+
+            targets[0] = MC.YNLSDE;
+            values[0] = 0;
+            data[0] = abi.encodeCall(IERC20.approve, (MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, ynLSDeBalance));
+
+            targets[1] = MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER;
+            values[1] = 0;
+            data[1] = abi.encodeWithSignature("requestWithdrawal(uint256)", ynLSDeBalance);
+
+            vm.startPrank(PROCESSOR);
+            withdrawer.processor(targets, values, data);
+            vm.stopPrank();
+
+            withdrawer.processAccounting();
+            vault.processAccounting();
+
+            assertApproxEqRel(
+                vault.totalAssets(),
+                vaultTotalAssetsBefore,
+                ERROR_MARGIN,
+                "Vault total assets should not change after requesting withdrawal"
+            );
+
+            assertApproxEqRel(
+                withdrawer.totalAssets(),
+                withdrawerTotalAssetsBefore,
+                ERROR_MARGIN,
+                "Withdrawer total assets should not change after requesting withdrawal"
+            );
+        }
+
         {
             address[] memory targets = new address[](2);
             uint256[] memory values = new uint256[](2);

@@ -38,6 +38,8 @@ interface IWithdrawalQueueManager {
     function withdrawalRequest(uint256 tokenId) external view returns (WithdrawalRequest memory request);
 
     function setWithdrawalFee(uint256 feePercentage) external;
+
+    function _tokenIdCounter() external view returns (uint256);
 }
 
 interface IAssetRegistry {
