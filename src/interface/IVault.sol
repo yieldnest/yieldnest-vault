@@ -116,9 +116,7 @@ interface IVault is IERC4626 {
     event DeleteAsset(uint256 indexed index, address indexed asset);
     event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
     event SetWithdrawalFeeExempted(address indexed user, bool isExempted);
-    event SetPerformanceFee(uint256 newFee);
-    event SetPerformanceFeeRecipient(address indexed newRecipient);
-    event SetFeeModule(address indexed feeModule);
+    event SetFeeModule(address indexed oldFeeModule, address indexed newFeeModule);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);
@@ -130,6 +128,7 @@ interface IVault is IERC4626 {
     function buffer() external view returns (address);
     function totalBaseAssets() external view returns (uint256);
     function feeModule() external view returns (address);
+    function mintPerformanceFeeShares(address recipient, uint256 shares) external;
 
     // ADMIN
     function setProvider(address provider) external;

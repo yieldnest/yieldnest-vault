@@ -610,6 +610,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     bytes32 public constant BUFFER_MANAGER_ROLE = keccak256("BUFFER_MANAGER_ROLE");
     bytes32 public constant ASSET_MANAGER_ROLE = keccak256("ASSET_MANAGER_ROLE");
     bytes32 public constant PROCESSOR_MANAGER_ROLE = keccak256("PROCESSOR_MANAGER_ROLE");
+    bytes32 public constant FEE_MODULE_MANAGER_ROLE = keccak256("FEE_MODULE_MANAGER_ROLE");
 
     /**
      * @notice Sets the provider.
@@ -799,6 +800,16 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
 
         _mint(recipient, shares);
+    }
+
+    function setFeeModule(address feeModule_) external onlyRole(FEE_MODULE_MANAGER_ROLE) {
+        _setFeeModule(feeModule_);
+    }
+
+    function _setFeeModule(address feeModule_) internal virtual {
+        FeeStorage storage feesStorage = _getFeeStorage();
+        emit SetFeeModule(feesStorage.feeModule, feeModule_);
+        feesStorage.feeModule = feeModule_;
     }
 
     function feeModule() public view returns (address) {

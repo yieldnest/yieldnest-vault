@@ -99,16 +99,6 @@ contract Vault is BaseVault {
         _setBaseWithdrawalFee(baseWithdrawalFee_);
     }
 
-    function setFeeModule(address feeModule_) external virtual onlyRole(FEE_MANAGER_ROLE) {
-        _setFeeModule(feeModule_);
-    }
-
-    function _setFeeModule(address feeModule_) internal virtual {
-        FeeStorage storage feesStorage = _getFeeStorage();
-        feesStorage.feeModule = feeModule_;
-        emit SetFeeModule(feeModule_);
-    }
-
     /**
      * @notice Sets whether the withdrawal fee is exempted for a user
      * @param user_ The address of the user
