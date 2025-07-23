@@ -32,6 +32,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
             vault.grantRole(vault.BUFFER_MANAGER_ROLE(), admin);
             vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), admin);
             vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), admin);
+            vault.grantRole(vault.ASSET_MANAGER_ROLE(), admin);
             vault.grantRole(vault.PROCESSOR_ROLE(), MainnetActors.PROCESSOR);
             vm.stopPrank();
         }
@@ -40,6 +41,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
             vm.startPrank(MainnetActors.ADMIN);
             Provider provider = new Provider();
             vault.setProvider(address(provider));
+            vault.addAsset(MC.MORPHO_MEV_CAPITAL_WETH, false);
             // Set Morpho as buffer (MORPHO_MEV_CAPITAL_WETH)
             vault.setBuffer(MC.MORPHO_MEV_CAPITAL_WETH);
 
