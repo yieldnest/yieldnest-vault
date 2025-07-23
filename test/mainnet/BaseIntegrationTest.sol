@@ -33,7 +33,6 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
             vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), admin);
             vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), admin);
             vault.grantRole(vault.ASSET_MANAGER_ROLE(), admin);
-            vault.grantRole(vault.PROCESSOR_ROLE(), MainnetActors.PROCESSOR);
             vm.stopPrank();
         }
 
