@@ -24,38 +24,5 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
 
     function setUp() public virtual {
         vault = Vault(payable(MC.YNETHX));
-
-        {
-            // Grant BUFFER_MANAGER_ROLE and PROCESSOR_MANAGER_ROLE to admin
-            address admin = MainnetActors.ADMIN;
-            vm.startPrank(admin);
-            vault.grantRole(vault.BUFFER_MANAGER_ROLE(), admin);
-            vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), admin);
-            vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), admin);
-            vault.grantRole(vault.ASSET_MANAGER_ROLE(), admin);
-            vm.stopPrank();
-        }
-
-        {
-            vm.startPrank(MainnetActors.ADMIN);
-            Provider provider = new Provider();
-            vault.setProvider(address(provider));
-            vault.addAsset(MC.MORPHO_MEV_CAPITAL_WETH, false);
-            // Set Morpho as buffer (MORPHO_MEV_CAPITAL_WETH)
-            vault.setBuffer(MC.MORPHO_MEV_CAPITAL_WETH);
-
-            // Set up SafeRules for deposit and withdraw
-            SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](4);
-            uint256 ruleIndex = 0;
-
-            rules[ruleIndex++] = BaseRules.getAppendApprovalRule(MC.WETH, MC.MORPHO_MEV_CAPITAL_WETH, vault);
-            rules[ruleIndex++] = BaseRules.getDepositRule(MC.MORPHO_MEV_CAPITAL_WETH, address(vault));
-            rules[ruleIndex++] = BaseRules.getWithdrawRule(MC.MORPHO_MEV_CAPITAL_WETH, address(vault));
-            rules[ruleIndex++] = BaseRules.getRedeemRule(MC.MORPHO_MEV_CAPITAL_WETH, address(vault));
-
-            SafeRules.setProcessorRules(vault, rules, true);
-
-            vm.stopPrank();
-        }
     }
 }
