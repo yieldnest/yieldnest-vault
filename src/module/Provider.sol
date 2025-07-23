@@ -53,7 +53,10 @@ contract Provider is IProvider {
             return 1e18;
         }
 
-        if (asset == MC.BUFFER || asset == MC.YNETH || asset == MC.WOETH || asset == MC.EULER_WETH_22_VAULT) {
+        if (
+            asset == MC.MORPHO_MEV_CAPITAL_WETH || asset == MC.YNETH || asset == MC.WOETH
+                || asset == MC.EULER_WETH_22_VAULT
+        ) {
             return IERC4626(asset).convertToAssets(1e18);
         }
 
