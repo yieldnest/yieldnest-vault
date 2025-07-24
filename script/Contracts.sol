@@ -34,10 +34,10 @@ library MainnetContracts {
 
     address public constant WRAPPED_USDC = 0xdA7d2025c7f1f1A1d34AB3F4dF01102d0428E574;
 
-    address public constant YNUSDx = address(1); // TODO: Update with deployed YnUSDx
+    address public constant YNUSDx = 0x3DB228FE836D99Ccb25Ec4dfdC80ED6d2CDdCB4b; // TODO: Update with deployed YnUSDx
 
-    address public constant PROVIDER = 0x56D43f8C6c3891d081AD93B27419c37394857117; // TODO: Update with deployed Provider
-    address public constant BUFFER = address(987654321); // TODO: Update with deployed buffer
+    address public constant PROVIDER = address(1234567890); // Mock value
+    address public constant BUFFER = address(987654321); // Mock value
 
     address public constant PARASWAP_AUGUSTUS_SWAPPER_ROUTER = 0x6A000F20005980200259B80c5102003040001068;
 
