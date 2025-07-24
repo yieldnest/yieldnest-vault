@@ -1,6 +1,6 @@
 {
   "deployer": "0xa1E340bd1e3ea09B3981164BBB4AfeDdF0e7bA0D",
-  "rateProvider": "0xD5bf05D14be33Eb58506620d3ebe70b80Bf3b01d",
+  "rateProvider": "0xE141bE22F4705f9867826Bb74aF5C0d409382d5A",
   "timelock": "0xb5b52c63067E490982874B0d0F559668Bbe0c36B",
   "withdrawer-implementation": "0xe4d2585868e9f33Be4A72BC58Afd8c6Bb8209cD7",
   "withdrawer-proxy": "0x3527663fa14F1799FfDF54fdC7e721D2fB8e88d5",
