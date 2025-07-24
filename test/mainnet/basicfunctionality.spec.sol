@@ -81,6 +81,16 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
         vm.assume(depositAmount > 10000);
         vm.assume(depositAmount < 100_000 ether);
 
+        {
+            vm.startPrank(ADMIN);
+            vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
+            vm.stopPrank();
+
+            uint256 index = vault.getAsset(MC.YNETH).index;
+            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
+            vault.updateAsset(index, fields);
+        }
+
         deal(MC.YNETH, address(this), depositAmount);
         uint256 totalAssetBefore = vault.totalAssets();
 
@@ -102,6 +112,16 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
     function test_deposit_ynLSDe(uint256 depositAmount) public {
         vm.assume(depositAmount > 10000);
         vm.assume(depositAmount < 100_000 ether);
+
+        {
+            vm.startPrank(ADMIN);
+            vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
+            vm.stopPrank();
+
+            uint256 index = vault.getAsset(MC.YNLSDE).index;
+            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
+            vault.updateAsset(index, fields);
+        }
 
         uint256 totalAssetBefore = vault.totalAssets();
 
@@ -154,7 +174,7 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
         vm.assume(donationAmount < 1_000 ether);
 
         address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 11, "Should have 11 assets");
+        assertEq(assets.length, 12, "Should have 11 assets");
 
         for (uint256 i = 0; i < assets.length; i++) {
             _test_donate_single_asset(assets[i], donationAmount);
@@ -587,6 +607,19 @@ contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
     function testDepositYnETHAndYnLSDeToConnector() public {
         uint256 depositAmount = 1000e18;
         uint256 vaultTotalAssetsBefore = vault.totalAssets();
+        {
+            vm.startPrank(ADMIN);
+            vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
+            vm.stopPrank();
+
+            uint256 index = vault.getAsset(MC.YNETH).index;
+            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
+            vault.updateAsset(index, fields);
+
+            index = vault.getAsset(MC.YNLSDE).index;
+            fields = IVault.AssetUpdateFields({active: true});
+            vault.updateAsset(index, fields);
+        }
 
         address alice = makeAddr("alice");
         {
