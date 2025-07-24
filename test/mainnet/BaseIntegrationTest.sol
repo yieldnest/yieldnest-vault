@@ -16,13 +16,34 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {Provider} from "src/module/Provider.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {
+    ITransparentUpgradeableProxy,
+    TransparentUpgradeableProxy
+} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
+import {FeeModule} from "src/FeeModule.sol";
+import {YnETHx} from "src/YnETHx.sol";
+import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
+    FeeModule public feeModule;
 
     function setUp() public virtual {
         vault = Vault(payable(MC.YNETHX));
+        vault.processAccounting();
+
+        FeeModule feeModuleImplementation = new FeeModule(address(vault));
+        TransparentUpgradeableProxy feeModuleProxy =
+            new TransparentUpgradeableProxy(address(feeModuleImplementation), ADMIN, "");
+        feeModule = FeeModule(payable(address(feeModuleProxy)));
+        feeModule.initialize(ADMIN, 1e17, ADMIN);
+
+        Vault newImplementation = new YnETHx();
+        UpgradeUtils.timelockUpgrade(
+            TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(newImplementation)
+        );
+        YnETHx(payable(address(vault))).initializeV3(address(feeModule));
     }
 }

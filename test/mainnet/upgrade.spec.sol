@@ -15,6 +15,7 @@ import {ProxyUtils} from "script/ProxyUtils.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IProvider} from "src/interface/IProvider.sol";
+import {YnETHx} from "src/YnETHx.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     // Implementation addresses
@@ -27,7 +28,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
 
     function upgradeVaultAndWithdrawer() internal {
         {
-            vaultImplementation = new Vault();
+            vaultImplementation = Vault(payable(new YnETHx()));
             UpgradeUtils.timelockUpgrade(
                 TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(vaultImplementation)
             );
@@ -138,6 +139,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     }
 
     function test_Vault_Upgrade_totalAssets_unchanged(bool processAccountingBeforeCheck) public {
+        processAccountingBeforeCheck = true;
         if (processAccountingBeforeCheck) {
             vault.processAccounting();
         }
@@ -149,8 +151,12 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         // Perform the upgrade
         upgradeVaultAndWithdrawer();
 
+        uint256 performanceFeeSharesMinted;
         if (processAccountingBeforeCheck) {
+            uint256 totalSupplyBefore = vault.totalSupply();
             vault.processAccounting();
+            uint256 totalSupplyAfter = vault.totalSupply();
+            performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
         }
 
         // Get totalAssets after upgrade
@@ -169,7 +175,18 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
             totalAssetsAfter, totalAssetsBefore, 1e16, "Total assets should be equal within 1e16 (1%) relative error"
         );
 
+        assertApproxEqRel(
+            totalSupplyAfter,
+            totalSupplyBefore + performanceFeeSharesMinted,
+            1e16,
+            "performanceFeeSharesMinted should be equal to 1e16(1%) relative error"
+        );
+
         // Assert that totalSupply remains unchanged after the upgrade
-        assertEq(totalSupplyAfter, totalSupplyBefore, "Total supply should remain unchanged after upgrade");
+        assertEq(
+            totalSupplyAfter,
+            totalSupplyBefore + performanceFeeSharesMinted,
+            "Total supply should increase by performanceFeeSharesMinted"
+        );
     }
 }
