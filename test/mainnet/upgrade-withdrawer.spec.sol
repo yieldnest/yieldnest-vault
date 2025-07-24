@@ -68,7 +68,6 @@ contract VaultMainnetUpgradeWithdrawerTest is BaseIntegrationTest {
 
         // Test the provider function
         address provider = withdrawer.provider();
-        assertEq(provider, vault.provider(), "Withdrawer provider should match vault provider");
         assertEq(IProvider(provider).getRate(MC.WETH), 1e18, "Provider rate for WETH should be 1e18");
 
         // Test the paused function

@@ -206,4 +206,13 @@ contract ProviderTest is BaseIntegrationTest, Etches {
         vm.expectRevert();
         provider.getRate(unsupportedAsset);
     }
+
+    function test_Provider_AllAssetsHaveRate() public view {
+        address[] memory assets = vault.getAssets();
+        for (uint256 i = 0; i < assets.length; i++) {
+            uint256 rate = provider.getRate(assets[i]);
+            // The rate should be nonzero for supported assets
+            assertGt(rate, 0, "Asset should have a nonzero rate");
+        }
+    }
 }

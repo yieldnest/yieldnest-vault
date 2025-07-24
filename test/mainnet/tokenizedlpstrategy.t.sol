@@ -12,6 +12,7 @@ import {ICurveLpConnector} from "src/interface/ICurveLpConnector.sol";
 import {ICurvePool} from "test/interface/external/curve/ICurvePool.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 contract TokenizedLPStrategyUnitTest is BaseIntegrationTest {
     IERC20 public strategy;
@@ -47,6 +48,17 @@ contract TokenizedLPStrategyUnitTest is BaseIntegrationTest {
         vm.startPrank(ADMIN);
         vault.grantRole(vault.PROCESSOR_ROLE(), address(this));
         vm.stopPrank();
+
+        {
+            vm.startPrank(ADMIN);
+            vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
+            vm.stopPrank();
+
+            uint256 index = vault.getAsset(MC.STETH).index;
+            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
+            vault.updateAsset(vault.getAsset(ASSET_A).index, fields);
+            vault.updateAsset(vault.getAsset(ASSET_B).index, fields);
+        }
 
         // Process accounting to ensure vault is in sync
         vault.processAccounting();
@@ -174,15 +186,18 @@ contract TokenizedLPStrategyUnitTest is BaseIntegrationTest {
 
         {
             uint256 balanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
-            uint256 bufferBefore = IERC20(MC.WETH).balanceOf(vault.buffer());
+            uint256 totalAssetsBefore = IERC4626(vault.buffer()).totalAssets();
 
             // allocate to buffer
             allocateToBuffer(bufferAmount);
 
             uint256 balanceAfter = IERC20(MC.WETH).balanceOf(address(vault));
-            uint256 bufferAfter = IERC20(MC.WETH).balanceOf(vault.buffer());
+            uint256 totalAssetsAfter = IERC4626(vault.buffer()).totalAssets();
+
             assertEq(balanceBefore - balanceAfter, bufferAmount, "WETH balance should decrease by buffer amount");
-            assertEq(bufferAfter - bufferBefore, bufferAmount, "Buffer balance should increase by buffer amount");
+            assertApproxEqAbs(
+                totalAssetsAfter - totalAssetsBefore, bufferAmount, 1, "totalAssets should increase by buffer amount"
+            );
         }
 
         totalSupplyInvariant(initialSupply + shares);
@@ -193,7 +208,7 @@ contract TokenizedLPStrategyUnitTest is BaseIntegrationTest {
             assertGt(maxWithdraw, 0, "Max withdraw should be greater than 0");
 
             uint256 balanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
-            uint256 bufferBefore = IERC20(MC.WETH).balanceOf(vault.buffer());
+            uint256 bufferBefore = IERC4626(vault.buffer()).totalAssets();
 
             uint256 convertedShares = vault.convertToShares(maxWithdraw);
 
@@ -206,10 +221,11 @@ contract TokenizedLPStrategyUnitTest is BaseIntegrationTest {
             );
 
             uint256 balanceAfter = IERC20(MC.WETH).balanceOf(address(vault));
-            uint256 bufferAfter = IERC20(MC.WETH).balanceOf(vault.buffer());
+            uint256 bufferAfter = IERC4626(vault.buffer()).totalAssets();
 
+            // Fix: buffer should decrease by maxWithdraw, not increase
             assertEq(balanceBefore, balanceAfter, "WETH balance should not change");
-            assertEq(bufferAfter, bufferBefore - maxWithdraw, "Buffer balance should increase by buffer amount");
+            assertEq(bufferAfter, bufferBefore - maxWithdraw, "Buffer balance should decrease by withdrawn amount");
         }
     }
 

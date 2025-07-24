@@ -32,10 +32,8 @@ library VaultVerification {
         vm.assertFalse(vault.paused(), "Vault should not be paused");
 
         // Verify deposit assets
-        address[] memory activeAssets = new address[](3);
+        address[] memory activeAssets = new address[](1);
         activeAssets[0] = MC.WETH;
-        activeAssets[1] = MC.YNETH;
-        activeAssets[2] = MC.YNLSDE;
 
         for (uint256 i = 0; i < activeAssets.length; i++) {
             IVault.AssetParams memory asset = vault.getAsset(activeAssets[i]);
@@ -43,7 +41,7 @@ library VaultVerification {
             vm.assertEq(asset.decimals, 18);
         }
 
-        address[] memory inactiveAssets = new address[](8);
+        address[] memory inactiveAssets = new address[](11);
         inactiveAssets[0] = MC.EULER_WETH_22_VAULT;
         inactiveAssets[1] = MC.CURVE_LP_YNETH_YNLSDE_STRATEGY;
         inactiveAssets[2] = address(withdrawer);
@@ -52,6 +50,9 @@ library VaultVerification {
         inactiveAssets[5] = MC.STETH;
         inactiveAssets[6] = MC.OETH;
         inactiveAssets[7] = MC.SMOKEHOUSE_WSTETH;
+        inactiveAssets[8] = MC.MORPHO_MEV_CAPITAL_WETH;
+        inactiveAssets[9] = MC.YNETH;
+        inactiveAssets[10] = MC.YNLSDE;
 
         for (uint256 i = 0; i < inactiveAssets.length; i++) {
             IVault.AssetParams memory asset = vault.getAsset(inactiveAssets[i]);
@@ -62,10 +63,10 @@ library VaultVerification {
         // Verify total number of assets
         address[] memory assets = vault.getAssets();
         // WETH, YNETH, YNLSDE, EULER_WETH_22_VAULT, CURVE_LP_YNETH_YNLSDE_STRATEGY, withdrawer, WSTETH, WOETH, STETH, OETH, SMOKEHOUSE_WSTETH
-        vm.assertEq(assets.length, 11);
+        vm.assertEq(assets.length, 12);
 
         // Verify buffer configuration
-        vm.assertEq(vault.buffer(), MC.EULER_WETH_22_VAULT, "Buffer should be set to Euler WETH 22 vault");
+        vm.assertEq(vault.buffer(), MC.MORPHO_MEV_CAPITAL_WETH, "Buffer should be set to Morpho MEV Capital WETH");
     }
 
     function verifyProvider(Provider provider, Withdrawer withdrawer) internal view {
@@ -204,10 +205,11 @@ library VaultVerification {
 
         {
             // Verify WETH approvals
-            address[] memory wethSpenders = new address[](3);
+            address[] memory wethSpenders = new address[](4);
             wethSpenders[0] = MC.EULER_WETH_22_VAULT;
             wethSpenders[1] = address(withdrawer);
             wethSpenders[2] = MC.OETH_VAULT;
+            wethSpenders[3] = MC.MORPHO_MEV_CAPITAL_WETH;
 
             RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.WETH, wethSpenders));
         }
