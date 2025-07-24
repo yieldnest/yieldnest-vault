@@ -12,8 +12,13 @@ import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {console} from "lib/forge-std/src/console.sol";
+import {FeeModule} from "src/FeeModule.sol";
+import {IVault} from "src/interface/IVault.sol";
+import {Math} from "src/Common.sol";
 
 contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
+    using Math for uint256;
+
     Vault public vaultImplementation;
 
     Vault public vault;
@@ -261,10 +266,8 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         );
     }
 
-    function test_Vault_convertToAssets_multipleDepositsAndTransfers(uint256 rand)
-        public
-    {
-        if (rand < 1 || rand > 10_000 ether) return;
+    function test_Vault_convertToAssets_multipleDepositsAndTransfers(uint256 rand) public {
+        rand = bound(rand, 100 wei, 10_000 ether);
 
         uint256 depositAmountWETH = rand;
         uint256 depositAmountSTETH = rand;
@@ -310,18 +313,40 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         yieldEarned += (aliceStEthDepositAmount2 * rate) / (10 ** 18);
 
         IERC20(steth).transfer(address(vault), aliceStEthDepositAmount2);
+        uint256 performanceFeeShares;
+        {
+            address feeModule = vault.feeModule();
+            uint256 performanceFee = FeeModule(feeModule).performanceFee();
+            uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
+            uint256 totalBaseAssets = vault.computeTotalAssets();
 
-        uint256 performanceFee = vault.performanceFee();
-        uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
-        uint256 performanceFeeShares = vault.previewDeposit(performanceFeeAmount);
-
+            (performanceFeeShares,) =
+                convertToShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
+        }
+        uint256 vaultTotalSupplyBefore = vault.totalSupply();
         vault.processAccounting();
+        uint256 vaultTotalSupplyAfter = vault.totalSupply();
+        assertEqThreshold(
+            vaultTotalSupplyAfter,
+            vaultTotalSupplyBefore + performanceFeeShares,
+            1e12,
+            "vault total supply should be equal to vault total supply before plus performance fee shares"
+        );
+        address performanceFeeRecipient = FeeModule(vault.feeModule()).performanceFeeRecipient();
+        assertEqThreshold(
+            vault.balanceOf(performanceFeeRecipient),
+            performanceFeeShares,
+            1e12,
+            "fee manager balance should be equal to performance fee shares"
+        );
 
         uint256 totalAssets = vault.totalAssets();
         uint256 totalSupply = vault.totalSupply();
 
         assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should be expectedAssets");
-        assertEqThreshold(totalSupply, expectedTotalSupply + performanceFeeShares, 5000, "totalSupply should be expectedSupply");
+        assertEqThreshold(
+            totalSupply, expectedTotalSupply + performanceFeeShares, 5000, "totalSupply should be expectedSupply"
+        );
     }
 
     function test_Vault_Accounting_processAccounting_multipleAssets(
@@ -369,17 +394,60 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         uint256 methRate = IProvider(MC.PROVIDER).getRate(MC.METH);
         expectedTotalAssets += (methAmount * methRate) / (10 ** 18);
         yieldEarned += (methAmount * methRate) / (10 ** 18);
-        
-        uint256 performanceFee = vault.performanceFee();
-        uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
-        uint256 performanceFeeShares = vault.previewDeposit(performanceFeeAmount);
 
-        vault.processAccounting();
+        address feeModule = vault.feeModule();
+        uint256 performanceFee = FeeModule(feeModule).performanceFee();
+        uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
+        uint256 totalBaseAssets = vault.computeTotalAssets();
+        (uint256 performanceFeeShares,) =
+            convertToShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
+        {
+            uint256 vaultTotalSupplyBefore = vault.totalSupply();
+            vault.processAccounting();
+            uint256 vaultTotalSupplyAfter = vault.totalSupply();
+            assertEqThreshold(
+                vaultTotalSupplyAfter,
+                vaultTotalSupplyBefore + performanceFeeShares,
+                1e12,
+                "vault total supply should be equal to vault total supply before plus performance fee shares"
+            );
+            address performanceFeeRecipient = FeeModule(vault.feeModule()).performanceFeeRecipient();
+            assertEqThreshold(
+                vault.balanceOf(performanceFeeRecipient),
+                performanceFeeShares,
+                1e12,
+                "fee manager balance should be equal to performance fee shares"
+            );
+        }
 
         uint256 totalAssets = vault.totalAssets();
-        uint256 totalSupply = vault.totalSupply();
-
         assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should match expected");
-        assertEqThreshold(totalSupply, expectedTotalSupply + performanceFeeShares, 5000, "totalSupply should match expected");
+        uint256 totalSupply = vault.totalSupply();
+        assertEqThreshold(
+            totalSupply, expectedTotalSupply + performanceFeeShares, 5000, "totalSupply should match expected"
+        );
+    }
+
+    function test_mintPerformanceFee_OnlyCallableByFeeModule() public {
+        address feeModule = vault.feeModule();
+        vm.startPrank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVault.CallerNotFeeModule.selector));
+        vault.mintPerformanceFeeShares(alice, 1);
+        vm.stopPrank();
+
+        vm.startPrank(feeModule);
+        vault.mintPerformanceFeeShares(alice, 1);
+        vm.stopPrank();
+
+        assertEq(vault.balanceOf(alice), 1);
+    }
+
+    function convertToShares(uint256 baseAssets, uint256 totalSupply, uint256 totalAssets, Math.Rounding rounding)
+        internal
+        view
+        returns (uint256, uint256)
+    {
+        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
+        return (shares, baseAssets);
     }
 }
