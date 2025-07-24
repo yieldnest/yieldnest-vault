@@ -75,6 +75,7 @@ library MainnetContracts {
 
     // Smokehouse WSTETH
     address public constant SMOKEHOUSE_WSTETH = 0x833AdaeF212c5cD3f78906B44bBfb18258F238F0;
+    address public constant MORPHO_MEV_CAPITAL_WETH = 0x9a8bC3B04b7f3D87cfC09ba407dCED575f2d61D8;
 }
 
 contract L1Contracts is IContracts {

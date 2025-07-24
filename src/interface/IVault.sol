@@ -37,6 +37,7 @@ interface IVault is IERC4626 {
     struct FeeStorage {
         /// @notice The base withdrawal fee in basis points (1e8 = 100%)
         uint64 baseWithdrawalFee;
+        mapping(address user => bool isExempted) withdrawalFeeExempted;
     }
 
     enum ParamType {
@@ -111,6 +112,7 @@ interface IVault is IERC4626 {
     event UpdateAsset(uint256 indexed index, address indexed asset, AssetUpdateFields fields);
     event DeleteAsset(uint256 indexed index, address indexed asset);
     event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
+    event SetWithdrawalFeeExempted(address indexed user, bool isExempted);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);

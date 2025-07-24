@@ -15,7 +15,6 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {Provider} from "src/module/Provider.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";

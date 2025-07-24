@@ -14,6 +14,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 contract VaultBufferInvariantsTest is BaseIntegrationTest {
     function setUp() public override {
@@ -114,14 +115,16 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
         {
             // allocate to buffer
             uint256 balanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
-            uint256 bufferBefore = IERC20(MC.WETH).balanceOf(vault.buffer());
+            uint256 bufferBefore = IERC4626(vault.buffer()).totalAssets();
 
             bufferShares = allocateToBuffer(bufferAmount);
 
             uint256 balanceAfter = IERC20(MC.WETH).balanceOf(address(vault));
-            uint256 bufferAfter = IERC20(MC.WETH).balanceOf(vault.buffer());
+            uint256 bufferAfter = IERC4626(vault.buffer()).totalAssets();
             assertEq(balanceBefore - balanceAfter, bufferAmount, "WETH balance should decrease by buffer amount");
-            assertEq(bufferAfter - bufferBefore, bufferAmount, "Buffer balance should increase by buffer amount");
+            assertApproxEqAbs(
+                bufferAfter - bufferBefore, bufferAmount, 1, "Buffer totalAssets should increase by buffer amount"
+            );
         }
 
         assertGt(bufferShares, 0, "Buffer shares should be greater than 0");
