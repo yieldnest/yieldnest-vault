@@ -18,16 +18,16 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {BaseVault} from "src/BaseVault.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 
-contract VaultBasicFunctionalityTest is TestHelper, MainnetActors {
-    Vault public vault;
+contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
     Withdrawer public withdrawer;
     TimelockController public timelock;
 
     string public constant VAULT_VERSION = "0.2.0";
 
-    function setUp() public {
-        vault = Vault(payable(MC.YNETHX));
+    function setUp() public override {
+        super.setUp();
         withdrawer = VaultVerification.getWithdrawer(vault);
 
         timelock = TimelockController(payable(MC.TIMELOCK));
