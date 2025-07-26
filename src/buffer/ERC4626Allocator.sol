@@ -59,7 +59,10 @@ contract ERC4626Allocator is BaseVault {
         virtual
         override
     {
-        _subTotalAssets(VaultLib.convertAssetToBase(asset(), assets));
+        uint256 baseAssets = VaultLib.convertAssetToBase(asset(), assets);
+
+        _subTotalAssets(baseAssets);
+
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }
@@ -67,7 +70,7 @@ contract ERC4626Allocator is BaseVault {
         // NOTE: burn shares before withdrawing the assets
         _burn(owner, shares);
 
-        (address[] memory planVaults, uint256[] memory planAmounts) = _generateWithdrawalPlan(assets);
+        (address[] memory planVaults, uint256[] memory planAmounts) = generateWithdrawalPlan(assets);
 
         for (uint256 i = 0; i < planVaults.length; i++) {
             IERC4626(planVaults[i]).withdraw(planAmounts[i], receiver, address(this));
@@ -83,8 +86,8 @@ contract ERC4626Allocator is BaseVault {
      * @return planVaults The vaults to withdraw from.
      * @return planAmounts The amounts to withdraw from each vault.
      */
-    function _generateWithdrawalPlan(uint256 assets)
-        internal
+    function generateWithdrawalPlan(uint256 assets)
+        public
         view
         virtual
         returns (address[] memory planVaults, uint256[] memory planAmounts)
@@ -113,6 +116,26 @@ contract ERC4626Allocator is BaseVault {
             mstore(planVaults, planCount)
             mstore(planAmounts, planCount)
         }
+    }
+
+    function maxWithdraw(address owner) public view virtual override returns (uint256) {
+        if (paused()) {
+            return 0;
+        }
+
+        uint256 bufferAssets = 0;
+        for (uint256 i = 0; i < vaults.length; i++) {
+            bufferAssets += IERC4626(vaults[i]).maxWithdraw(address(this));
+        }
+
+        if (bufferAssets == 0) {
+            return 0;
+        }
+
+        uint256 ownerShares = balanceOf(owner);
+        uint256 maxAssets = previewRedeem(ownerShares);
+
+        return bufferAssets < maxAssets ? bufferAssets : maxAssets;
     }
 
     function hasAsset(address asset) public view returns (bool) {

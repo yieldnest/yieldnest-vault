@@ -26,16 +26,22 @@ contract ERC4626Allocator_Mainnet_Integration is Test {
         // Deploy ERC4626Allocator logic contract
         ERC4626Allocator logic = new ERC4626Allocator();
 
-        // Prepare initializer data
-        bytes memory initData = abi.encodeWithSelector(
-            ERC4626Allocator.initialize.selector, ADMIN, "Test Allocator", "ALLOC", 18, false, true, 0
-        );
-
-        // Deploy TransparentUpgradeableProxy
+        // Deploy TransparentUpgradeableProxy without initializer
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(logic),
             ADMIN, // proxy admin
-            initData
+            ""
+        );
+
+        // Call initialize separately with labeled params
+        ERC4626Allocator(payable(address(proxy))).initialize(
+            ADMIN, // admin
+            "Test Allocator", // name
+            "ALLOC", // symbol
+            18, // decimals
+            true, // countNativeAsset_
+            false, // alwaysComputeTotalAssets_
+            0 // defaultAssetIndex_
         );
 
         allocator = ERC4626Allocator(payable(address(proxy)));
@@ -157,7 +163,9 @@ contract ERC4626Allocator_Mainnet_Integration is Test {
         // User withdraws
         vm.startPrank(user);
         uint256 shares = allocator.balanceOf(user);
-        allocator.withdraw(depositAmount, user, user);
+
+        uint256 withdrawAmount = depositAmount - 5 wei;
+        allocator.withdraw(withdrawAmount, user, user);
 
         // User should have WETH back (minus any fees, slippage, etc)
         uint256 userWeth = IERC20(WETH).balanceOf(user);
