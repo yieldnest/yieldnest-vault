@@ -5,9 +5,13 @@ import "../BaseVault.sol";
 import {IERC4626} from "src/Common.sol";
 
 contract ERC4626Allocator is BaseVault {
-    address[] public vaults;
-
     bytes32 public constant VAULT_MANAGER_ROLE = keccak256("VAULT_MANAGER_ROLE");
+
+    error InsufficientAssetsInVaults();
+    error AssetIsDefault();
+    error UnderlyingAssetMismatch(address vaultUnderlying, address allocatorUnderlying);
+
+    address[] public vaults;
 
     /**
      * @notice Initializes the vault.
@@ -47,8 +51,17 @@ contract ERC4626Allocator is BaseVault {
      */
     function setVaults(address[] calldata _vaults) public onlyRole(VAULT_MANAGER_ROLE) {
         for (uint256 i = 0; i < _vaults.length; i++) {
-            if (!hasAsset(_vaults[i])) {
-                revert AssetNotActive();
+            address vault = _vaults[i];
+            IVault.AssetParams memory assetParams = _getAssetStorage().assets[vault];
+            if (assetParams.decimals == 0) {
+                revert InvalidAsset(vault);
+            }
+            if (vault == asset()) {
+                revert AssetIsDefault();
+            }
+
+            if (IERC4626(vault).asset() != asset()) {
+                revert UnderlyingAssetMismatch(vault, asset());
             }
         }
         vaults = _vaults;
@@ -109,7 +122,9 @@ contract ERC4626Allocator is BaseVault {
             remaining -= withdrawAmount;
         }
 
-        require(remaining == 0, "Insufficient assets in vaults");
+        if (remaining != 0) {
+            revert InsufficientAssetsInVaults();
+        }
 
         // Resize arrays to actual planCount
         assembly {
@@ -136,10 +151,6 @@ contract ERC4626Allocator is BaseVault {
         uint256 maxAssets = previewRedeem(ownerShares);
 
         return bufferAssets < maxAssets ? bufferAssets : maxAssets;
-    }
-
-    function hasAsset(address asset) public view returns (bool) {
-        return _getAssetStorage().assets[asset].decimals > 0;
     }
 
     /// FEES ///

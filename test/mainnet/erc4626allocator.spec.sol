@@ -164,12 +164,11 @@ contract ERC4626Allocator_Mainnet_Integration is Test {
         vm.startPrank(user);
         uint256 shares = allocator.balanceOf(user);
 
-        uint256 withdrawAmount = depositAmount - 5 wei;
+        uint256 withdrawAmount = depositAmount - 2 wei;
+        uint256 userWethBefore = IERC20(WETH).balanceOf(user);
         allocator.withdraw(withdrawAmount, user, user);
-
-        // User should have WETH back (minus any fees, slippage, etc)
-        uint256 userWeth = IERC20(WETH).balanceOf(user);
-        assertGt(userWeth, 0.99 ether, "User should get most WETH back");
+        uint256 userWethAfter = IERC20(WETH).balanceOf(user);
+        assertEq(userWethAfter - userWethBefore, withdrawAmount, "User WETH balance should increase by withdrawAmount");
 
         // Allocator's shares in vaults should decrease
         uint256 morphoSharesAfter = IERC20(MORPHO_MEV_CAPITAL_WETH).balanceOf(address(allocator));
