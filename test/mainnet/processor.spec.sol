@@ -137,38 +137,52 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
             );
 
             // Assert that the ynLSDe balance in withdrawer is 0
-            assertEq(IERC20(MC.YNLSDE).balanceOf(address(withdrawer)), 0, "ynLSDe balance in withdrawer should be 0 after withdrawal request");
+            assertEq(
+                IERC20(MC.YNLSDE).balanceOf(address(withdrawer)),
+                0,
+                "ynLSDe balance in withdrawer should be 0 after withdrawal request"
+            );
 
             {
                 uint256 lastTokenId = IWithdrawalQueueManager(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER)._tokenIdCounter() - 1;
-                IWithdrawalQueueManager.WithdrawalRequest memory withdrawalRequest = IWithdrawalQueueManager(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER).withdrawalRequest(lastTokenId);
-                assertEq(withdrawalRequest.amount, ynLSDeBalance, "Withdrawal request amount should match requested amount");
-                assertEq(withdrawalRequest.feeAtRequestTime, IWithdrawalQueueManager(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER).withdrawalFee(), "Withdrawal request fee should match current withdrawal fee");
-                assertEq(withdrawalRequest.processed, false, "Withdrawal request should not be processed immediately after creation");
+                IWithdrawalQueueManager.WithdrawalRequest memory withdrawalRequest =
+                    IWithdrawalQueueManager(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER).withdrawalRequest(lastTokenId);
+                assertEq(
+                    withdrawalRequest.amount, ynLSDeBalance, "Withdrawal request amount should match requested amount"
+                );
+                assertEq(
+                    withdrawalRequest.feeAtRequestTime,
+                    IWithdrawalQueueManager(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER).withdrawalFee(),
+                    "Withdrawal request fee should match current withdrawal fee"
+                );
+                assertEq(
+                    withdrawalRequest.processed,
+                    false,
+                    "Withdrawal request should not be processed immediately after creation"
+                );
             }
-
         }
 
+        for (uint256 j = 0; j < 2; j++) {
+            for (uint256 i = 0; i < 1; i++) {
+                console.log("i=", i);
+                IWithdrawalsProcessor.QueueWithdrawalsArgs memory args = withdrawalsProcessor.getQueueWithdrawalsArgs();
 
-        for (uint256 i = 0; i < 1; i++) {
-            console.log("i=", i);
-            IWithdrawalsProcessor.QueueWithdrawalsArgs memory args = withdrawalsProcessor.getQueueWithdrawalsArgs();
+                console.log("args.asset: %s", address(args.asset));
 
-            console.log("args.asset: %s", address(args.asset));
+                console.log("args.nodes.length=", args.nodes.length);
+                console.log("args.shares.length=", args.shares.length);
+                console.log("args.totalQueuedWithdrawals=", args.totalQueuedWithdrawals);
 
-            console.log("args.nodes.length=", args.nodes.length);
-            console.log("args.shares.length=", args.shares.length);
-            console.log("args.totalQueuedWithdrawals=", args.totalQueuedWithdrawals);
+                for (uint256 j = 0; j < args.nodes.length; j++) {
+                    console.log("Node[%s]: %s", j, args.nodes[j]);
+                    console.log("Shares[%s]: %s", j, args.shares[j]);
+                }
 
-            for (uint256 j = 0; j < args.nodes.length; j++) {
-                console.log("Node[%s]: %s", j, args.nodes[j]);
-                console.log("Shares[%s]: %s", j, args.shares[j]);
+                vm.startPrank(keeper);
+                withdrawalsProcessor.queueWithdrawals(args);
+                vm.stopPrank();
             }
-
-            vm.startPrank(keeper);
-            withdrawalsProcessor.queueWithdrawals(args);
-            vm.stopPrank();
         }
-
     }
 }
