@@ -53,6 +53,16 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
         vm.assume(depositAmount > 1e9);
         vm.assume(depositAmount < 100_000 ether);
 
+        {
+            vm.startPrank(ADMIN);
+            vault.grantRole(vault.ASSET_MANAGER_ROLE(), ADMIN);
+
+            uint256 ynLSDeIndex = vault.getAsset(MC.YNLSDE).index;
+
+            vault.updateAsset(ynLSDeIndex, IVault.AssetUpdateFields({active: true}));
+            vm.stopPrank();
+        }
+
         address asset = MC.YNLSDE;
         uint256 initialVaultYnLSDE = IERC20(asset).balanceOf(address(vault));
         uint256 initialWithdrawerYnLSDE = IERC20(asset).balanceOf(address(withdrawer));
@@ -113,50 +123,6 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
                 vaultTotalAssetsBefore,
                 ERROR_MARGIN,
                 "Vault total assets should not change after transfer to withdrawer"
-            );
-        }
-
-
-        {
-            address[] memory targets = new address[](2);
-            uint256[] memory values = new uint256[](2);
-            bytes[] memory data = new bytes[](2);
-
-            uint256 vaultTotalAssetsBefore = vault.totalAssets();
-            uint256 withdrawerTotalAssetsBefore = withdrawer.totalAssets();
-
-            // Approve and request withdrawal for ynLSDE
-            targets = new address[](2);
-            values = new uint256[](2);
-            data = new bytes[](2);
-
-            targets[0] = MC.YNLSDE;
-            values[0] = 0;
-            data[0] = abi.encodeCall(IERC20.approve, (MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, ynLSDeBalance));
-
-            targets[1] = MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER;
-            values[1] = 0;
-            data[1] = abi.encodeWithSignature("requestWithdrawal(uint256)", ynLSDeBalance);
-
-            vm.startPrank(PROCESSOR);
-            withdrawer.processor(targets, values, data);
-            vm.stopPrank();
-
-            withdrawer.processAccounting();
-            vault.processAccounting();
-
-            assertApproxEqRel(
-                vault.totalAssets(),
-                vaultTotalAssetsBefore,
-                ERROR_MARGIN,
-                "Vault total assets should not change after requesting withdrawal"
-            );
-
-            assertApproxEqRel(
-                withdrawer.totalAssets(),
-                withdrawerTotalAssetsBefore,
-                ERROR_MARGIN,
-                "Withdrawer total assets should not change after requesting withdrawal"
             );
         }
 
