@@ -163,26 +163,53 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
             }
         }
 
-        for (uint256 j = 0; j < 2; j++) {
-            for (uint256 i = 0; i < 1; i++) {
-                console.log("i=", i);
-                IWithdrawalsProcessor.QueueWithdrawalsArgs memory args = withdrawalsProcessor.getQueueWithdrawalsArgs();
-
-                console.log("args.asset: %s", address(args.asset));
-
-                console.log("args.nodes.length=", args.nodes.length);
-                console.log("args.shares.length=", args.shares.length);
-                console.log("args.totalQueuedWithdrawals=", args.totalQueuedWithdrawals);
-
-                for (uint256 j = 0; j < args.nodes.length; j++) {
-                    console.log("Node[%s]: %s", j, args.nodes[j]);
-                    console.log("Shares[%s]: %s", j, args.shares[j]);
-                }
-
-                vm.startPrank(keeper);
-                withdrawalsProcessor.queueWithdrawals(args);
-                vm.stopPrank();
+        uint256 ynLSETotalAssetsBefore = vault.totalAssets();
+        while (true) {
+            uint256 pendingWithdrawalRequests;
+            bool hasPendingWithdrawalRequests = true;
+            try withdrawalsProcessor.getPendingWithdrawalRequests() returns (uint256 _pendingWithdrawalRequests) {
+                pendingWithdrawalRequests = _pendingWithdrawalRequests;
+                console.log("pendingWithdrawalRequests=", pendingWithdrawalRequests);
+            } catch {
+                console.log("No pending withdrawal requests");
+                hasPendingWithdrawalRequests = false;
             }
+            if (!hasPendingWithdrawalRequests) {
+                break;
+            }
+
+            console.log("pendingWithdrawalRequests=", pendingWithdrawalRequests);
+            IWithdrawalsProcessor.QueueWithdrawalsArgs memory args = withdrawalsProcessor.getQueueWithdrawalsArgs();
+
+            console.log("args.asset: %s", address(args.asset));
+
+            console.log("args.nodes.length=", args.nodes.length);
+            console.log("args.shares.length=", args.shares.length);
+            console.log("args.totalQueuedWithdrawals=", args.totalQueuedWithdrawals);
+
+            for (uint256 j = 0; j < args.nodes.length; j++) {
+                console.log("Node[%s]: %s", j, args.nodes[j]);
+                console.log("Shares[%s]: %s", j, args.shares[j]);
+            }
+
+            vm.startPrank(keeper);
+            withdrawalsProcessor.queueWithdrawals(args);
+            vm.stopPrank();
+
+            // Assert that ynLSE totalAssets stays constant after every loop
+            assertApproxEqRel(
+                vault.totalAssets(),
+                ynLSETotalAssetsBefore,
+                1,
+                "ynLSE total assets should not change after queueWithdrawals"
+            );
         }
+        // Assert again at the end
+        assertApproxEqRel(
+            vault.totalAssets(),
+            ynLSETotalAssetsBefore,
+            1,
+            "ynLSE total assets should not change at the end of queueWithdrawals loops"
+        );
     }
 }
