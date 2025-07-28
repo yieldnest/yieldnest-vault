@@ -15,6 +15,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 
 contract VaultBufferInvariantsTest is BaseIntegrationTest {
     function setUp() public override {
@@ -36,27 +37,6 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
         assertEqThreshold(
             assets, finalVaultTotalAssets, 3, "Vault totalAssets should be original totalAssets plus additional"
         );
-    }
-
-    function allocateToBuffer(uint256 amount) public returns (uint256 bufferShares) {
-        address[] memory targets = new address[](2);
-        targets[0] = MC.WETH;
-        targets[1] = vault.buffer();
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
-        data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
-
-        vm.prank(PROCESSOR);
-        bytes[] memory returnData = vault.processor(targets, values, data);
-
-        bufferShares = abi.decode(returnData[1], (uint256));
-
-        vault.processAccounting();
     }
 
     function test_Vault_4626Invariants_depositBase_WithBufferAllocation(uint256 assets, uint256 bufferAmount) public {
@@ -117,7 +97,7 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
             uint256 balanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
             uint256 bufferBefore = IERC4626(vault.buffer()).totalAssets();
 
-            bufferShares = allocateToBuffer(bufferAmount);
+            bufferShares = ProcessorUtils.allocateToBuffer(vault, bufferAmount, PROCESSOR);
 
             uint256 balanceAfter = IERC20(MC.WETH).balanceOf(address(vault));
             uint256 bufferAfter = IERC4626(vault.buffer()).totalAssets();
@@ -168,7 +148,7 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
         IERC20(MC.WETH).transfer(vault.buffer(), 1 ether);
 
         // Allocate to buffer
-        allocateToBuffer(bufferAmount);
+        ProcessorUtils.allocateToBuffer(vault, bufferAmount, PROCESSOR);
 
         totalSupplyInvariant(initialSupply + shares);
         // assets go down because of buffer donation  - THIS MUST BE AVOIDED
