@@ -19,7 +19,6 @@ import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IynEigen} from "test/interface/external/yieldnest/IynEigen.sol";
 import {IWithdrawalsProcessor} from "test/interface/external/yieldnest/IWithdrawalsProcessor.sol";
-import {console} from "forge-std/console.sol";
 import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
 
 contract ProcessorIntegrationTest is BaseIntegrationTest {
@@ -169,28 +168,14 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
             bool hasPendingWithdrawalRequests = true;
             try withdrawalsProcessor.getPendingWithdrawalRequests() returns (uint256 _pendingWithdrawalRequests) {
                 pendingWithdrawalRequests = _pendingWithdrawalRequests;
-                console.log("pendingWithdrawalRequests=", pendingWithdrawalRequests);
             } catch {
-                console.log("No pending withdrawal requests");
                 hasPendingWithdrawalRequests = false;
             }
             if (!hasPendingWithdrawalRequests) {
                 break;
             }
 
-            console.log("pendingWithdrawalRequests=", pendingWithdrawalRequests);
             IWithdrawalsProcessor.QueueWithdrawalsArgs memory args = withdrawalsProcessor.getQueueWithdrawalsArgs();
-
-            console.log("args.asset: %s", address(args.asset));
-
-            console.log("args.nodes.length=", args.nodes.length);
-            console.log("args.shares.length=", args.shares.length);
-            console.log("args.totalQueuedWithdrawals=", args.totalQueuedWithdrawals);
-
-            for (uint256 j = 0; j < args.nodes.length; j++) {
-                console.log("Node[%s]: %s", j, args.nodes[j]);
-                console.log("Shares[%s]: %s", j, args.shares[j]);
-            }
 
             vm.startPrank(keeper);
             withdrawalsProcessor.queueWithdrawals(args);
