@@ -19,6 +19,7 @@ import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {BaseVault} from "src/BaseVault.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 
 contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
     Withdrawer public withdrawer;
@@ -557,24 +558,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         );
         assertEq(vault.totalAssets(), vaultTotalAssetsBefore + depositAmount, "Vault total assets should increase");
 
-        // Allocate to buffer (Euler vault)
-        {
-            address[] memory targets = new address[](2);
-            uint256[] memory values = new uint256[](2);
-            bytes[] memory data = new bytes[](2);
-
-            targets[0] = MC.WETH;
-            values[0] = 0;
-            data[0] = abi.encodeCall(IERC20.approve, (MC.EULER_WETH_22_VAULT, depositAmount));
-
-            targets[1] = MC.EULER_WETH_22_VAULT;
-            values[1] = 0;
-            data[1] = abi.encodeCall(IERC4626.deposit, (depositAmount, address(vault)));
-
-            vm.startPrank(PROCESSOR);
-            vault.processor(targets, values, data);
-            vm.stopPrank();
-        }
+        ProcessorUtils.allocateToBuffer(vault, depositAmount, PROCESSOR);
 
         // Process accounting
         vault.processAccounting();
@@ -592,7 +576,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         assertApproxEqAbs(
             IERC20(MC.WETH).balanceOf(alice),
             aliceWethBalanceBefore - depositAmount + amountAfterFee,
-            // TODO: fix this down to at least 1e8 margin of error
             1e15, // withdrawal fee precision error is at 0.01% of amount
             "User should receive original WETH amount back minus fee"
         );
