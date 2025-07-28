@@ -9,7 +9,8 @@ import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
-import {FeeModule} from "src/FeeModule.sol";
+import {Hooks} from "src/Hooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -114,7 +115,7 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vault.processAccounting();
         IERC20(MC.WETH).transfer(address(vault), yieldAmount1);
 
-        uint256 performanceFee = FeeModule(vault.feeModule()).performanceFee();
+        uint256 performanceFee = IHooks(vault.hooks()).performanceFee();
         uint256 performanceFeeAmount = (yieldAmount1 * performanceFee) / 1 ether;
         uint256 totalBaseAssets = vault.computeTotalAssets();
         (uint256 performanceFeeShares,) =
@@ -158,7 +159,7 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(alice);
         IERC20(MC.WETH).transfer(address(vault), yieldAmount2);
 
-        performanceFee = FeeModule(vault.feeModule()).performanceFee();
+        performanceFee = IHooks(vault.hooks()).performanceFee();
         performanceFeeAmount = (yieldAmount2 * performanceFee) / 1 ether;
         totalBaseAssets = vault.computeTotalAssets();
         (uint256 performanceFeeShares2,) =

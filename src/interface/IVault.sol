@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IERC4626} from "src/Common.sol";
 import {IValidator} from "src/interface/IValidator.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 interface IVault is IERC4626 {
     struct VaultStorage {
@@ -38,7 +39,7 @@ interface IVault is IERC4626 {
         /// @notice The base withdrawal fee in basis points (1e8 = 100%)
         uint64 baseWithdrawalFee;
         mapping(address user => bool isExempted) withdrawalFeeExempted;
-        address feeModule;
+        IHooks hooks;
     }
 
     enum ParamType {
@@ -93,7 +94,7 @@ interface IVault is IERC4626 {
     error InvalidDefaultAssetIndex(uint256 index);
     error ExceedsMaxPerformanceFee(uint256 value);
     error BaseAsset();
-    error CallerNotFeeModule();
+    error CallerNotHooks();
 
     event DepositAsset(
         address indexed sender,
@@ -116,7 +117,7 @@ interface IVault is IERC4626 {
     event DeleteAsset(uint256 indexed index, address indexed asset);
     event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
     event SetWithdrawalFeeExempted(address indexed user, bool isExempted);
-    event SetFeeModule(address indexed oldFeeModule, address indexed newFeeModule);
+    event SetHooks(address indexed oldHooks, address indexed newHooks);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);
@@ -127,8 +128,8 @@ interface IVault is IERC4626 {
     function provider() external view returns (address);
     function buffer() external view returns (address);
     function totalBaseAssets() external view returns (uint256);
-    function feeModule() external view returns (address);
-    function mintPerformanceFeeShares(address recipient, uint256 shares) external;
+    function hooks() external view returns (IHooks);
+    function mintShares(address recipient, uint256 shares) external;
 
     // ADMIN
     function setProvider(address provider) external;

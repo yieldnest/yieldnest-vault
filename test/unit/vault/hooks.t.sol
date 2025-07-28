@@ -16,14 +16,14 @@ import {IERC4626} from "src/Common.sol";
 import {Provider} from "src/module/Provider.sol";
 import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
-import {FeeModule} from "src/FeeModule.sol";
+import {Hooks} from "src/Hooks.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Math} from "src/Common.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
-import {IFeeModule} from "src/interface/IFeeModule.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
-contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
+contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
 
     Vault public vaultImplementation;
@@ -33,7 +33,7 @@ contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     WETH9 public weth;
     MockSTETH public steth;
-    FeeModule public feeModule;
+    Hooks public hooks;
 
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 200_000 ether;
@@ -41,7 +41,7 @@ contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function setUp() public {
         SetupVault setupVault = new SetupVault();
         (vault, weth) = setupVault.setup();
-        feeModule = FeeModule(vault.feeModule());
+        hooks = Hooks(address(vault.hooks()));
 
         // Replace the steth mock with our custom MockSTETH
         steth = MockSTETH(payable(MC.STETH));
@@ -54,68 +54,6 @@ contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
-    }
-
-    function test_Updates_MaximumAccountedExchangeRate_After_ChargePerformanceFee(uint256 wethAmount) public {
-        // Bound inputs to reasonable ranges
-        wethAmount = bound(wethAmount, 1 ether, 10_000 ether);
-
-        uint256 maximumAccountedExchangeRateBefore = FeeModule(vault.feeModule()).maximumAccountedExchangeRate();
-
-        // Initial deposit of WETH through deposit function
-        vm.startPrank(alice);
-        uint256 shares = vault.deposit(wethAmount, alice);
-        uint256 expectedTotalAssets = wethAmount;
-        uint256 expectedTotalSupply = shares;
-        vm.stopPrank();
-
-        vault.processAccounting();
-
-        // Direct transfer of WETH
-        deal(alice, wethAmount);
-        (bool success,) = MC.WETH.call{value: wethAmount}("");
-        assertTrue(success, "WETH transfer failed");
-        vm.prank(alice);
-        IERC20(MC.WETH).transfer(address(vault), wethAmount);
-        expectedTotalAssets += wethAmount;
-        uint256 yieldEarned = wethAmount;
-
-        address feeModule = vault.feeModule();
-        uint256 performanceFee = FeeModule(feeModule).performanceFee();
-        uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1 ether;
-        uint256 totalBaseAssets = vault.computeTotalAssets();
-        (uint256 performanceFeeShares,) =
-            convertToShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
-        uint256 feeManagerSharesBeforeProcessing = vault.balanceOf(FEE_MANAGER);
-
-        vault.processAccounting();
-
-        uint256 maximumAccountedExchangeRateAfter = FeeModule(vault.feeModule()).maximumAccountedExchangeRate();
-
-        assertGt(
-            maximumAccountedExchangeRateAfter,
-            maximumAccountedExchangeRateBefore,
-            "maximumAccountedExchangeRate should increase"
-        );
-        assertEq(
-            maximumAccountedExchangeRateAfter,
-            vault.convertToAssets(1 ether),
-            "maximumAccountedExchangeRate should be equal to the exchange rate of 1 ether"
-        );
-
-        uint256 totalAssets = vault.totalAssets();
-        uint256 totalSupply = vault.totalSupply();
-
-        assertEqThreshold(
-            vault.balanceOf(FEE_MANAGER) - feeManagerSharesBeforeProcessing,
-            performanceFeeShares,
-            5000,
-            "FEE_MANAGER should have the performance fee shares"
-        );
-        assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should match expected");
-        assertEqThreshold(
-            totalSupply, expectedTotalSupply + performanceFeeShares, 5000, "totalSupply should match expected"
-        );
     }
 
     function test_ChargePerformanceFee_MultipleDeposits(
@@ -146,11 +84,9 @@ contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
         IERC20(MC.WETH).transfer(address(vault), yieldAmount1);
         vm.stopPrank();
 
-        uint256 maximumAccountedExchangeRateBefore = FeeModule(vault.feeModule()).maximumAccountedExchangeRate();
         uint256 yieldEarned = yieldAmount1;
 
-        address feeModule = vault.feeModule();
-        uint256 performanceFee = FeeModule(feeModule).performanceFee();
+        uint256 performanceFee = IHooks(address(vault.hooks())).performanceFee();
         uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1 ether;
         uint256 totalBaseAssets = vault.computeTotalAssets();
         (uint256 performanceFeeShares,) =
@@ -158,24 +94,12 @@ contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
         vault.processAccounting();
 
-        uint256 maximumAccountedExchangeRateAfter = FeeModule(vault.feeModule()).maximumAccountedExchangeRate();
         uint256 totalAssets = vault.totalAssets();
         uint256 totalSupply = vault.totalSupply();
 
         // assertEqThreshold(totalAssets, depositAmount1 + depositAmount2 + yieldEarned, 5000, "totalAssets should match expected");
         assertEqThreshold(
             totalSupply, shares1 + shares2 + performanceFeeShares, 5000, "totalSupply should match expected"
-        );
-
-        assertGt(
-            maximumAccountedExchangeRateAfter,
-            maximumAccountedExchangeRateBefore,
-            "maximumAccountedExchangeRate should increase"
-        );
-        assertEq(
-            maximumAccountedExchangeRateAfter,
-            vault.convertToAssets(1 ether),
-            "maximumAccountedExchangeRate should be equal to the exchange rate of 1 ether"
         );
 
         assertEqThreshold(
@@ -190,8 +114,6 @@ contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // Bound inputs to reasonable ranges
         wethAmount = bound(wethAmount, 1 ether, 10_000 ether);
 
-        uint256 maximumAccountedExchangeRateBefore = FeeModule(vault.feeModule()).maximumAccountedExchangeRate();
-
         // Initial deposit of WETH through deposit function
         vm.startPrank(alice);
         uint256 shares = vault.deposit(wethAmount, alice);
@@ -199,8 +121,8 @@ contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 expectedTotalSupply = shares;
         vm.stopPrank();
 
-        address feeModule = vault.feeModule();
-        uint256 performanceFee = FeeModule(feeModule).performanceFee();
+        address hooks = address(vault.hooks());
+        uint256 performanceFee = IHooks(hooks).performanceFee();
         uint256 totalBaseAssets = vault.computeTotalAssets();
         uint256 totalSupplyBeforeProcessing = vault.totalSupply();
 
@@ -212,15 +134,6 @@ contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
             totalSupplyBeforeProcessing, totalSupplyAfterProcessing, "totalSupply should stay the same due to no yield"
         );
 
-        uint256 maximumAccountedExchangeRateAfter = FeeModule(vault.feeModule()).maximumAccountedExchangeRate();
-
-        assertEq(
-            maximumAccountedExchangeRateAfter,
-            maximumAccountedExchangeRateBefore,
-            "maximumAccountedExchangeRate should stay the same due to no yield"
-        );
-        assertEq(maximumAccountedExchangeRateAfter, 1 ether, "maximumAccountedExchangeRate should be equal to 1 ether");
-
         uint256 totalAssets = vault.totalAssets();
 
         assertEq(vault.balanceOf(FEE_MANAGER), 0, "FEE_MANAGER should have no shares");
@@ -230,16 +143,16 @@ contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_chargePerformanceFee_NotCalledByVault() public {
         vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IFeeModule.CallerNotVault.selector));
-        feeModule.chargePerformanceFee();
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether);
         vm.stopPrank();
     }
 
     function test_setPerformanceFeeRecipient() public {
         address newPerformanceFeeRecipient = makeAddr("newPerformanceFeeRecipient");
         vm.startPrank(ADMIN);
-        feeModule.setPerformanceFeeRecipient(newPerformanceFeeRecipient);
-        assertEq(feeModule.performanceFeeRecipient(), newPerformanceFeeRecipient);
+        hooks.setPerformanceFeeRecipient(newPerformanceFeeRecipient);
+        assertEq(hooks.performanceFeeRecipient(), newPerformanceFeeRecipient);
     }
 
     function test_setPerformanceFeeRecipient_notAdmin() public {
@@ -247,14 +160,14 @@ contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
         address notAdmin = makeAddr("notAdmin");
         vm.startPrank(notAdmin);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notAdmin));
-        feeModule.setPerformanceFeeRecipient(newPerformanceFeeRecipient);
+        hooks.setPerformanceFeeRecipient(newPerformanceFeeRecipient);
     }
 
     function test_setPerformanceFee() public {
         uint256 newPerformanceFee = 1e16;
         vm.startPrank(ADMIN);
-        feeModule.setPerformanceFee(newPerformanceFee);
-        assertEq(feeModule.performanceFee(), newPerformanceFee);
+        hooks.setPerformanceFee(newPerformanceFee);
+        assertEq(hooks.performanceFee(), newPerformanceFee);
     }
 
     function test_setPerformanceFee_notAdmin() public {
@@ -262,14 +175,14 @@ contract FeeModuleUnitTest is Test, MainnetActors, Etches, AssertUtils {
         address notAdmin = makeAddr("notAdmin");
         vm.startPrank(notAdmin);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notAdmin));
-        feeModule.setPerformanceFee(newPerformanceFee);
+        hooks.setPerformanceFee(newPerformanceFee);
     }
 
     function test_setPerformanceFee_invalidFee() public {
         uint256 newPerformanceFee = 1e19;
         vm.startPrank(ADMIN);
-        vm.expectRevert(abi.encodeWithSelector(IFeeModule.InvalidPerformanceFee.selector));
-        feeModule.setPerformanceFee(newPerformanceFee);
+        vm.expectRevert(abi.encodeWithSelector(IHooks.InvalidPerformanceFee.selector));
+        hooks.setPerformanceFee(newPerformanceFee);
     }
 
     function convertToShares(uint256 baseAssets, uint256 totalSupply, uint256 totalAssets, Math.Rounding rounding)
