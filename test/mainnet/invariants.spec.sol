@@ -13,6 +13,7 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
+import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 
 contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     using Math for uint256;
@@ -33,25 +34,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         assertEq(vault.baseWithdrawalFee(), 250000, "base withdrawal fee should be correct");
 
         // Process accounting to ensure vault is in sync
-        vault.processAccounting();
-    }
-
-    function allocateToBuffer(uint256 amount) public {
-        address[] memory targets = new address[](2);
-        targets[0] = MC.WETH;
-        targets[1] = vault.buffer();
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
-        data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
-
-        vm.prank(PROCESSOR);
-        vault.processor(targets, values, data);
-
         vault.processAccounting();
     }
 
@@ -205,7 +187,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         assertEq(mintedAssets, assets, "Minted assets should equal the converted assets");
         vm.stopPrank();
 
-        allocateToBuffer(assets);
+        ProcessorUtils.allocateToBuffer(vault, assets, PROCESSOR);
 
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
@@ -234,7 +216,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         assertApproxEqAbs(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
 
         // hypothetically allocated 100% to the buffer
-        allocateToBuffer(assets);
+        ProcessorUtils.allocateToBuffer(vault, assets, PROCESSOR);
 
         // Test the previewRedeem function
         uint256 previewedRedeemAssets = vault.previewRedeem(depositedShares);
@@ -306,7 +288,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         vault.processAccounting();
 
         // hypothetically allocated 100% to the buffer
-        allocateToBuffer(IERC20(baseAsset).balanceOf(address(vault)));
+        ProcessorUtils.allocateToBuffer(vault, IERC20(baseAsset).balanceOf(address(vault)), PROCESSOR);
 
         uint256 sharesWithFee = vault.convertToShares(assets + vault._feeOnRaw(assets));
 

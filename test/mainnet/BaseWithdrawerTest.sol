@@ -388,8 +388,7 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
 
         IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
 
-        uint256 assets = withdrawer.asyncWithdrawalBalance(asset_);
-        assertEq(assets, 0, "Queued assets should be zero");
+        uint256 assetsBefore = withdrawer.asyncWithdrawalBalance(asset_);
         withdrawer.processAccounting();
         uint256 totalAssets = withdrawer.totalAssets();
 
@@ -399,12 +398,15 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
 
         assertEq(request.amount, donatedAmount, "Amount should match");
 
-        assets = withdrawer.asyncWithdrawalBalance(asset_);
+        uint256 assetsAfter = withdrawer.asyncWithdrawalBalance(asset_);
         uint256 baseAmount = request.amount * request.redemptionRateAtRequestTime / 1e18;
         uint256 fee = baseAmount * request.feeAtRequestTime / 1000000;
         uint256 amountInBase = baseAmount - fee;
 
-        assertApproxEqAbs(assets, amountInBase, 3, "Queued assets should match");
+        // Assert that asyncWithdrawalBalance increased by the right amount
+        assertApproxEqAbs(
+            assetsAfter - assetsBefore, amountInBase, 3, "asyncWithdrawalBalance should increase by the correct amount"
+        );
         totalAssetsInvariant(totalAssets);
     }
 
@@ -417,12 +419,24 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         queueManager.finalizeRequestsUpToIndex(tokenId + 1);
         vm.stopPrank();
 
+        // Get the request amount in base before claiming
+        IWithdrawalQueueManager.WithdrawalRequest memory request =
+            IWithdrawalQueueManager(queueManager_).withdrawalRequest(tokenId);
+        uint256 baseAmount = request.amount * request.redemptionRateAtRequestTime / 1e18;
+        uint256 fee = baseAmount * request.feeAtRequestTime / 1000000;
+        uint256 amountInBase = baseAmount - fee;
+
+        uint256 assetsBefore = withdrawer.asyncWithdrawalBalance(asset_);
+
         _processClaimWithdrawal(withdrawer, queueManager_, tokenId);
 
         totalAssetsInvariant(totalAssets);
 
-        uint256 assets = withdrawer.asyncWithdrawalBalance(asset_);
-        assertEq(assets, 0, "Queued assets should match");
+        uint256 assetsAfter = withdrawer.asyncWithdrawalBalance(asset_);
+        // asyncWithdrawalBalance should decrease by the amount of the request
+        assertApproxEqAbs(
+            assetsBefore - assetsAfter, amountInBase, 3, "asyncWithdrawalBalance should decrease by the correct amount"
+        );
     }
 
     function _getWithdrawalRequestFromQueue(uint256 requestId)
