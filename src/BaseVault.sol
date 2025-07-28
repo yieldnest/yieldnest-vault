@@ -19,7 +19,8 @@ import {IStrategy} from "src/interface/IStrategy.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
-import {IFeeModule} from "src/interface/IFeeModule.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {IERC4626} from "src/Common.sol";
 
 /**
  * @title BaseVault
@@ -610,7 +611,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     bytes32 public constant BUFFER_MANAGER_ROLE = keccak256("BUFFER_MANAGER_ROLE");
     bytes32 public constant ASSET_MANAGER_ROLE = keccak256("ASSET_MANAGER_ROLE");
     bytes32 public constant PROCESSOR_MANAGER_ROLE = keccak256("PROCESSOR_MANAGER_ROLE");
-    bytes32 public constant FEE_MODULE_MANAGER_ROLE = keccak256("FEE_MODULE_MANAGER_ROLE");
+    bytes32 public constant HOOKS_MANAGER_ROLE = keccak256("HOOKS_MANAGER_ROLE");
 
     /**
      * @notice Sets the provider.
@@ -780,40 +781,44 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _processAccounting() internal virtual {
+        uint256 exchangeRateBefore = IERC4626(address(this)).convertToAssets(10 ** decimals());
+
         uint256 totalBaseBalance = computeTotalAssets();
 
         _getVaultStorage().totalAssets = totalBaseBalance;
         // solhint-disable-next-line not-rely-on-time
         emit ProcessAccounting(block.timestamp, totalBaseBalance);
 
-        address feeModule_ = feeModule();
-        if (feeModule_ != address(0)) {
-            IFeeModule(feeModule_).chargePerformanceFee();
+        address hooks_ = address(hooks());
+        if (hooks_ != address(0)) {
+            uint256 exchangeRateAfter = IERC4626(address(this)).convertToAssets(10 ** decimals());
+            uint256 totalSupplyBefore = totalSupply();
+            IHooks(hooks_).afterProcessAccounting(exchangeRateBefore, exchangeRateAfter, totalSupplyBefore);
         }
     }
 
-    function mintPerformanceFeeShares(address recipient, uint256 shares) external {
-        address feeModule_ = feeModule();
+    function mintShares(address recipient, uint256 shares) external {
+        address hooks_ = address(hooks());
 
-        if (msg.sender != feeModule_) {
-            revert CallerNotFeeModule();
+        if (msg.sender != address(hooks_)) {
+            revert CallerNotHooks();
         }
 
         _mint(recipient, shares);
     }
 
-    function setFeeModule(address feeModule_) external onlyRole(FEE_MODULE_MANAGER_ROLE) {
-        _setFeeModule(feeModule_);
+    function setHooks(address hooks_) external onlyRole(HOOKS_MANAGER_ROLE) {
+        _setHooks(hooks_);
     }
 
-    function _setFeeModule(address feeModule_) internal virtual {
+    function _setHooks(address hooks_) internal virtual {
         FeeStorage storage feesStorage = _getFeeStorage();
-        emit SetFeeModule(feesStorage.feeModule, feeModule_);
-        feesStorage.feeModule = feeModule_;
+        emit SetHooks(address(feesStorage.hooks), hooks_);
+        feesStorage.hooks = IHooks(hooks_);
     }
 
-    function feeModule() public view returns (address) {
-        return _getFeeStorage().feeModule;
+    function hooks() public view returns (IHooks) {
+        return _getFeeStorage().hooks;
     }
 
     /**

@@ -14,7 +14,7 @@ import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {FeeModule} from "src/FeeModule.sol";
+import {Hooks} from "src/Hooks.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
     function setup() public virtual returns (Vault vault, WETH9 weth) {
@@ -31,14 +31,14 @@ contract SetupVault is Test, Etches, MainnetActors {
         // Initialize the vault
         vault.initialize(ADMIN, name, symbol, 18, 0, true, false, 0);
 
-        FeeModule feeModule = new FeeModule(address(vaultProxy));
-        TUProxy feeModuleProxy = new TUProxy(address(feeModule), ADMIN, "");
-        feeModule = FeeModule(payable(address(feeModuleProxy)));
+        Hooks hooks = new Hooks(address(vaultProxy));
+        TUProxy hooksProxy = new TUProxy(address(hooks), ADMIN, "");
+        hooks = Hooks(payable(address(hooksProxy)));
 
         weth = WETH9(payable(MC.WETH));
 
         if (block.chainid == 31337) {
-            configureLocal(vault, feeModule);
+            configureLocal(vault, hooks);
         }
 
         if (block.chainid == 1) {
@@ -46,7 +46,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         }
     }
 
-    function configureLocal(Vault vault, FeeModule feeModule) internal virtual {
+    function configureLocal(Vault vault, Hooks hooks) internal virtual {
         // etch to mock the mainnet contracts
         mockAll();
 
@@ -60,7 +60,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
         vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
-        vault.grantRole(vault.FEE_MODULE_MANAGER_ROLE(), FEE_MODULE_MANAGER);
+        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), HOOKS_MANAGER);
 
         // test cannot unpause vault withtout buffer
         vm.expectRevert();
@@ -76,7 +76,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(MC.WBTC, true);
         vault.addAsset(MC.METH, true);
 
-        feeModule.initialize(ADMIN, 1e17, FEE_MANAGER);
+        hooks.initialize(ADMIN, 1e17, FEE_MANAGER);
 
         // configure processor rules
         setDepositRule(vault, MC.BUFFER, address(vault));
@@ -100,8 +100,8 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.unpause();
         vm.stopPrank();
 
-        vm.startPrank(FEE_MODULE_MANAGER);
-        vault.setFeeModule(address(feeModule));
+        vm.startPrank(HOOKS_MANAGER);
+        vault.setHooks(address(hooks));
         vm.stopPrank();
     }
 

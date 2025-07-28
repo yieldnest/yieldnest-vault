@@ -4,15 +4,14 @@ pragma solidity ^0.8.24;
 import {OwnableUpgradeable, IERC4626, ERC20} from "src/Common.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {YnETHx} from "src/YnETHx.sol";
-import {IFeeModule} from "src/interface/IFeeModule.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
-contract FeeModule is OwnableUpgradeable, IFeeModule {
+contract Hooks is OwnableUpgradeable, IHooks {
     // performance denominated in ether(i.e. 1e18 = 100%)
     uint256 public performanceFee;
     address public performanceFeeRecipient;
     IVault public immutable VAULT;
     uint256 public immutable VAULT_DECIMALS;
-    uint256 public maximumAccountedExchangeRate;
 
     constructor(address vault_) {
         VAULT = IVault(payable(vault_));
@@ -27,29 +26,24 @@ contract FeeModule is OwnableUpgradeable, IFeeModule {
         if (performanceFee_ > 1 ether) revert InvalidPerformanceFee();
         performanceFee = performanceFee_;
         performanceFeeRecipient = performanceFeeRecipient_;
-        maximumAccountedExchangeRate = IERC4626(address(VAULT)).convertToAssets(10 ** VAULT_DECIMALS);
     }
 
-    function chargePerformanceFee() external {
+    function afterProcessAccounting(uint256 exchangeRateBefore, uint256 exchangeRateAfter, uint256 totalSupplyBefore)
+        external
+    {
         if (msg.sender != address(VAULT)) revert CallerNotVault();
 
-        uint256 exchangeRateBeforeFee = IERC4626(address(VAULT)).convertToAssets(10 ** VAULT_DECIMALS);
-
-        if (exchangeRateBeforeFee > maximumAccountedExchangeRate) {
-            uint256 totalSupplyBeforeFee = IERC4626(address(VAULT)).totalSupply();
-            uint256 yieldEarned =
-                (exchangeRateBeforeFee - maximumAccountedExchangeRate) * totalSupplyBeforeFee / (10 ** VAULT_DECIMALS);
+        if (exchangeRateAfter > exchangeRateBefore) {
+            uint256 yieldEarned = (exchangeRateAfter - exchangeRateBefore) * totalSupplyBefore / (10 ** VAULT_DECIMALS);
+            // dividing by 1 ether because performanceFee is denominated in ether(i.e. 1e18 = 100%)
             uint256 feesAccrued = (yieldEarned * performanceFee) / 1 ether;
 
-            if (performanceFeeRecipient != address(0)) {
+            if (performanceFeeRecipient != address(0) && feesAccrued > 0) {
                 uint256 sharesToMint = IERC4626(address(VAULT)).previewDeposit(feesAccrued);
-                VAULT.mintPerformanceFeeShares(performanceFeeRecipient, sharesToMint);
-                emit PerformanceFeeCharged(performanceFeeRecipient, sharesToMint, feesAccrued);
-            }
-
-            uint256 exchangeRateAfterFee = IERC4626(address(VAULT)).convertToAssets(10 ** VAULT_DECIMALS);
-            if (exchangeRateAfterFee > maximumAccountedExchangeRate) {
-                maximumAccountedExchangeRate = exchangeRateAfterFee;
+                if (sharesToMint > 0) {
+                    VAULT.mintShares(performanceFeeRecipient, sharesToMint);
+                    emit PerformanceFeeCharged(performanceFeeRecipient, sharesToMint, feesAccrued);
+                }
             }
         }
     }

@@ -12,9 +12,10 @@ import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {console} from "lib/forge-std/src/console.sol";
-import {FeeModule} from "src/FeeModule.sol";
+import {Hooks} from "src/Hooks.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {Math} from "src/Common.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
     using Math for uint256;
@@ -315,8 +316,8 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         IERC20(steth).transfer(address(vault), aliceStEthDepositAmount2);
         uint256 performanceFeeShares;
         {
-            address feeModule = vault.feeModule();
-            uint256 performanceFee = FeeModule(feeModule).performanceFee();
+            address hooks = address(vault.hooks());
+            uint256 performanceFee = Hooks(hooks).performanceFee();
             uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
             uint256 totalBaseAssets = vault.computeTotalAssets();
 
@@ -332,7 +333,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
             1e12,
             "vault total supply should be equal to vault total supply before plus performance fee shares"
         );
-        address performanceFeeRecipient = FeeModule(vault.feeModule()).performanceFeeRecipient();
+        address performanceFeeRecipient = IHooks(vault.hooks()).performanceFeeRecipient();
         assertEqThreshold(
             vault.balanceOf(performanceFeeRecipient),
             performanceFeeShares,
@@ -395,8 +396,8 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         expectedTotalAssets += (methAmount * methRate) / (10 ** 18);
         yieldEarned += (methAmount * methRate) / (10 ** 18);
 
-        address feeModule = vault.feeModule();
-        uint256 performanceFee = FeeModule(feeModule).performanceFee();
+        address hooks = address(vault.hooks());
+        uint256 performanceFee = Hooks(hooks).performanceFee();
         uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
         uint256 totalBaseAssets = vault.computeTotalAssets();
         (uint256 performanceFeeShares,) =
@@ -411,7 +412,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
                 1e12,
                 "vault total supply should be equal to vault total supply before plus performance fee shares"
             );
-            address performanceFeeRecipient = FeeModule(vault.feeModule()).performanceFeeRecipient();
+            address performanceFeeRecipient = Hooks(address(hooks)).performanceFeeRecipient();
             assertEqThreshold(
                 vault.balanceOf(performanceFeeRecipient),
                 performanceFeeShares,
@@ -428,15 +429,15 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         );
     }
 
-    function test_mintPerformanceFee_OnlyCallableByFeeModule() public {
-        address feeModule = vault.feeModule();
+    function test_mintPerformanceFee_OnlyCallableByHooks() public {
+        address hooks = address(vault.hooks());
         vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVault.CallerNotFeeModule.selector));
-        vault.mintPerformanceFeeShares(alice, 1);
+        vm.expectRevert(abi.encodeWithSelector(IVault.CallerNotHooks.selector));
+        vault.mintShares(alice, 1);
         vm.stopPrank();
 
-        vm.startPrank(feeModule);
-        vault.mintPerformanceFeeShares(alice, 1);
+        vm.startPrank(hooks);
+        vault.mintShares(alice, 1);
         vm.stopPrank();
 
         assertEq(vault.balanceOf(alice), 1);
