@@ -56,6 +56,10 @@ contract Vault is BaseVault {
         _setBaseWithdrawalFee(baseWithdrawalFee_);
     }
 
+    function initializeV2(address hooks_) external reinitializer(2) {
+        _setHooks(hooks_);
+    }
+
     //// FEES ////
 
     /**

@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {OwnableUpgradeable, IERC4626, ERC20} from "src/Common.sol";
 import {IVault} from "src/interface/IVault.sol";
-import {YnETHx} from "src/YnETHx.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
 contract Hooks is OwnableUpgradeable, IHooks {
@@ -28,21 +27,30 @@ contract Hooks is OwnableUpgradeable, IHooks {
         performanceFeeRecipient = performanceFeeRecipient_;
     }
 
-    function afterProcessAccounting(uint256 exchangeRateBefore, uint256 exchangeRateAfter, uint256 totalSupplyBefore)
-        external
-    {
+    function afterProcessAccounting(
+        uint256 totalBaseAssetsBefore,
+        uint256 totalBaseAssetsAfter,
+        uint256 totalSupplyBefore
+    ) external {
         if (msg.sender != address(VAULT)) revert CallerNotVault();
 
-        if (exchangeRateAfter > exchangeRateBefore) {
-            uint256 yieldEarned = (exchangeRateAfter - exchangeRateBefore) * totalSupplyBefore / (10 ** VAULT_DECIMALS);
+        if (totalBaseAssetsAfter > totalBaseAssetsBefore) {
+            uint256 yieldEarned = totalBaseAssetsAfter - totalBaseAssetsBefore;
             // dividing by 1 ether because performanceFee is denominated in ether(i.e. 1e18 = 100%)
             uint256 feesAccrued = (yieldEarned * performanceFee) / 1 ether;
 
-            if (performanceFeeRecipient != address(0) && feesAccrued > 0) {
-                uint256 sharesToMint = IERC4626(address(VAULT)).previewDeposit(feesAccrued);
+            if (feesAccrued > 0) {
+                uint256 sharesToMint = VAULT.previewDeposit(feesAccrued);
                 if (sharesToMint > 0) {
                     VAULT.mintShares(performanceFeeRecipient, sharesToMint);
-                    emit PerformanceFeeCharged(performanceFeeRecipient, sharesToMint, feesAccrued);
+                    emit PerformanceFeeCharged(
+                        performanceFeeRecipient,
+                        sharesToMint,
+                        feesAccrued,
+                        totalBaseAssetsBefore,
+                        totalBaseAssetsAfter,
+                        totalSupplyBefore
+                    );
                 }
             }
         }
