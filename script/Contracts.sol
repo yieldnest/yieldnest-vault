@@ -34,10 +34,10 @@ library MainnetContracts {
 
     address public constant WRAPPED_USDC = 0xdA7d2025c7f1f1A1d34AB3F4dF01102d0428E574;
 
-    address public constant YNUSDx = 0x3DB228FE836D99Ccb25Ec4dfdC80ED6d2CDdCB4b; 
+    address public constant YNUSDx = 0x3DB228FE836D99Ccb25Ec4dfdC80ED6d2CDdCB4b;
 
-    address public constant PROVIDER = 0x084c2159eC1612A82b16711cC45A003EA162EC85; 
-    address public constant BUFFER = 0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458; 
+    address public constant PROVIDER = 0x084c2159eC1612A82b16711cC45A003EA162EC85;
+    address public constant BUFFER = 0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458;
 
     address public constant PARASWAP_AUGUSTUS_SWAPPER_ROUTER = 0x6A000F20005980200259B80c5102003040001068;
 
