@@ -5,7 +5,14 @@ interface IHooks {
     error InvalidPerformanceFee();
     error CallerNotVault();
 
-    event PerformanceFeeCharged(address indexed recipient, uint256 sharesMinted, uint256 performanceFeeAmount);
+    event PerformanceFeeCharged(
+        address indexed recipient,
+        uint256 sharesMinted,
+        uint256 performanceFeeAmount,
+        uint256 totalBaseAssetsBefore,
+        uint256 totalBaseAssetsAfter,
+        uint256 totalSupplyBefore
+    );
     event SetPerformanceFee(uint256 oldFee, uint256 newFee);
     event SetPerformanceFeeRecipient(address indexed oldRecipient, address indexed newRecipient);
 

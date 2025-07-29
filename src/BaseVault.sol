@@ -781,19 +781,17 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _processAccounting() internal virtual {
-        uint256 exchangeRateBefore = IERC4626(address(this)).convertToAssets(10 ** decimals());
+        uint256 totalBaseBalanceBefore = _getVaultStorage().totalAssets;
 
-        uint256 totalBaseBalance = computeTotalAssets();
+        uint256 totalBaseBalanceAfter = computeTotalAssets();
 
-        _getVaultStorage().totalAssets = totalBaseBalance;
+        _getVaultStorage().totalAssets = totalBaseBalanceAfter;
         // solhint-disable-next-line not-rely-on-time
-        emit ProcessAccounting(block.timestamp, totalBaseBalance);
+        emit ProcessAccounting(block.timestamp, totalBaseBalanceAfter);
 
-        address hooks_ = address(hooks());
-        if (hooks_ != address(0)) {
-            uint256 exchangeRateAfter = IERC4626(address(this)).convertToAssets(10 ** decimals());
-            uint256 totalSupplyBefore = totalSupply();
-            IHooks(hooks_).afterProcessAccounting(exchangeRateBefore, exchangeRateAfter, totalSupplyBefore);
+        IHooks hooks_ = hooks();
+        if (address(hooks_) != address(0)) {
+            hooks_.afterProcessAccounting(totalBaseBalanceBefore, totalBaseBalanceAfter, totalSupply());
         }
     }
 
