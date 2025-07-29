@@ -27,10 +27,15 @@ contract SuperUSDCTest is BaseTest {
     }
 
     function test_deposit_fxsave() public {
-        uint256 depositAmount = 1e6;
+        uint256 depositAmount = 10_000_000e6;
 
         address alice = makeAddr("alice");
         deal(MC.USDC, alice, depositAmount);
+
+        uint256 presumedSharesAmount = depositAmount * 1e12;
+        uint256 presumedFxBaseAssets = IERC4626(MC.FXBASE).previewRedeem(presumedSharesAmount);
+        console.log("presumedSharesAmount", presumedSharesAmount);
+        console.log("presumedFxBaseAssets", presumedFxBaseAssets);
 
         // Step 1: Deposit USDC into fxBASE using the interface
         vm.startPrank(alice);
@@ -44,11 +49,33 @@ contract SuperUSDCTest is BaseTest {
             0 // minSharesOut
         );
 
+        console.log("presumedFxAssets in between ", IERC4626(MC.FXBASE).previewRedeem(presumedSharesAmount));
+
         // Step 2: Deposit fxBASE shares into fxSAVE (as ERC4626)
         uint256 fxBaseBalance = IERC20(MC.FXBASE).balanceOf(alice);
         IERC20(MC.FXBASE).approve(MC.FXSAVE, fxBaseBalance);
         IERC4626(MC.FXSAVE).deposit(fxBaseBalance, alice);
 
         vm.stopPrank();
+
+        {
+            // Measure alice's balance in fxSAVE (shares)
+            uint256 fxSaveShares = IERC20(MC.FXSAVE).balanceOf(alice);
+
+            console.log("fxSaveShares", fxSaveShares);
+
+            // Convert shares to USDC value using convertToAssets
+            uint256 fxBaseAssets = IERC4626(MC.FXSAVE).convertToAssets(fxSaveShares);
+            console.log("fxBaseAssets", fxBaseAssets);
+
+            uint256 fxBaseAssetsInUSDC = fxBaseAssets * IFxUSDBasePool(MC.FXBASE).nav() / 1e18;
+
+            console.log("fxBaseAssetsInUSDC", fxBaseAssetsInUSDC);
+
+            uint256 previewRedeem = IERC4626(MC.FXBASE).previewRedeem(fxBaseAssets);
+            console.log("previewRedeem", previewRedeem);
+
+            console.log("presumedFxAssets After ", IERC4626(MC.FXBASE).previewRedeem(presumedSharesAmount));
+        }
     }
 }
