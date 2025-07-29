@@ -31,8 +31,8 @@ contract BaseTest is Test, MainnetActors, TestHelper {
     WrappedToken public wrappedUSDC;
 
     function deploy() public returns (Vault, Provider) {
-        Vault vault = Vault(payable(0x3DB228FE836D99Ccb25Ec4dfdC80ED6d2CDdCB4b));
-        Provider provider = Provider(0x084c2159eC1612A82b16711cC45A003EA162EC85);
+        Vault vault = Vault(payable(MC.YNUSDx));
+        Provider provider = Provider(MC.PROVIDER);
         wrappedUSDC = WrappedToken(MC.WRAPPED_USDC);
 
         TestHelper._initVault(vault);

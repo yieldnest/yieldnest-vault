@@ -21,7 +21,7 @@ contract SwapTest is BaseTest {
 
     function setUp() public {
         (vault, provider) = BaseTest.deploy();
-        bufferStrategy = MC.MORPHO_GAUNTLET_USDC_VAULT;
+        bufferStrategy = vault.buffer();
         vault.processAccounting();
     }
 
