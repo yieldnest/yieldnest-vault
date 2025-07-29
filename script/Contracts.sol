@@ -42,6 +42,12 @@ library MainnetContracts {
     address public constant MORPHO_GAUNTLET_USDC_VAULT = address(0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458);
 
     address public constant SUPER_USDC_VAULT = 0xF7DE3c70F2db39a188A81052d2f3C8e3e217822a;
+
+    address public constant FXUSD_BASE_POOL_FACET = 0x33636D49FbefBE798e15e7F356E8DBef543CC708;
+
+    address public constant FXSAVE = 0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39;
+
+    address public constant FXBASE = 0x65C9A641afCEB9C0E6034e558A319488FA0FA3be;
 }
 
 contract L1Contracts is IContracts {
