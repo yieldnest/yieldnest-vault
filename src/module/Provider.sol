@@ -5,6 +5,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IVault} from "src/interface/IVault.sol";
+import {IFxUSDBasePool} from "src/interface/IFxUSDBasePool.sol";
 
 interface IBaseStrategy {
     function STRATEGY_VERSION() external view returns (string memory);
@@ -80,6 +81,17 @@ contract Provider is IProvider {
         // 1 unit of FRAX with 18 decimals is equal to 1 unit of Wrapped USDC with 18 decimals
         if (asset == MC.FRAX) {
             return 1e18;
+        }
+
+        if (asset == MC.FXUSD) {
+            return 1e18;
+        }
+
+        if (asset == MC.FXBASE) {
+            // For FXBASE, previewRedeem(1e18) returns how much fxUSD (18 decimals) and USDC (6 decimals) you get for 1 share.
+            // We convert both to Wrapped USDC value and sum them.
+            (uint256 amountYieldOut, uint256 amountStableOut) = IFxUSDBasePool(MC.FXBASE).previewRedeem(1e18);
+            return amountYieldOut * getRate(MC.FXUSD) / 1e18 + amountStableOut * getRate(MC.USDC) / 1e6;
         }
 
         // base asset of SFRAX, SUSDE, SUSDS, SCRVUSD is FRAX, USDE, USDS, CRVUSD respectively with 18 decimals.

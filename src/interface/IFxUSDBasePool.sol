@@ -4,6 +4,13 @@ pragma solidity ^0.8.20;
 /// @title IFxUSDBasePool
 /// @notice Interface for the FxUSD Base Pool contract.
 interface IFxUSDBasePool {
+    struct RedeemRequest {
+        uint128 amount;
+        uint128 unlockAt;
+    }
+
+    function redeemRequests(address owner) external view returns (RedeemRequest memory);
+
     /// @notice Returns the total amount of yield token in the pool.
     function totalYieldToken() external view returns (uint256);
 

@@ -38,6 +38,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         TestHelper._initVault(vault);
 
         configureMainnet(vault);
+
         return (vault, provider);
     }
 
