@@ -51,6 +51,9 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
 
     function test_withdraw_allExisting_ynLSDe() public {
         uint256 ynLSDeBalance = IERC20(MC.YNLSDE).balanceOf(address(vault));
+        if (ynLSDeBalance == 0) {
+            vm.skip(true);
+        }
         {
             address[] memory targets = new address[](2);
             uint256[] memory values = new uint256[](2);

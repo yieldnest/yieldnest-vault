@@ -781,7 +781,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _processAccounting() internal virtual {
-        uint256 totalBaseBalanceBefore = _getVaultStorage().totalAssets;
+        uint256 totalAssetsBefore = totalAssets();
 
         uint256 totalBaseBalanceAfter = computeTotalAssets();
 
@@ -791,7 +791,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
         IHooks hooks_ = hooks();
         if (address(hooks_) != address(0)) {
-            hooks_.afterProcessAccounting(totalBaseBalanceBefore, totalBaseBalanceAfter, totalSupply());
+            uint256 totalAssetsAfter = totalAssets();
+            hooks_.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter);
         }
     }
 

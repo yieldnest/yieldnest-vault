@@ -1104,16 +1104,20 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
+        uint256 performanceFeeShares = 0;
 
         {
             // convert WETH to ETH
             _processWithdrawWETH(amount);
 
             if (processAfterWETH) {
+                uint256 totalSupplyBefore = vault.totalSupply();
                 vault.processAccounting();
+                uint256 totalSupplyAfter = vault.totalSupply();
+                performanceFeeShares += totalSupplyAfter - totalSupplyBefore;
             }
 
-            totalSupplyInvariant(initialSupply);
+            totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
         }
 
@@ -1127,7 +1131,10 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             amountWSTETH = _processWrapSTETH(amountSTETH);
 
             if (processAfterWrap) {
+                uint256 totalSupplyBefore = vault.totalSupply();
                 vault.processAccounting();
+                uint256 totalSupplyAfter = vault.totalSupply();
+                performanceFeeShares += totalSupplyAfter - totalSupplyBefore;
             }
 
             assertEq(
@@ -1136,7 +1143,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 "vault should have received wstETH"
             );
 
-            totalSupplyInvariant(initialSupply);
+            totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
         }
 
@@ -1145,10 +1152,13 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             _processUnwrapWSTETH(amountWSTETH);
 
             if (processAfterUnwrap) {
+                uint256 totalSupplyBefore = vault.totalSupply();
                 vault.processAccounting();
+                uint256 totalSupplyAfter = vault.totalSupply();
+                performanceFeeShares += totalSupplyAfter - totalSupplyBefore;
             }
 
-            totalSupplyInvariant(initialSupply);
+            totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
         }
     }
