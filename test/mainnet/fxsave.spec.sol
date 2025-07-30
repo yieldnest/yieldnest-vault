@@ -93,10 +93,9 @@ contract SuperUSDCTest is BaseTest {
 
         vm.stopPrank();
 
+        // Measure alice's balance in fxSAVE (shares)
+        uint256 fxSaveShares = IERC20(MC.FXSAVE).balanceOf(alice);
         {
-            // Measure alice's balance in fxSAVE (shares)
-            uint256 fxSaveShares = IERC20(MC.FXSAVE).balanceOf(alice);
-
             console.log("fxSaveShares", fxSaveShares);
 
             // Convert shares to USDC value using convertToAssets
@@ -113,6 +112,27 @@ contract SuperUSDCTest is BaseTest {
                 fxBase.previewRedeem(presumedSharesAmount);
             console.log("presumedFxAssets After (yield)", presumedFxBaseYieldAfter);
             console.log("presumedFxAssets After (stable)", presumedFxBaseStableAfter);
+        }
+
+        {
+            vm.startPrank(alice);
+
+            IERC4626(MC.FXSAVE).redeem(fxSaveShares, alice, alice);
+
+            console.log("fxBase.balanceOf(alice)", fxBase.balanceOf(alice));
+
+            uint256 sharesToRedeem = fxBase.balanceOf(alice);
+
+            fxBase.requestRedeem(sharesToRedeem);
+
+            IFxUSDBasePool.RedeemRequest memory redeemRequest = fxBase.redeemRequests(alice);
+
+            // skip time to unlockAt
+            vm.warp(redeemRequest.unlockAt + 1);
+
+            fxBase.redeem(alice, sharesToRedeem);
+
+            vm.stopPrank();
         }
     }
 }

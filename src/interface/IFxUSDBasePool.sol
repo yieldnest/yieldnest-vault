@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {IERC20} from "src/Common.sol";
+
 /// @title IFxUSDBasePool
 /// @notice Interface for the FxUSD Base Pool contract.
-interface IFxUSDBasePool {
+interface IFxUSDBasePool is IERC20 {
     struct RedeemRequest {
         uint128 amount;
         uint128 unlockAt;
