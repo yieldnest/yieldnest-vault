@@ -22,6 +22,7 @@ import {FxProtocolRules} from "script/rules/FxProtocolRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {console} from "lib/forge-std/src/console.sol";
+import {WithdrawerConfigurator} from "src/config/WithdrawerConfigurator.sol";
 
 contract BaseTest is Test, MainnetActors, TestHelper {
     struct PsPResponse {
@@ -50,7 +51,11 @@ contract BaseTest is Test, MainnetActors, TestHelper {
     }
 
     function configureFXSave(Vault vault) internal {
+        Provider provider = new Provider(MC.WRAPPED_USDC);
+
         vm.startPrank(TIMELOCK);
+
+        vault.setProvider(address(provider));
         vault.addAsset(MC.FXBASE, false);
         vault.addAsset(MC.FXUSD, false);
         vault.addAsset(MC.FXSAVE, false);
@@ -60,6 +65,9 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         address withdrawerImpl = address(new Withdrawer());
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(withdrawerImpl, TIMELOCK, "");
         withdrawer = Withdrawer(payable(address(proxy)));
+
+        WithdrawerConfigurator configurator = new WithdrawerConfigurator();
+        configurator.configure(withdrawer, address(provider), TIMELOCK, new MainnetActors());
 
         vault.processAccounting();
     }

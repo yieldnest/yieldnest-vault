@@ -42,4 +42,50 @@ library FxProtocolRules {
 
         return rules;
     }
+
+    function getFxUSDSavePoolRequestRedeemRule(address fxUSDSavePool)
+        internal
+        pure
+        returns (SafeRules.RuleParams memory)
+    {
+        // requestRedeem(uint256 shares)
+        bytes4 funcSig = bytes4(keccak256("requestRedeem(uint256)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](1);
+
+        // shares param: any uint256
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+
+        return SafeRules.RuleParams({contractAddress: fxUSDSavePool, funcSig: funcSig, rule: rule});
+    }
+
+    function getFxUSDSavePoolRedeemRule(address fxUSDSavePool, address receiver)
+        internal
+        pure
+        returns (SafeRules.RuleParams memory)
+    {
+        // redeem(address receiver, uint256 shares)
+        bytes4 funcSig = bytes4(keccak256("redeem(address,uint256)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        // receiver param: must be the provided receiver
+        address[] memory receiverAllowList = new address[](1);
+        receiverAllowList[0] = receiver;
+        paramRules[0] =
+            IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: receiverAllowList});
+
+        // shares param: any uint256
+        paramRules[1] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+
+        return SafeRules.RuleParams({contractAddress: fxUSDSavePool, funcSig: funcSig, rule: rule});
+    }
 }

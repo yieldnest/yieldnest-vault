@@ -8,6 +8,7 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IActors} from "script/Actors.sol";
+import {FxProtocolRules} from "script/rules/FxProtocolRules.sol";
 
 library WithdrawerConfig {
     error InvalidRules();
@@ -21,7 +22,7 @@ library WithdrawerConfig {
             // initialize
             string memory name = "ynUSDx Withdrawer";
             string memory symbol = WITHDRAWER_SYMBOL;
-            uint8 decimals_ = 6;
+            uint8 decimals_ = 18;
             bool countNativeAsset_ = false;
             bool alwaysComputeTotalAssets_ = false;
             uint256 defaultAssetIndex_ = 1;
@@ -53,8 +54,11 @@ library WithdrawerConfig {
         }
 
         // Rules for ynUSDx Withdrawer
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](1);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](2);
         uint256 ruleIndex = 0;
+
+        rules[ruleIndex++] = FxProtocolRules.getFxUSDSavePoolRequestRedeemRule(MC.FXSAVE);
+        rules[ruleIndex++] = FxProtocolRules.getFxUSDSavePoolRedeemRule(MC.FXSAVE, address(vault));
 
         if (ruleIndex != rules.length) {
             revert InvalidRules();
