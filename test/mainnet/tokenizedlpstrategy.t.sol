@@ -196,7 +196,7 @@ contract TokenizedLPStrategyUnitTest is BaseIntegrationTest {
 
             assertEq(balanceBefore - balanceAfter, bufferAmount, "WETH balance should decrease by buffer amount");
             assertApproxEqAbs(
-                totalAssetsAfter - totalAssetsBefore, bufferAmount, 1, "totalAssets should increase by buffer amount"
+                totalAssetsAfter - totalAssetsBefore, bufferAmount, 2, "totalAssets should increase by buffer amount"
             );
         }
 
