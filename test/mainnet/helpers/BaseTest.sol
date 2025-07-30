@@ -18,6 +18,9 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {ParaswapRules} from "script/rules/ParaswapRules.sol";
 import {SuperUsdcRules} from "script/rules/SuperUsdcRules.sol";
+import {FxProtocolRules} from "script/rules/FxProtocolRules.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
 contract BaseTest is Test, MainnetActors, TestHelper {
@@ -30,6 +33,8 @@ contract BaseTest is Test, MainnetActors, TestHelper {
     uint256 public constant SLIPPAGE_PRECISION = 10000; // 10000 = 100%
     WrappedToken public wrappedUSDC;
 
+    Withdrawer public withdrawer;
+
     function deploy() public returns (Vault, Provider) {
         Vault vault = Vault(payable(MC.YNUSDx));
         Provider provider = Provider(vault.provider());
@@ -39,7 +44,24 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         configureMainnet(vault);
 
+        configureFXSave(vault);
+
         return (vault, provider);
+    }
+
+    function configureFXSave(Vault vault) internal {
+        vm.startPrank(TIMELOCK);
+        vault.addAsset(MC.FXBASE, false);
+        vault.addAsset(MC.FXUSD, false);
+        vault.addAsset(MC.FXSAVE, false);
+        vm.stopPrank();
+
+        // Deploy Withdrawer as an upgradeable proxy
+        address withdrawerImpl = address(new Withdrawer());
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(withdrawerImpl, TIMELOCK, "");
+        withdrawer = Withdrawer(payable(address(proxy)));
+
+        vault.processAccounting();
     }
 
     function configureMainnet(Vault vault) internal {
