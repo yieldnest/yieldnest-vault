@@ -15,7 +15,6 @@ import {ProxyUtils} from "script/ProxyUtils.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IProvider} from "src/interface/IProvider.sol";
-import {YnETHx} from "src/YnETHx.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     // Implementation addresses
@@ -28,7 +27,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
 
     function upgradeVaultAndWithdrawer() internal {
         {
-            vaultImplementation = Vault(payable(new YnETHx()));
+            vaultImplementation = Vault(payable(new Vault()));
             UpgradeUtils.timelockUpgrade(
                 TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(vaultImplementation)
             );

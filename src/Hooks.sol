@@ -27,15 +27,11 @@ contract Hooks is OwnableUpgradeable, IHooks {
         performanceFeeRecipient = performanceFeeRecipient_;
     }
 
-    function afterProcessAccounting(
-        uint256 totalBaseAssetsBefore,
-        uint256 totalBaseAssetsAfter,
-        uint256 totalSupplyBefore
-    ) external {
+    function afterProcessAccounting(uint256 totalAssetsBefore, uint256 totalAssetsAfter) external {
         if (msg.sender != address(VAULT)) revert CallerNotVault();
 
-        if (totalBaseAssetsAfter > totalBaseAssetsBefore) {
-            uint256 yieldEarned = totalBaseAssetsAfter - totalBaseAssetsBefore;
+        if (totalAssetsAfter > totalAssetsBefore) {
+            uint256 yieldEarned = totalAssetsAfter - totalAssetsBefore;
             // dividing by 1 ether because performanceFee is denominated in ether(i.e. 1e18 = 100%)
             uint256 feesAccrued = (yieldEarned * performanceFee) / 1 ether;
 
@@ -44,12 +40,7 @@ contract Hooks is OwnableUpgradeable, IHooks {
                 if (sharesToMint > 0) {
                     VAULT.mintShares(performanceFeeRecipient, sharesToMint);
                     emit PerformanceFeeCharged(
-                        performanceFeeRecipient,
-                        sharesToMint,
-                        feesAccrued,
-                        totalBaseAssetsBefore,
-                        totalBaseAssetsAfter,
-                        totalSupplyBefore
+                        performanceFeeRecipient, sharesToMint, feesAccrued, totalAssetsBefore, totalAssetsAfter
                     );
                 }
             }

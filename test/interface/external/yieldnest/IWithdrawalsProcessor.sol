@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 interface IWithdrawalsProcessor {
-
     struct QueuedWithdrawal {
         address node;
         address strategy;
@@ -42,17 +41,13 @@ interface IWithdrawalsProcessor {
     function totalQueuedWithdrawals() external view returns (uint256);
     function getTotalQueuedWithdrawals() external view returns (uint256);
     function minPendingWithdrawalRequestAmount() external view returns (uint256);
-    function batch(
-        uint256 _fromId
-    ) external view returns (uint256 _toId);
+    function batch(uint256 _fromId) external view returns (uint256 _toId);
 
     //
     // view functions
     //
     function ids() external view returns (IDs memory);
-    function queuedWithdrawals(
-        uint256 _id
-    ) external view returns (QueuedWithdrawal memory);
+    function queuedWithdrawals(uint256 _id) external view returns (QueuedWithdrawal memory);
     function shouldQueueWithdrawals() external view returns (bool);
     function shouldCompleteQueuedWithdrawals() external view returns (bool);
     function shouldProcessPrincipalWithdrawals() external returns (bool);
@@ -69,9 +64,7 @@ interface IWithdrawalsProcessor {
     //
     // management functions
     //
-    function updateMinPendingWithdrawalRequestAmount(
-        uint256 _minPendingWithdrawalRequestAmount
-    ) external;
+    function updateMinPendingWithdrawalRequestAmount(uint256 _minPendingWithdrawalRequestAmount) external;
 
     //
     // Errors

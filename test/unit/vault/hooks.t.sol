@@ -22,6 +22,7 @@ import {Math} from "src/Common.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
@@ -56,7 +57,114 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         weth.approve(address(vault), type(uint256).max);
     }
 
-    function test_ChargePerformanceFee_MultipleDeposits(
+    function test_AfterProcessAccounting_Invariants(uint256 totalAssetsBefore, uint256 totalAssetsAfter) public {
+        totalAssetsBefore = bound(totalAssetsBefore, 1 ether, 1_000_000_000 ether);
+        totalAssetsAfter = bound(totalAssetsAfter, totalAssetsBefore + 1 ether, 1_000_000_001 ether);
+
+        assertEq(vault.decimals(), 18);
+        address vaultAsset = vault.asset();
+        uint256 vaultAssetDecimals = ERC20(vaultAsset).decimals();
+        assertEq(vaultAssetDecimals, 18);
+        address user1 = makeAddr("user1");
+
+        uint256 donationAmount = totalAssetsAfter - totalAssetsBefore;
+        deal((MC.WETH), user1, totalAssetsBefore + donationAmount);
+
+        vm.startPrank(user1);
+        IERC20(MC.WETH).approve(address(vault), totalAssetsBefore);
+        vault.deposit(totalAssetsBefore, user1);
+        vault.processAccounting();
+
+        IERC20(MC.WETH).transfer(address(vault), donationAmount);
+        vm.stopPrank();
+
+        vm.startPrank(address(vault));
+        uint256 vaultTotalSupplyBefore = vault.totalSupply();
+        uint256 vaultExchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
+        uint256 feesAccrued = (donationAmount * hooks.performanceFee()) / 1 ether;
+
+        if (feesAccrued > 0) {
+            vm.expectEmit(true, true, false, false, address(hooks));
+            emit IHooks.PerformanceFeeCharged(
+                hooks.performanceFeeRecipient(), 0, feesAccrued, totalAssetsBefore, totalAssetsAfter
+            );
+        }
+        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter);
+        vm.stopPrank();
+        vault.processAccounting();
+
+        uint256 vaultTotalSupplyAfter = vault.totalSupply();
+        uint256 vaultExchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
+
+        if (feesAccrued > 0) {
+            assertGt(
+                vaultTotalSupplyAfter,
+                vaultTotalSupplyBefore,
+                "vault's total supply should increase due to fee shares minted"
+            );
+        } else {
+            assertEq(
+                vaultTotalSupplyAfter, vaultTotalSupplyBefore, "vault's total supply should not change due to no fee"
+            );
+        }
+        assertGt(
+            vaultExchangeRateAfter,
+            vaultExchangeRateBefore,
+            "vault's exchange rate should always increase due to donation"
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_AfterProcessingAccountWithNoPerformanceFee(uint256 totalAssetsBefore, uint256 totalAssetsAfter)
+        public
+    {
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFee(0);
+        vm.stopPrank();
+
+        totalAssetsBefore = bound(totalAssetsBefore, 1 ether, 1_000_000_000 ether);
+        totalAssetsAfter = bound(totalAssetsAfter, totalAssetsBefore + 1 ether, 1_000_000_002 ether);
+
+        assertEq(vault.decimals(), 18);
+        address vaultAsset = vault.asset();
+        uint256 vaultAssetDecimals = ERC20(vaultAsset).decimals();
+        assertEq(vaultAssetDecimals, 18);
+        address user1 = makeAddr("user1");
+
+        uint256 donationAmount = totalAssetsAfter - totalAssetsBefore;
+        deal((MC.WETH), user1, totalAssetsBefore + donationAmount);
+
+        vm.startPrank(user1);
+        IERC20(MC.WETH).approve(address(vault), totalAssetsBefore);
+        vault.deposit(totalAssetsBefore, user1);
+        vault.processAccounting();
+
+        IERC20(MC.WETH).transfer(address(vault), donationAmount);
+        vm.stopPrank();
+
+        vm.startPrank(address(vault));
+        uint256 vaultTotalSupplyBefore = vault.totalSupply();
+        uint256 vaultExchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
+
+        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter);
+        vm.stopPrank();
+        vault.processAccounting();
+
+        uint256 vaultTotalSupplyAfter = vault.totalSupply();
+        uint256 vaultExchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
+
+        assertEq(vaultTotalSupplyAfter, vaultTotalSupplyBefore, "vault's total supply should not change due to no fee");
+        assertGt(
+            vaultExchangeRateAfter,
+            vaultExchangeRateBefore,
+            "vault's exchange rate should always increase due to donation"
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_AfterProcessAccounting_MultipleDeposits(
         uint256 depositAmount1,
         uint256 depositAmount2,
         uint256 yieldAmount1
@@ -110,7 +218,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         );
     }
 
-    function test_chargePerformanceFee_WithoutYield(uint256 wethAmount) public {
+    function test_AfterProcessAccounting_WithoutYield(uint256 wethAmount) public {
         // Bound inputs to reasonable ranges
         wethAmount = bound(wethAmount, 1 ether, 10_000 ether);
 
@@ -141,10 +249,10 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEqThreshold(totalSupplyBeforeProcessing, expectedTotalSupply, 5000, "totalSupply should match expected");
     }
 
-    function test_chargePerformanceFee_NotCalledByVault() public {
+    function test_AfterProcessAccounting_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether);
+        hooks.afterProcessAccounting(1 ether, 1 ether);
         vm.stopPrank();
     }
 
