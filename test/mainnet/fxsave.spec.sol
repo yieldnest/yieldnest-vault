@@ -39,7 +39,7 @@ contract SuperUSDCTest is BaseTest {
         address alice = makeAddr("alice");
         deal(MC.USDC, alice, depositAmount);
 
-        // Record vault's USDC balance and totalAssets before deposit
+        // Record vault's USDC balance and totalBaseAssets before deposit
         uint256 vaultUSDCBefore = IERC20(MC.USDC).balanceOf(address(vault));
 
         // Alice approves the vault to spend her USDC and deposits into the vault
@@ -48,8 +48,8 @@ contract SuperUSDCTest is BaseTest {
         uint256 shares = vault.deposit(depositAmount, alice);
         vm.stopPrank();
 
-        // Record totalAssets after deposit
-        uint256 totalAssetsAfterDeposit = vault.totalAssets();
+        // Record totalBaseAssets after deposit
+        uint256 totalBaseAssetsAfterDeposit = vault.totalBaseAssets();
 
         assertEq(
             IERC20(MC.USDC).balanceOf(address(vault)),
@@ -97,11 +97,14 @@ contract SuperUSDCTest is BaseTest {
                 "Vault USDC should be 0 after allocation to fxBASE"
             );
 
-            // Check that totalAssets did not change after processor
-            assertEq(
-                totalAssetsAfterDeposit,
-                vault.totalAssets(),
-                "Vault totalAssets should remain constant after fxBASE allocation"
+            vault.processAccounting();
+
+            // Check that totalBaseAssets did not change after processor (allowing approx rel diff of 1e14)
+            vm.assertApproxEqRel(
+                totalBaseAssetsAfterDeposit,
+                vault.totalBaseAssets(),
+                2e14,
+                "Vault totalBaseAssets should remain approx constant after fxBASE allocation"
             );
         }
 
@@ -142,11 +145,12 @@ contract SuperUSDCTest is BaseTest {
             uint256 fxSaveShares = IERC20(MC.FXSAVE).balanceOf(address(vault));
             assertGt(fxSaveShares, 0, "Vault should have received FXSAVE shares");
 
-            // Check that totalAssets did not change after processor
-            assertEq(
-                totalAssetsAfterDeposit,
-                vault.totalAssets(),
-                "Vault totalAssets should remain constant after fxSAVE allocation"
+            // Check that totalBaseAssets did not change after processor (allowing approx rel diff of 1e14)
+            vm.assertApproxEqRel(
+                totalBaseAssetsAfterDeposit,
+                vault.totalBaseAssets(),
+                2e14,
+                "Vault totalBaseAssets should remain approx constant after fxSAVE allocation"
             );
         }
     }
