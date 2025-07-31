@@ -59,6 +59,16 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         vault.addAsset(MC.FXBASE, false);
         vault.addAsset(MC.FXUSD, false);
         vault.addAsset(MC.FXSAVE, false);
+
+        {
+            address[] memory fxBaseTokenInAllowList = new address[](1);
+            fxBaseTokenInAllowList[0] = MC.USDC;
+            SafeRules.RuleParams memory fxBaseDepositRule =
+                FxProtocolRules.getFxUSDSavePoolDepositRule(MC.FXBASE, address(vault), fxBaseTokenInAllowList);
+
+            SafeRules.setProcessorRule(vault, fxBaseDepositRule, true);
+        }
+
         vm.stopPrank();
 
         // Deploy Withdrawer as an upgradeable proxy

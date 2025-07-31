@@ -33,6 +33,11 @@ contract SuperUSDCTest is BaseTest {
         return yieldTokenAmount + fxStableAmount * 1e12;
     }
 
+    // function test_allocate_to_fxsave() public {
+    //     uint256 allocationAmount = 1_000_000e6;
+    //     allocateToBuffer(allocationAmount);
+    // }
+
     function test_deposit_fxsave() public {
         uint256 depositAmount = 1_000_000e6;
 

@@ -9,7 +9,7 @@ library FxProtocolRules {
     function getFxUSDSavePoolDepositRule(address fxUSDSavePool, address receiver, address[] memory tokenInAllowList)
         internal
         pure
-        returns (SafeRules.RuleParams[] memory)
+        returns (SafeRules.RuleParams memory)
     {
         // deposit(address receiver, address tokenIn, uint256 amountTokenToDeposit, uint256 minSharesOut)
         bytes4 funcSig = bytes4(keccak256("deposit(address,address,uint256,uint256)"));
@@ -37,10 +37,7 @@ library FxProtocolRules {
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
 
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](1);
-        rules[0] = SafeRules.RuleParams({contractAddress: fxUSDSavePool, funcSig: funcSig, rule: rule});
-
-        return rules;
+        return SafeRules.RuleParams({contractAddress: fxUSDSavePool, funcSig: funcSig, rule: rule});
     }
 
     function getFxUSDSavePoolRequestRedeemRule(address fxUSDSavePool)
