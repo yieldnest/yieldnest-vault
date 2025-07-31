@@ -77,7 +77,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         assertEq(defaultAssetIndex, 0, "Default asset index should be 0 (WETH)");
 
         // Test the version function
-        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.2.0");
+        assertEq(vault.VAULT_VERSION(), "0.4.0", "Vault version should be 0.4.0");
 
         // Test the buffer function
         address buffer = vault.buffer();

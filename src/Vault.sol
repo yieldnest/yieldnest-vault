@@ -18,7 +18,7 @@ import {VaultLib} from "src/library/VaultLib.sol";
  * - Role-based access control for administration and fee management
  */
 contract Vault is BaseVault {
-    string public constant VAULT_VERSION = "0.3.0";
+    string public constant VAULT_VERSION = "0.4.0";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
     /**
