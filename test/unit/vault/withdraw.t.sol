@@ -145,7 +145,7 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         );
 
         vm.prank(alice);
-        uint256 withdrawAmount = vault.redeem(depositShares1, alice, alice);
+        vault.redeem(depositShares1, alice, alice);
         vaultTotalSupplyBefore = vault.totalSupply();
         vault.processAccounting();
         vaultTotalSupplyAfter = vault.totalSupply();
@@ -167,7 +167,6 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vaultTotalSupplyBefore = vault.totalSupply();
         vault.processAccounting();
         vaultTotalSupplyAfter = vault.totalSupply();
-        uint256 totalYield = yieldAmount1 + yieldAmount2;
         assertEqThreshold(
             vaultTotalSupplyAfter - vaultTotalSupplyBefore,
             performanceFeeShares2,
@@ -405,7 +404,7 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function convertToShares(uint256 baseAssets, uint256 totalSupply, uint256 totalAssets, Math.Rounding rounding)
         internal
-        view
+        pure
         returns (uint256, uint256)
     {
         uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);

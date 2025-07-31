@@ -9,6 +9,7 @@ contract Hooks is OwnableUpgradeable, IHooks {
     // performance denominated in ether(i.e. 1e18 = 100%)
     uint256 public performanceFee;
     address public performanceFeeRecipient;
+    uint256 public constant FEE_DENOMINATOR = 1 ether;
     IVault public immutable VAULT;
     uint256 public immutable VAULT_DECIMALS;
 
@@ -22,7 +23,7 @@ contract Hooks is OwnableUpgradeable, IHooks {
         initializer
     {
         __Ownable_init(owner_);
-        if (performanceFee_ > 1 ether) revert InvalidPerformanceFee();
+        if (performanceFee_ > FEE_DENOMINATOR) revert InvalidPerformanceFee();
         performanceFee = performanceFee_;
         performanceFeeRecipient = performanceFeeRecipient_;
     }
@@ -32,8 +33,7 @@ contract Hooks is OwnableUpgradeable, IHooks {
 
         if (totalAssetsAfter > totalAssetsBefore) {
             uint256 yieldEarned = totalAssetsAfter - totalAssetsBefore;
-            // dividing by 1 ether because performanceFee is denominated in ether(i.e. 1e18 = 100%)
-            uint256 feesAccrued = (yieldEarned * performanceFee) / 1 ether;
+            uint256 feesAccrued = (yieldEarned * performanceFee) / FEE_DENOMINATOR;
 
             if (feesAccrued > 0) {
                 uint256 sharesToMint = VAULT.previewDeposit(feesAccrued);
@@ -48,7 +48,7 @@ contract Hooks is OwnableUpgradeable, IHooks {
     }
 
     function setPerformanceFee(uint256 performanceFee_) external onlyOwner {
-        if (performanceFee_ > 1 ether) revert InvalidPerformanceFee();
+        if (performanceFee_ > FEE_DENOMINATOR) revert InvalidPerformanceFee();
         emit SetPerformanceFee(performanceFee, performanceFee_);
         performanceFee = performanceFee_;
     }

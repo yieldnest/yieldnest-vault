@@ -18,7 +18,6 @@ import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 
-import {console} from "lib/forge-std/src/console.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {IERC4626} from "src/Common.sol";
 

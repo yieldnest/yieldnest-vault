@@ -144,7 +144,6 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
         uint256 vaultTotalAssetsBefore = vault.totalAssets();
         uint256 vaultExchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-        uint256 feesAccrued = (donationAmount * hooks.performanceFee()) / 1 ether;
 
         hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter);
         vm.stopPrank();

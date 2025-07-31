@@ -1361,7 +1361,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
     function convertToShares(uint256 baseAssets, uint256 totalSupply, uint256 totalAssets, Math.Rounding rounding)
         internal
-        view
+        pure
         returns (uint256, uint256)
     {
         uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
