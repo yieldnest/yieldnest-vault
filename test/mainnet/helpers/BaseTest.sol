@@ -53,38 +53,6 @@ contract BaseTest is Test, MainnetActors, TestHelper {
     function configureFXSave(Vault vault) internal {
         Provider provider = new Provider(MC.WRAPPED_USDC);
 
-        vm.startPrank(TIMELOCK);
-
-        vault.setProvider(address(provider));
-        vault.addAsset(MC.FXBASE, false);
-        vault.addAsset(MC.FXUSD, false);
-        vault.addAsset(MC.FXSAVE, false);
-
-        {
-            // Set approval rule for USDC to allow only FXBASE as spender
-            address[] memory fxBaseSpender = new address[](1);
-            fxBaseSpender[0] = MC.FXBASE;
-            SafeRules.RuleParams memory usdcRule = BaseRules.getAppendApprovalRule(MC.USDC, fxBaseSpender, vault);
-            SafeRules.setProcessorRule(vault, usdcRule, true);
-
-            address[] memory fxBaseTokenInAllowList = new address[](1);
-            fxBaseTokenInAllowList[0] = MC.USDC;
-            SafeRules.RuleParams memory fxBaseDepositRule =
-                FxProtocolRules.getFxUSDSavePoolDepositRule(MC.FXBASE, address(vault), fxBaseTokenInAllowList);
-
-            SafeRules.setProcessorRule(vault, fxBaseDepositRule, true);
-
-            // Set approval rule for FXBASE to allow only FXSAVE as spender
-            SafeRules.RuleParams memory fxBaseApprovalRule = BaseRules.getApprovalRule(MC.FXBASE, MC.FXSAVE);
-            SafeRules.setProcessorRule(vault, fxBaseApprovalRule, true);
-
-            // Add rule for deposit into FXsave (IERC4626)
-            SafeRules.RuleParams memory fxSaveDepositRule = BaseRules.getDepositRule(MC.FXSAVE, address(vault));
-            SafeRules.setProcessorRule(vault, fxSaveDepositRule, true);
-        }
-
-        vm.stopPrank();
-
         // Deploy Withdrawer as an upgradeable proxy
         address withdrawerImpl = address(new Withdrawer());
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(withdrawerImpl, TIMELOCK, "");
@@ -92,6 +60,50 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         WithdrawerConfigurator configurator = new WithdrawerConfigurator();
         configurator.configure(withdrawer, address(provider), TIMELOCK, new MainnetActors());
+
+        vm.startPrank(TIMELOCK);
+
+        vault.setProvider(address(provider));
+        vault.addAsset(MC.FXBASE, false);
+        vault.addAsset(MC.FXUSD, false);
+        vault.addAsset(MC.FXSAVE, false);
+
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](6);
+        uint256 i = 0;
+
+        // Set approval rule for USDC to allow only FXBASE as spender
+        address[] memory fxBaseSpender = new address[](1);
+        fxBaseSpender[0] = MC.FXBASE;
+        rules[i++] = BaseRules.getAppendApprovalRule(MC.USDC, fxBaseSpender, vault);
+
+        // Set deposit rule for FXBASE with USDC as token in allow list
+        address[] memory fxBaseTokenInAllowList = new address[](1);
+        fxBaseTokenInAllowList[0] = MC.USDC;
+        rules[i++] = FxProtocolRules.getFxUSDSavePoolDepositRule(MC.FXBASE, address(vault), fxBaseTokenInAllowList);
+
+        // Set approval rule for FXBASE to allow only FXSAVE and withdrawer as spenders
+        address[] memory fxBaseSpenderAllowList = new address[](2);
+        fxBaseSpenderAllowList[0] = MC.FXSAVE;
+        fxBaseSpenderAllowList[1] = address(withdrawer);
+        rules[i++] = BaseRules.getApprovalRule(MC.FXBASE, fxBaseSpenderAllowList);
+
+        // Set deposit rule for FXSAVE
+        rules[i++] = BaseRules.getDepositRule(MC.FXSAVE, address(vault));
+
+        // Set redeem rule for FXSAVE
+        rules[i++] = BaseRules.getRedeemRule(MC.FXSAVE, address(vault));
+
+        // Set deposit and withdraw asset rules for withdrawer and FXBASE
+        rules[i++] = BaseRules.getDepositAssetRule(address(withdrawer), MC.FXBASE, address(vault));
+        // Note: If you want both deposit and withdraw asset rules, increase array size and add:
+        // rules[i++] = BaseRules.getWithdrawAssetRule(address(withdrawer), MC.FXBASE, address(vault));
+
+        // If you want both deposit and withdraw asset rules, uncomment below and set array size to 7
+        // rules[i++] = BaseRules.getWithdrawAssetRule(address(withdrawer), MC.FXBASE, address(vault));
+
+        SafeRules.setProcessorRules(vault, rules, true);
+
+        vm.stopPrank();
 
         vault.processAccounting();
     }
