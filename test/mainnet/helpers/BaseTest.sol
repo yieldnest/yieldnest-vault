@@ -22,7 +22,7 @@ import {FxProtocolRules} from "script/rules/FxProtocolRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {console} from "lib/forge-std/src/console.sol";
-import {WithdrawerConfigurator} from "src/config/WithdrawerConfigurator.sol";
+import {WithdrawerConfigurator} from "script/config/WithdrawerConfigurator.sol";
 
 contract BaseTest is Test, MainnetActors, TestHelper {
     struct PsPResponse {
