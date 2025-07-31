@@ -62,7 +62,9 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         {
             // Set approval rule for USDC to allow only FXBASE as spender
-            SafeRules.RuleParams memory usdcRule = BaseRules.getApprovalRule(MC.USDC, MC.FXBASE);
+            address[] memory fxBaseSpender = new address[](1);
+            fxBaseSpender[0] = MC.FXBASE;
+            SafeRules.RuleParams memory usdcRule = BaseRules.getAppendApprovalRule(MC.USDC, fxBaseSpender, vault);
             SafeRules.setProcessorRule(vault, usdcRule, true);
 
             address[] memory fxBaseTokenInAllowList = new address[](1);
