@@ -23,7 +23,7 @@ contract SuperUSDCTest is BaseTest {
     function setUp() public {
         (vault, provider) = BaseTest.deploy();
         vm.stopPrank();
-        bufferStrategy = MC.MORPHO_GAUNTLET_USDC_VAULT;
+        bufferStrategy = vault.buffer();
     }
 
     function test_deposit_fully_to_superusdc_vault(uint256 depositAmount) public {

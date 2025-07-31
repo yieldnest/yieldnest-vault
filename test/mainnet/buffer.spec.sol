@@ -30,7 +30,7 @@ contract VaultBufferInvariantsTest is BaseTest {
         (vault, provider) = BaseTest.deploy();
         // Process accounting to ensure vault is in sync
         vault.processAccounting();
-        bufferStrategy = MC.MORPHO_GAUNTLET_USDC_VAULT;
+        bufferStrategy = vault.buffer();
     }
 
     function allocateToBuffer(uint256 depositAmount) public returns (uint256 bufferStrategySharesMinted) {
