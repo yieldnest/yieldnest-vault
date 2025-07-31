@@ -104,6 +104,36 @@ contract SuperUSDCTest is BaseTest {
         assertGt(fxSaveShares, 0, "Vault should have received FXSAVE shares");
     }
 
+    function redeemFromFxSave(uint256 fxSaveShares) internal {
+        require(fxSaveShares > 0, "Vault should have FXSAVE shares to redeem");
+
+        // Prepare calldata for IERC4626.redeem(uint256 shares, address receiver, address owner)
+        bytes memory fxSaveRedeemCalldata =
+            abi.encodeWithSelector(IERC4626(MC.FXSAVE).redeem.selector, fxSaveShares, address(vault), address(vault));
+
+        address[] memory targets = new address[](1);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+
+        // 1. Call FXSAVE.redeem
+        targets[0] = MC.FXSAVE;
+        values[0] = 0;
+        calldatas[0] = fxSaveRedeemCalldata;
+
+        vm.startPrank(PROCESSOR);
+        vault.processor(targets, values, calldatas);
+        vm.stopPrank();
+
+        // Check that vault's FXSAVE balance is now 0 (all redeemed)
+        assertEq(IERC20(MC.FXSAVE).balanceOf(address(vault)), 0, "Vault FXSAVE should be 0 after redeem");
+
+        // Check that vault now has fxBASE shares
+        uint256 fxBaseShares = IERC20(MC.FXBASE).balanceOf(address(vault));
+        assertGt(fxBaseShares, 0, "Vault should have received fxBASE shares after redeem");
+
+        vault.processAccounting();
+    }
+
     function test_allocate_to_fxsave(uint256 depositAmount) public {
         depositAmount = bound(depositAmount, 1e6, 100e6);
 
@@ -177,7 +207,19 @@ contract SuperUSDCTest is BaseTest {
 
         depositToFxBase(depositAmount);
 
+        // Measure fxSAVE balance before deposit
+        uint256 fxSaveBalanceBefore = IERC20(MC.FXSAVE).balanceOf(address(vault));
+
         depositToFxSave();
+        // Calculate the amount of fxSAVE obtained
+        uint256 fxSaveObtained = IERC20(MC.FXSAVE).balanceOf(address(vault)) - fxSaveBalanceBefore;
+
+        // Redeem all of fxSAVE obtained from the vault
+
+        // Use only the fxSAVE obtained in this test
+        require(fxSaveObtained > 0, "No fxSAVE obtained to redeem");
+
+        redeemFromFxSave(fxSaveObtained);
     }
 
     function test_deposit_fxsave() public {
