@@ -8,7 +8,7 @@ import {MainnetActors, IActors} from "script/Actors.sol";
 import {Provider} from "src/module/Provider.sol";
 import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {WithdrawerConfigurer} from "src/configures/WithdrawerConfigurer.sol";
+import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 
 contract SetupWithdrawer is Test, MainnetActors {
     error InvalidRules();
@@ -23,7 +23,6 @@ contract SetupWithdrawer is Test, MainnetActors {
 
         vault = Withdrawer(payable(address(proxy)));
 
-        WithdrawerConfigurer configurer = new WithdrawerConfigurer();
-        configurer.configure(vault, address(provider), MC.TIMELOCK, IActors(address(this)));
+        WithdrawerConfig.configure(vault, address(provider), MC.TIMELOCK, address(this), IActors(address(this)));
     }
 }
