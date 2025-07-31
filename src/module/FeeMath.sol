@@ -18,7 +18,6 @@ library FeeMath {
     error UnsupportedFeeType(FeeType feeType);
 
     uint256 public constant BASIS_POINT_SCALE = 1e8;
-    uint256 public constant WAD = 1e18;
 
     function linearFee(uint256 amount, uint256 fee, FeeType feeType) internal pure returns (uint256) {
         if (feeType == FeeType.OnRaw) {
