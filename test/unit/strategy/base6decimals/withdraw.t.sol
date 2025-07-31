@@ -94,7 +94,7 @@ contract BaseStrategy6DecimalsBaseWithdrawalUnitTest is Test, MainnetActors, Etc
 
         // Withdraw USDE using withdrawAsset
         vm.startPrank(alice);
-        uint256 assetsWithdrawn = vault.withdrawAsset(MC.USDE, sharesMintedFromUSDE, alice, alice);
+        vault.withdrawAsset(MC.USDE, sharesMintedFromUSDE, alice, alice);
         vm.stopPrank();
 
         // Check that the vault sent back the USDE
@@ -151,7 +151,7 @@ contract BaseStrategy6DecimalsBaseWithdrawalUnitTest is Test, MainnetActors, Etc
 
         // Withdraw USDC using withdrawAsset
         vm.startPrank(alice);
-        uint256 assetsWithdrawn = vault.withdrawAsset(MC.USDC, sharesMintedFromUSDC / 1e12, alice, alice);
+        vault.withdrawAsset(MC.USDC, sharesMintedFromUSDC / 1e12, alice, alice);
         vm.stopPrank();
 
         // Check that the vault sent back the USDC
