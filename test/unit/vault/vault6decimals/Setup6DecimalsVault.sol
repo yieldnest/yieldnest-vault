@@ -31,6 +31,7 @@ contract Setup6DecimalsVault is SetupVault {
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, "");
 
         vault = Vault(payable(address(vaultProxy)));
+        weth = WETH9(payable(MC.WETH));
 
         // fee module implementation
         Hooks hooks = new Hooks(address(vaultProxy));

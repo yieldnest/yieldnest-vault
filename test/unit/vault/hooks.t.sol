@@ -193,19 +193,23 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
 
         uint256 yieldEarned = yieldAmount1;
+        uint256 performanceFeeShares;
+        {
+            uint256 performanceFee = IHooks(address(vault.hooks())).performanceFee();
+            uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1 ether;
+            uint256 totalBaseAssets = vault.computeTotalAssets();
+            (performanceFeeShares,) =
+                convertToShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
 
-        uint256 performanceFee = IHooks(address(vault.hooks())).performanceFee();
-        uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1 ether;
-        uint256 totalBaseAssets = vault.computeTotalAssets();
-        (uint256 performanceFeeShares,) =
-            convertToShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
-
-        vault.processAccounting();
+            vault.processAccounting();
+        }
 
         uint256 totalAssets = vault.totalAssets();
         uint256 totalSupply = vault.totalSupply();
 
-        // assertEqThreshold(totalAssets, depositAmount1 + depositAmount2 + yieldEarned, 5000, "totalAssets should match expected");
+        assertEqThreshold(
+            totalAssets, depositAmount1 + depositAmount2 + yieldEarned, 5000, "totalAssets should match expected"
+        );
         assertEqThreshold(
             totalSupply, shares1 + shares2 + performanceFeeShares, 5000, "totalSupply should match expected"
         );
@@ -229,9 +233,6 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 expectedTotalSupply = shares;
         vm.stopPrank();
 
-        address hooks = address(vault.hooks());
-        uint256 performanceFee = IHooks(hooks).performanceFee();
-        uint256 totalBaseAssets = vault.computeTotalAssets();
         uint256 totalSupplyBeforeProcessing = vault.totalSupply();
 
         vault.processAccounting();
@@ -295,7 +296,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function convertToShares(uint256 baseAssets, uint256 totalSupply, uint256 totalAssets, Math.Rounding rounding)
         internal
-        view
+        pure
         returns (uint256, uint256)
     {
         uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);

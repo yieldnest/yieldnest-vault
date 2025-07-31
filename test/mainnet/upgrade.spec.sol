@@ -146,21 +146,21 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         // Get totalAssets before upgrade
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 totalSupplyBefore = vault.totalSupply();
+        uint256 totalSupplyAfter;
 
         // Perform the upgrade
         upgradeVaultAndWithdrawer();
 
         uint256 performanceFeeSharesMinted;
         if (processAccountingBeforeCheck) {
-            uint256 totalSupplyBefore = vault.totalSupply();
+            totalSupplyBefore = vault.totalSupply();
             vault.processAccounting();
-            uint256 totalSupplyAfter = vault.totalSupply();
+            totalSupplyAfter = vault.totalSupply();
             performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
         }
 
         // Get totalAssets after upgrade
         uint256 totalAssetsAfter = vault.totalAssets();
-        uint256 totalSupplyAfter = vault.totalSupply();
 
         // Assert that totalAssets after upgrade is greater than or equal to totalAssets before upgrade
         assertGe(
