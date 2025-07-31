@@ -61,12 +61,24 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         vault.addAsset(MC.FXSAVE, false);
 
         {
+            // Set approval rule for USDC to allow only FXBASE as spender
+            SafeRules.RuleParams memory usdcRule = BaseRules.getApprovalRule(MC.USDC, MC.FXBASE);
+            SafeRules.setProcessorRule(vault, usdcRule, true);
+
             address[] memory fxBaseTokenInAllowList = new address[](1);
             fxBaseTokenInAllowList[0] = MC.USDC;
             SafeRules.RuleParams memory fxBaseDepositRule =
                 FxProtocolRules.getFxUSDSavePoolDepositRule(MC.FXBASE, address(vault), fxBaseTokenInAllowList);
 
             SafeRules.setProcessorRule(vault, fxBaseDepositRule, true);
+
+            // Set approval rule for FXBASE to allow only FXSAVE as spender
+            SafeRules.RuleParams memory fxBaseApprovalRule = BaseRules.getApprovalRule(MC.FXBASE, MC.FXSAVE);
+            SafeRules.setProcessorRule(vault, fxBaseApprovalRule, true);
+
+            // Add rule for deposit into FXsave (IERC4626)
+            SafeRules.RuleParams memory fxSaveDepositRule = BaseRules.getDepositRule(MC.FXSAVE, address(vault));
+            SafeRules.setProcessorRule(vault, fxSaveDepositRule, true);
         }
 
         vm.stopPrank();

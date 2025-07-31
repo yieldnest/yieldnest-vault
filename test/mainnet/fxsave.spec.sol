@@ -33,10 +33,123 @@ contract SuperUSDCTest is BaseTest {
         return yieldTokenAmount + fxStableAmount * 1e12;
     }
 
-    // function test_allocate_to_fxsave() public {
-    //     uint256 allocationAmount = 1_000_000e6;
-    //     allocateToBuffer(allocationAmount);
-    // }
+    function test_allocate_to_fxsave() public {
+        uint256 depositAmount = 1_000_000e6;
+
+        address alice = makeAddr("alice");
+        deal(MC.USDC, alice, depositAmount);
+
+        // Record vault's USDC balance and totalAssets before deposit
+        uint256 vaultUSDCBefore = IERC20(MC.USDC).balanceOf(address(vault));
+
+        // Alice approves the vault to spend her USDC and deposits into the vault
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), depositAmount);
+        uint256 shares = vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        // Record totalAssets after deposit
+        uint256 totalAssetsAfterDeposit = vault.totalAssets();
+
+        assertEq(
+            IERC20(MC.USDC).balanceOf(address(vault)),
+            vaultUSDCBefore + depositAmount,
+            "Vault should have received USDC"
+        );
+        assertEq(vault.balanceOf(alice), shares, "Alice should have received vault shares");
+
+        {
+            // 1. Allocate to fxBASE using processor
+            // Prepare calldata for fxBASE.deposit(address receiver, address tokenIn, uint256 amountTokenToDeposit, uint256 minSharesOut)
+            address receiver = address(vault);
+            address tokenIn = MC.USDC;
+            uint256 amountTokenToDeposit = depositAmount;
+            uint256 minSharesOut = 0;
+
+            bytes memory fxBaseDepositCalldata = abi.encodeWithSelector(
+                IFxUSDBasePool(MC.FXBASE).deposit.selector, receiver, tokenIn, amountTokenToDeposit, minSharesOut
+            );
+
+            // Call processor on the vault to approve fxBASE to spend USDC, then allocate to fxBASE
+            // The approve call must come before the fxBASE deposit call
+            address[] memory targets1 = new address[](2);
+            uint256[] memory values1 = new uint256[](2);
+            bytes[] memory calldatas1 = new bytes[](2);
+
+            // 1. Approve fxBASE to spend USDC from the vault
+            targets1[0] = MC.USDC;
+            values1[0] = 0;
+            calldatas1[0] = abi.encodeWithSelector(IERC20(MC.USDC).approve.selector, MC.FXBASE, depositAmount);
+
+            // 2. Call fxBASE.deposit
+            targets1[1] = MC.FXBASE;
+            values1[1] = 0;
+            calldatas1[1] = fxBaseDepositCalldata;
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets1, values1, calldatas1);
+            vm.stopPrank();
+
+            // Check that vault's USDC balance is now 0 (all allocated)
+            assertEq(
+                IERC20(MC.USDC).balanceOf(address(vault)),
+                vaultUSDCBefore,
+                "Vault USDC should be 0 after allocation to fxBASE"
+            );
+
+            // Check that totalAssets did not change after processor
+            assertEq(
+                totalAssetsAfterDeposit,
+                vault.totalAssets(),
+                "Vault totalAssets should remain constant after fxBASE allocation"
+            );
+        }
+
+        {
+            // 2. Allocate to fxSAVE using processor
+            // Prepare calldata for IERC4626.deposit(uint256 assets, address receiver)
+            uint256 fxBaseShares = IERC20(MC.FXBASE).balanceOf(address(vault));
+            require(fxBaseShares > 0, "Vault should have fxBASE shares to allocate");
+
+            bytes memory fxSaveDepositCalldata =
+                abi.encodeWithSelector(IERC4626(MC.FXSAVE).deposit.selector, fxBaseShares, address(vault));
+
+            // Approve FXSAVE to spend fxBASE shares via processor
+            address[] memory targets2 = new address[](2);
+            uint256[] memory values2 = new uint256[](2);
+            bytes[] memory calldatas2 = new bytes[](2);
+
+            // 1. Approve FXSAVE to spend fxBASE from the vault
+            targets2[0] = MC.FXBASE;
+            values2[0] = 0;
+            calldatas2[0] = abi.encodeWithSelector(IERC20(MC.FXBASE).approve.selector, MC.FXSAVE, fxBaseShares);
+
+            // 2. Call FXSAVE.deposit
+            targets2[1] = MC.FXSAVE;
+            values2[1] = 0;
+            calldatas2[1] = fxSaveDepositCalldata;
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets2, values2, calldatas2);
+            vm.stopPrank();
+
+            // Check that vault's fxBASE balance is now 0 (all allocated)
+            assertEq(
+                IERC20(MC.FXBASE).balanceOf(address(vault)), 0, "Vault fxBASE should be 0 after allocation to fxSAVE"
+            );
+
+            // Check that vault now has FXSAVE shares
+            uint256 fxSaveShares = IERC20(MC.FXSAVE).balanceOf(address(vault));
+            assertGt(fxSaveShares, 0, "Vault should have received FXSAVE shares");
+
+            // Check that totalAssets did not change after processor
+            assertEq(
+                totalAssetsAfterDeposit,
+                vault.totalAssets(),
+                "Vault totalAssets should remain constant after fxSAVE allocation"
+            );
+        }
+    }
 
     function test_deposit_fxsave() public {
         uint256 depositAmount = 1_000_000e6;
