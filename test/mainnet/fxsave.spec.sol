@@ -33,8 +33,8 @@ contract SuperUSDCTest is BaseTest {
         return yieldTokenAmount + fxStableAmount * 1e12;
     }
 
-    function test_allocate_to_fxsave() public {
-        uint256 depositAmount = 1_000_000e6;
+    function test_allocate_to_fxsave(uint256 depositAmount) public {
+        depositAmount = bound(depositAmount, 1e6, 100e6);
 
         address alice = makeAddr("alice");
         deal(MC.USDC, alice, depositAmount);
