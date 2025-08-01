@@ -6,6 +6,7 @@ import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IFxUSDBasePool} from "src/interface/IFxUSDBasePool.sol";
+import {Math} from "src/Common.sol";
 
 interface IBaseStrategy {
     function STRATEGY_VERSION() external view returns (string memory);
@@ -20,6 +21,8 @@ interface IBaseStrategy {
 contract Provider is IProvider {
     error UnsupportedAsset(address asset);
     error RateIsNegative();
+
+    using Math for uint256;
 
     address public wrappedUSDC;
 
@@ -92,6 +95,10 @@ contract Provider is IProvider {
             // We convert both to Wrapped USDC value and sum them.
             (uint256 amountYieldOut, uint256 amountStableOut) = IFxUSDBasePool(MC.FXBASE).previewRedeem(1e18);
             return amountYieldOut * getRate(MC.FXUSD) / 1e18 + amountStableOut * getRate(MC.USDC) / 1e6;
+        }
+
+        if (asset == MC.FXSAVE) {
+            return IERC4626(MC.FXSAVE).convertToAssets(1e18).mulDiv(getRate(MC.FXBASE), 1e18);
         }
 
         // base asset of SFRAX, SUSDE, SUSDS, SCRVUSD is FRAX, USDE, USDS, CRVUSD respectively with 18 decimals.

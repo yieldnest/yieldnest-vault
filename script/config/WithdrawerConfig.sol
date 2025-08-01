@@ -57,8 +57,8 @@ library WithdrawerConfig {
         SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](2);
         uint256 ruleIndex = 0;
 
-        rules[ruleIndex++] = FxProtocolRules.getFxUSDSavePoolRequestRedeemRule(MC.FXSAVE);
-        rules[ruleIndex++] = FxProtocolRules.getFxUSDSavePoolRedeemRule(MC.FXSAVE, address(vault));
+        rules[ruleIndex++] = FxProtocolRules.getFxUSDSavePoolRequestRedeemRule(MC.FXBASE);
+        rules[ruleIndex++] = FxProtocolRules.getFxUSDSavePoolRedeemRule(MC.FXBASE, address(vault));
 
         if (ruleIndex != rules.length) {
             revert InvalidRules();

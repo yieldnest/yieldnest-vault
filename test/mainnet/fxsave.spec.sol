@@ -12,8 +12,9 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {IFxUSDBasePool} from "src/interface/IFxUSDBasePool.sol";
+import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 
-contract SuperUSDCTest is BaseTest {
+contract FXSaveTest is BaseTest {
     using SafeERC20 for IERC20;
 
     Vault public vault;
@@ -102,6 +103,52 @@ contract SuperUSDCTest is BaseTest {
         // Check that vault now has FXSAVE shares
         uint256 fxSaveShares = IERC20(MC.FXSAVE).balanceOf(address(vault));
         assertGt(fxSaveShares, 0, "Vault should have received FXSAVE shares");
+
+        vault.processAccounting();
+    }
+
+    function requestRedeemForFxBase(uint256 fxBaseShares) internal {
+        // Prepare calldata for Withdrawer.requestRedeem(uint256 shares)
+        bytes memory withdrawerRequestRedeemCalldata =
+            abi.encodeWithSelector(IFxUSDBasePool.requestRedeem.selector, fxBaseShares);
+
+        address[] memory targets = new address[](1);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+
+        // 1. Call Withdrawer.requestRedeem
+        targets[0] = MC.FXBASE;
+        values[0] = 0;
+        calldatas[0] = withdrawerRequestRedeemCalldata;
+
+        vm.startPrank(PROCESSOR);
+        withdrawer.processor(targets, values, calldatas);
+        vm.stopPrank();
+
+        withdrawer.processAccounting();
+        vault.processAccounting();
+    }
+
+    function redeemFromFxBase(uint256 fxBaseShares) internal {
+        // Prepare calldata for Withdrawer.redeem(uint256 shares)
+        bytes memory withdrawerRedeemCalldata =
+            abi.encodeWithSelector(IFxUSDBasePool.redeem.selector, address(withdrawer), fxBaseShares);
+
+        address[] memory targets = new address[](1);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+
+        // 1. Call Withdrawer.redeem(address vault, uint256 shares)
+        targets[0] = MC.FXBASE;
+        values[0] = 0;
+        calldatas[0] = withdrawerRedeemCalldata;
+
+        vm.startPrank(PROCESSOR);
+        withdrawer.processor(targets, values, calldatas);
+        vm.stopPrank();
+
+        withdrawer.processAccounting();
+        vault.processAccounting();
     }
 
     function redeemFromFxSave(uint256 fxSaveShares) internal {
@@ -205,12 +252,38 @@ contract SuperUSDCTest is BaseTest {
         // Record totalBaseAssets after deposit
         uint256 totalBaseAssetsAfterDeposit = vault.totalBaseAssets();
 
+        // Assert after deposit
+        assertEq(
+            vault.totalBaseAssets(), totalBaseAssetsAfterDeposit, "totalBaseAssets should remain constant after deposit"
+        );
+
         depositToFxBase(depositAmount);
+
+        uint256 totalBaseAssetsAfterFxBaseAllocation = vault.totalBaseAssets();
+
+        // Assert after depositToFxBase (allowing approx rel diff of 1e14)
+        vm.assertApproxEqRel(
+            vault.totalBaseAssets(),
+            totalBaseAssetsAfterFxBaseAllocation,
+            2e14,
+            "Vault totalBaseAssets should remain approx constant after depositToFxBase"
+        );
 
         // Measure fxSAVE balance before deposit
         uint256 fxSaveBalanceBefore = IERC20(MC.FXSAVE).balanceOf(address(vault));
 
         depositToFxSave();
+
+        uint256 totalBaseAssetsAfterFxSaveAllocation = vault.totalBaseAssets();
+
+        // Assert after depositToFxSave (allowing approx rel diff of 1e4)
+        vm.assertApproxEqRel(
+            totalBaseAssetsAfterFxSaveAllocation,
+            totalBaseAssetsAfterFxBaseAllocation,
+            1e4,
+            "Vault totalBaseAssets should remain approx constant after depositToFxSave"
+        );
+
         // Calculate the amount of fxSAVE obtained
         uint256 fxSaveObtained = IERC20(MC.FXSAVE).balanceOf(address(vault)) - fxSaveBalanceBefore;
 
@@ -219,7 +292,68 @@ contract SuperUSDCTest is BaseTest {
         // Use only the fxSAVE obtained in this test
         require(fxSaveObtained > 0, "No fxSAVE obtained to redeem");
 
+        // Measure fxBASE balance before redeem
+        uint256 fxBaseBalanceBefore = IERC20(MC.FXBASE).balanceOf(address(vault));
+
         redeemFromFxSave(fxSaveObtained);
+
+        // Assert after depositToFxSave (allowing approx rel diff of 1e4)
+        vm.assertApproxEqRel(
+            vault.totalBaseAssets(),
+            totalBaseAssetsAfterFxSaveAllocation,
+            1,
+            "Vault totalBaseAssets should remain approx constant after depositToFxSave"
+        );
+
+        // Measure fxBASE balance after redeem
+        uint256 fxBaseObtained = IERC20(MC.FXBASE).balanceOf(address(vault)) - fxBaseBalanceBefore;
+
+        // Allocate fxBASE to the withdrawer contract instead of to FXSAVE
+        ProcessorUtils.allocateToERC4626MAX(address(vault), MC.FXBASE, address(withdrawer), fxBaseObtained, PROCESSOR);
+
+        withdrawer.processAccounting();
+        vault.processAccounting();
+
+        // Assert after allocateToERC4626MAX (allowing approx abs diff of 1 wei)
+        vm.assertApproxEqAbs(
+            vault.totalBaseAssets(),
+            totalBaseAssetsAfterFxBaseAllocation,
+            1,
+            "totalBaseAssets should remain approx constant after allocateToERC4626MAX"
+        );
+
+        assertEq(
+            IERC20(MC.FXBASE).balanceOf(address(withdrawer)),
+            fxBaseObtained,
+            "fxBASE balance should be equal to fxBASE obtained"
+        );
+
+        requestRedeemForFxBase(fxBaseObtained);
+
+        // Assert after requestRedeemForFxBase (allowing approx abs diff of 1 wei)
+        vm.assertApproxEqAbs(
+            vault.totalBaseAssets(),
+            totalBaseAssetsAfterFxBaseAllocation,
+            1,
+            "totalBaseAssets should remain approx constant after requestRedeemForFxBase"
+        );
+
+        {
+            IFxUSDBasePool fxBase = IFxUSDBasePool(MC.FXBASE);
+            IFxUSDBasePool.RedeemRequest memory redeemRequest = fxBase.redeemRequests(address(withdrawer));
+            // skip time to unlockAt
+            vm.warp(redeemRequest.unlockAt + 1);
+        }
+
+        redeemFromFxBase(fxBaseObtained);
+
+        // Assert after redeemFromFxBase (allowing approx abs diff of 1 wei)
+        vm.assertApproxEqAbs(
+            vault.totalBaseAssets(),
+            totalBaseAssetsAfterFxBaseAllocation,
+            1,
+            "totalBaseAssets should remain approx constant after redeemFromFxBase"
+        );
     }
 
     function test_deposit_fxsave() public {

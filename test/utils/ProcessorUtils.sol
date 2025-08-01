@@ -35,4 +35,24 @@ library ProcessorUtils {
         vm.prank(processor);
         IVault(vault).processor(targets, values, data);
     }
+
+    function allocateToERC4626MAX(address vault, address asset, address strategy, uint256 amount, address processor)
+        internal
+    {
+        Vm vm = Vm(CHEATCODE_ADDRESS);
+        address[] memory targets = new address[](2);
+        targets[0] = asset;
+        targets[1] = strategy;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", strategy, amount);
+        data[1] = abi.encodeWithSignature("depositAsset(address,uint256,address)", asset, amount, vault);
+
+        vm.prank(processor);
+        IVault(vault).processor(targets, values, data);
+    }
 }

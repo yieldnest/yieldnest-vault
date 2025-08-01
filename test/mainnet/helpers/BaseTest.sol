@@ -23,6 +23,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {WithdrawerConfigurator} from "script/config/WithdrawerConfigurator.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract BaseTest is Test, MainnetActors, TestHelper {
     struct PsPResponse {
@@ -60,6 +61,16 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         WithdrawerConfigurator configurator = new WithdrawerConfigurator();
         configurator.configure(withdrawer, address(provider), TIMELOCK, new MainnetActors());
+
+        {
+            uint256 BOOTSTRAP_AMOUNT = 10_000e6;
+            address bootstrapper = BOOTSTRAPPER;
+            vm.startPrank(bootstrapper);
+            deal(MC.USDC, bootstrapper, BOOTSTRAP_AMOUNT);
+            IERC20(MC.USDC).approve(address(withdrawer), BOOTSTRAP_AMOUNT);
+            withdrawer.deposit(BOOTSTRAP_AMOUNT, bootstrapper);
+            vm.stopPrank();
+        }
 
         vm.startPrank(TIMELOCK);
 
