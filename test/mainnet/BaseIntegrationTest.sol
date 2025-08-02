@@ -18,6 +18,9 @@ import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transp
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {WithdrawerConfigurer} from "src/configures/WithdrawerConfigurer.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 
 contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
@@ -36,13 +39,13 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     function deployWithdrawer() public {
         // Deploy Withdrawer with TransparentUpgradeableProxy
         address implementation = address(new Withdrawer());
-        address proxy = address(new TransparentUpgradeableProxy(implementation, TIMELOCK, ""));
+        address proxy = address(new TransparentUpgradeableProxy(implementation, MC.TIMELOCK, ""));
         withdrawer = Withdrawer(payable(proxy));
 
         WithdrawerConfigurer configurer = new WithdrawerConfigurer();
-        configurer.configure(withdrawer, address(provider), MC.TIMELOCK, new MainnetActors());
+        configurer.configure(withdrawer, address(vault.provider()), MC.TIMELOCK, new MainnetActors());
 
-        vm.startPrank(TIMELOCK);
+        vm.startPrank(MC.TIMELOCK);
 
         {
             SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](3);
