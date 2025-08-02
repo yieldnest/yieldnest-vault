@@ -39,7 +39,6 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
     function deploy() public returns (Vault, Provider) {
         Vault vault = Vault(payable(MC.YNUSDx));
-        Provider provider = Provider(vault.provider());
         wrappedUSDC = WrappedToken(MC.WRAPPED_USDC);
 
         TestHelper._initVault(vault);
@@ -48,7 +47,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         configureFXSave(vault);
 
-        return (vault, provider);
+        return (vault, Provider(vault.provider()));
     }
 
     function configureFXSave(Vault vault) internal {
@@ -78,6 +77,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         vault.addAsset(MC.FXBASE, false);
         vault.addAsset(MC.FXUSD, false);
         vault.addAsset(MC.FXSAVE, false);
+        vault.addAsset(address(withdrawer), false);
 
         SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](8);
         uint256 i = 0;

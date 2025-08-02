@@ -34,6 +34,15 @@ contract Provider is IProvider {
         wrappedUSDC = wrappedUSDC_;
     }
 
+    function isUSDCStrategyVault(address asset) public view returns (bool) {
+        try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
+            address vaultAsset = IVault(asset).asset();
+            return (keccak256(bytes(version)) == keccak256(bytes("0.2.0"))) && vaultAsset == MC.USDC;
+        } catch {
+            return false;
+        }
+    }
+
     /**
      * @notice Get the rate of a given asset in terms of base asset
      * @param asset The address of the asset
@@ -118,6 +127,12 @@ contract Provider is IProvider {
             // base asset is USDC with 6 decimals. we scale it to 18 decimals
             return IERC4626(asset).convertToAssets(1e18) * 1e12;
         }
+
+        if (isUSDCStrategyVault(asset)) {
+            // base asset is USDC with 6 decimals. we scale it to 18 decimals to convert to Wrapped USDC
+            return IERC4626(asset).convertToAssets(1e18);
+        }
+
         revert UnsupportedAsset(asset);
     }
 }
