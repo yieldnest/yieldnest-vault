@@ -79,13 +79,14 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         vault.addAsset(MC.FXUSD, false);
         vault.addAsset(MC.FXSAVE, false);
 
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](7);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](8);
         uint256 i = 0;
 
-        // Set approval rule for USDC to allow only FXBASE as spender
-        address[] memory fxBaseSpender = new address[](1);
-        fxBaseSpender[0] = MC.FXBASE;
-        rules[i++] = BaseRules.getAppendApprovalRule(MC.USDC, fxBaseSpender, vault);
+        // Set approval rule for USDC to allow only FXBASE and withdrawer as spenders
+        address[] memory usdcSpender = new address[](2);
+        usdcSpender[0] = MC.FXBASE;
+        usdcSpender[1] = address(withdrawer);
+        rules[i++] = BaseRules.getAppendApprovalRule(MC.USDC, usdcSpender, vault);
 
         // Set deposit rule for FXBASE with USDC as token in allow list
         address[] memory fxBaseTokenInAllowList = new address[](1);
@@ -107,8 +108,10 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         // Set deposit and withdraw asset rules for withdrawer and FXBASE
         rules[i++] = BaseRules.getDepositAssetRule(address(withdrawer), MC.FXBASE, address(vault));
 
+        rules[i++] = BaseRules.getDepositRule(address(withdrawer), address(vault));
+
         // Set withdraw rule for USDC for withdrawer
-        rules[i++] = BaseRules.getWithdrawRule(address(withdrawer), address(withdrawer));
+        rules[i++] = BaseRules.getWithdrawRule(address(withdrawer), address(vault));
 
         SafeRules.setProcessorRules(vault, rules, true);
 
