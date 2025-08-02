@@ -12,6 +12,7 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IFxUSDBasePool} from "src/interface/IFxUSDBasePool.sol";
 import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 contract FXSaveTest is BaseTest {
     using SafeERC20 for IERC20;
@@ -336,14 +337,62 @@ contract FXSaveTest is BaseTest {
             "totalBaseAssetsBeforeRedeem should be greater than totalBaseAssetsAfterFxBaseAllocation"
         );
 
-        redeemFromFxBase(fxBaseObtained);
+        // Calculate how much was redeemed
+        uint256 usdcRedeemed = 0;
+        uint256 fxusdRedeemed = 0;
 
-        // Assert after redeemFromFxBase (allowing approx abs diff of 1 wei)
-        vm.assertApproxEqAbs(
+        {
+            // Get USDC and FXUSD balances in withdrawer before redeem
+            uint256 usdcBefore = IERC20(MC.USDC).balanceOf(address(withdrawer));
+            uint256 fxusdBefore = IERC20(MC.FXUSD).balanceOf(address(withdrawer));
+
+            redeemFromFxBase(fxBaseObtained);
+
+            // Assert after redeemFromFxBase (allowing approx abs diff of 1 wei)
+            vm.assertApproxEqAbs(
+                vault.totalBaseAssets(),
+                totalBaseAssetsBeforeRedeem,
+                1,
+                "totalBaseAssets should remain approx constant after redeemFromFxBase"
+            );
+
+            // Get USDC and FXUSD balances in withdrawer after redeem
+            uint256 usdcAfter = IERC20(MC.USDC).balanceOf(address(withdrawer));
+            uint256 fxusdAfter = IERC20(MC.FXUSD).balanceOf(address(withdrawer));
+
+            // Calculate how much was redeemed
+            usdcRedeemed = usdcAfter > usdcBefore ? usdcAfter - usdcBefore : 0;
+            fxusdRedeemed = fxusdAfter > fxusdBefore ? fxusdAfter - fxusdBefore : 0;
+        }
+
+        {
+            // Record vault's FXUSD balance before withdrawal
+            uint256 fxusdVaultBefore = IERC20(MC.FXUSD).balanceOf(address(vault));
+
+            // TODO: fix this
+            // ProcessorUtils.withdrawFromERC4626(address(vault), address(withdrawer), usdcRedeemed, PROCESSOR);
+
+            ProcessorUtils.withdrawAssetFromERC4626MAX(
+                address(vault), address(withdrawer), MC.FXUSD, fxusdRedeemed, PROCESSOR
+            );
+
+            // Assert that vault's FXUSD balance increased by the redeemed amount (allowing for 1 wei tolerance)
+            uint256 fxusdVaultAfter = IERC20(MC.FXUSD).balanceOf(address(vault));
+            assertEq(
+                fxusdVaultAfter,
+                fxusdVaultBefore + fxusdRedeemed,
+                "Vault FXUSD balance should increase by redeemed amount"
+            );
+
+            withdrawer.processAccounting();
+            vault.processAccounting();
+        }
+
+        vm.assertApproxEqRel(
             vault.totalBaseAssets(),
             totalBaseAssetsBeforeRedeem,
-            1,
-            "totalBaseAssets should remain approx constant after redeemFromFxBase"
+            1e12,
+            "totalBaseAssets should remain approx constant after all redemptions"
         );
     }
 

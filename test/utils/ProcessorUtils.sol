@@ -81,6 +81,27 @@ library ProcessorUtils {
         IVault(vault).processor(targets, values, data);
     }
 
+    function withdrawAssetFromERC4626MAX(
+        address vault,
+        address strategy,
+        address asset,
+        uint256 amount,
+        address processor
+    ) internal {
+        Vm vm = Vm(CHEATCODE_ADDRESS);
+        address[] memory targets = new address[](1);
+        targets[0] = strategy;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("withdrawAsset(address,uint256,address,address)", asset, amount, vault, vault);
+
+        vm.prank(processor);
+        IVault(vault).processor(targets, values, data);
+    }
+
     function depositToFxBase(address vault, uint256 depositAmount, address processor) internal {
         Vm vm = Vm(CHEATCODE_ADDRESS);
         // 1. Allocate to fxBASE using processor
