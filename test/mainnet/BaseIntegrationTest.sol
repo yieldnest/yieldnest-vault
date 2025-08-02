@@ -39,6 +39,9 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         address proxy = address(new TransparentUpgradeableProxy(implementation, TIMELOCK, ""));
         withdrawer = Withdrawer(payable(proxy));
 
+        WithdrawerConfigurer configurer = new WithdrawerConfigurer();
+        configurer.configure(withdrawer, address(provider), MC.TIMELOCK, new MainnetActors());
+
         vm.startPrank(TIMELOCK);
 
         {
@@ -56,6 +59,8 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
 
             SafeRules.setProcessorRules(vault, rules, true);
         }
+
+        vault.addAsset(address(withdrawer), false);
 
         vm.stopPrank();
     }
