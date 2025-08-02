@@ -83,7 +83,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
 
         // Test the getAssets function
         address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 8, "There should be 8 assets in the vault");
+        assertEq(assets.length, 9, "There should be 9 assets in the vault");
     }
 
     function test_Vault_Upgrade_totalAssets_unchanged(bool processAccountingBeforeCheck) public {
