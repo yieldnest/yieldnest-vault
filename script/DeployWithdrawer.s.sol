@@ -8,6 +8,10 @@ import {TransparentUpgradeableProxy} from
 import {ProxyUtils} from "./ProxyUtils.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
+import {console} from "lib/forge-std/src/console.sol";
+import {WithdrawerConfigurer} from "src/configures/WithdrawerConfigurer.sol";
+import {IVault} from "src/interface/IVault.sol";
+import {MainnetActors} from "script/Actors.sol";
 
 contract DeployWithdrawer is Script {
     using stdJson for string;
@@ -43,6 +47,13 @@ contract DeployWithdrawer is Script {
         vm.stopBroadcast();
 
         address proxyAdmin = ProxyUtils.getProxyAdmin(address(proxy));
+
+        console.log("Configuring Withdrawer at address:", address(withdrawer));
+        WithdrawerConfigurer configurer = new WithdrawerConfigurer();
+        configurer.configure(withdrawer, address(IVault(MC.YNBNBX).provider()), MC.TIMELOCK, new MainnetActors());
+
+        console.log("Withdrawer configured at address:", address(withdrawer));
+
         saveDeployment(implementation, address(proxy), proxyAdmin);
     }
 }
