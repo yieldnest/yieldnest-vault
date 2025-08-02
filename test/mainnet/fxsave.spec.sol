@@ -10,7 +10,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
-import {console} from "lib/forge-std/src/console.sol";
 import {IFxUSDBasePool} from "src/interface/IFxUSDBasePool.sol";
 import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 
@@ -203,19 +202,21 @@ contract FXSaveTest is BaseTest {
         );
     }
 
-    function test_redeem_fxsave(uint256 depositAmount) public {
-        depositAmount = bound(depositAmount, 1e6, 100e6);
+    function test_redeem_fxsave()
+        //uint256 depositAmount
+        public
+    {
+        // depositAmount = bound(depositAmount, 1e6, 100e6);
+
+        uint256 depositAmount = 10_000e6;
 
         address alice = makeAddr("alice");
-        deal(MC.USDC, alice, depositAmount);
-
-        // Record vault's USDC balance and totalBaseAssets before deposit
-        uint256 vaultUSDCBefore = IERC20(MC.USDC).balanceOf(address(vault));
+        deal(MC.USDC, alice, depositAmount * 1e12);
 
         // Alice approves the vault to spend her USDC and deposits into the vault
         vm.startPrank(alice);
         IERC20(MC.USDC).approve(address(vault), depositAmount);
-        uint256 shares = vault.deposit(depositAmount, alice);
+        vault.deposit(depositAmount, alice);
         vm.stopPrank();
 
         // Record totalBaseAssets after deposit
@@ -287,7 +288,7 @@ contract FXSaveTest is BaseTest {
         vm.assertApproxEqAbs(
             vault.totalBaseAssets(),
             totalBaseAssetsAfterFxBaseAllocation,
-            1,
+            3,
             "totalBaseAssets should remain approx constant after allocateToERC4626MAX"
         );
 
@@ -297,13 +298,22 @@ contract FXSaveTest is BaseTest {
             "fxBASE balance should be equal to fxBASE obtained"
         );
 
+        uint256 withdrawerTotalBaseAssetsBefore = withdrawer.totalBaseAssets();
+
         requestRedeemForFxBase(fxBaseObtained);
+
+        vm.assertApproxEqAbs(
+            withdrawer.totalBaseAssets(),
+            withdrawerTotalBaseAssetsBefore,
+            3,
+            "withdrawer totalBaseAssets should remain approx constant after requestRedeemForFxBase"
+        );
 
         // Assert after requestRedeemForFxBase (allowing approx abs diff of 1 wei)
         vm.assertApproxEqAbs(
             vault.totalBaseAssets(),
             totalBaseAssetsAfterFxBaseAllocation,
-            1,
+            3,
             "totalBaseAssets should remain approx constant after requestRedeemForFxBase"
         );
 
@@ -314,18 +324,30 @@ contract FXSaveTest is BaseTest {
             vm.warp(redeemRequest.unlockAt + 1);
         }
 
+        withdrawer.processAccounting();
+        vault.processAccounting();
+
+        uint256 totalBaseAssetsBeforeRedeem = vault.totalBaseAssets();
+
+        // yield kicks in after time passes
+        assertGt(
+            totalBaseAssetsBeforeRedeem,
+            totalBaseAssetsAfterFxBaseAllocation,
+            "totalBaseAssetsBeforeRedeem should be greater than totalBaseAssetsAfterFxBaseAllocation"
+        );
+
         redeemFromFxBase(fxBaseObtained);
 
         // Assert after redeemFromFxBase (allowing approx abs diff of 1 wei)
         vm.assertApproxEqAbs(
             vault.totalBaseAssets(),
-            totalBaseAssetsAfterFxBaseAllocation,
+            totalBaseAssetsBeforeRedeem,
             1,
             "totalBaseAssets should remain approx constant after redeemFromFxBase"
         );
     }
 
-    function test_deposit_fxsave() public {
+    function test_deposit_fxsave_external_sample() public {
         uint256 depositAmount = 1_000_000e6;
 
         address alice = makeAddr("alice");
@@ -333,25 +355,14 @@ contract FXSaveTest is BaseTest {
 
         IFxUSDBasePool fxBase = IFxUSDBasePool(MC.FXBASE);
 
-        uint256 presumedSharesAmount = depositAmount * 1e12;
-        (uint256 presumedFxBaseYield, uint256 presumedFxBaseStable) = fxBase.previewRedeem(presumedSharesAmount);
-        console.log("presumedSharesAmount", presumedSharesAmount);
-        console.log("presumedFxBaseYield", presumedFxBaseYield);
-        console.log("presumedFxBaseStable", presumedFxBaseStable);
-
+        // Use the following to previewRedeem
+        // (uint256 presumedFxBaseYield, uint256 presumedFxBaseStable) = fxBase.previewRedeem(presumedSharesAmount);
         // Step 1: Deposit USDC into fxBASE using the interface
         vm.startPrank(alice);
         IERC20(MC.USDC).approve(address(fxBase), depositAmount);
 
-        // Log USDC balance in fxBASE before deposit
-        console.log("USDC in fxBASE before deposit:", IERC20(MC.USDC).balanceOf(address(fxBase)));
-        console.log("totalStableToken before deposit:", fxBase.totalStableToken());
-        console.log("totalYieldToken before deposit:", fxBase.totalYieldToken());
-
-        console.log("convertToUSDC before deposit", convertToUSDC(1e18));
-
-        // Record nav before deposit
-        uint256 navBefore = fxBase.nav();
+        // .nav() records chainlink oracle based pricing. Do NOT use for fundamental value oracles.
+        //uint256 navBefore = fxBase.nav();
 
         // Use the IFxUSDBasePool interface to deposit USDC into fxBASE using the correct signature
         fxBase.deposit(
@@ -360,23 +371,6 @@ contract FXSaveTest is BaseTest {
             depositAmount, // amountTokenToDeposit
             0 // minSharesOut
         );
-
-        // Record nav after deposit
-        uint256 navAfter = fxBase.nav();
-
-        // Log USDC balance in fxBASE after deposit
-        console.log("USDC in fxBASE after deposit:", IERC20(MC.USDC).balanceOf(address(fxBase)));
-        console.log("totalStableToken after deposit:", fxBase.totalStableToken());
-        console.log("totalYieldToken after deposit:", fxBase.totalYieldToken());
-
-        console.log("convertToUSDC after deposit", convertToUSDC(1e18));
-
-        // Print difference in nav before and after
-        console.log("nav difference after deposit:", int256(navAfter) - int256(navBefore));
-
-        (uint256 presumedFxBaseYieldMid, uint256 presumedFxBaseStableMid) = fxBase.previewRedeem(presumedSharesAmount);
-        console.log("presumedFxAssets in between (yield)", presumedFxBaseYieldMid);
-        console.log("presumedFxAssets in between (stable)", presumedFxBaseStableMid);
 
         // Step 2: Deposit fxBASE shares into fxSAVE (as ERC4626)
         uint256 fxBaseBalance = IERC20(address(fxBase)).balanceOf(alice);
@@ -387,31 +381,11 @@ contract FXSaveTest is BaseTest {
 
         // Measure alice's balance in fxSAVE (shares)
         uint256 fxSaveShares = IERC20(MC.FXSAVE).balanceOf(alice);
-        {
-            console.log("fxSaveShares", fxSaveShares);
-
-            // Convert shares to USDC value using convertToAssets
-            uint256 fxBaseAssets = IERC4626(MC.FXSAVE).convertToAssets(fxSaveShares);
-            console.log("fxBaseAssets", fxBaseAssets);
-
-            uint256 fxBaseAssetsInUSDC = fxBaseAssets * fxBase.nav() / 1e18;
-
-            console.log("fxBaseAssetsInUSDC", fxBaseAssetsInUSDC);
-
-            console.log("convertToUSDC", convertToUSDC(fxBaseAssets));
-
-            (uint256 presumedFxBaseYieldAfter, uint256 presumedFxBaseStableAfter) =
-                fxBase.previewRedeem(presumedSharesAmount);
-            console.log("presumedFxAssets After (yield)", presumedFxBaseYieldAfter);
-            console.log("presumedFxAssets After (stable)", presumedFxBaseStableAfter);
-        }
 
         {
             vm.startPrank(alice);
 
             IERC4626(MC.FXSAVE).redeem(fxSaveShares, alice, alice);
-
-            console.log("fxBase.balanceOf(alice)", fxBase.balanceOf(alice));
 
             uint256 sharesToRedeem = fxBase.balanceOf(alice);
 

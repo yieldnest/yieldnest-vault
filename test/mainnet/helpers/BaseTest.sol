@@ -64,7 +64,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         configurator.configure(withdrawer, address(provider), TIMELOCK, new MainnetActors());
 
         {
-            uint256 BOOTSTRAP_AMOUNT = 10_000e6;
+            uint256 BOOTSTRAP_AMOUNT = 1_000e6;
             address bootstrapper = BOOTSTRAPPER;
             vm.startPrank(bootstrapper);
             deal(MC.USDC, bootstrapper, BOOTSTRAP_AMOUNT);
