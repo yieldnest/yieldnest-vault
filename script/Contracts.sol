@@ -36,6 +36,8 @@ library MainnetContracts {
 
     address public constant YNUSDx = 0x3DB228FE836D99Ccb25Ec4dfdC80ED6d2CDdCB4b;
 
+    address public constant TIMELOCK = 0x739711358Ee02d0D6d6eE51D6A07dc862ddB132d;
+
     address public constant PARASWAP_AUGUSTUS_SWAPPER_ROUTER = 0x6A000F20005980200259B80c5102003040001068;
 
     // Morpho Gauntlet USDC Vault is used as the buffer for ynUSDCx
