@@ -21,6 +21,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 
 contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
+    Withdrawer public withdrawer;
 
     function setUp() public virtual {
         vault = Vault(payable(MC.YNBNBX));
@@ -28,6 +29,35 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         mockKernelVaultDepositLimit(MC.WBNB);
         mockKernelVaultDepositLimit(MC.CLISBNB);
         mockKernelVaultDepositLimit(MC.SLISBNB);
+
+        deployWithdrawer();
+    }
+
+    function deployWithdrawer() public {
+        // Deploy Withdrawer with TransparentUpgradeableProxy
+        address implementation = address(new Withdrawer());
+        address proxy = address(new TransparentUpgradeableProxy(implementation, TIMELOCK, ""));
+        withdrawer = Withdrawer(payable(proxy));
+
+        vm.startPrank(TIMELOCK);
+
+        {
+            SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](3);
+            uint256 i = 0;
+
+            address[] memory usdcSpender = new address[](1);
+            usdcSpender[0] = address(withdrawer);
+            rules[i++] = BaseRules.getAppendApprovalRule(MC.SLISBNB, usdcSpender, vault);
+
+            // Set deposit and withdraw asset rules for withdrawer and FXBASE
+            rules[i++] = BaseRules.getDepositAssetRule(address(withdrawer), MC.SLISBNB, address(vault));
+            // Set withdraw rule for USDC for withdrawer
+            rules[i++] = BaseRules.getWithdrawRule(address(withdrawer), address(vault));
+
+            SafeRules.setProcessorRules(vault, rules, true);
+        }
+
+        vm.stopPrank();
     }
 
     function upgradeVaults() public {
