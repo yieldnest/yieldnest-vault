@@ -75,7 +75,7 @@ contract ProviderTest is BaseTest {
 
     function test_getRate_Of_Withdrawer() public view {
         // The provider should return the result of IERC4626(withdrawer).convertToAssets(1e18)
-        assertEq(provider.getRate(address(withdrawer)), IERC4626(address(withdrawer)).convertToAssets(1e18));
+        assertEq(provider.getRate(address(withdrawer)), IERC4626(address(withdrawer)).convertToAssets(1e18) * 1e12);
     }
 
     function test_getRate_Of_FXBASE() public view {

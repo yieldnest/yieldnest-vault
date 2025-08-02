@@ -35,38 +35,7 @@ contract FXSaveTest is BaseTest {
     }
 
     function depositToFxBase(uint256 depositAmount) internal {
-        // 1. Allocate to fxBASE using processor
-        // Prepare calldata for fxBASE.deposit(address receiver, address tokenIn, uint256 amountTokenToDeposit, uint256 minSharesOut)
-        address receiver = address(vault);
-        address tokenIn = MC.USDC;
-        uint256 amountTokenToDeposit = depositAmount;
-        uint256 minSharesOut = 0;
-
-        bytes memory fxBaseDepositCalldata = abi.encodeWithSelector(
-            IFxUSDBasePool(MC.FXBASE).deposit.selector, receiver, tokenIn, amountTokenToDeposit, minSharesOut
-        );
-
-        // Call processor on the vault to approve fxBASE to spend USDC, then allocate to fxBASE
-        // The approve call must come before the fxBASE deposit call
-        address[] memory targets1 = new address[](2);
-        uint256[] memory values1 = new uint256[](2);
-        bytes[] memory calldatas1 = new bytes[](2);
-
-        // 1. Approve fxBASE to spend USDC from the vault
-        targets1[0] = MC.USDC;
-        values1[0] = 0;
-        calldatas1[0] = abi.encodeWithSelector(IERC20(MC.USDC).approve.selector, MC.FXBASE, depositAmount);
-
-        // 2. Call fxBASE.deposit
-        targets1[1] = MC.FXBASE;
-        values1[1] = 0;
-        calldatas1[1] = fxBaseDepositCalldata;
-
-        vm.startPrank(PROCESSOR);
-        vault.processor(targets1, values1, calldatas1);
-        vm.stopPrank();
-
-        vault.processAccounting();
+        ProcessorUtils.depositToFxBase(address(vault), depositAmount, PROCESSOR);
     }
 
     function depositToFxSave() internal {

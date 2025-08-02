@@ -130,7 +130,7 @@ contract Provider is IProvider {
 
         if (isUSDCStrategyVault(asset)) {
             // base asset is USDC with 6 decimals. we scale it to 18 decimals to convert to Wrapped USDC
-            return IERC4626(asset).convertToAssets(1e18);
+            return IERC4626(asset).convertToAssets(1e18) * 1e12;
         }
 
         revert UnsupportedAsset(asset);
