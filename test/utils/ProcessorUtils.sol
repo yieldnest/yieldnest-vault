@@ -62,10 +62,10 @@ library ProcessorUtils {
      * @notice Withdraws assets from an ERC4626 strategy via the vault processor
      * @param vault The vault address
      * @param strategy The ERC4626 strategy address
-     * @param shares The amount of shares to withdraw
+     * @param amount The amount of amount to withdraw
      * @param processor The processor address
      */
-    function withdrawFromERC4626(address vault, address strategy, uint256 shares, address processor) internal {
+    function withdrawFromERC4626(address vault, address strategy, uint256 amount, address processor) internal {
         Vm vm = Vm(CHEATCODE_ADDRESS);
         address[] memory targets = new address[](1);
         targets[0] = strategy;
@@ -75,7 +75,7 @@ library ProcessorUtils {
 
         bytes[] memory data = new bytes[](1);
         // Withdraw from the ERC4626 strategy to the vault
-        data[0] = abi.encodeWithSignature("withdraw(uint256,address,address)", shares, vault, vault);
+        data[0] = abi.encodeWithSignature("withdraw(uint256,address,address)", amount, vault, vault);
 
         vm.prank(processor);
         IVault(vault).processor(targets, values, data);

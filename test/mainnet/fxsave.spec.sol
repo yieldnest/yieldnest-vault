@@ -12,7 +12,6 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IFxUSDBasePool} from "src/interface/IFxUSDBasePool.sol";
 import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 contract FXSaveTest is BaseTest {
     using SafeERC20 for IERC20;
@@ -369,8 +368,12 @@ contract FXSaveTest is BaseTest {
             // Record vault's FXUSD balance before withdrawal
             uint256 fxusdVaultBefore = IERC20(MC.FXUSD).balanceOf(address(vault));
 
-            // TODO: fix this
-            // ProcessorUtils.withdrawFromERC4626(address(vault), address(withdrawer), usdcRedeemed, PROCESSOR);
+            {
+                uint256 usdcWithdrawn = usdcRedeemed > 1e6 ? usdcRedeemed - 1e6 : 0;
+                if (usdcWithdrawn > 0) {
+                    ProcessorUtils.withdrawFromERC4626(address(vault), address(withdrawer), usdcWithdrawn, PROCESSOR);
+                }
+            }
 
             ProcessorUtils.withdrawAssetFromERC4626MAX(
                 address(vault), address(withdrawer), MC.FXUSD, fxusdRedeemed, PROCESSOR
