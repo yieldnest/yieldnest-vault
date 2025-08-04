@@ -81,7 +81,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         vault.addAsset(MC.FXSAVE, false);
         vault.addAsset(address(withdrawer), false);
 
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](9);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](10);
         uint256 i = 0;
 
         // Set approval rule for USDC to allow only FXBASE and withdrawer as spenders
@@ -116,6 +116,8 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         rules[i++] = BaseRules.getWithdrawRule(address(withdrawer), address(vault));
 
         rules[i++] = BaseRules.getWithdrawAssetRule(address(withdrawer), MC.FXUSD, address(vault));
+
+        rules[i++] = BaseRules.getApprovalRule(MC.FXUSD, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
 
         SafeRules.setProcessorRules(vault, rules, true);
 
