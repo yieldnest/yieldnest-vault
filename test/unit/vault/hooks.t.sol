@@ -278,6 +278,12 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         hooks.setPerformanceFeeRecipient(newPerformanceFeeRecipient);
     }
 
+    function test_setPerformanceFeeRecipient_invalidRecipient() public {
+        vm.startPrank(ADMIN);
+        vm.expectRevert(abi.encodeWithSelector(IHooks.InvalidPerformanceFeeRecipient.selector));
+        hooks.setPerformanceFeeRecipient(address(0));
+    }
+
     function test_setPerformanceFee() public {
         uint256 newPerformanceFee = 1e16;
         vm.startPrank(ADMIN);
