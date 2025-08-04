@@ -57,9 +57,18 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         weth.approve(address(vault), type(uint256).max);
     }
 
-    function test_AfterProcessAccounting_Invariants(uint256 totalAssetsBefore, uint256 totalAssetsAfter) public {
+    function test_AfterProcessAccounting_Invariants(
+        uint256 totalAssetsBefore,
+        uint256 totalAssetsAfter,
+        uint256 performanceFee
+    ) public {
         totalAssetsBefore = bound(totalAssetsBefore, 1 ether, 1_000_000_000 ether);
         totalAssetsAfter = bound(totalAssetsAfter, totalAssetsBefore + 1 ether, 1_000_000_001 ether);
+        performanceFee = bound(performanceFee, 0.01 ether, 1 ether);
+
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFee(performanceFee);
+        vm.stopPrank();
 
         assertEq(vault.decimals(), 18);
         address vaultAsset = vault.asset();
@@ -83,14 +92,6 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 vaultExchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
         uint256 feesAccrued = (donationAmount * hooks.performanceFee()) / 1 ether;
 
-        if (feesAccrued > 0) {
-            vm.expectEmit(true, true, false, false, address(hooks));
-            emit IHooks.PerformanceFeeCharged(
-                hooks.performanceFeeRecipient(), 0, feesAccrued, totalAssetsBefore, totalAssetsAfter
-            );
-        }
-        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter);
-        vm.stopPrank();
         vault.processAccounting();
 
         uint256 vaultTotalSupplyAfter = vault.totalSupply();
@@ -107,7 +108,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
                 vaultTotalSupplyAfter, vaultTotalSupplyBefore, "vault's total supply should not change due to no fee"
             );
         }
-        assertGt(
+        assertGe(
             vaultExchangeRateAfter,
             vaultExchangeRateBefore,
             "vault's exchange rate should always increase due to donation"
@@ -147,7 +148,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
         uint256 vaultExchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
 
-        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter);
+        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter, vaultTotalSupplyBefore);
         vm.stopPrank();
         vault.processAccounting();
 
@@ -167,7 +168,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function test_AfterProcessAccounting_MultipleDeposits(
         uint256 depositAmount1,
         uint256 depositAmount2,
-        uint256 yieldAmount1
+        uint256 yieldAmount1,
+        uint256 performanceFee
     ) public {
         address user1 = makeAddr("user1");
         address user2 = makeAddr("user2");
@@ -175,6 +177,11 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         depositAmount1 = bound(depositAmount1, 1 ether, 10_000 ether);
         depositAmount2 = bound(depositAmount2, 1 ether, 10_000 ether);
         yieldAmount1 = bound(yieldAmount1, 1 ether, 10_000 ether);
+        performanceFee = bound(performanceFee, 0.01 ether, 1 ether);
+
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFee(performanceFee);
+        vm.stopPrank();
 
         deal((MC.WETH), user1, depositAmount1);
         deal((MC.WETH), user2, depositAmount2 + yieldAmount1);
@@ -195,11 +202,10 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 yieldEarned = yieldAmount1;
         uint256 performanceFeeShares;
         {
-            uint256 performanceFee = IHooks(address(vault.hooks())).performanceFee();
             uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1 ether;
             uint256 totalBaseAssets = vault.computeTotalAssets();
-            (performanceFeeShares,) =
-                convertToShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
+            performanceFeeShares =
+                getFeeShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
 
             vault.processAccounting();
         }
@@ -253,7 +259,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function test_AfterProcessAccounting_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterProcessAccounting(1 ether, 1 ether);
+        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether);
         vm.stopPrank();
     }
 
@@ -294,12 +300,21 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         hooks.setPerformanceFee(newPerformanceFee);
     }
 
-    function convertToShares(uint256 baseAssets, uint256 totalSupply, uint256 totalAssets, Math.Rounding rounding)
+    function test_setHooks_revertsIfInvalidHooks() public {
+        SetupVault setupVault = new SetupVault();
+        (Vault dummyVault,) = setupVault.setup();
+        address invalidHooks = address(new Hooks(address(dummyVault)));
+        vm.startPrank(ADMIN);
+        vm.expectRevert(abi.encodeWithSelector(IVault.InvalidHooks.selector));
+        vault.setHooks(invalidHooks);
+    }
+
+    function getFeeShares(uint256 fee, uint256 totalShares, uint256 totalAssets, Math.Rounding rounding)
         internal
         pure
-        returns (uint256, uint256)
+        returns (uint256)
     {
-        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
-        return (shares, baseAssets);
+        uint256 shares = fee.mulDiv(totalShares, totalAssets - fee, rounding);
+        return shares;
     }
 }

@@ -118,8 +118,8 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 performanceFee = IHooks(vault.hooks()).performanceFee();
         uint256 performanceFeeAmount = (yieldAmount1 * performanceFee) / 1 ether;
         uint256 totalBaseAssets = vault.computeTotalAssets();
-        (uint256 performanceFeeShares,) =
-            convertToShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
+        uint256 performanceFeeShares =
+            getFeeShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
         vault.processAccounting();
         uint256 vaultTotalSupplyAfter = vault.totalSupply();
@@ -162,8 +162,8 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         performanceFee = IHooks(vault.hooks()).performanceFee();
         performanceFeeAmount = (yieldAmount2 * performanceFee) / 1 ether;
         totalBaseAssets = vault.computeTotalAssets();
-        (uint256 performanceFeeShares2,) =
-            convertToShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
+        uint256 performanceFeeShares2 =
+            getFeeShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
         vaultTotalSupplyBefore = vault.totalSupply();
         vault.processAccounting();
         vaultTotalSupplyAfter = vault.totalSupply();
@@ -402,12 +402,12 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vault.withdraw(depositAmount, bob, bob);
     }
 
-    function convertToShares(uint256 baseAssets, uint256 totalSupply, uint256 totalAssets, Math.Rounding rounding)
+    function getFeeShares(uint256 fee, uint256 totalShares, uint256 totalAssets, Math.Rounding rounding)
         internal
         pure
-        returns (uint256, uint256)
+        returns (uint256)
     {
-        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
-        return (shares, baseAssets);
+        uint256 shares = fee.mulDiv(totalShares, totalAssets - fee, rounding);
+        return shares;
     }
 }

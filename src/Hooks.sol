@@ -4,8 +4,11 @@ pragma solidity ^0.8.24;
 import {OwnableUpgradeable, IERC4626, ERC20} from "src/Common.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {Math} from "src/Common.sol";
 
 contract Hooks is OwnableUpgradeable, IHooks {
+    using Math for uint256;
+
     // performance denominated in ether(i.e. 1e18 = 100%)
     uint256 public performanceFee;
     address public performanceFeeRecipient;
@@ -28,7 +31,9 @@ contract Hooks is OwnableUpgradeable, IHooks {
         performanceFeeRecipient = performanceFeeRecipient_;
     }
 
-    function afterProcessAccounting(uint256 totalAssetsBefore, uint256 totalAssetsAfter) external {
+    function afterProcessAccounting(uint256 totalAssetsBefore, uint256 totalAssetsAfter, uint256 totalShares)
+        external
+    {
         if (msg.sender != address(VAULT)) revert CallerNotVault();
 
         if (totalAssetsAfter > totalAssetsBefore) {
@@ -36,11 +41,17 @@ contract Hooks is OwnableUpgradeable, IHooks {
             uint256 feesAccrued = (yieldEarned * performanceFee) / FEE_DENOMINATOR;
 
             if (feesAccrued > 0) {
-                uint256 sharesToMint = VAULT.previewDeposit(feesAccrued);
+                uint256 sharesToMint =
+                    feesAccrued.mulDiv(totalShares, totalAssetsAfter - feesAccrued, Math.Rounding.Floor);
                 if (sharesToMint > 0) {
                     VAULT.mintShares(performanceFeeRecipient, sharesToMint);
                     emit PerformanceFeeCharged(
-                        performanceFeeRecipient, sharesToMint, feesAccrued, totalAssetsBefore, totalAssetsAfter
+                        performanceFeeRecipient,
+                        sharesToMint,
+                        feesAccrued,
+                        totalAssetsBefore,
+                        totalAssetsAfter,
+                        totalShares
                     );
                 }
             }

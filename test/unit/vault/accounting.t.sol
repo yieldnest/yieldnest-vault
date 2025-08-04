@@ -321,8 +321,8 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
             uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
             uint256 totalBaseAssets = vault.computeTotalAssets();
 
-            (performanceFeeShares,) =
-                convertToShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
+            performanceFeeShares =
+                getFeeShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
         }
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
         vault.processAccounting();
@@ -400,8 +400,8 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         uint256 performanceFee = Hooks(hooks).performanceFee();
         uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
         uint256 totalBaseAssets = vault.computeTotalAssets();
-        (uint256 performanceFeeShares,) =
-            convertToShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
+        uint256 performanceFeeShares =
+            getFeeShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
         {
             uint256 vaultTotalSupplyBefore = vault.totalSupply();
             vault.processAccounting();
@@ -443,12 +443,12 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         assertEq(vault.balanceOf(alice), 1);
     }
 
-    function convertToShares(uint256 baseAssets, uint256 totalSupply, uint256 totalAssets, Math.Rounding rounding)
+    function getFeeShares(uint256 fee, uint256 totalShares, uint256 totalAssets, Math.Rounding rounding)
         internal
         pure
-        returns (uint256, uint256)
+        returns (uint256)
     {
-        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
-        return (shares, baseAssets);
+        uint256 shares = fee.mulDiv(totalShares, totalAssets - fee, rounding);
+        return shares;
     }
 }
