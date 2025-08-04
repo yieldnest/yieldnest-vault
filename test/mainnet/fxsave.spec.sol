@@ -202,11 +202,8 @@ contract FXSaveTest is BaseTest {
         );
     }
 
-    function test_redeem_fxsave()
-        //uint256 depositAmount
-        public
-    {
-        // depositAmount = bound(depositAmount, 1e6, 100e6);
+    function test_redeem_fxsave(uint256 depositAmount) public {
+        depositAmount = bound(depositAmount, 1e6, 10_000_000e6);
 
         uint256 depositAmount = 10_000e6;
 

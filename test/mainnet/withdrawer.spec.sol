@@ -65,13 +65,8 @@ contract WithdrawerTest is BaseTest {
         );
     }
 
-    function test_Withdrawer_deposit_and_withdraw_fxbase()
-        //uint256 depositAmount
-        public
-    {
-        // depositAmount = bound(depositAmount, 1e6, 10_000_000e6);
-
-        uint256 depositAmount = 10_000e6;
+    function test_Withdrawer_deposit_and_withdraw_fxbase(uint256 depositAmount) public {
+        depositAmount = bound(depositAmount, 1e6, 10_000_000e6);
 
         uint256 totalAssetsBefore = vault.totalAssets();
 
