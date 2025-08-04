@@ -662,8 +662,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             uint256 performanceFee = IHooks(vault.hooks()).performanceFee();
             uint256 performanceFeeAmount = (amount * performanceFee) / 1e18;
             uint256 totalBaseAssets = vault.computeTotalAssets();
-            (uint256 performanceFeeShares,) =
-                convertToShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
+            uint256 performanceFeeShares =
+                getFeeShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
             // process accounting to update for the donation
             vault.processAccounting();
 
@@ -1359,12 +1359,12 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         totalAssetsInvariant(initialAssets + initialDepositedAmount - withdrawableAssets);
     }
 
-    function convertToShares(uint256 baseAssets, uint256 totalSupply, uint256 totalAssets, Math.Rounding rounding)
+    function getFeeShares(uint256 fee, uint256 totalShares, uint256 totalAssets, Math.Rounding rounding)
         internal
         pure
-        returns (uint256, uint256)
+        returns (uint256)
     {
-        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
-        return (shares, baseAssets);
+        uint256 shares = fee.mulDiv(totalShares, totalAssets - fee, rounding);
+        return shares;
     }
 }

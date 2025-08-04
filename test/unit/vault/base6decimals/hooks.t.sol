@@ -76,10 +76,15 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
         if (feesAccrued > 0) {
             vm.expectEmit(true, true, false, false, address(hooks));
             emit IHooks.PerformanceFeeCharged(
-                hooks.performanceFeeRecipient(), 0, feesAccrued, totalAssetsBefore, totalAssetsAfter
+                hooks.performanceFeeRecipient(),
+                0,
+                feesAccrued,
+                totalAssetsBefore,
+                totalAssetsAfter,
+                vaultTotalSupplyBefore
             );
         }
-        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter);
+        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter, vaultTotalSupplyBefore);
         vm.stopPrank();
         vault.processAccounting();
 
@@ -145,7 +150,7 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
         uint256 vaultTotalAssetsBefore = vault.totalAssets();
         uint256 vaultExchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
 
-        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter);
+        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter, vaultTotalSupplyBefore);
         vm.stopPrank();
         vault.processAccounting();
 

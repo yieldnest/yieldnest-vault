@@ -780,18 +780,21 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _processAccounting() internal virtual {
-        uint256 totalAssetsBefore = totalAssets();
+        uint256 totalAssetsBeforeAccounting = totalAssets();
 
-        uint256 totalBaseBalanceAfter = computeTotalAssets();
+        uint256 totalBaseBalanceAfterAccounting = computeTotalAssets();
 
-        _getVaultStorage().totalAssets = totalBaseBalanceAfter;
+        _getVaultStorage().totalAssets = totalBaseBalanceAfterAccounting;
         // solhint-disable-next-line not-rely-on-time
-        emit ProcessAccounting(block.timestamp, totalBaseBalanceAfter);
+        emit ProcessAccounting(block.timestamp, totalBaseBalanceAfterAccounting);
 
         IHooks hooks_ = hooks();
         if (address(hooks_) != address(0)) {
-            uint256 totalAssetsAfter = totalAssets();
-            hooks_.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter);
+            uint256 totalAssetsAfterAccounting = totalAssets();
+            uint256 totalSupplyAfterAccounting = totalSupply();
+            hooks_.afterProcessAccounting(
+                totalAssetsBeforeAccounting, totalAssetsAfterAccounting, totalSupplyAfterAccounting
+            );
         }
     }
 
@@ -806,6 +809,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function setHooks(address hooks_) external onlyRole(HOOKS_MANAGER_ROLE) {
+        if (address(IHooks(hooks_).VAULT()) != address(this)) {
+            revert InvalidHooks();
+        }
         _setHooks(hooks_);
     }
 

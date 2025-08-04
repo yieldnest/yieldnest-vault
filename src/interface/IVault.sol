@@ -95,6 +95,7 @@ interface IVault is IERC4626 {
     error ExceedsMaxPerformanceFee(uint256 value);
     error BaseAsset();
     error CallerNotHooks();
+    error InvalidHooks();
 
     event DepositAsset(
         address indexed sender,
