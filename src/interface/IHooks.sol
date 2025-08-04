@@ -5,6 +5,7 @@ import {IVault} from "src/interface/IVault.sol";
 
 interface IHooks {
     error InvalidPerformanceFee();
+    error InvalidPerformanceFeeRecipient();
     error CallerNotVault();
 
     event PerformanceFeeCharged(

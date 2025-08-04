@@ -27,6 +27,7 @@ contract Hooks is OwnableUpgradeable, IHooks {
     {
         __Ownable_init(owner_);
         if (performanceFee_ > FEE_DENOMINATOR) revert InvalidPerformanceFee();
+        if (performanceFeeRecipient_ == address(0)) revert InvalidPerformanceFeeRecipient();
         performanceFee = performanceFee_;
         performanceFeeRecipient = performanceFeeRecipient_;
     }
@@ -65,6 +66,7 @@ contract Hooks is OwnableUpgradeable, IHooks {
     }
 
     function setPerformanceFeeRecipient(address performanceFeeRecipient_) external onlyOwner {
+        if (performanceFeeRecipient_ == address(0)) revert InvalidPerformanceFeeRecipient();
         emit SetPerformanceFeeRecipient(performanceFeeRecipient, performanceFeeRecipient_);
         performanceFeeRecipient = performanceFeeRecipient_;
     }
