@@ -10,6 +10,7 @@ import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -163,10 +164,24 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 convertedAssets = vault.convertToAssets(maxShares);
         uint256 expectedFee = (expectedAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
 
         vm.prank(alice);
         uint256 redeemedAmount = vault.redeem(maxShares, alice, alice);
 
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
+        assertApproxEqAbs(
+            vault.convertToAssets(sharesMinted),
+            expectedFee,
+            5,
+            "Performance fee recipient should receive the correct amount of assets"
+        );
+        assertGt(
+            vaultBalanceOfPerformanceFeeRecipientAfter,
+            vaultBalanceOfPerformanceFeeRecipientBefore,
+            "Vault balance of performance fee recipient should increase after redeem"
+        );
         assertApproxEqRel(redeemedAmount, expectedAssets, 1e14, "Redeemed amount should match preview");
 
         assertApproxEqRel(
@@ -188,11 +203,19 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         vm.startPrank(feeExemptedUser);
         uint256 maxShares = vault.maxRedeem(feeExemptedUser);
+        uint256 totalSupplyBefore = vault.totalSupply();
         uint256 expectedAssets = vault.previewRedeem(maxShares);
 
         uint256 convertedAssets = vault.convertToAssets(maxShares);
         uint256 redeemedAmount = vault.redeem(maxShares, feeExemptedUser, feeExemptedUser);
+        uint256 totalSupplyAfter = vault.totalSupply();
 
+        assertApproxEqAbs(
+            totalSupplyAfter,
+            totalSupplyBefore - maxShares,
+            1,
+            "Vault total supply should not change after redeem for fee exempted user"
+        );
         assertApproxEqAbs(redeemedAmount, expectedAssets, 1, "Redeemed amount should match preview");
 
         assertApproxEqAbs(redeemedAmount, convertedAssets, 1, "Redeemed amount should be total assets minus fee");
@@ -223,11 +246,24 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 expectedFee = (maxWithdraw * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
         uint256 expectedShares = vault.convertToShares(maxWithdraw + expectedFee);
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
 
         // Verify we can actually withdraw the max amount
         vm.prank(alice);
         uint256 withdrawnShares = vault.withdraw(maxWithdraw, alice, alice);
-
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
+        assertApproxEqAbs(
+            vault.convertToAssets(sharesMinted),
+            expectedFee,
+            5,
+            "Performance fee recipient should receive the correct amount of assets"
+        );
+        assertGt(
+            vaultBalanceOfPerformanceFeeRecipientAfter,
+            vaultBalanceOfPerformanceFeeRecipientBefore,
+            "Vault balance of performance fee recipient should increase after withdraw"
+        );
         assertApproxEqAbs(withdrawnShares, expectedShares, 2, "Withdrawn shares should match expected with fee");
         assertApproxEqAbs(vault.balanceOf(alice), 0, 1, "Alice should have no shares remaining");
     }
@@ -253,10 +289,14 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         );
 
         uint256 expectedShares = vault.convertToShares(maxWithdraw);
+        uint256 totalSupplyBefore = vault.totalSupply();
 
         // Verify we can actually withdraw the max amount
         uint256 withdrawnShares = vault.withdraw(maxWithdraw, feeExemptedUser, feeExemptedUser);
 
+        assertApproxEqAbs(
+            vault.totalSupply(), totalSupplyBefore - maxWithdraw, 1, "Vault total supply should decrease after withdraw"
+        );
         assertApproxEqAbs(withdrawnShares, expectedShares, 1, "Withdrawn shares should match expected with fee");
         assertApproxEqAbs(vault.balanceOf(feeExemptedUser), 0, 2, "feeExemptedUser should have no shares remaining");
     }
@@ -274,10 +314,26 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         allocateToBuffer(assets);
 
         uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
 
-        vm.prank(alice);
+        vm.startPrank(alice);
+        uint256 expectedSharesMinted = FeeMath.feeOnTotal(withdrawnShares, vault.baseWithdrawalFee());
+        uint256 expectedFee = vault.convertToAssets(expectedSharesMinted);
         uint256 redeemedAmount = vault.redeem(withdrawnShares, alice, alice);
-        uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+
+        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
+        assertApproxEqAbs(
+            sharesMinted,
+            expectedSharesMinted,
+            1,
+            "Performance fee recipient should receive the correct amount of shares"
+        );
+        assertGt(
+            vaultBalanceOfPerformanceFeeRecipientAfter,
+            vaultBalanceOfPerformanceFeeRecipientBefore,
+            "Vault balance of performance fee recipient should increase after redeem"
+        );
         assertApproxEqRel(
             redeemedAmount, withdrawnAssets - expectedFee, 1e14, "Withdrawal fee should be 0.1% of assets"
         );
@@ -297,8 +353,15 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         vm.startPrank(feeExemptedUser);
         uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
-
+        uint256 vaultTotalSupplyBefore = vault.totalSupply();
         uint256 redeemedAmount = vault.redeem(withdrawnShares, feeExemptedUser, feeExemptedUser);
+        uint256 vaultTotalSupplyAfter = vault.totalSupply();
+        assertApproxEqAbs(
+            vaultTotalSupplyAfter,
+            vaultTotalSupplyBefore - withdrawnShares,
+            1,
+            "Vault total supply should decrease after redeem"
+        );
         assertEq(redeemedAmount, withdrawnAssets, "Withdrawal fee should be 0 for users exempted from fees");
     }
 
@@ -321,9 +384,22 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
         uint256 expectedShares = vault.convertToShares(withdrawnAssets + expectedFee);
 
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
         vm.prank(alice);
         uint256 withdrawAmount = vault.withdraw(withdrawnAssets, alice, alice);
-
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
+        assertApproxEqAbs(
+            vault.convertToAssets(sharesMinted),
+            expectedFee,
+            5,
+            "Performance fee recipient should receive the correct amount of assets"
+        );
+        assertGt(
+            vaultBalanceOfPerformanceFeeRecipientAfter,
+            vaultBalanceOfPerformanceFeeRecipientBefore,
+            "Vault balance of performance fee recipient should increase after withdraw"
+        );
         assertApproxEqAbs(withdrawAmount, expectedShares, 2, "Preview withdraw shares should match expected");
     }
 
@@ -345,9 +421,13 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         }
 
         uint256 expectedShares = vault.convertToShares(withdrawnAssets);
-
+        uint256 totalSupplyBefore = vault.totalSupply();
         uint256 withdrawAmount = vault.withdraw(withdrawnAssets, feeExemptedUser, feeExemptedUser);
+        uint256 totalSupplyAfter = vault.totalSupply();
 
+        assertApproxEqAbs(
+            totalSupplyAfter, totalSupplyBefore - withdrawAmount, 1, "Vault total supply should decrease after withdraw"
+        );
         assertApproxEqAbs(withdrawAmount, expectedShares, 2, "Preview withdraw shares should match expected");
     }
 

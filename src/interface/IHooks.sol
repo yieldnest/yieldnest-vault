@@ -18,6 +18,8 @@ interface IHooks {
     );
     event SetPerformanceFee(uint256 oldFee, uint256 newFee);
     event SetPerformanceFeeRecipient(address indexed oldRecipient, address indexed newRecipient);
+    event WithdrawFeeCharged(address indexed recipient, uint256 sharesMinted);
+    event RedeemFeeCharged(address indexed recipient, uint256 sharesMinted);
 
     function performanceFee() external view returns (uint256);
     function performanceFeeRecipient() external view returns (address);
@@ -25,6 +27,8 @@ interface IHooks {
 
     function afterProcessAccounting(uint256 totalAssetsBefore, uint256 totalAssetsAfter, uint256 totalShares)
         external;
+    function afterWithdraw(uint256 sharesToMint) external;
+    function afterRedeem(uint256 sharesToMint) external;
     function setPerformanceFee(uint256 performanceFee_) external;
     function setPerformanceFeeRecipient(address performanceFeeRecipient_) external;
 }
