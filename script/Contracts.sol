@@ -36,12 +36,22 @@ library MainnetContracts {
 
     address public constant YNUSDx = 0x3DB228FE836D99Ccb25Ec4dfdC80ED6d2CDdCB4b;
 
+    address public constant TIMELOCK = 0x739711358Ee02d0D6d6eE51D6A07dc862ddB132d;
+
     address public constant PARASWAP_AUGUSTUS_SWAPPER_ROUTER = 0x6A000F20005980200259B80c5102003040001068;
 
     // Morpho Gauntlet USDC Vault is used as the buffer for ynUSDCx
     address public constant MORPHO_GAUNTLET_USDC_VAULT = address(0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458);
 
     address public constant SUPER_USDC_VAULT = 0xF7DE3c70F2db39a188A81052d2f3C8e3e217822a;
+
+    address public constant FXUSD_BASE_POOL_FACET = 0x33636D49FbefBE798e15e7F356E8DBef543CC708;
+
+    address public constant FXSAVE = 0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39;
+
+    address public constant FXBASE = 0x65C9A641afCEB9C0E6034e558A319488FA0FA3be;
+
+    address public constant FXUSD = 0x085780639CC2cACd35E474e71f4d000e2405d8f6;
 }
 
 contract L1Contracts is IContracts {

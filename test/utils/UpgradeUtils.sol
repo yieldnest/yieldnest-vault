@@ -44,4 +44,18 @@ library UpgradeUtils {
         );
         vm.stopPrank();
     }
+
+    function prankUpgrade(TimelockController timelockController, address target, address newImplementation) external {
+        Vm vm = Vm(CHEATCODE_ADDRESS);
+
+        address proxyAdmin = ProxyUtils.getProxyAdmin(target);
+
+        bytes memory _data =
+            abi.encodeWithSignature("upgradeAndCall(address,address,bytes)", target, newImplementation, "");
+
+        vm.startPrank(address(timelockController));
+        (bool success,) = proxyAdmin.call(_data);
+        require(success, "Upgrade failed");
+        vm.stopPrank();
+    }
 }

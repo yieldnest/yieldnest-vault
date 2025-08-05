@@ -5,6 +5,7 @@ import {BaseTest} from "test/mainnet/helpers/BaseTest.sol";
 import {IERC4626} from "src/Common.sol";
 import {Provider} from "src/module/Provider.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
+import {IFxUSDBasePool} from "src/interface/IFxUSDBasePool.sol";
 
 contract ProviderTest is BaseTest {
     Provider public provider;
@@ -70,5 +71,24 @@ contract ProviderTest is BaseTest {
             provider.getRate(MC.MORPHO_GAUNTLET_USDC_VAULT),
             IERC4626(MC.MORPHO_GAUNTLET_USDC_VAULT).convertToAssets(1e18) * 1e12
         );
+    }
+
+    function test_getRate_Of_Withdrawer() public view {
+        // The provider should return the result of IERC4626(withdrawer).convertToAssets(1e18)
+        assertEq(provider.getRate(address(withdrawer)), IERC4626(address(withdrawer)).convertToAssets(1e18) * 1e12);
+    }
+
+    function test_getRate_Of_FXBASE() public view {
+        // For FXBASE, provider.getRate should match the calculation in Provider.sol
+        (uint256 amountYieldOut, uint256 amountStableOut) = IFxUSDBasePool(MC.FXBASE).previewRedeem(1e18);
+        uint256 expectedRate =
+            amountYieldOut * provider.getRate(MC.FXUSD) / 1e18 + amountStableOut * provider.getRate(MC.USDC) / 1e6;
+        assertEq(provider.getRate(MC.FXBASE), expectedRate);
+    }
+
+    function test_getRate_Of_FXSAVE() public view {
+        // For FXSAVE, provider.getRate should match the calculation in Provider.sol
+        uint256 expectedRate = IERC4626(MC.FXSAVE).convertToAssets(1e18) * provider.getRate(MC.FXBASE) / 1e18;
+        assertEq(provider.getRate(MC.FXSAVE), expectedRate);
     }
 }

@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
-import {Vault} from "src/Vault.sol";
+import {BaseVault} from "src/BaseVault.sol";
 import {IActors} from "script/Actors.sol";
 
 library BaseRoles {
-    function configureDefaultRoles(Vault vault, address timelock, IActors actors) internal {
+    function configureDefaultRoles(BaseVault vault, address timelock, IActors actors) internal {
         // set admin roles
         vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), actors.ADMIN());
         vault.grantRole(vault.PROCESSOR_ROLE(), actors.PROCESSOR());
         vault.grantRole(vault.PAUSER_ROLE(), actors.PAUSER());
         vault.grantRole(vault.UNPAUSER_ROLE(), actors.UNPAUSER());
-        vault.grantRole(vault.FEE_MANAGER_ROLE(), actors.FEE_MANAGER());
         // set timelock roles
         vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), timelock);
         vault.grantRole(vault.ASSET_MANAGER_ROLE(), timelock);
@@ -19,11 +18,11 @@ library BaseRoles {
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), timelock);
     }
 
-    function configureTemporaryRoles(Vault vault) internal {
+    function configureTemporaryRoles(BaseVault vault) internal {
         configureTemporaryRoles(vault, address(this));
     }
 
-    function configureTemporaryRoles(Vault vault, address deployer) internal {
+    function configureTemporaryRoles(BaseVault vault, address deployer) internal {
         vault.grantRole(vault.DEFAULT_ADMIN_ROLE(), deployer);
         vault.grantRole(vault.PROCESSOR_ROLE(), deployer);
         vault.grantRole(vault.PAUSER_ROLE(), deployer);
@@ -34,12 +33,11 @@ library BaseRoles {
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), deployer);
     }
 
-    function configureTemporaryRolesForMaxVault(Vault vault, address deployer) internal {
+    function configureTemporaryRolesForMaxVault(BaseVault vault, address deployer) internal {
         configureTemporaryRoles(vault, deployer);
-        vault.grantRole(vault.FEE_MANAGER_ROLE(), deployer);
     }
 
-    function renounceTemporaryRoles(Vault vault, address deployer) internal {
+    function renounceTemporaryRoles(BaseVault vault, address deployer) internal {
         vault.renounceRole(vault.DEFAULT_ADMIN_ROLE(), deployer);
         vault.renounceRole(vault.PROCESSOR_ROLE(), deployer);
         vault.renounceRole(vault.PAUSER_ROLE(), deployer);
@@ -50,8 +48,7 @@ library BaseRoles {
         vault.renounceRole(vault.PROCESSOR_MANAGER_ROLE(), deployer);
     }
 
-    function renounceTemporaryRolesForMaxVault(Vault vault, address deployer) internal {
+    function renounceTemporaryRolesForMaxVault(BaseVault vault, address deployer) internal {
         renounceTemporaryRoles(vault, deployer);
-        vault.renounceRole(vault.FEE_MANAGER_ROLE(), deployer);
     }
 }

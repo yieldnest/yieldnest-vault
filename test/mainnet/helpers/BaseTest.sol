@@ -18,7 +18,15 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {ParaswapRules} from "script/rules/ParaswapRules.sol";
 import {SuperUsdcRules} from "script/rules/SuperUsdcRules.sol";
+import {FxProtocolRules} from "script/rules/FxProtocolRules.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {console} from "lib/forge-std/src/console.sol";
+import {WithdrawerConfigurator} from "script/config/WithdrawerConfigurator.sol";
+import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 contract BaseTest is Test, MainnetActors, TestHelper {
     struct PsPResponse {
@@ -30,15 +38,57 @@ contract BaseTest is Test, MainnetActors, TestHelper {
     uint256 public constant SLIPPAGE_PRECISION = 10000; // 10000 = 100%
     WrappedToken public wrappedUSDC;
 
+    Withdrawer public withdrawer;
+
     function deploy() public returns (Vault, Provider) {
         Vault vault = Vault(payable(MC.YNUSDx));
-        Provider provider = Provider(vault.provider());
         wrappedUSDC = WrappedToken(MC.WRAPPED_USDC);
 
         TestHelper._initVault(vault);
 
         configureMainnet(vault);
-        return (vault, provider);
+
+        configureFXSave(vault);
+
+        return (vault, Provider(vault.provider()));
+    }
+
+    function configureFXSave(Vault vault) internal {
+        Provider provider = new Provider(MC.WRAPPED_USDC);
+
+        // Deploy Withdrawer as an upgradeable proxy
+        address withdrawerImpl = address(new Withdrawer());
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(withdrawerImpl, TIMELOCK, "");
+        withdrawer = Withdrawer(payable(address(proxy)));
+
+        WithdrawerConfigurator configurator = new WithdrawerConfigurator();
+        configurator.configure(withdrawer, address(provider), TIMELOCK, new MainnetActors());
+
+        {
+            uint256 BOOTSTRAP_AMOUNT = 1_000e6;
+            address bootstrapper = BOOTSTRAPPER;
+            vm.startPrank(bootstrapper);
+            deal(MC.USDC, bootstrapper, BOOTSTRAP_AMOUNT);
+            IERC20(MC.USDC).approve(address(withdrawer), BOOTSTRAP_AMOUNT);
+            withdrawer.deposit(BOOTSTRAP_AMOUNT, bootstrapper);
+            vm.stopPrank();
+        }
+
+        vm.startPrank(TIMELOCK);
+
+        vault.setProvider(address(provider));
+        vault.addAsset(MC.FXBASE, false);
+        vault.addAsset(MC.FXUSD, false);
+        vault.addAsset(MC.FXSAVE, false);
+        vault.addAsset(address(withdrawer), false);
+
+        SafeRules.RuleParams[] memory rules = WithdrawerConfig.getMaxVaultRulesConfiguration(vault, withdrawer);
+
+        SafeRules.setProcessorRules(vault, rules, true);
+
+        vm.stopPrank();
+
+        vault.processAccounting();
     }
 
     function configureMainnet(Vault vault) internal {
