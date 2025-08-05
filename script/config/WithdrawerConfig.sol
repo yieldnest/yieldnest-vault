@@ -9,6 +9,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IActors} from "script/Actors.sol";
 import {FxProtocolRules} from "script/rules/FxProtocolRules.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 library WithdrawerConfig {
     error InvalidRules();
@@ -82,5 +83,55 @@ library WithdrawerConfig {
     function _fxSaveDepositTokenAllowList() private pure returns (address[] memory list) {
         list = new address[](1);
         list[0] = MC.FXUSD;
+    }
+
+    function getMaxVaultRulesConfiguration(IVault vault, IVault withdrawer)
+        internal
+        view
+        returns (SafeRules.RuleParams[] memory rules)
+    {
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](10);
+        uint256 i = 0;
+
+        // Set approval rule for USDC to allow only FXBASE and withdrawer as spenders
+        address[] memory usdcSpender = new address[](2);
+        usdcSpender[0] = MC.FXBASE;
+        usdcSpender[1] = address(withdrawer);
+        rules[i++] = BaseRules.getAppendApprovalRule(MC.USDC, usdcSpender, vault);
+
+        // Set deposit rule for FXBASE with USDC as token in allow list
+        address[] memory fxBaseTokenInAllowList = new address[](1);
+        fxBaseTokenInAllowList[0] = MC.USDC;
+        rules[i++] = FxProtocolRules.getFxUSDSavePoolDepositRule(MC.FXBASE, address(vault), fxBaseTokenInAllowList);
+
+        // Set approval rule for FXBASE to allow only FXSAVE and withdrawer as spenders
+        address[] memory fxBaseSpenderAllowList = new address[](2);
+        fxBaseSpenderAllowList[0] = MC.FXSAVE;
+        fxBaseSpenderAllowList[1] = address(withdrawer);
+        rules[i++] = BaseRules.getApprovalRule(MC.FXBASE, fxBaseSpenderAllowList);
+
+        // Set deposit rule for FXSAVE
+        rules[i++] = BaseRules.getDepositRule(MC.FXSAVE, address(vault));
+
+        // Set redeem rule for FXSAVE
+        rules[i++] = BaseRules.getRedeemRule(MC.FXSAVE, address(vault));
+
+        // Set deposit and withdraw asset rules for withdrawer and FXBASE
+        rules[i++] = BaseRules.getDepositAssetRule(address(withdrawer), MC.FXBASE, address(vault));
+
+        rules[i++] = BaseRules.getDepositRule(address(withdrawer), address(vault));
+
+        // Set withdraw rule for USDC for withdrawer
+        rules[i++] = BaseRules.getWithdrawRule(address(withdrawer), address(vault));
+
+        rules[i++] = BaseRules.getWithdrawAssetRule(address(withdrawer), MC.FXUSD, address(vault));
+
+        rules[i++] = BaseRules.getApprovalRule(MC.FXUSD, MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER);
+
+        if (i != rules.length) {
+            revert InvalidRules();
+        }
+
+        return rules;
     }
 }
