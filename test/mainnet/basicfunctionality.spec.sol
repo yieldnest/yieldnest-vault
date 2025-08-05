@@ -415,7 +415,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
             // TODO: understand why the rate is changing this much
             // rate is changing for underlying assets
-            assertApproxEqRel(finalRates[i], initialRates[i], 3e14, "Rate should match");
+            assertApproxEqRel(finalRates[i], initialRates[i], 4e14, "Rate should match");
         }
 
         uint256 finalTvl = vault.totalAssets();

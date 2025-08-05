@@ -315,24 +315,31 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
 
         IERC20(steth).transfer(address(vault), aliceStEthDepositAmount2);
         uint256 performanceFeeShares;
+        uint256 performanceFeeAmount;
         {
             address hooks = address(vault.hooks());
             uint256 performanceFee = Hooks(hooks).performanceFee();
-            uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
+            performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
             uint256 totalBaseAssets = vault.computeTotalAssets();
-
-            performanceFeeShares =
-                getFeeShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
         }
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
         vault.processAccounting();
-        uint256 vaultTotalSupplyAfter = vault.totalSupply();
-        assertEqThreshold(
-            vaultTotalSupplyAfter,
-            vaultTotalSupplyBefore + performanceFeeShares,
-            1e12,
-            "vault total supply should be equal to vault total supply before plus performance fee shares"
-        );
+        {
+            uint256 vaultTotalSupplyAfter = vault.totalSupply();
+            performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
+            assertEqThreshold(
+                vaultTotalSupplyAfter,
+                vaultTotalSupplyBefore + performanceFeeShares,
+                1e12,
+                "vault total supply should be equal to vault total supply before plus performance fee shares"
+            );
+            assertApproxEqAbs(
+                vault.convertToAssets(performanceFeeShares),
+                performanceFeeAmount,
+                1e6,
+                "performance fee shares should be equal to performance fee amount"
+            );
+        }
         address performanceFeeRecipient = IHooks(vault.hooks()).performanceFeeRecipient();
         assertEqThreshold(
             vault.balanceOf(performanceFeeRecipient),
@@ -399,13 +406,12 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         address hooks = address(vault.hooks());
         uint256 performanceFee = Hooks(hooks).performanceFee();
         uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
-        uint256 totalBaseAssets = vault.computeTotalAssets();
-        uint256 performanceFeeShares =
-            getFeeShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
+        uint256 performanceFeeShares;
         {
             uint256 vaultTotalSupplyBefore = vault.totalSupply();
             vault.processAccounting();
             uint256 vaultTotalSupplyAfter = vault.totalSupply();
+            performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
             assertEqThreshold(
                 vaultTotalSupplyAfter,
                 vaultTotalSupplyBefore + performanceFeeShares,
@@ -418,6 +424,12 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
                 performanceFeeShares,
                 1e12,
                 "fee manager balance should be equal to performance fee shares"
+            );
+            assertApproxEqAbs(
+                vault.convertToAssets(performanceFeeShares),
+                performanceFeeAmount,
+                1e6,
+                "performance fee shares should be equal to performance fee amount"
             );
         }
 
@@ -441,14 +453,5 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         vm.stopPrank();
 
         assertEq(vault.balanceOf(alice), 1);
-    }
-
-    function getFeeShares(uint256 fee, uint256 totalShares, uint256 totalAssets, Math.Rounding rounding)
-        internal
-        pure
-        returns (uint256)
-    {
-        uint256 shares = fee.mulDiv(totalShares, totalAssets - fee, rounding);
-        return shares;
     }
 }

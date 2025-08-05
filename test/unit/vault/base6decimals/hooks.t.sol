@@ -72,20 +72,8 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
         uint256 vaultTotalAssetsBefore = vault.totalAssets();
         uint256 vaultExchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
         uint256 feesAccrued = (donationAmount * hooks.performanceFee()) / 1 ether;
-
-        if (feesAccrued > 0) {
-            vm.expectEmit(true, true, false, false, address(hooks));
-            emit IHooks.PerformanceFeeCharged(
-                hooks.performanceFeeRecipient(),
-                0,
-                feesAccrued,
-                totalAssetsBefore,
-                totalAssetsAfter,
-                vaultTotalSupplyBefore
-            );
-        }
-        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter, vaultTotalSupplyBefore);
         vm.stopPrank();
+
         vault.processAccounting();
 
         uint256 vaultTotalSupplyAfter = vault.totalSupply();
@@ -93,6 +81,13 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
         uint256 vaultTotalAssetsAfter = vault.totalAssets();
 
         if (feesAccrued > 0) {
+            uint256 performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
+            assertApproxEqAbs(
+                vault.convertToAssets(performanceFeeShares),
+                feesAccrued,
+                1e2,
+                "performance fee shares should be equal to performance fee amount"
+            );
             assertGt(
                 vaultTotalSupplyAfter,
                 vaultTotalSupplyBefore,

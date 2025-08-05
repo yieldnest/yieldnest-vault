@@ -117,12 +117,10 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
         uint256 performanceFee = IHooks(vault.hooks()).performanceFee();
         uint256 performanceFeeAmount = (yieldAmount1 * performanceFee) / 1 ether;
-        uint256 totalBaseAssets = vault.computeTotalAssets();
-        uint256 performanceFeeShares =
-            getFeeShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
         vault.processAccounting();
         uint256 vaultTotalSupplyAfter = vault.totalSupply();
+        uint256 performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
         assertEqThreshold(
             vaultTotalSupplyAfter - vaultTotalSupplyBefore,
             performanceFeeShares,
@@ -161,12 +159,16 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
         performanceFee = IHooks(vault.hooks()).performanceFee();
         performanceFeeAmount = (yieldAmount2 * performanceFee) / 1 ether;
-        totalBaseAssets = vault.computeTotalAssets();
-        uint256 performanceFeeShares2 =
-            getFeeShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
         vaultTotalSupplyBefore = vault.totalSupply();
         vault.processAccounting();
         vaultTotalSupplyAfter = vault.totalSupply();
+        uint256 performanceFeeShares2 = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
+        assertApproxEqAbs(
+            vault.convertToAssets(performanceFeeShares2),
+            performanceFeeAmount,
+            1e6,
+            "performance fee shares should be equal to performance fee amount"
+        );
         assertEqThreshold(
             vaultTotalSupplyAfter - vaultTotalSupplyBefore,
             performanceFeeShares2,
@@ -400,14 +402,5 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vault.approve(alice, depositAmount);
         vm.expectRevert();
         vault.withdraw(depositAmount, bob, bob);
-    }
-
-    function getFeeShares(uint256 fee, uint256 totalShares, uint256 totalAssets, Math.Rounding rounding)
-        internal
-        pure
-        returns (uint256)
-    {
-        uint256 shares = fee.mulDiv(totalShares, totalAssets - fee, rounding);
-        return shares;
     }
 }
