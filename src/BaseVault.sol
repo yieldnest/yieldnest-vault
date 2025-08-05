@@ -331,15 +331,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert ExceededMaxWithdraw(owner, assets, maxAssets);
         }
         sharesWithFee = previewWithdraw(assets);
-        uint256 sharesWithoutFee = _previewWithdrawWithoutFee(assets);
-
-        _withdraw(_msgSender(), receiver, owner, assets, sharesWithFee);
 
         IHooks hooks_ = hooks();
         if (address(hooks_) != address(0)) {
-            uint256 sharesToMint = sharesWithFee - sharesWithoutFee;
-            hooks_.afterWithdraw(sharesToMint);
+            hooks_.beforeWithdraw(assets, _msgSender());
         }
+
+        _withdraw(_msgSender(), receiver, owner, assets, sharesWithFee);
     }
 
     /**
@@ -367,8 +365,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
         IHooks hooks_ = hooks();
         if (address(hooks_) != address(0)) {
-            uint256 sharesToMint = _feeOnTotal(shares);
-            hooks_.afterRedeem(sharesToMint);
+            hooks_.afterRedeem(shares, _msgSender());
         }
     }
 

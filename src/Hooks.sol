@@ -5,6 +5,7 @@ import {OwnableUpgradeable, IERC4626, ERC20} from "src/Common.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {Math} from "src/Common.sol";
+import {Vault} from "src/Vault.sol";
 
 contract Hooks is OwnableUpgradeable, IHooks {
     using Math for uint256;
@@ -32,11 +33,15 @@ contract Hooks is OwnableUpgradeable, IHooks {
         performanceFeeRecipient = performanceFeeRecipient_;
     }
 
+    modifier onlyVault() {
+        if (msg.sender != address(VAULT)) revert CallerNotVault();
+        _;
+    }
+
     function afterProcessAccounting(uint256 totalAssetsBefore, uint256 totalAssetsAfter, uint256 totalShares)
         external
+        onlyVault
     {
-        if (msg.sender != address(VAULT)) revert CallerNotVault();
-
         if (totalAssetsAfter > totalAssetsBefore) {
             uint256 yieldEarned = totalAssetsAfter - totalAssetsBefore;
             uint256 feesAccrued = (yieldEarned * performanceFee) / FEE_DENOMINATOR;
@@ -59,19 +64,24 @@ contract Hooks is OwnableUpgradeable, IHooks {
         }
     }
 
-    function afterWithdraw(uint256 sharesToMint) external {
-        if (msg.sender != address(VAULT)) revert CallerNotVault();
+    function beforeWithdraw(uint256 assets, address user) external onlyVault {
+        Vault vault_ = Vault(payable(address(VAULT)));
+        if (vault_.withdrawalFeeExempted(user)) return;
+        uint256 fees = vault_._feeOnRaw(assets);
+        uint256 sharesToMint = vault_.convertToShares(fees);
         if (sharesToMint > 0) {
             VAULT.mintShares(performanceFeeRecipient, sharesToMint);
-            emit WithdrawFeeCharged(performanceFeeRecipient, sharesToMint);
+            emit WithdrawFeeCharged(performanceFeeRecipient, sharesToMint, fees, assets);
         }
     }
 
-    function afterRedeem(uint256 sharesToMint) external {
-        if (msg.sender != address(VAULT)) revert CallerNotVault();
+    function afterRedeem(uint256 shares, address user) external onlyVault {
+        Vault vault_ = Vault(payable(address(VAULT)));
+        if (vault_.withdrawalFeeExempted(user)) return;
+        uint256 sharesToMint = vault_._feeOnTotal(shares);
         if (sharesToMint > 0) {
             VAULT.mintShares(performanceFeeRecipient, sharesToMint);
-            emit RedeemFeeCharged(performanceFeeRecipient, sharesToMint);
+            emit RedeemFeeCharged(performanceFeeRecipient, sharesToMint, shares);
         }
     }
 

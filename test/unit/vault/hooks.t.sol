@@ -382,35 +382,83 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     }
 
     function test_afterRedeem_Increases_Shares(uint256 sharesAmount) public {
+        vm.prank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(250000);
+
         sharesAmount = bound(sharesAmount, 0.001 ether, 100_000 ether);
         vm.startPrank(alice);
-        uint256 shares = vault.deposit(1 ether, alice);
+        vault.deposit(1 ether, alice);
         vm.stopPrank();
 
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(sharesAmount);
+        hooks.afterRedeem(sharesAmount, alice);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
-        assertEq(totalSupplyAfter, totalSupplyBefore + sharesAmount, "totalSupply should increase by sharesAmount");
+        assertGt(totalSupplyAfter, totalSupplyBefore, "totalSupply should increase");
+    }
+
+    function test_afterRedeem_ExemptedFromFee(uint256 depositAmount) public {
+        depositAmount = bound(depositAmount, 1 ether, 100_000 ether);
+        vm.startPrank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(250000);
+        vault.setWithdrawalFeeExempted(alice, true);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        uint256 totalSupplyBefore = vault.totalSupply();
+
+        vm.startPrank(address(vault));
+        hooks.afterRedeem(shares, alice);
+        vm.stopPrank();
+
+        uint256 totalSupplyAfter = vault.totalSupply();
+        assertEq(totalSupplyAfter, totalSupplyBefore, "totalSupply should not increase due to fee exemption");
     }
 
     function test_afterWithdraw_Increases_Shares(uint256 sharesAmount) public {
+        vm.prank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(250000);
+
         sharesAmount = bound(sharesAmount, 0.001 ether, 100_000 ether);
         vm.startPrank(alice);
-        uint256 shares = vault.deposit(1 ether, alice);
+        vault.deposit(1 ether, alice);
         vm.stopPrank();
 
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.afterWithdraw(sharesAmount);
+        hooks.beforeWithdraw(sharesAmount, alice);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
-        assertEq(totalSupplyAfter, totalSupplyBefore + sharesAmount, "totalSupply should increase by sharesAmount");
+        assertGt(totalSupplyAfter, totalSupplyBefore, "totalSupply should increase by sharesAmount");
+    }
+
+    function test_beforeWithdraw_ExemptedFromFee(uint256 depositAmount) public {
+        depositAmount = bound(depositAmount, 1 ether, 100_000 ether);
+        vm.startPrank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(250000);
+        vault.setWithdrawalFeeExempted(alice, true);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        uint256 totalSupplyBefore = vault.totalSupply();
+
+        vm.startPrank(address(vault));
+        hooks.beforeWithdraw(depositAmount, alice);
+        vm.stopPrank();
+
+        uint256 totalSupplyAfter = vault.totalSupply();
+        assertEq(totalSupplyAfter, totalSupplyBefore, "totalSupply should not increase due to fee exemption");
     }
 
     function test_AfterProcessAccounting_NotCalledByVault() public {
@@ -423,14 +471,14 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function test_afterWithdraw_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterWithdraw(1 ether);
+        hooks.beforeWithdraw(1 ether, alice);
         vm.stopPrank();
     }
 
     function test_afterRedeem_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterRedeem(1 ether);
+        hooks.afterRedeem(1 ether, alice);
         vm.stopPrank();
     }
 

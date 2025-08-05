@@ -320,7 +320,6 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
             address hooks = address(vault.hooks());
             uint256 performanceFee = Hooks(hooks).performanceFee();
             performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
-            uint256 totalBaseAssets = vault.computeTotalAssets();
         }
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
         vault.processAccounting();

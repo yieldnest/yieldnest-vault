@@ -151,7 +151,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
     function test_Vault_redeemWithFeesMaxAmount(uint256 assets) external {
         // Bound inputs to valid ranges
-        vm.assume(assets >= 100000 && assets <= 100_000 ether);
+        assets = bound(assets, 100000, 100_000 ether);
 
         vm.prank(alice);
         vault.deposit(assets, alice);
@@ -317,9 +317,9 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
 
         vm.startPrank(alice);
-        uint256 expectedSharesMinted = FeeMath.feeOnTotal(withdrawnShares, vault.baseWithdrawalFee());
-        uint256 expectedFee = vault.convertToAssets(expectedSharesMinted);
         uint256 redeemedAmount = vault.redeem(withdrawnShares, alice, alice);
+        uint256 expectedFee = redeemedAmount * vault.baseWithdrawalFee() / FeeMath.BASIS_POINT_SCALE;
+        uint256 expectedSharesMinted = vault.convertToShares(expectedFee);
         uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
 
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;

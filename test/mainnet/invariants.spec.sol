@@ -237,23 +237,34 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         uint256 redeemableShares = vault.maxRedeem(user);
         uint256 redeemedAssets;
-
+        uint256 withdrawalFeeSharesMinted;
         {
             assertEq(redeemableShares, depositedShares, "Redeemable shares should equal the original shares");
 
             uint256 initialBalance = IERC20(baseAsset).balanceOf(user);
 
             convertedAssets = vault.convertToAssets(redeemableShares);
+            redeemedAssets = vault.previewRedeem(redeemableShares);
+            uint256 withdrawalFee = redeemedAssets * vault.baseWithdrawalFee() / FeeMath.BASIS_POINT_SCALE;
 
             vm.startPrank(user);
             uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-            redeemedAssets = vault.redeem(redeemableShares, user, user);
-            uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
-            assertEqThreshold(exchangeRateAfter, exchangeRateBefore, 5, "exchangeRate not as expected");
+            uint256 vaultBalanceOfFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            vault.redeem(redeemableShares, user, user);
+            uint256 vaultBalanceOfFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            withdrawalFeeSharesMinted = vaultBalanceOfFeeRecipientAfter - vaultBalanceOfFeeRecipientBefore;
+            assertApproxEqAbs(
+                vault.convertToAssets(withdrawalFeeSharesMinted),
+                withdrawalFee,
+                5,
+                "withdrawal fee shares minted should be equalivalent to withdrawal fee"
+            );
+            assertEqThreshold(
+                vault.convertToAssets(10 ** vault.decimals()), exchangeRateBefore, 5, "exchangeRate not as expected"
+            );
             vm.stopPrank();
 
             assertEq(redeemedAssets, previewedRedeemAssets, "Redeemed assets should equal the preview");
-            uint256 withdrawalFee = vault._feeOnTotal(convertedAssets);
             assertApproxEqAbs(
                 redeemedAssets,
                 convertedAssets - withdrawalFee,
@@ -284,7 +295,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 );
             }
         }
-        uint256 withdrawalFeeSharesMinted = FeeMath.feeOnTotal(redeemableShares, vault.baseWithdrawalFee());
         assertEqThreshold(
             vault.totalSupply(),
             initialSupply + depositedShares - redeemableShares + performanceFeeSharesMinted + withdrawalFeeSharesMinted,
@@ -354,7 +364,13 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 withdrawnShares;
         {
             uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
+            uint256 vaultBalanceOfFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
             withdrawnShares = vault.withdraw(withdrawableAssets, user, user);
+            uint256 vaultBalanceOfFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 sharesMinted = vaultBalanceOfFeeRecipientAfter - vaultBalanceOfFeeRecipientBefore;
+            assertApproxEqAbs(
+                sharesMinted, withdrawalFeeShares, 1e6, "shares minted should be equal to withdrawal fee shares"
+            );
             uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
             assertEqThreshold(exchangeRateAfter, exchangeRateBefore, 5, "exchangeRate not as expected");
             assertApproxEqAbs(withdrawnShares, depositedShares, 3, "Withdrawn shares should equal previous shares");
@@ -1455,19 +1471,31 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         totalAssetsInvariant(initialAssets + initialDepositedAmount);
 
         uint256 withdrawableAssets = vault.maxWithdraw(alice);
-        uint256 mintedWithdrawalFeeShares;
+        uint256 expectedMintedWithdrawalFeeShares;
 
         {
             uint256 withdrawalFee = vault.baseWithdrawalFee() * withdrawableAssets / FeeMath.BASIS_POINT_SCALE;
-            mintedWithdrawalFeeShares = vault.previewDeposit(withdrawalFee);
+            expectedMintedWithdrawalFeeShares = vault.previewDeposit(withdrawalFee);
         }
+        uint256 burnedShares;
 
-        vm.startPrank(alice);
-        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-        uint256 burnedShares = vault.withdraw(withdrawableAssets, alice, alice);
-        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
-        assertEqThreshold(exchangeRateAfter, exchangeRateBefore, 5, "exchangeRate not as expected");
-        vm.stopPrank();
+        {
+            vm.startPrank(alice);
+            uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
+            uint256 vaultBalanceOfFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            burnedShares = vault.withdraw(withdrawableAssets, alice, alice);
+            uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
+            uint256 vaultBalanceOfFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 withdrawalFeeSharesMinted = vaultBalanceOfFeeRecipientAfter - vaultBalanceOfFeeRecipientBefore;
+            assertEqThreshold(exchangeRateAfter, exchangeRateBefore, 5, "exchangeRate not as expected");
+            assertApproxEqAbs(
+                withdrawalFeeSharesMinted,
+                expectedMintedWithdrawalFeeShares,
+                1e6,
+                "withdrawal fee shares minted should be equal to expected withdrawal shares"
+            );
+            vm.stopPrank();
+        }
 
         uint256 performanceFeeShares;
         if (processAfterWithdraw) {
@@ -1489,7 +1517,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         }
         assertEqThreshold(
             vault.totalSupply(),
-            initialSupply + depositedShares - burnedShares + performanceFeeShares + mintedWithdrawalFeeShares,
+            initialSupply + depositedShares - burnedShares + performanceFeeShares + expectedMintedWithdrawalFeeShares,
             5,
             "totalSupply not as expected"
         );

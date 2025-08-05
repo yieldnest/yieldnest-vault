@@ -139,4 +139,13 @@ contract Vault is BaseVault {
     function baseWithdrawalFee() external view returns (uint64) {
         return _getFeeStorage().baseWithdrawalFee;
     }
+
+    /**
+     * @notice Returns whether the withdrawal fee is exempted for a user
+     * @param user_ The address of the user
+     * @return bool Whether the withdrawal fee is exempted for the user
+     */
+    function withdrawalFeeExempted(address user_) external view returns (bool) {
+        return _getFeeStorage().withdrawalFeeExempted[user_];
+    }
 }
