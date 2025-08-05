@@ -18,6 +18,7 @@ import {Hooks} from "src/Hooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {console} from "forge-std/console.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
+import {FeeMath} from "src/module/FeeMath.sol";
 
 contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     using Math for uint256;
@@ -25,6 +26,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     Withdrawer public withdrawer;
 
     IProvider public provider;
+    address public user = makeAddr("user");
 
     function setUp() public override {
         super.setUp();
@@ -201,9 +203,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         if (assets < 100_000_000) return;
         if (assets > 100_000 ether) return;
 
-        address alice = address(420);
         address baseAsset = vault.asset();
-        deal(baseAsset, alice, assets);
+        deal(baseAsset, user, assets);
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
@@ -212,9 +213,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 convertedAssets = vault.convertToAssets(shares);
         assertApproxEqAbs(convertedAssets, assets, 3, "Converted assets should equal the original assets");
 
-        vm.startPrank(alice);
+        vm.startPrank(user);
         IERC20(baseAsset).approve(address(vault), assets);
-        uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
+        uint256 depositedShares = vault.depositAsset(baseAsset, assets, user);
         vm.stopPrank();
 
         assertApproxEqAbs(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
@@ -234,30 +235,37 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             "Previewed redeem assets should equal the original assets with withdrawal fee applied"
         );
 
-        uint256 redeemableShares = vault.maxRedeem(alice);
-        assertEq(redeemableShares, depositedShares, "Redeemable shares should equal the original shares");
+        uint256 redeemableShares = vault.maxRedeem(user);
+        uint256 redeemedAssets;
 
-        uint256 initialBalance = IERC20(baseAsset).balanceOf(alice);
+        {
+            assertEq(redeemableShares, depositedShares, "Redeemable shares should equal the original shares");
 
-        convertedAssets = vault.convertToAssets(redeemableShares);
+            uint256 initialBalance = IERC20(baseAsset).balanceOf(user);
 
-        vm.startPrank(alice);
-        uint256 redeemedAssets = vault.redeem(redeemableShares, alice, alice);
-        vm.stopPrank();
+            convertedAssets = vault.convertToAssets(redeemableShares);
 
-        assertEq(redeemedAssets, previewedRedeemAssets, "Redeemed assets should equal the preview");
-        uint256 withdrawalFee = vault._feeOnTotal(convertedAssets);
-        assertApproxEqAbs(
-            redeemedAssets,
-            convertedAssets - withdrawalFee,
-            3,
-            "Redeemed assets should equal the original assets minus withdrawal fee"
-        );
-        assertEq(
-            IERC20(baseAsset).balanceOf(alice),
-            initialBalance + redeemedAssets,
-            "Final balance should reflect the redeemed assets"
-        );
+            vm.startPrank(user);
+            uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
+            redeemedAssets = vault.redeem(redeemableShares, user, user);
+            uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
+            assertEqThreshold(exchangeRateAfter, exchangeRateBefore, 5, "exchangeRate not as expected");
+            vm.stopPrank();
+
+            assertEq(redeemedAssets, previewedRedeemAssets, "Redeemed assets should equal the preview");
+            uint256 withdrawalFee = vault._feeOnTotal(convertedAssets);
+            assertApproxEqAbs(
+                redeemedAssets,
+                convertedAssets - withdrawalFee,
+                3,
+                "Redeemed assets should equal the original assets minus withdrawal fee"
+            );
+            assertEq(
+                IERC20(baseAsset).balanceOf(user),
+                initialBalance + redeemedAssets,
+                "Final balance should reflect the redeemed assets"
+            );
+        }
 
         uint256 performanceFeeSharesMinted;
         {
@@ -276,10 +284,10 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 );
             }
         }
-
+        uint256 withdrawalFeeSharesMinted = FeeMath.feeOnTotal(redeemableShares, vault.baseWithdrawalFee());
         assertEqThreshold(
             vault.totalSupply(),
-            initialSupply + depositedShares - redeemableShares + performanceFeeSharesMinted,
+            initialSupply + depositedShares - redeemableShares + performanceFeeSharesMinted + withdrawalFeeSharesMinted,
             1e12,
             "totalSupply should be equal to initialSupply plus depositedShares minus redeemableShares plus performanceFeeSharesMinted"
         );
@@ -290,8 +298,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         if (assets < 100_000_000) return;
         if (assets > 100_000_000 ether) return;
 
-        address alice = address(10);
-        deal(MC.WETH, alice, assets);
+        deal(MC.WETH, user, assets);
 
         uint256 shares = vault.convertToShares(assets);
         assertGe(shares, 0, "Shares should be greater than 0");
@@ -303,9 +310,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         address baseAsset = vault.asset();
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
-        vm.startPrank(alice);
+        vm.startPrank(user);
         IERC20(baseAsset).approve(address(vault), assets);
-        uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
+        uint256 depositedShares = vault.depositAsset(baseAsset, assets, user);
         assertApproxEqAbs(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
         vm.stopPrank();
 
@@ -322,21 +329,37 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             previewedWithdrawShares, sharesWithFee, 3, "Previewed withdraw shares should equal the original shares"
         );
 
-        vm.startPrank(alice);
+        vm.startPrank(user);
+        uint256 withdrawalFeeShares;
+        uint256 withdrawableAssets;
+        {
+            convertedAssets = vault.convertToAssets(depositedShares);
+            withdrawableAssets = vault.maxWithdraw(user);
+            uint256 withdrawalFee = vault._feeOnTotal(convertedAssets);
+            assertApproxEqAbs(
+                withdrawableAssets * vault.baseWithdrawalFee() / FeeMath.BASIS_POINT_SCALE,
+                withdrawalFee,
+                3,
+                "withdrawalFee should be correct"
+            );
+            withdrawalFeeShares = vault.previewDeposit(withdrawalFee);
+            assertApproxEqAbs(
+                withdrawableAssets,
+                convertedAssets - withdrawalFee,
+                3,
+                "Withdrawable assets should equal the original assets"
+            );
+        }
 
-        convertedAssets = vault.convertToAssets(depositedShares);
-        uint256 withdrawableAssets = vault.maxWithdraw(alice);
-        uint256 withdrawalFee = vault._feeOnTotal(convertedAssets);
-        assertApproxEqAbs(
-            withdrawableAssets,
-            convertedAssets - withdrawalFee,
-            3,
-            "Withdrawable assets should equal the original assets"
-        );
-
-        uint256 withdrawnShares = vault.withdraw(withdrawableAssets, alice, alice);
-        assertApproxEqAbs(withdrawnShares, depositedShares, 3, "Withdrawn shares should equal previous shares");
-        vm.stopPrank();
+        uint256 withdrawnShares;
+        {
+            uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
+            withdrawnShares = vault.withdraw(withdrawableAssets, user, user);
+            uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
+            assertEqThreshold(exchangeRateAfter, exchangeRateBefore, 5, "exchangeRate not as expected");
+            assertApproxEqAbs(withdrawnShares, depositedShares, 3, "Withdrawn shares should equal previous shares");
+            vm.stopPrank();
+        }
 
         uint256 performanceFeeSharesMinted;
         {
@@ -357,13 +380,13 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         }
         assertEqThreshold(
             vault.totalSupply(),
-            initialSupply + depositedShares - withdrawnShares + performanceFeeSharesMinted,
+            initialSupply + depositedShares - withdrawnShares + withdrawalFeeShares + performanceFeeSharesMinted,
             1e12,
             "totalSupply should be equal to initialSupply plus depositedShares minus withdrawnShares plus performanceFeeSharesMinted"
         );
         totalAssetsInvariant(initialAssets + assets - withdrawableAssets);
 
-        uint256 finalBalance = IERC20(baseAsset).balanceOf(alice);
+        uint256 finalBalance = IERC20(baseAsset).balanceOf(user);
         assertApproxEqAbs(finalBalance, withdrawableAssets, 3, "Final balance should reflect the withdrawn assets");
     }
 
@@ -1432,9 +1455,18 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         totalAssetsInvariant(initialAssets + initialDepositedAmount);
 
         uint256 withdrawableAssets = vault.maxWithdraw(alice);
+        uint256 mintedWithdrawalFeeShares;
+
+        {
+            uint256 withdrawalFee = vault.baseWithdrawalFee() * withdrawableAssets / FeeMath.BASIS_POINT_SCALE;
+            mintedWithdrawalFeeShares = vault.previewDeposit(withdrawalFee);
+        }
 
         vm.startPrank(alice);
+        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
         uint256 burnedShares = vault.withdraw(withdrawableAssets, alice, alice);
+        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
+        assertEqThreshold(exchangeRateAfter, exchangeRateBefore, 5, "exchangeRate not as expected");
         vm.stopPrank();
 
         uint256 performanceFeeShares;
@@ -1455,7 +1487,12 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 );
             }
         }
-        totalSupplyInvariant(initialSupply + depositedShares - burnedShares + performanceFeeShares);
+        assertEqThreshold(
+            vault.totalSupply(),
+            initialSupply + depositedShares - burnedShares + performanceFeeShares + mintedWithdrawalFeeShares,
+            5,
+            "totalSupply not as expected"
+        );
         totalAssetsInvariant(initialAssets + initialDepositedAmount - withdrawableAssets);
     }
 }

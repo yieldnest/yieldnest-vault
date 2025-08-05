@@ -315,13 +315,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param assets The amount of assets to withdraw.
      * @param receiver The address of the receiver.
      * @param owner The address of the owner.
-     * @return shares The equivalent amount of shares.
+     * @return sharesWithFee The equivalent amount of shares with fee.
      */
     function withdraw(uint256 assets, address receiver, address owner)
         public
         virtual
         nonReentrant
-        returns (uint256 shares)
+        returns (uint256 sharesWithFee)
     {
         if (paused()) {
             revert Paused();
@@ -330,9 +330,16 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (assets > maxAssets) {
             revert ExceededMaxWithdraw(owner, assets, maxAssets);
         }
-        shares = previewWithdraw(assets);
+        sharesWithFee = previewWithdraw(assets);
+        uint256 sharesWithoutFee = _previewWithdrawWithoutFee(assets);
 
-        _withdraw(_msgSender(), receiver, owner, assets, shares);
+        _withdraw(_msgSender(), receiver, owner, assets, sharesWithFee);
+
+        IHooks hooks_ = hooks();
+        if (address(hooks_) != address(0)) {
+            uint256 sharesToMint = sharesWithFee - sharesWithoutFee;
+            hooks_.afterWithdraw(sharesToMint);
+        }
     }
 
     /**
@@ -357,6 +364,12 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
         assets = previewRedeem(shares);
         _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        IHooks hooks_ = hooks();
+        if (address(hooks_) != address(0)) {
+            uint256 sharesToMint = _feeOnTotal(shares);
+            hooks_.afterRedeem(sharesToMint);
+        }
     }
 
     //// 4626-MAX ////
@@ -523,6 +536,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         IStrategy(vaultStorage.buffer).withdraw(assets, receiver, address(this));
 
         emit Withdraw(caller, receiver, owner, assets, shares);
+    }
+
+    function _previewWithdrawWithoutFee(uint256 assets) internal view returns (uint256 shares) {
+        (shares,) = _convertToShares(asset(), assets, Math.Rounding.Ceil);
     }
 
     /**

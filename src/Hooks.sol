@@ -59,6 +59,22 @@ contract Hooks is OwnableUpgradeable, IHooks {
         }
     }
 
+    function afterWithdraw(uint256 sharesToMint) external {
+        if (msg.sender != address(VAULT)) revert CallerNotVault();
+        if (sharesToMint > 0) {
+            VAULT.mintShares(performanceFeeRecipient, sharesToMint);
+            emit WithdrawFeeCharged(performanceFeeRecipient, sharesToMint);
+        }
+    }
+
+    function afterRedeem(uint256 sharesToMint) external {
+        if (msg.sender != address(VAULT)) revert CallerNotVault();
+        if (sharesToMint > 0) {
+            VAULT.mintShares(performanceFeeRecipient, sharesToMint);
+            emit RedeemFeeCharged(performanceFeeRecipient, sharesToMint);
+        }
+    }
+
     function setPerformanceFee(uint256 performanceFee_) external onlyOwner {
         if (performanceFee_ > FEE_DENOMINATOR) revert InvalidPerformanceFee();
         emit SetPerformanceFee(performanceFee, performanceFee_);

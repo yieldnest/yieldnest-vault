@@ -381,10 +381,56 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEqThreshold(totalSupplyBeforeProcessing, expectedTotalSupply, 5000, "totalSupply should match expected");
     }
 
+    function test_afterRedeem_Increases_Shares(uint256 sharesAmount) public {
+        sharesAmount = bound(sharesAmount, 0.001 ether, 100_000 ether);
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(1 ether, alice);
+        vm.stopPrank();
+
+        uint256 totalSupplyBefore = vault.totalSupply();
+
+        vm.startPrank(address(vault));
+        hooks.afterRedeem(sharesAmount);
+        vm.stopPrank();
+
+        uint256 totalSupplyAfter = vault.totalSupply();
+        assertEq(totalSupplyAfter, totalSupplyBefore + sharesAmount, "totalSupply should increase by sharesAmount");
+    }
+
+    function test_afterWithdraw_Increases_Shares(uint256 sharesAmount) public {
+        sharesAmount = bound(sharesAmount, 0.001 ether, 100_000 ether);
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(1 ether, alice);
+        vm.stopPrank();
+
+        uint256 totalSupplyBefore = vault.totalSupply();
+
+        vm.startPrank(address(vault));
+        hooks.afterWithdraw(sharesAmount);
+        vm.stopPrank();
+
+        uint256 totalSupplyAfter = vault.totalSupply();
+        assertEq(totalSupplyAfter, totalSupplyBefore + sharesAmount, "totalSupply should increase by sharesAmount");
+    }
+
     function test_AfterProcessAccounting_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
         hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether);
+        vm.stopPrank();
+    }
+
+    function test_afterWithdraw_NotCalledByVault() public {
+        vm.startPrank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.afterWithdraw(1 ether);
+        vm.stopPrank();
+    }
+
+    function test_afterRedeem_NotCalledByVault() public {
+        vm.startPrank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.afterRedeem(1 ether);
         vm.stopPrank();
     }
 
