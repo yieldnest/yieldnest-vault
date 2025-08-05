@@ -162,6 +162,15 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         // Get totalAssets after upgrade
         uint256 totalAssetsAfter = vault.totalAssets();
 
+        if (performanceFeeSharesMinted > 0) {
+            assertApproxEqAbs(
+                vault.convertToAssets(performanceFeeSharesMinted),
+                (totalAssetsAfter - totalAssetsBefore) * vault.hooks().performanceFee() / 1e18,
+                1e12,
+                "performance fee shares should be equal to performance fee amount"
+            );
+        }
+
         // Assert that totalAssets after upgrade is greater than or equal to totalAssets before upgrade
         assertGe(
             totalAssetsAfter,

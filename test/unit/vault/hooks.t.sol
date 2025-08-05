@@ -87,7 +87,6 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         IERC20(MC.WETH).transfer(address(vault), donationAmount);
         vm.stopPrank();
 
-        vm.startPrank(address(vault));
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
         uint256 vaultExchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
         uint256 feesAccrued = (donationAmount * hooks.performanceFee()) / 1 ether;
@@ -103,6 +102,18 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
                 vaultTotalSupplyBefore,
                 "vault's total supply should increase due to fee shares minted"
             );
+            uint256 performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
+            assertEq(
+                performanceFeeShares,
+                vault.balanceOf(vault.hooks().performanceFeeRecipient()),
+                "performance fee shares should be equal to performance fee recipient's balance"
+            );
+            assertApproxEqAbs(
+                vault.convertToAssets(performanceFeeShares),
+                feesAccrued,
+                1e12,
+                "performance fee shares should be equal to performance fee amount"
+            );
         } else {
             assertEq(
                 vaultTotalSupplyAfter, vaultTotalSupplyBefore, "vault's total supply should not change due to no fee"
@@ -113,8 +124,6 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
             vaultExchangeRateBefore,
             "vault's exchange rate should always increase due to donation"
         );
-
-        vm.stopPrank();
     }
 
     function test_AfterProcessingAccountWithNoPerformanceFee(uint256 totalAssetsBefore, uint256 totalAssetsAfter)
@@ -144,12 +153,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         IERC20(MC.WETH).transfer(address(vault), donationAmount);
         vm.stopPrank();
 
-        vm.startPrank(address(vault));
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
         uint256 vaultExchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-
-        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter, vaultTotalSupplyBefore);
-        vm.stopPrank();
         vault.processAccounting();
 
         uint256 vaultTotalSupplyAfter = vault.totalSupply();
@@ -199,22 +204,26 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         IERC20(MC.WETH).transfer(address(vault), yieldAmount1);
         vm.stopPrank();
 
-        uint256 yieldEarned = yieldAmount1;
         uint256 performanceFeeShares;
+        uint256 performanceFeeAmount;
         {
-            uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1 ether;
-            uint256 totalBaseAssets = vault.computeTotalAssets();
-            performanceFeeShares =
-                getFeeShares(performanceFeeAmount, vault.totalSupply(), totalBaseAssets, Math.Rounding.Floor);
-
+            performanceFeeAmount = (yieldAmount1 * performanceFee) / 1 ether;
+            uint256 sharesOfFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
             vault.processAccounting();
+            uint256 sharesOfFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            performanceFeeShares = sharesOfFeeRecipientAfter - sharesOfFeeRecipientBefore;
         }
 
         uint256 totalAssets = vault.totalAssets();
         uint256 totalSupply = vault.totalSupply();
-
+        assertApproxEqAbs(
+            vault.convertToAssets(performanceFeeShares),
+            performanceFeeAmount,
+            1e12,
+            "performance fee shares should be equal to performance fee amount"
+        );
         assertEqThreshold(
-            totalAssets, depositAmount1 + depositAmount2 + yieldEarned, 5000, "totalAssets should match expected"
+            totalAssets, depositAmount1 + depositAmount2 + yieldAmount1, 5000, "totalAssets should match expected"
         );
         assertEqThreshold(
             totalSupply, shares1 + shares2 + performanceFeeShares, 5000, "totalSupply should match expected"
@@ -313,14 +322,5 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(ADMIN);
         vm.expectRevert(abi.encodeWithSelector(IVault.InvalidHooks.selector));
         vault.setHooks(invalidHooks);
-    }
-
-    function getFeeShares(uint256 fee, uint256 totalShares, uint256 totalAssets, Math.Rounding rounding)
-        internal
-        pure
-        returns (uint256)
-    {
-        uint256 shares = fee.mulDiv(totalShares, totalAssets - fee, rounding);
-        return shares;
     }
 }
