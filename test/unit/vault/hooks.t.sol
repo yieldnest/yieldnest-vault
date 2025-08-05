@@ -23,6 +23,7 @@ import {console} from "lib/forge-std/src/console.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {console2} from "lib/forge-std/src/console2.sol";
 
 contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
@@ -55,6 +56,121 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
         weth.approve(address(vault), type(uint256).max);
+    }
+
+    function test_ProcessAccounting_Scenario() public {
+        // alice deposits 1 ether to vault
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(1 ether, alice);
+        vault.processAccounting();
+
+        assertEq(vault.totalSupply(), 1 ether, "vault's total supply should be 1 ether");
+        assertEq(vault.totalAssets(), 1 ether, "vault's total assets should be 1 ether");
+
+        uint256 yield = 0.1 ether;
+
+        // alice transfers 10% of vault's balance to vault which will be considered as yield
+        weth.transfer(address(vault), yield);
+
+        uint256 performanceFee = yield * hooks.performanceFee() / 1 ether;
+        uint256 performanceFeeRecipientSharesBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        vault.processAccounting();
+
+        uint256 performanceFeeRecipientSharesAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 performanceFeeSharesReceived = performanceFeeRecipientSharesAfter - performanceFeeRecipientSharesBefore;
+        assertApproxEqAbs(
+            vault.convertToAssets(performanceFeeSharesReceived),
+            performanceFee,
+            5,
+            "performance fee shares received should be equal to performance fee"
+        );
+        assertEq(
+            vault.totalSupply(),
+            shares + performanceFeeSharesReceived,
+            "vault's total supply should be equal to shares + performance fee shares received"
+        );
+        assertEq(vault.totalAssets(), 1 ether + yield, "vault's total assets should be equal to 1 ether + yield");
+    }
+
+    function test_ProcessAccounting_Yield_Same_As_TotalAssets() public {
+        uint256 performanceFeeWad = 1 ether;
+
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFee(performanceFeeWad);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(1 ether, alice);
+        vault.processAccounting();
+
+        assertEq(vault.totalSupply(), 1 ether, "vault's total supply should be 1 ether");
+        assertEq(vault.totalAssets(), 1 ether, "vault's total assets should be 1 ether");
+        assertEq(shares, 1 ether, "shares should be 1 ether");
+
+        uint256 yield = 1 ether;
+        weth.transfer(address(vault), yield);
+
+        uint256 performanceFee = yield;
+        uint256 performanceFeeRecipientSharesBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        vault.processAccounting();
+        uint256 performanceFeeRecipientSharesAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 performanceFeeSharesReceived = performanceFeeRecipientSharesAfter - performanceFeeRecipientSharesBefore;
+        assertEq(performanceFeeSharesReceived, 1 ether, "performance fee shares received should be 1 ether");
+        assertEq(
+            vault.convertToAssets(performanceFeeSharesReceived),
+            performanceFee,
+            "performance fee shares received should be equal to performance fee"
+        );
+        assertEq(vault.totalSupply(), 2 ether, "vault's total supply should be 2 ether");
+        assertEq(vault.totalAssets(), 2 ether, "vault's total assets should be 2 ether");
+    }
+
+    function test_ProcessAccounting_Zero_Yield() public {
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(1 ether, alice);
+        vault.processAccounting();
+
+        assertEq(vault.totalSupply(), 1 ether, "vault's total supply should be 1 ether");
+        assertEq(vault.totalAssets(), 1 ether, "vault's total assets should be 1 ether");
+        assertEq(shares, 1 ether, "shares should be 1 ether");
+
+        uint256 performanceFeeRecipientSharesBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        vault.processAccounting();
+        uint256 performanceFeeRecipientSharesAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 performanceFeeSharesReceived = performanceFeeRecipientSharesAfter - performanceFeeRecipientSharesBefore;
+        assertEq(performanceFeeSharesReceived, 0, "performance fee shares received should be 0");
+        assertEq(vault.totalSupply(), 1 ether, "vault's total supply should be 1 ether");
+        assertEq(vault.totalAssets(), 1 ether, "vault's total assets should be 1 ether");
+    }
+
+    function test_ProcessAccounting_Zero_Performance_Fee() public {
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFee(0);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(1 ether, alice);
+        vault.processAccounting();
+
+        assertEq(vault.totalSupply(), 1 ether, "vault's total supply should be 1 ether");
+        assertEq(vault.totalAssets(), 1 ether, "vault's total assets should be 1 ether");
+        assertEq(shares, 1 ether, "shares should be 1 ether");
+
+        uint256 yield = 0.1 ether;
+        weth.transfer(address(vault), yield);
+
+        uint256 performanceFeeRecipientSharesBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        vault.processAccounting();
+        uint256 performanceFeeRecipientSharesAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+
+        assertEq(
+            performanceFeeRecipientSharesAfter,
+            performanceFeeRecipientSharesBefore,
+            "performance fee recipient shares should be 0"
+        );
+        assertEq(performanceFeeRecipientSharesAfter, 0, "performance fee recipient shares should be 0");
+        assertEq(vault.totalSupply(), 1 ether, "vault's total supply should be 1 ether");
+        assertEq(vault.totalAssets(), 1 ether + yield, "vault's total assets should be 1 ether + yield");
     }
 
     function test_AfterProcessAccounting_Invariants(
