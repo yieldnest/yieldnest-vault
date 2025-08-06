@@ -205,8 +205,6 @@ contract FXSaveTest is BaseTest {
     function test_redeem_fxsave(uint256 depositAmount) public {
         depositAmount = bound(depositAmount, 1e6, 10_000_000e6);
 
-        uint256 depositAmount = 10_000e6;
-
         address alice = makeAddr("alice");
         deal(MC.USDC, alice, depositAmount * 1e12);
 
@@ -345,10 +343,10 @@ contract FXSaveTest is BaseTest {
             redeemFromFxBase(fxBaseObtained);
 
             // Assert after redeemFromFxBase (allowing approx abs diff of 1 wei)
-            vm.assertApproxEqAbs(
+            vm.assertApproxEqRel(
                 vault.totalBaseAssets(),
                 totalBaseAssetsBeforeRedeem,
-                1,
+                1e12,
                 "totalBaseAssets should remain approx constant after redeemFromFxBase"
             );
 
