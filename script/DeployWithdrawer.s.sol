@@ -44,15 +44,19 @@ contract DeployWithdrawer is Script {
         address implementation = address(new Withdrawer());
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(implementation, MC.TIMELOCK, "");
         withdrawer = Withdrawer(payable(address(proxy)));
-        vm.stopBroadcast();
+
 
         address proxyAdmin = ProxyUtils.getProxyAdmin(address(proxy));
 
+        address provider = 0xeb4dBb86cA6aA8f72f863eCEd6d700346fdAC508;
+
         console.log("Configuring Withdrawer at address:", address(withdrawer));
         WithdrawerConfigurator configurer = new WithdrawerConfigurator();
-        configurer.configure(withdrawer, address(IVault(MC.YNUSDx).provider()), MC.TIMELOCK, new MainnetActors());
+        configurer.configure(withdrawer, provider, MC.TIMELOCK, new MainnetActors());
 
         console.log("Withdrawer configured at address:", address(withdrawer));
+
+        vm.stopBroadcast();
 
         saveDeployment(implementation, address(proxy), proxyAdmin);
     }
