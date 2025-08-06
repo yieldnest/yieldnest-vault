@@ -54,16 +54,17 @@ contract BaseTest is Test, MainnetActors, TestHelper {
     }
 
     function configureFXSave(Vault vault) internal {
-        Provider provider = new Provider(MC.WRAPPED_USDC);
+        Provider provider = Provider(0xeb4dBb86cA6aA8f72f863eCEd6d700346fdAC508);
 
-        // Deploy Withdrawer as an upgradeable proxy
-        address withdrawerImpl = address(new Withdrawer());
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(withdrawerImpl, TIMELOCK, "");
-        withdrawer = Withdrawer(payable(address(proxy)));
+        // // Deploy Withdrawer as an upgradeable proxy
+        // address withdrawerImpl = address(new Withdrawer());
+        // TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(withdrawerImpl, TIMELOCK, "");
+        // withdrawer = Withdrawer(payable(address(proxy)));
 
-        WithdrawerConfigurator configurator = new WithdrawerConfigurator();
-        configurator.configure(withdrawer, address(provider), TIMELOCK, new MainnetActors());
+        // WithdrawerConfigurator configurator = new WithdrawerConfigurator();
+        // configurator.configure(withdrawer, address(provider), TIMELOCK, new MainnetActors());
 
+        withdrawer = Withdrawer(payable(0x3fc3771Cf29b96069644Ea249f3F036069873B4A));
         {
             uint256 BOOTSTRAP_AMOUNT = 1_000e6;
             address bootstrapper = BOOTSTRAPPER;
