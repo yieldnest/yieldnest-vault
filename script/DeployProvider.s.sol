@@ -2,14 +2,14 @@
 pragma solidity ^0.8.24;
 
 import {Script} from "lib/forge-std/src/Script.sol";
-
+import {MainnetContracts} from "./Contracts.sol";
 import {Provider} from "src/module/Provider.sol";
 
 contract DeployProvider is Script {
     function run() public virtual {
         vm.startBroadcast();
 
-        address provider = address(new Provider());
+        address provider = address(new Provider(MainnetContracts.WRAPPED_USDC));
 
         vm.stopBroadcast();
 
