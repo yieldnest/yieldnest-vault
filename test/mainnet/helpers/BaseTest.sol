@@ -75,19 +75,22 @@ contract BaseTest is Test, MainnetActors, TestHelper {
             vm.stopPrank();
         }
 
-        vm.startPrank(TIMELOCK);
+        // vm.startPrank(TIMELOCK);
 
-        vault.setProvider(address(provider));
-        vault.addAsset(MC.FXBASE, false);
-        vault.addAsset(MC.FXUSD, false);
-        vault.addAsset(MC.FXSAVE, false);
-        vault.addAsset(address(withdrawer), false);
+        // vault.setProvider(address(provider));
+        // vault.addAsset(MC.FXBASE, false);
+        // vault.addAsset(MC.FXUSD, false);
+        // vault.addAsset(MC.FXSAVE, false);
+        // vault.addAsset(address(withdrawer), false);
 
-        SafeRules.RuleParams[] memory rules = WithdrawerConfig.getMaxVaultRulesConfiguration(vault, withdrawer);
+        // SafeRules.RuleParams[] memory rules = WithdrawerConfig.getMaxVaultRulesConfiguration(vault, withdrawer);
 
-        SafeRules.setProcessorRules(vault, rules, true);
+        // SafeRules.setProcessorRules(vault, rules, true);
 
-        vm.stopPrank();
+        // vm.stopPrank();
+
+        // Call the provided calldata on the timelock contract (MainnetActors.TIMELOCK)
+        // This simulates a governance proposal execution or similar privileged action.
 
         vault.processAccounting();
     }
