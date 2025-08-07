@@ -7,6 +7,11 @@ import {IHooks} from "src/interface/IHooks.sol";
 import {Math} from "src/Common.sol";
 import {Vault} from "src/Vault.sol";
 
+/**
+ * @title Hooks
+ * @notice Hooks for the Vault
+ * @dev This contract gets callback from the vault it's attached to
+ */
 contract Hooks is OwnableUpgradeable, IHooks {
     using Math for uint256;
 
@@ -17,11 +22,21 @@ contract Hooks is OwnableUpgradeable, IHooks {
     IVault public immutable VAULT;
     uint256 public immutable VAULT_DECIMALS;
 
+    /**
+     * @notice Constructor
+     * @param vault_ The address of the Vault to which this hooks contract is attached
+     */
     constructor(address vault_) {
         VAULT = IVault(payable(vault_));
         VAULT_DECIMALS = ERC20(address(VAULT)).decimals();
     }
 
+    /**
+     * @notice Initialize the Hooks contract
+     * @param owner_ The address of the owner of the contract
+     * @param performanceFee_ The performance fee to be charged(denominated in 1e18)
+     * @param performanceFeeRecipient_ The address of the performance fee recipient
+     */
     function initialize(address owner_, uint256 performanceFee_, address performanceFeeRecipient_)
         external
         initializer
@@ -33,11 +48,21 @@ contract Hooks is OwnableUpgradeable, IHooks {
         performanceFeeRecipient = performanceFeeRecipient_;
     }
 
+    /**
+     * @notice Modifier to ensure that the caller is the Vault
+     */
     modifier onlyVault() {
         if (msg.sender != address(VAULT)) revert CallerNotVault();
         _;
     }
 
+    /**
+     * @notice Callback from the Vault after processing accounting
+     * @dev This function is called after the Vault has processedAccounting done and mint shares equivalent to performance fee on yield generated
+     * @param totalAssetsBefore The total assets before processing accounting
+     * @param totalAssetsAfter The total assets after processing accounting
+     * @param totalShares The total shares before processing accounting
+     */
     function afterProcessAccounting(uint256 totalAssetsBefore, uint256 totalAssetsAfter, uint256 totalShares)
         external
         onlyVault
@@ -64,6 +89,11 @@ contract Hooks is OwnableUpgradeable, IHooks {
         }
     }
 
+    /**
+     * @notice Callback from the Vault before withdraw
+     * @param assets The amount of assets to be withdrawn
+     * @param user The address of the user withdrawing
+     */
     function beforeWithdraw(uint256 assets, address user) external onlyVault {
         Vault vault_ = Vault(payable(address(VAULT)));
         if (vault_.withdrawalFeeExempted(user)) return;
@@ -75,6 +105,11 @@ contract Hooks is OwnableUpgradeable, IHooks {
         }
     }
 
+    /**
+     * @notice Callback from the Vault after redeem
+     * @param shares The amount of shares to be redeemed
+     * @param user The address of the user redeeming
+     */
     function afterRedeem(uint256 shares, address user) external onlyVault {
         Vault vault_ = Vault(payable(address(VAULT)));
         if (vault_.withdrawalFeeExempted(user)) return;
@@ -85,12 +120,20 @@ contract Hooks is OwnableUpgradeable, IHooks {
         }
     }
 
+    /**
+     * @notice Set the performance fee
+     * @param performanceFee_ The performance fee to be charged(denominated in 1e18)
+     */
     function setPerformanceFee(uint256 performanceFee_) external onlyOwner {
         if (performanceFee_ > FEE_DENOMINATOR) revert InvalidPerformanceFee();
         emit SetPerformanceFee(performanceFee, performanceFee_);
         performanceFee = performanceFee_;
     }
 
+    /**
+     * @notice Set the performance fee recipient
+     * @param performanceFeeRecipient_ The address of the performance fee recipient
+     */
     function setPerformanceFeeRecipient(address performanceFeeRecipient_) external onlyOwner {
         if (performanceFeeRecipient_ == address(0)) revert InvalidPerformanceFeeRecipient();
         emit SetPerformanceFeeRecipient(performanceFeeRecipient, performanceFeeRecipient_);

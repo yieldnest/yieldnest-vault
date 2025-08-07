@@ -315,13 +315,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param assets The amount of assets to withdraw.
      * @param receiver The address of the receiver.
      * @param owner The address of the owner.
-     * @return sharesWithFee The equivalent amount of shares with fee.
+     * @return shares The equivalent amount of shares.
      */
     function withdraw(uint256 assets, address receiver, address owner)
         public
         virtual
         nonReentrant
-        returns (uint256 sharesWithFee)
+        returns (uint256 shares)
     {
         if (paused()) {
             revert Paused();
@@ -330,14 +330,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (assets > maxAssets) {
             revert ExceededMaxWithdraw(owner, assets, maxAssets);
         }
-        sharesWithFee = previewWithdraw(assets);
+        shares = previewWithdraw(assets);
 
         IHooks hooks_ = hooks();
         if (address(hooks_) != address(0)) {
             hooks_.beforeWithdraw(assets, _msgSender());
         }
 
-        _withdraw(_msgSender(), receiver, owner, assets, sharesWithFee);
+        _withdraw(_msgSender(), receiver, owner, assets, shares);
     }
 
     /**
