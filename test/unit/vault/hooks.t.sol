@@ -23,7 +23,7 @@ import {console} from "lib/forge-std/src/console.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {console2} from "lib/forge-std/src/console2.sol";
+import {FeeMath} from "src/module/FeeMath.sol";
 
 contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
@@ -421,7 +421,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEq(totalSupplyAfter, totalSupplyBefore, "totalSupply should not increase due to fee exemption");
     }
 
-    function test_afterWithdraw_Increases_Shares(uint256 sharesAmount) public {
+    function test_beforeWithdraw_Increases_Shares(uint256 sharesAmount) public {
         vm.prank(FEE_MANAGER);
         vault.setBaseWithdrawalFee(250000);
 
@@ -461,6 +461,74 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEq(totalSupplyAfter, totalSupplyBefore, "totalSupply should not increase due to fee exemption");
     }
 
+    function test_beforeWithdraw_MintsToFeeRecipient(
+        uint256 depositAmount,
+        uint256 yieldAmount,
+        uint256 withdrawalAmount,
+        uint64 withdrawalFee
+    ) public {
+        depositAmount = bound(depositAmount, 1 ether, 100_000 ether);
+        yieldAmount = bound(yieldAmount, 1 ether, 100 ether);
+        withdrawalAmount = bound(withdrawalAmount, 10000, depositAmount - 1000);
+        withdrawalFee = uint64(bound(withdrawalFee, 0, 1e8 / 2));
+
+        vm.startPrank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(withdrawalFee);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        vault.deposit(depositAmount, alice);
+        weth.transfer(address(vault), yieldAmount);
+        vault.processAccounting();
+        vm.stopPrank();
+
+        uint256 totalSupplyBefore = vault.totalSupply();
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+
+        vm.startPrank(address(vault));
+        hooks.beforeWithdraw(withdrawalAmount, alice);
+        vm.stopPrank();
+
+        uint256 totalSupplyAfter = vault.totalSupply();
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
+
+        assertEq(totalSupplyAfter, totalSupplyBefore + sharesMinted, "total supply should increase by shares minted");
+    }
+
+    function test_afterRedeem_MintsToFeeRecipient(
+        uint256 depositAmount,
+        uint256 yieldAmount,
+        uint256 withdrawalAmount,
+        uint64 withdrawalFee
+    ) public {
+        depositAmount = bound(depositAmount, 1 ether, 100_000 ether);
+        yieldAmount = bound(yieldAmount, 1 ether, 100 ether);
+        withdrawalAmount = bound(withdrawalAmount, 10000, depositAmount - 1000);
+        withdrawalFee = uint64(bound(withdrawalFee, 0, 1e8 / 2));
+
+        vm.startPrank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(withdrawalFee);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        uint256 totalSupplyBefore = vault.totalSupply();
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+
+        vm.startPrank(address(vault));
+        hooks.afterRedeem(shares, alice);
+        vm.stopPrank();
+
+        uint256 totalSupplyAfter = vault.totalSupply();
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
+
+        assertEq(totalSupplyAfter, totalSupplyBefore + sharesMinted, "total supply should increase by shares minted");
+    }
+
     function test_AfterProcessAccounting_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
@@ -468,7 +536,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
     }
 
-    function test_afterWithdraw_NotCalledByVault() public {
+    function test_beforeWithdraw_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
         hooks.beforeWithdraw(1 ether, alice);
