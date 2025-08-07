@@ -45,7 +45,6 @@ contract DeployWithdrawer is Script {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(implementation, MC.TIMELOCK, "");
         withdrawer = Withdrawer(payable(address(proxy)));
 
-
         address proxyAdmin = ProxyUtils.getProxyAdmin(address(proxy));
 
         address provider = 0xeb4dBb86cA6aA8f72f863eCEd6d700346fdAC508;
