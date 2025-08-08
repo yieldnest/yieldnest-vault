@@ -86,6 +86,7 @@ contract SetupBase6DecimalsVault is SetupVault {
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+        vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
         vault.grantRole(vault.HOOKS_MANAGER_ROLE(), HOOKS_MANAGER);
 
         // Deploy Mock6DecimalsProvider
