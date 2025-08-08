@@ -535,10 +535,6 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
-    function _previewWithdrawWithoutFee(uint256 assets) internal view returns (uint256 shares) {
-        (shares,) = _convertToShares(asset(), assets, Math.Rounding.Ceil);
-    }
-
     /**
      * @notice Internal function to convert vault shares to the base asset.
      * @param asset_ The address of the asset.
