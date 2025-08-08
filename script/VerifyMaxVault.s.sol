@@ -92,10 +92,12 @@ contract VerifyMaxVault is BaseScript, Test {
         RulesVerification.verifyProcessorRule(
             vaultProxy, BaseRules.getDepositRule(MC.SUPER_USDC_VAULT, address(vaultProxy))
         );
-        address[] memory usdcApprovalAllowList = new address[](3);
+        address[] memory usdcApprovalAllowList = new address[](5);
         usdcApprovalAllowList[0] = MC.MORPHO_GAUNTLET_USDC_VAULT;
         usdcApprovalAllowList[1] = MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER;
         usdcApprovalAllowList[2] = MC.SUPER_USDC_VAULT;
+        usdcApprovalAllowList[3] = MC.FXBASE;
+        usdcApprovalAllowList[4] = address(VaultVerification.getWithdrawer(vaultProxy));
         RulesVerification.verifyProcessorRule(vaultProxy, BaseRules.getApprovalRule(MC.USDC, usdcApprovalAllowList));
 
         console.log("Verifying paraswap rules.");
