@@ -59,6 +59,12 @@ contract Setup6DecimalsVault is SetupVault {
         }
     }
 
+    function mockUSDCBuffer() public {
+        MockERC4626 usdcBuffer = new MockERC4626(ERC20(address(MC.USDC)), "Staked USDC", "sUSDC");
+        bytes memory code = address(usdcBuffer).code;
+        vm.etch(MC.BUFFER, code);
+    }
+
     function configureLocal(Vault vault, Hooks hooks) internal override {
         mockAll();
 
@@ -73,17 +79,21 @@ contract Setup6DecimalsVault is SetupVault {
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
         vault.grantRole(vault.HOOKS_MANAGER_ROLE(), HOOKS_MANAGER);
+        vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
 
         // Deploy Mock6DecimalsProvider
         Mock6DecimalsProvider mock6DecimalsProvider = new Mock6DecimalsProvider();
         // Set the provider to the 6 decimals provider
         vault.setProvider(address(mock6DecimalsProvider));
 
+        mockUSDCBuffer();
+
         // Add assets: Base asset (USDC) first
         vault.addAsset(MC.USDC, true); // USDC mocked at WETH address
-
+        vault.addAsset(MC.BUFFER, false);
         // Set rates in provider
         mock6DecimalsProvider.setRate(MC.USDC, 1e6); // 1 USD USDC
+        mock6DecimalsProvider.addERC4626(MC.BUFFER);
 
         hooks.initialize(ADMIN, 1e17, FEE_MANAGER);
 
@@ -93,5 +103,39 @@ contract Setup6DecimalsVault is SetupVault {
         vm.startPrank(HOOKS_MANAGER);
         vault.setHooks(address(hooks));
         vm.stopPrank();
+
+        {
+            vm.startPrank(ADMIN);
+            // Configure processor rules
+            setDepositRule(vault, MC.BUFFER, address(vault));
+
+            vault.setBuffer(MC.BUFFER);
+            vm.stopPrank();
+
+            // Deposit USDC seed to buffer
+            uint256 usdcSeedAmount = 10_000e6; // 1 million USDC (6 decimals)
+            address bufferSeeder = address(0xB1111f3);
+            deal(MC.USDC, bufferSeeder, usdcSeedAmount);
+
+            vm.startPrank(bufferSeeder);
+            IERC20(MC.USDC).approve(MC.BUFFER, usdcSeedAmount);
+            IERC4626(MC.BUFFER).deposit(usdcSeedAmount, bufferSeeder);
+            vm.stopPrank();
+
+            // Verify the buffer deposit was successful
+            require(
+                IERC20(MC.BUFFER).balanceOf(bufferSeeder) == usdcSeedAmount, "Vault should have received buffer shares"
+            );
+        }
+
+        {
+            vm.startPrank(ADMIN);
+            address[] memory allowList = new address[](1);
+            allowList[0] = address(MC.BUFFER);
+            SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(address(MC.USDC), allowList);
+            vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
+
+            vm.stopPrank();
+        }
     }
 }
