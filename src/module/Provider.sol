@@ -5,6 +5,8 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IVault} from "src/interface/IVault.sol";
+import {IFxUSDBasePool} from "src/interface/IFxUSDBasePool.sol";
+import {Math} from "src/Common.sol";
 
 interface IBaseStrategy {
     function STRATEGY_VERSION() external view returns (string memory);
@@ -20,6 +22,8 @@ contract Provider is IProvider {
     error UnsupportedAsset(address asset);
     error RateIsNegative();
 
+    using Math for uint256;
+
     address public wrappedUSDC;
 
     /**
@@ -28,6 +32,15 @@ contract Provider is IProvider {
      */
     constructor(address wrappedUSDC_) {
         wrappedUSDC = wrappedUSDC_;
+    }
+
+    function isUSDCStrategyVault(address asset) public view returns (bool) {
+        try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
+            address vaultAsset = IVault(asset).asset();
+            return (keccak256(bytes(version)) == keccak256(bytes("0.2.0"))) && vaultAsset == MC.USDC;
+        } catch {
+            return false;
+        }
     }
 
     /**
@@ -82,6 +95,21 @@ contract Provider is IProvider {
             return 1e18;
         }
 
+        if (asset == MC.FXUSD) {
+            return 1e18;
+        }
+
+        if (asset == MC.FXBASE) {
+            // For FXBASE, previewRedeem(1e18) returns how much fxUSD (18 decimals) and USDC (6 decimals) you get for 1 share.
+            // We convert both to Wrapped USDC value and sum them.
+            (uint256 amountYieldOut, uint256 amountStableOut) = IFxUSDBasePool(MC.FXBASE).previewRedeem(1e18);
+            return amountYieldOut * getRate(MC.FXUSD) / 1e18 + amountStableOut * getRate(MC.USDC) / 1e6;
+        }
+
+        if (asset == MC.FXSAVE) {
+            return IERC4626(MC.FXSAVE).convertToAssets(1e18).mulDiv(getRate(MC.FXBASE), 1e18);
+        }
+
         // base asset of SFRAX, SUSDE, SUSDS, SCRVUSD is FRAX, USDE, USDS, CRVUSD respectively with 18 decimals.
         // we need rate in terms of 18 decimals(denominated in Wrapped USDC) so we query it for 1e18 Wrapped USDC
         if (asset == MC.SFRAX || asset == MC.SUSDE || asset == MC.SUSDS || asset == MC.SCRVUSD) {
@@ -99,6 +127,12 @@ contract Provider is IProvider {
             // base asset is USDC with 6 decimals. we scale it to 18 decimals
             return IERC4626(asset).convertToAssets(1e18) * 1e12;
         }
+
+        if (isUSDCStrategyVault(asset)) {
+            // base asset is USDC with 6 decimals. we scale it to 18 decimals to convert to Wrapped USDC
+            return IERC4626(asset).convertToAssets(1e18) * 1e12;
+        }
+
         revert UnsupportedAsset(asset);
     }
 }

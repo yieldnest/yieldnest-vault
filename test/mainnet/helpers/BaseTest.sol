@@ -18,7 +18,16 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {ParaswapRules} from "script/rules/ParaswapRules.sol";
 import {SuperUsdcRules} from "script/rules/SuperUsdcRules.sol";
+import {FxProtocolRules} from "script/rules/FxProtocolRules.sol";
+import {BaseRules} from "script/rules/BaseRules.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {console} from "lib/forge-std/src/console.sol";
+import {WithdrawerConfigurator} from "script/config/WithdrawerConfigurator.sol";
+import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {VaultVerification} from "script/verification/VaultVerification.sol";
 
 contract BaseTest is Test, MainnetActors, TestHelper {
     struct PsPResponse {
@@ -30,15 +39,18 @@ contract BaseTest is Test, MainnetActors, TestHelper {
     uint256 public constant SLIPPAGE_PRECISION = 10000; // 10000 = 100%
     WrappedToken public wrappedUSDC;
 
+    Withdrawer public withdrawer;
+
     function deploy() public returns (Vault, Provider) {
-        Vault vault = Vault(payable(0x3DB228FE836D99Ccb25Ec4dfdC80ED6d2CDdCB4b));
-        Provider provider = Provider(0x084c2159eC1612A82b16711cC45A003EA162EC85);
+        Vault vault = Vault(payable(MC.YNUSDx));
         wrappedUSDC = WrappedToken(MC.WRAPPED_USDC);
+        withdrawer = VaultVerification.getWithdrawer(IVault(MC.YNUSDx));
 
         TestHelper._initVault(vault);
 
         configureMainnet(vault);
-        return (vault, provider);
+
+        return (vault, Provider(vault.provider()));
     }
 
     function configureMainnet(Vault vault) internal {
