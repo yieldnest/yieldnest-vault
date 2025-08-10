@@ -164,7 +164,7 @@ contract YnUSDxTest is BaseTest {
         vm.startPrank(TIMELOCK);
         // mark USDE as active
         IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
-        vault.updateAsset(6, fields);
+        vault.updateAsset(vault.getAsset(MC.USDE).index, fields);
         vm.stopPrank();
 
         // Give Alice USDE

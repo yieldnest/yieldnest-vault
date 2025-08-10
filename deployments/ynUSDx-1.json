@@ -2,7 +2,7 @@
   "admin": "0xfcad670592a3b24869C0b51a6c6FDED4F95D6975",
   "deployer": "0x445b64828683ae4B6D5f0542f9E97707d631A847",
   "paraswapValidator": "0xf223759538fA990409B27a5239619D0AD240F419",
-  "rateProvider": "0x084c2159eC1612A82b16711cC45A003EA162EC85",
+  "rateProvider": "0xeb4dBb86cA6aA8f72f863eCEd6d700346fdAC508",
   "symbol": "ynUSDx",
   "timelock": "0x739711358Ee02d0D6d6eE51D6A07dc862ddB132d",
   "viewer-implementation": "0x615635789E849aB468f721ea4d470Eaff4e5c534",
@@ -10,5 +10,8 @@
   "viewer-proxyAdmin": "0x7D103f33e19f77cdaF955b615D010580893435eb",
   "ynUSDx-implementation": "0x3BE73E7cEdeEF9745E82D7C6a4C174a4829c4E73",
   "ynUSDx-proxy": "0x3DB228FE836D99Ccb25Ec4dfdC80ED6d2CDdCB4b",
-  "ynUSDx-proxyAdmin": "0xe7B204706c948DE3b83d23fA6996000c182e25B3"
+  "ynUSDx-proxyAdmin": "0xe7B204706c948DE3b83d23fA6996000c182e25B3",
+  "withdrawer-proxy": "0x3fc3771Cf29b96069644Ea249f3F036069873B4A",
+  "withdrawer-implementation": "0xa55Dc46c4Bf65f923a4b6B7db55D51623e9B44f7",
+  "withdrawer-proxyAdmin": "0x3867Ff9489d1308CC2b4EDB79BfD464f76d37f22"
 }

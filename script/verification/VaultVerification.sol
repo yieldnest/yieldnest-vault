@@ -9,8 +9,12 @@ import {Vm} from "lib/forge-std/src/Vm.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
+import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 
 library VaultVerification {
+    error WithdrawerNotFound(address vault);
+
     function verifyProvider(Vault vault, Provider provider) internal view {
         Vm vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -43,5 +47,17 @@ library VaultVerification {
         }
 
         vm.assertTrue(MaxVaultViewer(address(viewer)).isUnderlyingAsset(MC.USDC), "USDC should be an underlying asset");
+    }
+
+    function getWithdrawer(IVault vault) internal view returns (Withdrawer) {
+        // Look up withdrawer by symbol
+        address[] memory assets = vault.getAssets();
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (keccak256(bytes(IVault(assets[i]).symbol())) == keccak256(bytes(WithdrawerConfig.WITHDRAWER_SYMBOL))) {
+                return Withdrawer(payable(assets[i]));
+            }
+        }
+
+        revert WithdrawerNotFound(address(vault));
     }
 }

@@ -91,4 +91,8 @@ contract ProviderTest is BaseTest {
         uint256 expectedRate = IERC4626(MC.FXSAVE).convertToAssets(1e18) * provider.getRate(MC.FXBASE) / 1e18;
         assertEq(provider.getRate(MC.FXSAVE), expectedRate);
     }
+
+    function test_getRate_Of_FXUSD() public view {
+        assertEq(provider.getRate(MC.FXUSD), 1e18);
+    }
 }
