@@ -16,6 +16,9 @@ import {ParaswapRules} from "script/rules/ParaswapRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {SuperUsdcRules} from "script/rules/SuperUsdcRules.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
+import {BaseVault} from "src/BaseVault.sol";
+import {Vault} from "src/Vault.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script VerifyMaxVault
 contract VerifyMaxVault is BaseScript, Test {
@@ -138,6 +141,36 @@ contract VerifyMaxVault is BaseScript, Test {
         RolesVerification.verifyViewerRoles(MaxVaultViewer(address(viewerProxy)), actors, deployer);
 
         RolesVerification.verifyProxyRoles(address(viewerProxy), viewerProxyAdmin, actors.ADMIN());
+
+        assertGt(vaultProxy.totalAssets(), 1000e6, "Vault totalAssets should exceed 1000e6");
+
+        {
+            // Verify the withdrawer contract for the vault
+            Withdrawer withdrawer = VaultVerification.getWithdrawer(vaultProxy);
+            require(address(withdrawer) != address(0), "Withdrawer address should not be zero");
+
+            RolesVerification.verifyProxyRoles(address(withdrawer), withdrawerProxyAdmin, address(timelock));
+
+            assertEq(withdrawer.STRATEGY_VERSION(), "0.2.0", "Withdrawer Vault version should be 0.2.0");
+            console.log("\u2705 Withdrawer STRATEGY_VERSION:          ", withdrawer.STRATEGY_VERSION());
+
+            console.log("==============================================");
+            RolesVerification.verifyBaseDefaultRoles(withdrawer, timelock, actors);
+
+            RolesVerification.verifyRole(
+                withdrawer,
+                address(vaultProxy),
+                withdrawer.ALLOCATOR_ROLE(),
+                true,
+                "Vault has ALLOCATOR_ROLE for Withdrawer"
+            );
+
+            VaultVerification.verifyProvider(
+                Vault(payable(address(withdrawerProxy))), Provider(address(withdrawer.provider()))
+            );
+
+            assertGt(withdrawer.totalAssets(), 500e6, "Withdrawer totalAssets should exceed 500e6");
+        }
 
         console.log("==============================================");
         console.log("MANUAL VERIFICATION REQUIRED");

@@ -29,10 +29,7 @@ library RolesVerification {
 
     function verifyDefaultRoles(BaseVault vault, TimelockController timelock, IActors actors) internal view {
         // verify actors roles
-        verifyRole(vault, actors.ADMIN(), vault.DEFAULT_ADMIN_ROLE(), true, "Admin has DEFAULT_ADMIN_ROLE");
-        verifyRole(vault, actors.PROCESSOR(), vault.PROCESSOR_ROLE(), true, "Processor has PROCESSOR_ROLE");
-        verifyRole(vault, actors.PAUSER(), vault.PAUSER_ROLE(), true, "Pauser has PAUSER_ROLE");
-        verifyRole(vault, actors.UNPAUSER(), vault.UNPAUSER_ROLE(), true, "Unpauser has UNPAUSER_ROLE");
+        verifyBaseDefaultRoles(vault, timelock, actors);
         verifyRole(
             vault,
             actors.FEE_MANAGER(),
@@ -40,6 +37,14 @@ library RolesVerification {
             true,
             "Fee manager has FEE_MANAGER_ROLE"
         );
+    }
+
+    function verifyBaseDefaultRoles(BaseVault vault, TimelockController timelock, IActors actors) internal view {
+        // verify actors roles
+        verifyRole(vault, actors.ADMIN(), vault.DEFAULT_ADMIN_ROLE(), true, "Admin has DEFAULT_ADMIN_ROLE");
+        verifyRole(vault, actors.PROCESSOR(), vault.PROCESSOR_ROLE(), true, "Processor has PROCESSOR_ROLE");
+        verifyRole(vault, actors.PAUSER(), vault.PAUSER_ROLE(), true, "Pauser has PAUSER_ROLE");
+        verifyRole(vault, actors.UNPAUSER(), vault.UNPAUSER_ROLE(), true, "Unpauser has UNPAUSER_ROLE");
         // verify timelock roles
         verifyRole(vault, address(timelock), vault.PROVIDER_MANAGER_ROLE(), true, "Timelock has PROVIDER_MANAGER_ROLE");
         verifyRole(vault, address(timelock), vault.ASSET_MANAGER_ROLE(), true, "Timelock has ASSET_MANAGER_ROLE");
