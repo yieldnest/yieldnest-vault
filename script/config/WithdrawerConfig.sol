@@ -69,9 +69,9 @@ library WithdrawerConfig {
         BaseRoles.renounceTemporaryRoles(vault, deployer);
     }
 
-    function getMaxVaultRulesConfiguration(IVault vault, IVault withdrawer)
+    function getMaxVaultRulesConfiguration(IVault, /* vault */ IVault /* withdrawer */ )
         internal
-        view
+        pure
         returns (SafeRules.RuleParams[] memory rules)
     {
         rules = new SafeRules.RuleParams[](3);
