@@ -9,6 +9,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IActors} from "script/Actors.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 library WithdrawerConfig {
     error InvalidRules();
@@ -66,5 +67,18 @@ library WithdrawerConfig {
         vault.unpause();
 
         BaseRoles.renounceTemporaryRoles(vault, deployer);
+    }
+
+    function getMaxVaultRulesConfiguration(IVault vault, IVault withdrawer)
+        internal
+        view
+        returns (SafeRules.RuleParams[] memory rules)
+    {
+        rules = new SafeRules.RuleParams[](3);
+        uint256 i = 0;
+
+        rules[i++] = WithdrawerRules.getRequestWithdrawRule(MC.SLIS_BNB_STAKE_MANAGER);
+        rules[i++] = WithdrawerRules.getClaimWithdrawRule(MC.SLIS_BNB_STAKE_MANAGER);
+        rules[i++] = BaseRules.getApprovalRule(MC.SLISBNB, MC.SLIS_BNB_STAKE_MANAGER);
     }
 }

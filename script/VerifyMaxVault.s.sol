@@ -12,6 +12,8 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {Provider} from "src/module/Provider.sol";
 import {Test} from "lib/forge-std/src/Test.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 
 // FOUNDRY_PROFILE=mainnet forge script VerifyMaxVault
 contract VerifyMaxVault is BaseScript, Test {
@@ -76,7 +78,7 @@ contract VerifyMaxVault is BaseScript, Test {
             (bool isIncluded, uint256 index) = _checkForAsset(contracts.YNWBNBK());
             assertTrue(isIncluded, "YNWBNBK is invalid");
             assertGt(index, 0, "YNWBNBK invalid index");
-            assertEq(vault.buffer(), contracts.YNWBNBK(), "incorrect buffer");
+            assertEq(vault.buffer(), MC.EULER_EWBNB_6_VAULT, "incorrect buffer");
 
             asset = vault.getAsset(contracts.YNWBNBK());
             assertEq(asset.decimals, 18, "asset[1].decimals is invalid");
@@ -118,11 +120,12 @@ contract VerifyMaxVault is BaseScript, Test {
         }
 
         if (block.chainid == 56) {
-            console.log("Verifying approval rules for mainnet - WBNB approvals to YNWBNBK and YNCLISBNBK.");
-            address[] memory underlyingVaults = new address[](3);
+            console.log("Verifying approval rules for mainnet - WBNB approvals.");
+            address[] memory underlyingVaults = new address[](4);
             underlyingVaults[0] = contracts.YNWBNBK();
             underlyingVaults[1] = contracts.YNCLISBNBK();
             underlyingVaults[2] = contracts.YNASBNBK();
+            underlyingVaults[3] = vault.buffer();
             RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(contracts.WBNB(), underlyingVaults));
         } else if (block.chainid == 97) {
             console.log("Verifying approval rules for testnet - WBNB approvals to YNWBNBK.");
@@ -160,40 +163,6 @@ contract VerifyMaxVault is BaseScript, Test {
         console.log("\u2705 Vault version:          ", vault.VAULT_VERSION());
         console.log("==============================================");
 
-        // TODO: verify Withdrawer once deployed
-        // Get withdrawer from vault assets
-        // Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
-        //
-        // console.log("==============================================");
-        // console.log("=        VERIFYING WITHDRAWER SETUP          =");
-        // console.log("==============================================");
-        // console.log("Verifying withdrawer at:   ", address(withdrawer));
-        // console.log("==============================================");
-        //
-        // // Verify vault configuration using VaultVerification library
-        // VaultVerification.verifyVaultConfiguration(vault, withdrawer);
-        //
-        // // Verify withdrawer configuration
-        // VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
-        //
-        // // Verify withdrawer rules
-        // VaultVerification.verifyWithdrawerRules(withdrawer);
-        //
-        // // verify actors & timelock roles on withdrawer
-        // RolesVerification.verifyDefaultRoles(withdrawer, timelock, actors);
-        // RolesVerification.verifyRole(
-        //     withdrawer, address(vault), withdrawer.ALLOCATOR_ROLE(), true, "YnBNBx has ALLOCATOR_ROLE"
-        // );
-        //
-        // // verify proxy roles on withdrawer
-        // address withdrawerProxyAdmin = ProxyUtils.getProxyAdmin(address(withdrawer));
-        // RolesVerification.verifyProxyRoles(address(withdrawer), withdrawerProxyAdmin, address(timelock));
-        //
-        // // verify temporary roles on withdrawer
-        // RolesVerification.verifyTemporaryRoles(withdrawer, deployer);
-        //
-        // assertFalse(withdrawer.paused(), "Withdrawer should not be paused");
-
         // verify viewer
         VaultVerification.verifyViewer(viewer, vault, contracts);
 
@@ -202,6 +171,42 @@ contract VerifyMaxVault is BaseScript, Test {
 
         // verify viewer roles
         RolesVerification.verifyProxyRoles(address(viewer), viewerProxyAdmin, actors.ADMIN());
+
+        {
+            // TODO: verify Withdrawer once deployed
+            // Get withdrawer from vault assets
+            Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
+
+            console.log("==============================================");
+            console.log("=        VERIFYING WITHDRAWER SETUP          =");
+            console.log("==============================================");
+            console.log("Verifying withdrawer at:   ", address(withdrawer));
+            console.log("==============================================");
+
+            // // Verify vault configuration using VaultVerification library
+            // VaultVerification.verifyVaultConfiguration(vault, withdrawer);
+
+            // // Verify withdrawer configuration
+            // VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
+
+            // // Verify withdrawer rules
+            // VaultVerification.verifyWithdrawerRules(withdrawer);
+
+            // verify actors & timelock roles on withdrawer
+            RolesVerification.verifyDefaultRoles(withdrawer, timelock, actors);
+            RolesVerification.verifyRole(
+                withdrawer, address(vault), withdrawer.ALLOCATOR_ROLE(), true, "YnBNBx has ALLOCATOR_ROLE"
+            );
+
+            // verify proxy roles on withdrawer
+            address withdrawerProxyAdmin = ProxyUtils.getProxyAdmin(address(withdrawer));
+            RolesVerification.verifyProxyRoles(address(withdrawer), withdrawerProxyAdmin, address(timelock));
+
+            // verify temporary roles on withdrawer
+            RolesVerification.verifyTemporaryRoles(withdrawer, deployer);
+
+            assertFalse(withdrawer.paused(), "Withdrawer should not be paused");
+        }
 
         console.log("==============================================");
         console.log("MANUAL VERIFICATION REQUIRED");

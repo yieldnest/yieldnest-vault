@@ -21,6 +21,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {WithdrawerConfigurer} from "src/configures/WithdrawerConfigurer.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
+import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 
 contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
@@ -48,17 +49,7 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         vm.startPrank(MC.TIMELOCK);
 
         {
-            SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](3);
-            uint256 i = 0;
-
-            address[] memory usdcSpender = new address[](1);
-            usdcSpender[0] = address(withdrawer);
-            rules[i++] = BaseRules.getAppendApprovalRule(MC.SLISBNB, usdcSpender, vault);
-
-            // Set deposit and withdraw asset rules for withdrawer and FXBASE
-            rules[i++] = BaseRules.getDepositAssetRule(address(withdrawer), MC.SLISBNB, address(vault));
-            // Set withdraw rule for USDC for withdrawer
-            rules[i++] = BaseRules.getWithdrawRule(address(withdrawer), address(vault));
+            SafeRules.RuleParams[] memory rules = WithdrawerConfig.getMaxVaultRulesConfiguration(vault, withdrawer);
 
             SafeRules.setProcessorRules(vault, rules, true);
         }
