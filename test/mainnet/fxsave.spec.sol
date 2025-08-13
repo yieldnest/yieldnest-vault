@@ -130,6 +130,9 @@ contract FXSaveTest is BaseTest {
         uint256[] memory values = new uint256[](1);
         bytes[] memory calldatas = new bytes[](1);
 
+        // Record vault's FXSAVE balance before redeem
+        uint256 fxSaveBalanceBefore = IERC20(MC.FXSAVE).balanceOf(address(vault));
+
         // 1. Call FXSAVE.redeem
         targets[0] = MC.FXSAVE;
         values[0] = 0;
@@ -139,8 +142,13 @@ contract FXSaveTest is BaseTest {
         vault.processor(targets, values, calldatas);
         vm.stopPrank();
 
-        // Check that vault's FXSAVE balance is now 0 (all redeemed)
-        assertEq(IERC20(MC.FXSAVE).balanceOf(address(vault)), 0, "Vault FXSAVE should be 0 after redeem");
+        // Check that vault's FXSAVE balance decreased by fxSaveShares
+        uint256 fxSaveBalanceAfter = IERC20(MC.FXSAVE).balanceOf(address(vault));
+        assertEq(
+            fxSaveBalanceBefore - fxSaveBalanceAfter,
+            fxSaveShares,
+            "Vault FXSAVE balance should decrease by fxSaveShares after redeem"
+        );
 
         // Check that vault now has fxBASE shares
         uint256 fxBaseShares = IERC20(MC.FXBASE).balanceOf(address(vault));

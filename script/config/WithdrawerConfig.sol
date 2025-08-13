@@ -90,7 +90,7 @@ library WithdrawerConfig {
         view
         returns (SafeRules.RuleParams[] memory rules)
     {
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](10);
+        rules = new SafeRules.RuleParams[](10);
         uint256 i = 0;
 
         // Set approval rule for USDC to allow only FXBASE and withdrawer as spenders

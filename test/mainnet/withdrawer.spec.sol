@@ -68,8 +68,6 @@ contract WithdrawerTest is BaseTest {
     function test_Withdrawer_deposit_and_withdraw_fxbase(uint256 depositAmount) public {
         depositAmount = bound(depositAmount, 1e6, 10_000_000e6);
 
-        uint256 totalAssetsBefore = vault.totalAssets();
-
         {
             // Give USDC to alice and have her deposit into the vault
             address alice = makeAddr("alice");

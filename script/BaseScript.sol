@@ -9,6 +9,7 @@ import {L1Contracts, IContracts} from "script/Contracts.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
 import {Vault} from "src/Vault.sol";
+import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 
 import {TransparentUpgradeableProxy} from
     "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -30,6 +31,10 @@ abstract contract BaseScript is Script {
     Vault public vaultProxy;
     Vault public vaultImplementation;
     address public vaultProxyAdmin;
+
+    Withdrawer public withdrawerProxy;
+    Withdrawer public withdrawerImplementation;
+    address public withdrawerProxyAdmin;
 
     IVaultViewer public viewerProxy;
     IVaultViewer public viewerImplementation;
@@ -94,6 +99,11 @@ abstract contract BaseScript is Script {
         vaultImplementation =
             Vault(payable(address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-implementation")))));
         vaultProxyAdmin = address(vm.parseJsonAddress(jsonInput, string.concat(".", symbol(), "-proxyAdmin")));
+
+        withdrawerProxy = Withdrawer(payable(address(vm.parseJsonAddress(jsonInput, ".withdrawer-proxy"))));
+        withdrawerImplementation =
+            Withdrawer(payable(address(vm.parseJsonAddress(jsonInput, ".withdrawer-implementation"))));
+        withdrawerProxyAdmin = address(vm.parseJsonAddress(jsonInput, ".withdrawer-proxyAdmin"));
     }
 
     function _deploymentFilePath() internal view virtual returns (string memory) {
