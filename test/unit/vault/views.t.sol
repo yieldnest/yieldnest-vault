@@ -68,7 +68,7 @@ contract VaultViewsUnitTest is Test, Etches {
     }
 
     function test_Vault_feeOnTotal() public view {
-        uint256 fee = vault._feeOnTotal(1e18);
+        uint256 fee = vault._feeOnTotal(1e18, alice);
         assertEq(fee, 0, "Fee on total should be zero");
     }
 

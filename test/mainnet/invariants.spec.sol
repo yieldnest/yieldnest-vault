@@ -230,7 +230,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         assertApproxEqAbs(
             previewedRedeemAssets,
-            convertedAssets - vault._feeOnTotal(convertedAssets),
+            convertedAssets - vault._feeOnTotal(convertedAssets, user),
             3,
             "Previewed redeem assets should equal the original assets with withdrawal fee applied"
         );
@@ -331,7 +331,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         // hypothetically allocated 100% to the buffer
         ProcessorUtils.allocateToBuffer(vault, IERC20(baseAsset).balanceOf(address(vault)), PROCESSOR);
 
-        uint256 sharesWithFee = vault.convertToShares(assets + vault._feeOnRaw(assets));
+        uint256 sharesWithFee = vault.convertToShares(assets + vault._feeOnRaw(assets, user));
 
         // Test the previewWithdraw function
         uint256 previewedWithdrawShares = vault.previewWithdraw(assets);
@@ -345,7 +345,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         {
             convertedAssets = vault.convertToAssets(depositedShares);
             withdrawableAssets = vault.maxWithdraw(user);
-            uint256 withdrawalFee = vault._feeOnTotal(convertedAssets);
+            uint256 withdrawalFee = vault._feeOnTotal(convertedAssets, user);
             assertApproxEqAbs(
                 withdrawableAssets * vault.baseWithdrawalFee() / FeeMath.BASIS_POINT_SCALE,
                 withdrawalFee,

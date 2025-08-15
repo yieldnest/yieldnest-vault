@@ -4,6 +4,21 @@ pragma solidity ^0.8.24;
 import {IVault} from "src/interface/IVault.sol";
 
 interface IHooks {
+    // @notice Permissions struct for the hooks
+    // @dev Each flag is a boolean value that indicates if the corresponding function of hook has the permission to be called from vault
+    struct Permissions {
+        bool beforeDeposit;
+        bool afterDeposit;
+        bool beforeMint;
+        bool afterMint;
+        bool beforeRedeem;
+        bool afterRedeem;
+        bool beforeWithdraw;
+        bool afterWithdraw;
+        bool beforeProcessAccounting;
+        bool afterProcessAccounting;
+    }
+
     error InvalidPerformanceFee();
     error InvalidPerformanceFeeRecipient();
     error CallerNotVault();
@@ -25,10 +40,37 @@ interface IHooks {
     function performanceFeeRecipient() external view returns (address);
     function VAULT() external view returns (IVault);
 
-    function afterProcessAccounting(uint256 totalAssetsBefore, uint256 totalAssetsAfter, uint256 totalShares)
-        external;
-    function beforeWithdraw(uint256 assets, address user) external;
-    function afterRedeem(uint256 shares, address user) external;
     function setPerformanceFee(uint256 performanceFee_) external;
     function setPerformanceFeeRecipient(address performanceFeeRecipient_) external;
+    function setPermissions(Permissions memory permissions_) external;
+    function getPermissions() external view returns (Permissions memory);
+
+    function beforeDeposit(uint256 assets, address caller, address receiver, uint256 shares, uint256 baseAssets)
+        external;
+    function afterDeposit(uint256 assets, address caller, address receiver, uint256 shares, uint256 baseAssets)
+        external;
+
+    function beforeMint(uint256 shares, address caller, address receiver, uint256 assets, uint256 baseAssets)
+        external;
+    function afterMint(uint256 shares, address caller, address receiver, uint256 assets, uint256 baseAssets) external;
+
+    function beforeRedeem(uint256 shares, address caller, address receiver, address owner, uint256 assets) external;
+    function afterRedeem(uint256 shares, address caller, address receiver, address owner, uint256 assets) external;
+
+    function beforeWithdraw(uint256 assets, address caller, address receiver, address owner, uint256 shares) external;
+    function afterWithdraw(uint256 assets, address caller, address receiver, address owner, uint256 shares) external;
+
+    function beforeProcessAccounting(
+        uint256 totalAssetsBeforeAccounting,
+        uint256 totalSupplyBeforeAccounting,
+        uint256 totalBaseBalanceBeforeAccounting
+    ) external;
+    function afterProcessAccounting(
+        uint256 totalAssetsBeforeAccounting,
+        uint256 totalAssetsAfterAccounting,
+        uint256 totalSupplyBeforeAccounting,
+        uint256 totalSupplyAfterAccounting,
+        uint256 totalBaseBalanceAfterAccounting,
+        uint256 totalBaseBalanceBeforeAccounting
+    ) external;
 }

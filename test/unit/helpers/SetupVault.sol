@@ -15,6 +15,7 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {Hooks} from "src/Hooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
     function setup() public virtual returns (Vault vault, WETH9 weth) {
@@ -76,7 +77,20 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(MC.WBTC, true);
         vault.addAsset(MC.METH, true);
 
-        hooks.initialize(ADMIN, 1e17, FEE_MANAGER);
+        IHooks.Permissions memory permissions = IHooks.Permissions({
+            beforeDeposit: false,
+            afterDeposit: false,
+            beforeMint: false,
+            afterMint: false,
+            beforeRedeem: false,
+            afterRedeem: true,
+            beforeWithdraw: true,
+            afterWithdraw: false,
+            beforeProcessAccounting: false,
+            afterProcessAccounting: true
+        });
+
+        hooks.initialize(ADMIN, 1e17, FEE_MANAGER, permissions);
 
         // configure processor rules
         setDepositRule(vault, MC.BUFFER, address(vault));
