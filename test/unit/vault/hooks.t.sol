@@ -38,6 +38,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     Hooks public hooks;
 
     address public alice = address(0x1);
+    address public caller = address(0x2);
     uint256 public constant INITIAL_BALANCE = 200_000 ether;
 
     function setUp() public {
@@ -53,8 +54,15 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         weth.deposit{value: INITIAL_BALANCE}();
         weth.transfer(alice, INITIAL_BALANCE);
 
+        deal(caller, INITIAL_BALANCE);
+        weth.deposit{value: INITIAL_BALANCE}();
+        weth.transfer(caller, INITIAL_BALANCE);
+
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
+        weth.approve(address(vault), type(uint256).max);
+
+        vm.prank(caller);
         weth.approve(address(vault), type(uint256).max);
     }
 
@@ -393,7 +401,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(sharesAmount, alice);
+        hooks.afterRedeem(sharesAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -404,7 +412,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         depositAmount = bound(depositAmount, 1 ether, 100_000 ether);
         vm.startPrank(FEE_MANAGER);
         vault.setBaseWithdrawalFee(250000);
-        vault.setWithdrawalFeeExempted(alice, true);
+        vault.overrideBaseWithdrawalFee(alice, 0, true);
         vm.stopPrank();
 
         vm.startPrank(alice);
@@ -414,11 +422,33 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(shares, alice);
+        hooks.afterRedeem(shares, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
         assertEq(totalSupplyAfter, totalSupplyBefore, "totalSupply should not increase due to fee exemption");
+    }
+
+    function test_afterRedeem_OverriddenFee(uint256 depositAmount, uint64 overriddenFee) public {
+        depositAmount = bound(depositAmount, 1 ether, 100_000 ether);
+        overriddenFee = uint64(bound(overriddenFee, 2500, FeeMath.BASIS_POINT_SCALE));
+        vm.startPrank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(250000);
+        vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        uint256 totalSupplyBefore = vault.totalSupply();
+
+        vm.startPrank(address(vault));
+        hooks.afterRedeem(shares, alice, alice, alice, 0);
+        vm.stopPrank();
+
+        uint256 totalSupplyAfter = vault.totalSupply();
+        assertGt(totalSupplyAfter, totalSupplyBefore, "totalSupply should increase due to fee overriden");
     }
 
     function test_beforeWithdraw_Increases_Shares(uint256 sharesAmount) public {
@@ -433,7 +463,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.beforeWithdraw(sharesAmount, alice);
+        hooks.beforeWithdraw(sharesAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -444,7 +474,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         depositAmount = bound(depositAmount, 1 ether, 100_000 ether);
         vm.startPrank(FEE_MANAGER);
         vault.setBaseWithdrawalFee(250000);
-        vault.setWithdrawalFeeExempted(alice, true);
+        vault.overrideBaseWithdrawalFee(alice, 0, true);
         vm.stopPrank();
 
         vm.startPrank(alice);
@@ -454,11 +484,33 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.beforeWithdraw(depositAmount, alice);
+        hooks.beforeWithdraw(depositAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
         assertEq(totalSupplyAfter, totalSupplyBefore, "totalSupply should not increase due to fee exemption");
+    }
+
+    function test_beforeWithdraw_OverriddenFee(uint256 depositAmount, uint64 overriddenFee) public {
+        depositAmount = bound(depositAmount, 1 ether, 100_000 ether);
+        overriddenFee = uint64(bound(overriddenFee, 2500, FeeMath.BASIS_POINT_SCALE));
+        vm.startPrank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(250000);
+        vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        uint256 totalSupplyBefore = vault.totalSupply();
+
+        vm.startPrank(address(vault));
+        hooks.beforeWithdraw(depositAmount, alice, alice, alice, 0);
+        vm.stopPrank();
+
+        uint256 totalSupplyAfter = vault.totalSupply();
+        assertGt(totalSupplyAfter, totalSupplyBefore, "totalSupply should increase due to fee overriden");
     }
 
     function test_beforeWithdraw_MintsToFeeRecipient(
@@ -486,7 +538,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
 
         vm.startPrank(address(vault));
-        hooks.beforeWithdraw(withdrawalAmount, alice);
+        hooks.beforeWithdraw(withdrawalAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -519,7 +571,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(shares, alice);
+        hooks.afterRedeem(shares, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -532,22 +584,421 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function test_AfterProcessAccounting_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether);
+        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether, 0, 0, 0);
         vm.stopPrank();
     }
 
     function test_beforeWithdraw_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeWithdraw(1 ether, alice);
+        hooks.beforeWithdraw(1 ether, alice, alice, alice, 0);
         vm.stopPrank();
     }
 
     function test_afterRedeem_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterRedeem(1 ether, alice);
+        hooks.afterRedeem(1 ether, alice, alice, alice, 0);
         vm.stopPrank();
+    }
+
+    function test_HooksFunction_OnlyCallableByVault() public {
+        vm.startPrank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.beforeDeposit(1 ether, alice, alice, 0, 0);
+
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.afterDeposit(1 ether, alice, alice, 0, 0);
+
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.beforeMint(1 ether, alice, alice, 0, 0);
+
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.afterMint(1 ether, alice, alice, 0, 0);
+
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.beforeRedeem(1 ether, alice, alice, alice, 0);
+
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.afterRedeem(1 ether, alice, alice, alice, 0);
+
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.beforeWithdraw(1 ether, alice, alice, alice, 0);
+
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.afterWithdraw(1 ether, alice, alice, alice, 0);
+
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.beforeProcessAccounting(1 ether, 1 ether, 1 ether);
+
+        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
+        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether, 0, 0, 0);
+        vm.stopPrank();
+
+        vm.startPrank(address(vault));
+        hooks.beforeDeposit(1 ether, alice, alice, 0, 0);
+        hooks.afterDeposit(1 ether, alice, alice, 0, 0);
+        hooks.beforeMint(1 ether, alice, alice, 0, 0);
+        hooks.afterMint(1 ether, alice, alice, 0, 0);
+        hooks.beforeRedeem(1 ether, alice, alice, alice, 0);
+        hooks.afterRedeem(1 ether, alice, alice, alice, 0);
+        hooks.beforeWithdraw(1 ether, alice, alice, alice, 0);
+        hooks.afterWithdraw(1 ether, alice, alice, alice, 0);
+        hooks.beforeProcessAccounting(1 ether, 1 ether, 1 ether);
+        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether, 0, 0, 0);
+        vm.stopPrank();
+    }
+
+    function test_depositHooks_Enabled() public {
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setPermissions(
+            IHooks.Permissions({
+                beforeDeposit: true,
+                afterDeposit: true,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        vm.startPrank(caller);
+        // expect beforeDeposit and afterDeposit to be called by 1 time
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.beforeDeposit, (1 ether, caller, alice, 1 ether, 1 ether)), 1
+        );
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.afterDeposit, (1 ether, caller, alice, 1 ether, 1 ether)), 1
+        );
+        vault.deposit(1 ether, alice);
+        vm.stopPrank();
+    }
+
+    function test_depositHooks_Disabled() public {
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setPermissions(
+            IHooks.Permissions({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        vm.startPrank(caller);
+        // expect beforeDeposit and afterDeposit to not be called
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.beforeDeposit, (1 ether, caller, alice, 1 ether, 1 ether)), 0
+        );
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.afterDeposit, (1 ether, caller, alice, 1 ether, 1 ether)), 0
+        );
+        vault.deposit(1 ether, alice);
+        vm.stopPrank();
+    }
+
+    function test_mintHooks_Enabled() public {
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setPermissions(
+            IHooks.Permissions({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: true,
+                afterMint: true,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        vm.startPrank(caller);
+        // expect beforeMint and afterMint to be called by 1 time
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeMint, (1 ether, caller, alice, 1 ether, 1 ether)), 1);
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.afterMint, (1 ether, caller, alice, 1 ether, 1 ether)), 1);
+        vault.mint(1 ether, alice);
+        vm.stopPrank();
+    }
+
+    function test_mintHooks_Disabled() public {
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setPermissions(
+            IHooks.Permissions({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        vm.startPrank(caller);
+        // expect beforeMint and afterMint to not be called
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeMint, (1 ether, caller, alice, 1 ether, 1 ether)), 0);
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.afterMint, (1 ether, caller, alice, 1 ether, 1 ether)), 0);
+        vault.mint(1 ether, alice);
+        vm.stopPrank();
+    }
+
+    function test_redeemHooks_Enabled() public {
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setPermissions(
+            IHooks.Permissions({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: true,
+                afterRedeem: true,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        vm.prank(caller);
+        uint256 depositShares = vault.deposit(1 ether, alice);
+
+        allocateToBuffer(1 ether);
+
+        uint256 sharesToRedeem = depositShares;
+        uint256 assetsToRedeem = vault.previewRedeem(sharesToRedeem);
+
+        vm.startPrank(alice);
+        // expect beforeRedeem and afterRedeem to be called by 1 time
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.beforeRedeem, (sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            1
+        );
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.afterRedeem, (sharesToRedeem, alice, alice, alice, assetsToRedeem)), 1
+        );
+        vault.redeem(sharesToRedeem, alice, alice);
+        vm.stopPrank();
+    }
+
+    function test_redeemHooks_Disabled() public {
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setPermissions(
+            IHooks.Permissions({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        vm.prank(caller);
+        uint256 depositShares = vault.deposit(1 ether, alice);
+
+        allocateToBuffer(1 ether);
+
+        uint256 sharesToRedeem = depositShares;
+        vault.previewRedeem(sharesToRedeem);
+
+        vm.startPrank(alice);
+        // expect beforeRedeem and afterRedeem to not be called
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeRedeem, (1 ether, alice, alice, alice, 1 ether)), 0);
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.afterRedeem, (1 ether, alice, alice, alice, 1 ether)), 0);
+        vault.redeem(1 ether, alice, alice);
+        vm.stopPrank();
+    }
+
+    function test_withdrawHooks_Enabled() public {
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setPermissions(
+            IHooks.Permissions({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: true,
+                afterWithdraw: true,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        vm.startPrank(caller);
+        uint256 depositShares = vault.deposit(1 ether, alice);
+        vm.stopPrank();
+
+        allocateToBuffer(1 ether);
+
+        uint256 sharesToRedeem = depositShares;
+        vault.previewRedeem(sharesToRedeem);
+
+        vm.startPrank(alice);
+        // expect beforeWithdraw and afterWithdraw to be called by 1 time
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeWithdraw, (1 ether, alice, alice, alice, 1 ether)), 1);
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.afterWithdraw, (1 ether, alice, alice, alice, 1 ether)), 1);
+        vault.withdraw(1 ether, alice, alice);
+        vm.stopPrank();
+    }
+
+    function test_withdrawHooks_Disabled() public {
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setPermissions(
+            IHooks.Permissions({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        vm.startPrank(caller);
+        uint256 depositShares = vault.deposit(1 ether, alice);
+        vm.stopPrank();
+
+        allocateToBuffer(1 ether);
+
+        uint256 sharesToRedeem = depositShares;
+        vault.previewRedeem(sharesToRedeem);
+
+        vm.startPrank(alice);
+        // expect beforeWithdraw and afterWithdraw to not be called
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeWithdraw, (1 ether, alice, alice, alice, 1 ether)), 0);
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.afterWithdraw, (1 ether, alice, alice, alice, 1 ether)), 0);
+        vault.withdraw(1 ether, alice, alice);
+        vm.stopPrank();
+    }
+
+    function test_processAccountingHooks_Enabled() public {
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setPermissions(
+            IHooks.Permissions({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: true,
+                afterProcessAccounting: true
+            })
+        );
+        vm.stopPrank();
+
+        vm.startPrank(caller);
+        vault.deposit(1 ether, alice);
+        vm.stopPrank();
+
+        // expect beforeProcessAccounting and afterProcessAccounting to be called by 1 time
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeProcessAccounting, (1 ether, 1 ether, 1 ether)), 1);
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterProcessAccounting, (1 ether, 1 ether, 1 ether, 1 ether, 1 ether, 1 ether)),
+            1
+        );
+        vault.processAccounting();
+        vm.stopPrank();
+    }
+
+    function test_processAccountingHooks_Disabled() public {
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setPermissions(
+            IHooks.Permissions({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        vm.startPrank(caller);
+        vault.deposit(1 ether, alice);
+        vm.stopPrank();
+
+        // expect beforeProcessAccounting and afterProcessAccounting to not be called
+        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeProcessAccounting, (1 ether, 1 ether, 1 ether)), 0);
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterProcessAccounting, (1 ether, 1 ether, 1 ether, 1 ether, 1 ether, 1 ether)),
+            0
+        );
+        vault.processAccounting();
+        vm.stopPrank();
+    }
+
+    function test_HooksNotSet() public {
+        vm.prank(ADMIN);
+        vault.setHooks(address(0));
+
+        vm.startPrank(caller);
+        vault.deposit(1 ether, alice);
+        vault.mint(1 ether, alice);
+        vm.stopPrank();
+        allocateToBuffer(1 ether);
+
+        vault.processAccounting();
+
+        vm.startPrank(alice);
+        vault.redeem(1 wei, alice, alice);
+        vault.withdraw(1 wei, alice, alice);
+        vm.stopPrank();
+
+        // expect none of the hooks to not be called
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeDeposit.selector), 0);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterDeposit.selector), 0);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeMint.selector), 0);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterMint.selector), 0);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeRedeem.selector), 0);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterRedeem.selector), 0);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeWithdraw.selector), 0);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterWithdraw.selector), 0);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeProcessAccounting.selector), 0);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterProcessAccounting.selector), 0);
     }
 
     function test_setPerformanceFeeRecipient() public {
@@ -600,5 +1051,28 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(ADMIN);
         vm.expectRevert(abi.encodeWithSelector(IVault.InvalidHooks.selector));
         vault.setHooks(invalidHooks);
+    }
+
+    function test_setHooks_ZeroAddress() public {
+        vm.startPrank(ADMIN);
+        vault.setHooks(address(0));
+        assertEq(address(vault.hooks()), address(0));
+    }
+
+    function allocateToBuffer(uint256 amount) internal {
+        address[] memory targets = new address[](2);
+        targets[0] = MC.WETH;
+        targets[1] = MC.BUFFER;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory data = new bytes[](2);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
+        data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
+
+        vm.prank(PROCESSOR);
+        vault.processor(targets, values, data);
     }
 }

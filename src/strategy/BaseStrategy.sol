@@ -172,7 +172,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      */
     function previewRedeemAsset(address asset_, uint256 shares) public view virtual returns (uint256 assets) {
         (assets,) = _convertToAssets(asset_, shares, Math.Rounding.Floor);
-        assets = assets - _feeOnTotal(assets);
+        assets = assets - _feeOnTotal(assets, _msgSender());
     }
 
     /**
@@ -182,7 +182,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      * @return shares The equivalent amount of shares.
      */
     function previewWithdrawAsset(address asset_, uint256 assets) public view virtual returns (uint256 shares) {
-        uint256 fee = _feeOnRaw(assets);
+        uint256 fee = _feeOnRaw(assets, _msgSender());
         (shares,) = _convertToShares(asset_, assets + fee, Math.Rounding.Ceil);
     }
 

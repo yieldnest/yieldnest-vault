@@ -42,8 +42,8 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_fees() external view {
-        assertEq(vault._feeOnRaw(1e18), 0);
-        assertEq(vault._feeOnTotal(1e18), 0);
+        assertEq(vault._feeOnRaw(1e18, alice), 0);
+        assertEq(vault._feeOnTotal(1e18, alice), 0);
     }
 
     function test_Vault_previewWithdraw(uint256 assets, bool alwaysComputeTotalAssets) external {
