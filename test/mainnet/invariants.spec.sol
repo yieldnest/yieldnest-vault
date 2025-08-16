@@ -14,7 +14,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
-import {Hooks} from "src/Hooks.sol";
+import {Hooks} from "src/module/Hooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {console} from "forge-std/console.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";

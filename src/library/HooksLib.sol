@@ -8,7 +8,7 @@ error InvalidPermission();
 
 library HooksLib {
     // @notice Flags for the hooks
-    enum Flags {
+    enum HookType {
         BEFORE_DEPOSIT,
         AFTER_DEPOSIT,
         BEFORE_MINT,
@@ -23,21 +23,21 @@ library HooksLib {
 
     // @notice Checks if the hook has the permission set for the given flag to be called
     // @param self The hooks contract
-    // @param flag The flag to check
+    // @param hookType The hook type to check
     // @return True if the hook has the permission, false otherwise
-    function hasPermission(IHooks self, Flags flag) internal view returns (bool) {
-        // gets the Permissions struct from the hooks contract
-        IHooks.Permissions memory permissions = self.getPermissions();
-        if (flag == Flags.BEFORE_DEPOSIT) return permissions.beforeDeposit;
-        if (flag == Flags.AFTER_DEPOSIT) return permissions.afterDeposit;
-        if (flag == Flags.BEFORE_MINT) return permissions.beforeMint;
-        if (flag == Flags.AFTER_MINT) return permissions.afterMint;
-        if (flag == Flags.BEFORE_REDEEM) return permissions.beforeRedeem;
-        if (flag == Flags.AFTER_REDEEM) return permissions.afterRedeem;
-        if (flag == Flags.BEFORE_WITHDRAW) return permissions.beforeWithdraw;
-        if (flag == Flags.AFTER_WITHDRAW) return permissions.afterWithdraw;
-        if (flag == Flags.BEFORE_PROCESS_ACCOUNTING) return permissions.beforeProcessAccounting;
-        if (flag == Flags.AFTER_PROCESS_ACCOUNTING) return permissions.afterProcessAccounting;
+    function hooksEnabled(IHooks self, HookType hookType) internal view returns (bool) {
+        // gets the config struct from the hooks contract
+        IHooks.Config memory config = self.getConfig();
+        if (hookType == HookType.BEFORE_DEPOSIT) return config.beforeDeposit;
+        if (hookType == HookType.AFTER_DEPOSIT) return config.afterDeposit;
+        if (hookType == HookType.BEFORE_MINT) return config.beforeMint;
+        if (hookType == HookType.AFTER_MINT) return config.afterMint;
+        if (hookType == HookType.BEFORE_REDEEM) return config.beforeRedeem;
+        if (hookType == HookType.AFTER_REDEEM) return config.afterRedeem;
+        if (hookType == HookType.BEFORE_WITHDRAW) return config.beforeWithdraw;
+        if (hookType == HookType.AFTER_WITHDRAW) return config.afterWithdraw;
+        if (hookType == HookType.BEFORE_PROCESS_ACCOUNTING) return config.beforeProcessAccounting;
+        if (hookType == HookType.AFTER_PROCESS_ACCOUNTING) return config.afterProcessAccounting;
         revert InvalidPermission();
     }
 
@@ -67,7 +67,7 @@ library HooksLib {
         uint256 baseAssets
     ) internal {
         // checks if the hook is set and has the permission set for the beforeDeposit flag
-        if (address(self) != address(0) && hasPermission(self, Flags.BEFORE_DEPOSIT)) {
+        if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_DEPOSIT)) {
             callHook(self, abi.encodeCall(IHooks.beforeDeposit, (assets, caller, receiver, shares, baseAssets)));
         }
     }
@@ -88,7 +88,7 @@ library HooksLib {
         uint256 baseAssets
     ) internal {
         // checks if the hook is set and has the permission set for the afterDeposit flag
-        if (address(self) != address(0) && hasPermission(self, Flags.AFTER_DEPOSIT)) {
+        if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_DEPOSIT)) {
             callHook(self, abi.encodeCall(IHooks.afterDeposit, (assets, caller, receiver, shares, baseAssets)));
         }
     }
@@ -110,7 +110,7 @@ library HooksLib {
         uint256 baseAssets
     ) internal {
         // checks if the hook is set and has the permission set for the beforeMint flag
-        if (address(self) != address(0) && hasPermission(self, Flags.BEFORE_MINT)) {
+        if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_MINT)) {
             callHook(self, abi.encodeCall(IHooks.beforeMint, (shares, caller, receiver, assets, baseAssets)));
         }
     }
@@ -132,7 +132,7 @@ library HooksLib {
         uint256 baseAssets
     ) internal {
         // checks if the hook is set and has the permission set for the afterMint flag
-        if (address(self) != address(0) && hasPermission(self, Flags.AFTER_MINT)) {
+        if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_MINT)) {
             callHook(self, abi.encodeCall(IHooks.afterMint, (shares, caller, receiver, assets, baseAssets)));
         }
     }
@@ -149,7 +149,7 @@ library HooksLib {
         internal
     {
         // checks if the hook is set and has the permission set for the beforeRedeem flag
-        if (address(self) != address(0) && hasPermission(self, Flags.BEFORE_REDEEM)) {
+        if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_REDEEM)) {
             callHook(self, abi.encodeCall(IHooks.beforeRedeem, (shares, caller, receiver, owner, assets)));
         }
     }
@@ -166,7 +166,7 @@ library HooksLib {
         internal
     {
         // checks if the hook is set and has the permission set for the afterRedeem flag
-        if (address(self) != address(0) && hasPermission(self, Flags.AFTER_REDEEM)) {
+        if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_REDEEM)) {
             callHook(self, abi.encodeCall(IHooks.afterRedeem, (shares, caller, receiver, owner, assets)));
         }
     }
@@ -187,7 +187,7 @@ library HooksLib {
         uint256 shares
     ) internal {
         // checks if the hook is set and has the permission set for the beforeWithdraw flag
-        if (address(self) != address(0) && hasPermission(self, Flags.BEFORE_WITHDRAW)) {
+        if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_WITHDRAW)) {
             callHook(self, abi.encodeCall(IHooks.beforeWithdraw, (assets, caller, receiver, owner, shares)));
         }
     }
@@ -203,7 +203,7 @@ library HooksLib {
         internal
     {
         // checks if the hook is set and has the permission set for the afterWithdraw flag
-        if (address(self) != address(0) && hasPermission(self, Flags.AFTER_WITHDRAW)) {
+        if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_WITHDRAW)) {
             callHook(self, abi.encodeCall(IHooks.afterWithdraw, (assets, caller, receiver, owner, shares)));
         }
     }
@@ -220,7 +220,7 @@ library HooksLib {
         uint256 totalBaseBalanceBeforeAccounting
     ) internal {
         // checks if the hook is set and has the permission set for the beforeProcessAccounting flag
-        if (address(self) != address(0) && hasPermission(self, Flags.BEFORE_PROCESS_ACCOUNTING)) {
+        if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_PROCESS_ACCOUNTING)) {
             callHook(
                 self,
                 abi.encodeCall(
@@ -249,7 +249,7 @@ library HooksLib {
         uint256 totalBaseBalanceBeforeAccounting
     ) internal {
         // checks if the hook is set and has the permission set for the afterProcessAccounting flag
-        if (address(self) != address(0) && hasPermission(self, Flags.AFTER_PROCESS_ACCOUNTING)) {
+        if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_PROCESS_ACCOUNTING)) {
             callHook(
                 self,
                 abi.encodeCall(

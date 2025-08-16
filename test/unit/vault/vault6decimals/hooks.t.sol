@@ -24,7 +24,7 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Hooks} from "src/Hooks.sol";
+import {Hooks} from "src/module/Hooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
 contract Vault6DecimalsHooksUnitTest is Test, MainnetActors, Etches {

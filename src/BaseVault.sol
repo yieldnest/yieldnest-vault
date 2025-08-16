@@ -19,7 +19,7 @@ import {IStrategy} from "src/interface/IStrategy.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 
 import {IHooks} from "src/interface/IHooks.sol";
-import {HooksLib} from "src/module/HooksLib.sol";
+import {HooksLib} from "src/library/HooksLib.sol";
 import {IERC4626} from "src/Common.sol";
 
 /**

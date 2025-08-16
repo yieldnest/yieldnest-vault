@@ -16,7 +16,7 @@ import {IERC4626} from "src/Common.sol";
 import {Provider} from "src/module/Provider.sol";
 import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
-import {Hooks} from "src/Hooks.sol";
+import {Hooks} from "src/module/Hooks.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Math} from "src/Common.sol";
 import {console} from "lib/forge-std/src/console.sol";
@@ -651,8 +651,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_depositHooks_Enabled() public {
         vm.startPrank(HOOKS_MANAGER);
-        hooks.setPermissions(
-            IHooks.Permissions({
+        hooks.setConfig(
+            IHooks.Config({
                 beforeDeposit: true,
                 afterDeposit: true,
                 beforeMint: false,
@@ -681,8 +681,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_depositHooks_Disabled() public {
         vm.startPrank(HOOKS_MANAGER);
-        hooks.setPermissions(
-            IHooks.Permissions({
+        hooks.setConfig(
+            IHooks.Config({
                 beforeDeposit: false,
                 afterDeposit: false,
                 beforeMint: false,
@@ -711,8 +711,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_mintHooks_Enabled() public {
         vm.startPrank(HOOKS_MANAGER);
-        hooks.setPermissions(
-            IHooks.Permissions({
+        hooks.setConfig(
+            IHooks.Config({
                 beforeDeposit: false,
                 afterDeposit: false,
                 beforeMint: true,
@@ -737,8 +737,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_mintHooks_Disabled() public {
         vm.startPrank(HOOKS_MANAGER);
-        hooks.setPermissions(
-            IHooks.Permissions({
+        hooks.setConfig(
+            IHooks.Config({
                 beforeDeposit: false,
                 afterDeposit: false,
                 beforeMint: false,
@@ -763,8 +763,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_redeemHooks_Enabled() public {
         vm.startPrank(HOOKS_MANAGER);
-        hooks.setPermissions(
-            IHooks.Permissions({
+        hooks.setConfig(
+            IHooks.Config({
                 beforeDeposit: false,
                 afterDeposit: false,
                 beforeMint: false,
@@ -803,8 +803,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_redeemHooks_Disabled() public {
         vm.startPrank(HOOKS_MANAGER);
-        hooks.setPermissions(
-            IHooks.Permissions({
+        hooks.setConfig(
+            IHooks.Config({
                 beforeDeposit: false,
                 afterDeposit: false,
                 beforeMint: false,
@@ -837,8 +837,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_withdrawHooks_Enabled() public {
         vm.startPrank(HOOKS_MANAGER);
-        hooks.setPermissions(
-            IHooks.Permissions({
+        hooks.setConfig(
+            IHooks.Config({
                 beforeDeposit: false,
                 afterDeposit: false,
                 beforeMint: false,
@@ -872,8 +872,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_withdrawHooks_Disabled() public {
         vm.startPrank(HOOKS_MANAGER);
-        hooks.setPermissions(
-            IHooks.Permissions({
+        hooks.setConfig(
+            IHooks.Config({
                 beforeDeposit: false,
                 afterDeposit: false,
                 beforeMint: false,
@@ -907,8 +907,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_processAccountingHooks_Enabled() public {
         vm.startPrank(HOOKS_MANAGER);
-        hooks.setPermissions(
-            IHooks.Permissions({
+        hooks.setConfig(
+            IHooks.Config({
                 beforeDeposit: false,
                 afterDeposit: false,
                 beforeMint: false,
@@ -940,8 +940,8 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_processAccountingHooks_Disabled() public {
         vm.startPrank(HOOKS_MANAGER);
-        hooks.setPermissions(
-            IHooks.Permissions({
+        hooks.setConfig(
+            IHooks.Config({
                 beforeDeposit: false,
                 afterDeposit: false,
                 beforeMint: false,
