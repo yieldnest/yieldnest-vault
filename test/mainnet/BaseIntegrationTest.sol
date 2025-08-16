@@ -21,7 +21,7 @@ import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
-import {Hooks} from "src/Hooks.sol";
+import {Hooks} from "src/module/Hooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
@@ -40,7 +40,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
             new TransparentUpgradeableProxy(address(hooksImplementation), ADMIN, "");
         hooks = Hooks(payable(address(hooksProxy)));
 
-        IHooks.Permissions memory permissions = IHooks.Permissions({
+        IHooks.Config memory config = IHooks.Config({
             beforeDeposit: false,
             afterDeposit: false,
             beforeMint: false,
@@ -53,7 +53,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
             afterProcessAccounting: true
         });
 
-        hooks.initialize(ADMIN, 1e17, ADMIN, permissions);
+        hooks.initialize(ADMIN, 1e17, ADMIN, config);
 
         Vault newImplementation = new Vault();
         UpgradeUtils.timelockUpgrade(

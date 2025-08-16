@@ -21,7 +21,7 @@ contract Hooks is OwnableUpgradeable, IHooks {
     uint256 public constant FEE_DENOMINATOR = 1 ether;
     IVault public immutable VAULT;
     uint256 public immutable VAULT_DECIMALS;
-    Permissions public permissions;
+    Config public config;
 
     /**
      * @notice Constructor
@@ -37,19 +37,20 @@ contract Hooks is OwnableUpgradeable, IHooks {
      * @param owner_ The address of the owner of the contract
      * @param performanceFee_ The performance fee to be charged(denominated in 1e18)
      * @param performanceFeeRecipient_ The address of the performance fee recipient
+     * @param config_ The hooks config struct
      */
     function initialize(
         address owner_,
         uint256 performanceFee_,
         address performanceFeeRecipient_,
-        Permissions memory permissions_
+        Config memory config_
     ) external initializer {
         __Ownable_init(owner_);
         if (performanceFee_ > FEE_DENOMINATOR) revert InvalidPerformanceFee();
         if (performanceFeeRecipient_ == address(0)) revert InvalidPerformanceFeeRecipient();
         performanceFee = performanceFee_;
         performanceFeeRecipient = performanceFeeRecipient_;
-        permissions = permissions_;
+        config = config_;
     }
 
     /**
@@ -293,18 +294,18 @@ contract Hooks is OwnableUpgradeable, IHooks {
     }
 
     /**
-     * @notice Set the permissions
-     * @param permissions_ The permissions to be set
+     * @notice Set the config
+     * @param config_ The config struct
      */
-    function setPermissions(Permissions memory permissions_) external onlyOwner {
-        permissions = permissions_;
+    function setConfig(Config memory config_) external onlyOwner {
+        config = config_;
     }
 
     /**
-     * @notice Get the permissions struct
-     * @return The permissions struct
+     * @notice Get the hooks config
+     * @return The hooks config struct
      */
-    function getPermissions() external view returns (Permissions memory) {
-        return permissions;
+    function getConfig() external view returns (Config memory) {
+        return config;
     }
 }

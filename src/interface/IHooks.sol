@@ -4,9 +4,9 @@ pragma solidity ^0.8.24;
 import {IVault} from "src/interface/IVault.sol";
 
 interface IHooks {
-    // @notice Permissions struct for the hooks
+    // @notice Config struct for the hooks
     // @dev Each flag is a boolean value that indicates if the corresponding function of hook has the permission to be called from vault
-    struct Permissions {
+    struct Config {
         bool beforeDeposit;
         bool afterDeposit;
         bool beforeMint;
@@ -42,8 +42,8 @@ interface IHooks {
 
     function setPerformanceFee(uint256 performanceFee_) external;
     function setPerformanceFeeRecipient(address performanceFeeRecipient_) external;
-    function setPermissions(Permissions memory permissions_) external;
-    function getPermissions() external view returns (Permissions memory);
+    function setConfig(Config memory config_) external;
+    function getConfig() external view returns (Config memory);
 
     function beforeDeposit(uint256 assets, address caller, address receiver, uint256 shares, uint256 baseAssets)
         external;

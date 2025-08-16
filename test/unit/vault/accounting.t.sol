@@ -12,7 +12,7 @@ import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {console} from "lib/forge-std/src/console.sol";
-import {Hooks} from "src/Hooks.sol";
+import {Hooks} from "src/module/Hooks.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {Math} from "src/Common.sol";
 import {IHooks} from "src/interface/IHooks.sol";

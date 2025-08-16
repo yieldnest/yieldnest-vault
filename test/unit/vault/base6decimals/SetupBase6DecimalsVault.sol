@@ -18,7 +18,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {IERC4626} from "src/Common.sol";
-import {Hooks} from "src/Hooks.sol";
+import {Hooks} from "src/module/Hooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
 contract SetupBase6DecimalsVault is SetupVault {
@@ -114,7 +114,7 @@ contract SetupBase6DecimalsVault is SetupVault {
         mock6DecimalsProvider.addERC4626(MC.SUSDE);
         mock6DecimalsProvider.addERC4626(MC.BUFFER);
 
-        IHooks.Permissions memory permissions = IHooks.Permissions({
+        IHooks.Config memory config = IHooks.Config({
             beforeDeposit: false,
             afterDeposit: false,
             beforeMint: false,
@@ -127,7 +127,7 @@ contract SetupBase6DecimalsVault is SetupVault {
             afterProcessAccounting: true
         });
 
-        hooks.initialize(ADMIN, 1e17, FEE_MANAGER, permissions);
+        hooks.initialize(ADMIN, 1e17, FEE_MANAGER, config);
 
         vault.unpause();
         vm.stopPrank();
