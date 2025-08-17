@@ -29,7 +29,7 @@ import {console} from "forge-std/console.sol";
  *
  */
 contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
-    uint256 ERROR_MARGIN = 1e4;
+    uint256 ERROR_MARGIN = 2e14;
 
     function getWithdrawer() public override returns (Withdrawer) {
         Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);

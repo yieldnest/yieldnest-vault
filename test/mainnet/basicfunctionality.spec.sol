@@ -640,6 +640,10 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             "WETH should be transferred to vault"
         );
 
+        // Process accounting
+        withdrawer.processAccounting();
+        vault.processAccounting();
+
         uint256 depositedAmount;
         {
             address[] memory targets = new address[](2);

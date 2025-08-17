@@ -287,7 +287,7 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         IOETHVault.WithdrawalRequest memory request = oethVault.withdrawalRequests(tokenId);
 
         uint256 amountInBase = amount;
-        assertApproxEqAbs(request.amount, amountInBase, 3, "Amount should match");
+        assertApproxEqAbs(request.amount, amountInBase + assets, 3, "Amount should match");
 
         assets = withdrawer.asyncWithdrawalBalance(asset_);
         assertApproxEqAbs(assets, amountInBase, 3, "Queued assets should match");

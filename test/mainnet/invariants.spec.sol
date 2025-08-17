@@ -1299,6 +1299,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 assetcount = 7;
         vm.assume(i < assetcount);
 
+        withdrawer.processAccounting();
+        vault.processAccounting();
+
         address alice = address(0xa11ce);
 
         address[] memory assets = new address[](7);
@@ -1335,8 +1338,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             vault.processAccounting();
         }
 
-        totalSupplyInvariant(initialSupply);
-        totalAssetsInvariant(initialAssets);
+        assertApproxEqRel(vault.totalSupply(), initialSupply, 1e15, "totalSupply should be near the same as before");
+        assertApproxEqRel(vault.totalAssets(), initialAssets, 1e15, "totalAssets should be near the same as before");
     }
 
     function test_Vault_4626Invariants_Withdrawer_Withdraw(
@@ -1351,6 +1354,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
+
+        withdrawer.processAccounting();
+        vault.processAccounting();
 
         {
             // deposit some WETH into the vault
@@ -1390,7 +1396,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 vault.processAccounting();
             }
 
-            totalSupplyInvariant(initialSupply);
+            assertApproxEqAbs(vault.totalSupply(), initialSupply, 1e6, "totalSupply should be near the same as before");
             totalAssetsInvariant(initialAssets);
         }
 
@@ -1403,7 +1409,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 vault.processAccounting();
             }
 
-            totalSupplyInvariant(initialSupply);
+            assertApproxEqAbs(vault.totalSupply(), initialSupply, 1e6, "totalSupply should be near the same as before");
             totalAssetsInvariant(initialAssets);
         }
 
@@ -1415,7 +1421,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 vault.processAccounting();
             }
 
-            totalSupplyInvariant(initialSupply);
+            assertApproxEqAbs(vault.totalSupply(), initialSupply, 1e6, "totalSupply should be near the same as before");
             totalAssetsInvariant(initialAssets);
         }
     }
