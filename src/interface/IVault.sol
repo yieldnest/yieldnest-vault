@@ -138,6 +138,7 @@ interface IVault is IERC4626 {
     function totalBaseAssets() external view returns (uint256);
     function hooks() external view returns (IHooks);
     function mintShares(address recipient, uint256 shares) external;
+    function computeTotalAssets() external view returns (uint256);
 
     // ADMIN
     function setProvider(address provider) external;
