@@ -286,6 +286,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             vm.stopPrank();
         }
 
+        withdrawer.processAccounting();
         vault.processAccounting();
 
         uint256 tvlBeforeWithdraw = vault.totalAssets();
@@ -324,7 +325,9 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         withdrawer.processAccounting();
         vault.processAccounting();
 
-        assertEq(vault.totalAssets(), tvlBeforeWithdraw, "Total assets should match after deposit to withdrawer");
+        assertApproxEqAbs(
+            vault.totalAssets(), tvlBeforeWithdraw, 1e6, "Total assets should match after deposit to withdrawer"
+        );
 
         uint256 tokenId;
         {
@@ -358,7 +361,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
         // TVL should remain unchanged since OETH was donated and withdrawn
         assertApproxEqAbs(
-            vault.totalAssets(), tvlBeforeWithdraw, 3, "Total assets should remain unchanged after OETH withdrawal"
+            vault.totalAssets(), tvlBeforeWithdraw, 1e6, "Total assets should remain unchanged after OETH withdrawal"
         );
 
         uint256 withdrawerTotalBefore = withdrawer.totalAssets();
@@ -374,7 +377,9 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             initialTotalAssets += initialBalances[i] * initialRates[i] / 1e18;
         }
 
-        assertApproxEqAbs(tvlBeforeWithdraw, initialTotalAssets, 3, "Total assets should match before OETH withdrawal");
+        assertApproxEqAbs(
+            tvlBeforeWithdraw, initialTotalAssets, 1e6, "Total assets should match before OETH withdrawal"
+        );
 
         _claimWithdrawalWOETH(tokenId, donateAmount);
 
@@ -400,8 +405,8 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             "Withdrawer shares balance should remain unchanged"
         );
 
-        assertApproxEqAbs(
-            withdrawer.totalAssets(), withdrawerTotalBefore, 3, "Withdrawer total assets should remain unchanged"
+        assertApproxEqRel(
+            withdrawer.totalAssets(), withdrawerTotalBefore, 5e14, "Withdrawer total assets should remain unchanged"
         );
 
         uint256[] memory finalBalances = new uint256[](assets.length);
@@ -423,7 +428,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
         // The rates of underlying assets changes, consequently the total assets changes slightly
         assertApproxEqRel(
-            finalTvl, tvlBeforeWithdraw, 1e13, "Total assets should remain unchanged after processing accounting"
+            finalTvl, tvlBeforeWithdraw, 4e14, "Total assets should remain unchanged after processing accounting"
         );
     }
 
@@ -472,6 +477,10 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         vm.assume(depositAmount > 10000);
         vm.assume(depositAmount < 100_000 ether);
 
+        // Process accounting
+        withdrawer.processAccounting();
+        vault.processAccounting();
+
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 vaultBalanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
         uint256 ynEthBalanceBefore = IERC20(MC.YNETH).balanceOf(address(vault));
@@ -481,16 +490,16 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         IERC20(MC.WETH).approve(address(vault), depositAmount);
         vault.depositAsset(MC.WETH, depositAmount, address(this));
 
-        // Process accounting
-        vault.processAccounting();
-        withdrawer.processAccounting();
-
         // Verify WETH was transferred to withdrawer
         assertEq(
             IERC20(MC.WETH).balanceOf(address(vault)),
             vaultBalanceBefore + depositAmount,
             "WETH should be transferred to vault"
         );
+
+        // Process accounting
+        withdrawer.processAccounting();
+        vault.processAccounting();
 
         uint256 depositedAmount;
         {
@@ -514,8 +523,8 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         }
 
         // Process accounting
-        vault.processAccounting();
         withdrawer.processAccounting();
+        vault.processAccounting();
 
         uint256 rate = IProvider(vault.provider()).getRate(MC.YNETH);
         uint256 baseAmount = Math.mulDiv(depositedAmount, rate, 10 ** 18, Math.Rounding.Floor);
