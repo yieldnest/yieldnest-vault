@@ -147,6 +147,7 @@ interface IVault is IERC4626 {
     function setProcessorRules(address[] memory targets, bytes4[] memory functionSigs, FunctionRule[] memory rules)
         external;
     function addAsset(address asset_, bool active_) external;
+    function deleteAsset(uint256 index) external;
     function pause() external;
     function unpause() external;
 
