@@ -24,14 +24,14 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Hooks} from "src/module/Hooks.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
 contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
     address public alice = address(0x12345);
     uint256 public constant INITIAL_BALANCE = 20_000_000_000 ether;
-    Hooks public hooks;
+    FeeHooks public hooks;
 
     WrappedToken public wusdc;
 
@@ -39,7 +39,7 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
         SetupBase6DecimalsVault setupVault = new SetupBase6DecimalsVault();
         (vault,) = setupVault.setup();
         wusdc = setupVault.wusdc();
-        hooks = Hooks(address(vault.hooks()));
+        hooks = FeeHooks(address(vault.hooks()));
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);

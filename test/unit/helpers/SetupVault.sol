@@ -14,7 +14,7 @@ import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {Hooks} from "src/module/Hooks.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
@@ -32,9 +32,9 @@ contract SetupVault is Test, Etches, MainnetActors {
         // Initialize the vault
         vault.initialize(ADMIN, name, symbol, 18, 0, true, false, 0);
 
-        Hooks hooks = new Hooks(address(vaultProxy));
+        FeeHooks hooks = new FeeHooks(address(vaultProxy));
         TUProxy hooksProxy = new TUProxy(address(hooks), ADMIN, "");
-        hooks = Hooks(payable(address(hooksProxy)));
+        hooks = FeeHooks(payable(address(hooksProxy)));
 
         weth = WETH9(payable(MC.WETH));
 
@@ -47,7 +47,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         }
     }
 
-    function configureLocal(Vault vault, Hooks hooks) internal virtual {
+    function configureLocal(Vault vault, FeeHooks hooks) internal virtual {
         // etch to mock the mainnet contracts
         mockAll();
 

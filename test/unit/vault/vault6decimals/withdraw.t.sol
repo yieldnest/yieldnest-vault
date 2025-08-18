@@ -24,20 +24,21 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Hooks} from "src/module/Hooks.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract Vault6DecimalsWithdrawUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
     address public alice = makeAddr("alice");
     uint256 public constant INITIAL_BALANCE = 20_000_000_000 ether;
-    Hooks public hooks;
+    FeeHooks public hooks;
 
     function setUp() public {
         Setup6DecimalsVault setupVault = new Setup6DecimalsVault();
         (vault,) = setupVault.setup();
-        hooks = Hooks(address(vault.hooks()));
+        hooks = FeeHooks(address(vault.hooks()));
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
@@ -182,9 +183,11 @@ contract Vault6DecimalsWithdrawUnitTest is Test, MainnetActors, Etches {
 
         // Withdraw USDC from the vault
         vm.startPrank(alice);
-        uint256 totalSharesOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 totalSharesOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesBurned = vault.withdraw(withdrawAmount, alice, alice);
-        uint256 totalSharesOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 totalSharesOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMintedToPerformanceFeeRecipient =
             totalSharesOfPerformanceFeeRecipientAfter - totalSharesOfPerformanceFeeRecipientBefore;
         assertApproxEqAbs(sharesBurned, sharesToBurn, 1e3, "correct shares should be burned");
@@ -265,9 +268,11 @@ contract Vault6DecimalsWithdrawUnitTest is Test, MainnetActors, Etches {
 
         // Withdraw USDC from the vault
         vm.startPrank(alice);
-        uint256 totalSharesOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 totalSharesOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesBurned = vault.withdraw(withdrawAmount, alice, alice);
-        uint256 totalSharesOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 totalSharesOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMintedToPerformanceFeeRecipient =
             totalSharesOfPerformanceFeeRecipientAfter - totalSharesOfPerformanceFeeRecipientBefore;
         assertApproxEqAbs(sharesBurned, sharesToBurn, 1e3, "correct shares should be burned");
@@ -416,9 +421,11 @@ contract Vault6DecimalsWithdrawUnitTest is Test, MainnetActors, Etches {
 
         // Redeem shares from the vault
         vm.startPrank(alice);
-        uint256 totalSharesOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 totalSharesOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 assetsReceived = vault.redeem(redeemShares, alice, alice);
-        uint256 totalSharesOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 totalSharesOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 expectedFee = (assetsReceived * withdrawalFee) / FeeMath.BASIS_POINT_SCALE;
         uint256 sharesMintedToPerformanceFeeRecipient =
             totalSharesOfPerformanceFeeRecipientAfter - totalSharesOfPerformanceFeeRecipientBefore;
@@ -504,9 +511,11 @@ contract Vault6DecimalsWithdrawUnitTest is Test, MainnetActors, Etches {
 
         // Redeem shares from the vault
         vm.startPrank(alice);
-        uint256 totalSharesOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 totalSharesOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 assetsReceived = vault.redeem(redeemShares, alice, alice);
-        uint256 totalSharesOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 totalSharesOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMintedToPerformanceFeeRecipient =
             totalSharesOfPerformanceFeeRecipientAfter - totalSharesOfPerformanceFeeRecipientBefore;
         assertApproxEqAbs(

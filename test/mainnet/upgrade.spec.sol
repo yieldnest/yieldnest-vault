@@ -15,6 +15,7 @@ import {ProxyUtils} from "script/ProxyUtils.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IProvider} from "src/interface/IProvider.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     // Implementation addresses
@@ -165,7 +166,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         if (performanceFeeSharesMinted > 0) {
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeSharesMinted),
-                (totalAssetsAfter - totalAssetsBefore) * vault.hooks().performanceFee() / 1e18,
+                (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
                 1e12,
                 "performance fee shares should be equal to performance fee amount"
             );

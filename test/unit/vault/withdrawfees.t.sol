@@ -11,6 +11,7 @@ import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -224,12 +225,14 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 convertedAssets = vault.convertToAssets(maxShares);
         uint256 expectedFee = (expectedAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
         vm.prank(alice);
         uint256 redeemedAmount = vault.redeem(maxShares, alice, alice);
 
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
@@ -276,11 +279,13 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 convertedAssets = vault.convertToAssets(maxShares);
         uint256 expectedFee = (expectedAssets * overriddenFee) / FeeMath.BASIS_POINT_SCALE;
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
         uint256 redeemedAmount = vault.redeem(maxShares, alice, alice);
 
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
@@ -365,12 +370,14 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 expectedFee = (maxWithdraw * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
         uint256 expectedShares = vault.convertToShares(maxWithdraw + expectedFee);
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
         // Verify we can actually withdraw the max amount
         vm.prank(alice);
         uint256 withdrawnShares = vault.withdraw(maxWithdraw, alice, alice);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
@@ -418,11 +425,13 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 expectedFee = (maxWithdraw * overriddenFee) / FeeMath.BASIS_POINT_SCALE;
         uint256 expectedShares = vault.convertToShares(maxWithdraw + expectedFee);
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
         // Verify we can actually withdraw the max amount
         uint256 withdrawnShares = vault.withdraw(maxWithdraw, alice, alice);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
@@ -493,14 +502,16 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         allocateToBuffer(assets);
 
         uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
 
         vm.startPrank(alice);
         uint256 redeemedAmount = vault.redeem(withdrawnShares, alice, alice);
         uint256 expectedFee = redeemedAmount * vault.baseWithdrawalFee() / FeeMath.BASIS_POINT_SCALE;
         uint256 expectedSharesMinted = vault.convertToShares(expectedFee);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
         assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
@@ -538,14 +549,16 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         allocateToBuffer(assets + donationAmount);
 
         uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
 
         vm.startPrank(alice);
         uint256 redeemedAmount = vault.redeem(withdrawnShares, alice, alice);
         uint256 expectedFee = redeemedAmount * vault.baseWithdrawalFee() / FeeMath.BASIS_POINT_SCALE;
         uint256 expectedSharesMinted = vault.convertToShares(expectedFee);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
         assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
@@ -593,14 +606,16 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         allocateToBuffer(assets);
 
         uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
 
         vm.startPrank(alice);
         uint256 redeemedAmount = vault.redeem(withdrawnShares, alice, alice);
         uint256 expectedFee = redeemedAmount * vault.baseWithdrawalFee() / FeeMath.BASIS_POINT_SCALE;
         uint256 expectedSharesMinted = vault.convertToShares(expectedFee);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
         assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 1e4, "exchange rate should not change");
@@ -674,10 +689,12 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         uint256 expectedSharesToBurn = vault.convertToShares(withdrawnAssets + expectedFee);
         uint256 expectedSharesToMint = vault.convertToShares(expectedFee);
         uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         vm.prank(alice);
         uint256 withdrawAmount = vault.withdraw(withdrawnAssets, alice, alice);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
@@ -721,10 +738,12 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         uint256 expectedSharesToBurn = vault.convertToShares(withdrawnAssets + expectedFee);
         uint256 expectedSharesToMint = vault.convertToShares(expectedFee);
         uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         vm.prank(alice);
         uint256 withdrawAmount = vault.withdraw(withdrawnAssets, alice, alice);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
@@ -778,10 +797,12 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         uint256 expectedSharesToBurn = vault.convertToShares(withdrawnAssets + expectedFee);
         uint256 expectedSharesToMint = vault.convertToShares(expectedFee);
         uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         vm.prank(alice);
         uint256 withdrawAmount = vault.withdraw(withdrawnAssets, alice, alice);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
