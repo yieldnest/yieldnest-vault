@@ -14,11 +14,12 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
-import {Hooks} from "src/module/Hooks.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {console} from "forge-std/console.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     using Math for uint256;
@@ -249,9 +250,11 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
             vm.startPrank(user);
             uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-            uint256 vaultBalanceOfFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 vaultBalanceOfFeeRecipientBefore =
+                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
             vault.redeem(redeemableShares, user, user);
-            uint256 vaultBalanceOfFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 vaultBalanceOfFeeRecipientAfter =
+                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
             withdrawalFeeSharesMinted = vaultBalanceOfFeeRecipientAfter - vaultBalanceOfFeeRecipientBefore;
             assertApproxEqAbs(
                 vault.convertToAssets(withdrawalFeeSharesMinted),
@@ -289,7 +292,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             if (performanceFeeSharesMinted > 0) {
                 assertApproxEqAbs(
                     vault.convertToAssets(performanceFeeSharesMinted),
-                    (totalAssetsAfter - totalAssetsBefore) * vault.hooks().performanceFee() / 1e18,
+                    (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
                     1e12,
                     "performance fee shares should be equal to performance fee amount"
                 );
@@ -364,9 +367,11 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 withdrawnShares;
         {
             uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-            uint256 vaultBalanceOfFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 vaultBalanceOfFeeRecipientBefore =
+                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
             withdrawnShares = vault.withdraw(withdrawableAssets, user, user);
-            uint256 vaultBalanceOfFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 vaultBalanceOfFeeRecipientAfter =
+                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
             uint256 sharesMinted = vaultBalanceOfFeeRecipientAfter - vaultBalanceOfFeeRecipientBefore;
             assertApproxEqAbs(
                 sharesMinted, withdrawalFeeShares, 1e6, "shares minted should be equal to withdrawal fee shares"
@@ -388,7 +393,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             if (performanceFeeSharesMinted > 0) {
                 assertApproxEqAbs(
                     vault.convertToAssets(performanceFeeSharesMinted),
-                    (totalAssetsAfter - totalAssetsBefore) * vault.hooks().performanceFee() / 1e18,
+                    (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
                     1e12,
                     "performance fee shares should be equal to performance fee amount"
                 );
@@ -610,7 +615,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             if (performanceFeeShares > 0) {
                 assertApproxEqAbs(
                     vault.convertToAssets(performanceFeeShares),
-                    (totalAssetsAfter - totalAssetsBefore) * vault.hooks().performanceFee() / 1e18,
+                    (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
                     1e12,
                     "performance fee shares should be equal to performance fee amount"
                 );
@@ -637,7 +642,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             if (sharesMinted > 0) {
                 assertApproxEqAbs(
                     vault.convertToAssets(sharesMinted),
-                    (totalAssetsAfter - totalAssetsBefore) * vault.hooks().performanceFee() / 1e18,
+                    (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
                     1e12,
                     "performance fee shares should be equal to performance fee amount"
                 );
@@ -739,12 +744,14 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
             // convert ETH to WETH
             _processDepositWETH(amount);
-            uint256 performanceFee = IHooks(vault.hooks()).performanceFee();
+            uint256 performanceFee = IFeeHooks(address(vault.hooks())).performanceFee();
             uint256 performanceFeeAmount = (amount * performanceFee) / 1e18;
-            uint256 vaultBalanceOfFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 vaultBalanceOfFeeRecipientBefore =
+                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
             // process accounting to update for the donation
             vault.processAccounting();
-            uint256 vaultBalanceOfFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 vaultBalanceOfFeeRecipientAfter =
+                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
             uint256 performanceFeeShares = vaultBalanceOfFeeRecipientAfter - vaultBalanceOfFeeRecipientBefore;
 
             assertApproxEqAbs(
@@ -780,7 +787,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 if (performanceFeeSharesMinted > 0) {
                     assertApproxEqAbs(
                         vault.convertToAssets(performanceFeeSharesMinted),
-                        (totalAssetsAfter - totalAssetsBefore) * vault.hooks().performanceFee() / 1e18,
+                        (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee()
+                            / 1e18,
                         1e12,
                         "performance fee shares should be equal to performance fee amount"
                     );
@@ -1217,7 +1225,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 if (sharesMinted > 0) {
                     assertApproxEqAbs(
                         vault.convertToAssets(sharesMinted),
-                        (totalAssetsAfter - totalAssetsBefore) * vault.hooks().performanceFee() / 1e18,
+                        (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee()
+                            / 1e18,
                         1e12,
                         "performance fee shares should be equal to performance fee amount"
                     );
@@ -1248,7 +1257,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 if (sharesMinted > 0) {
                     assertApproxEqAbs(
                         vault.convertToAssets(sharesMinted),
-                        (totalAssetsAfter - totalAssetsBefore) * vault.hooks().performanceFee() / 1e18,
+                        (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee()
+                            / 1e18,
                         1e12,
                         "performance fee shares should be equal to performance fee amount"
                     );
@@ -1280,7 +1290,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 if (sharesMinted > 0) {
                     assertApproxEqAbs(
                         vault.convertToAssets(sharesMinted),
-                        (totalAssetsAfter - totalAssetsBefore) * vault.hooks().performanceFee() / 1e18,
+                        (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee()
+                            / 1e18,
                         1e12,
                         "performance fee shares should be equal to performance fee amount"
                     );
@@ -1491,10 +1502,12 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         {
             vm.startPrank(alice);
             uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-            uint256 vaultBalanceOfFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 vaultBalanceOfFeeRecipientBefore =
+                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
             burnedShares = vault.withdraw(withdrawableAssets, alice, alice);
             uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
-            uint256 vaultBalanceOfFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 vaultBalanceOfFeeRecipientAfter =
+                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
             uint256 withdrawalFeeSharesMinted = vaultBalanceOfFeeRecipientAfter - vaultBalanceOfFeeRecipientBefore;
             assertEqThreshold(exchangeRateAfter, exchangeRateBefore, 5, "exchangeRate not as expected");
             assertApproxEqAbs(
@@ -1518,7 +1531,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             if (performanceFeeShares > 0) {
                 assertApproxEqAbs(
                     vault.convertToAssets(performanceFeeShares),
-                    (totalAssetsAfter - totalAssetsBefore) * vault.hooks().performanceFee() / 1e18,
+                    (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
                     1e12,
                     "performance fee shares should be equal to performance fee amount"
                 );

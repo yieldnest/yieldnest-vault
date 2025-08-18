@@ -16,7 +16,7 @@ import {IERC4626} from "src/Common.sol";
 import {Provider} from "src/module/Provider.sol";
 import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
-import {Hooks} from "src/module/Hooks.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Math} from "src/Common.sol";
 import {console} from "lib/forge-std/src/console.sol";
@@ -24,6 +24,7 @@ import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
@@ -35,7 +36,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     WETH9 public weth;
     MockSTETH public steth;
-    Hooks public hooks;
+    FeeHooks public hooks;
 
     address public alice = address(0x1);
     address public caller = address(0x2);
@@ -44,7 +45,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function setUp() public {
         SetupVault setupVault = new SetupVault();
         (vault, weth) = setupVault.setup();
-        hooks = Hooks(address(vault.hooks()));
+        hooks = FeeHooks(address(vault.hooks()));
 
         // Replace the steth mock with our custom MockSTETH
         steth = MockSTETH(payable(MC.STETH));
@@ -81,10 +82,12 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         weth.transfer(address(vault), yield);
 
         uint256 performanceFee = yield * hooks.performanceFee() / 1 ether;
-        uint256 performanceFeeRecipientSharesBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 performanceFeeRecipientSharesBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         vault.processAccounting();
 
-        uint256 performanceFeeRecipientSharesAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 performanceFeeRecipientSharesAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 performanceFeeSharesReceived = performanceFeeRecipientSharesAfter - performanceFeeRecipientSharesBefore;
         assertApproxEqAbs(
             vault.convertToAssets(performanceFeeSharesReceived),
@@ -119,9 +122,11 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         weth.transfer(address(vault), yield);
 
         uint256 performanceFee = yield;
-        uint256 performanceFeeRecipientSharesBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 performanceFeeRecipientSharesBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         vault.processAccounting();
-        uint256 performanceFeeRecipientSharesAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 performanceFeeRecipientSharesAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 performanceFeeSharesReceived = performanceFeeRecipientSharesAfter - performanceFeeRecipientSharesBefore;
         assertEq(performanceFeeSharesReceived, 1 ether, "performance fee shares received should be 1 ether");
         assertEq(
@@ -142,9 +147,11 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEq(vault.totalAssets(), 1 ether, "vault's total assets should be 1 ether");
         assertEq(shares, 1 ether, "shares should be 1 ether");
 
-        uint256 performanceFeeRecipientSharesBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 performanceFeeRecipientSharesBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         vault.processAccounting();
-        uint256 performanceFeeRecipientSharesAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 performanceFeeRecipientSharesAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 performanceFeeSharesReceived = performanceFeeRecipientSharesAfter - performanceFeeRecipientSharesBefore;
         assertEq(performanceFeeSharesReceived, 0, "performance fee shares received should be 0");
         assertEq(vault.totalSupply(), 1 ether, "vault's total supply should be 1 ether");
@@ -167,9 +174,11 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 yield = 0.1 ether;
         weth.transfer(address(vault), yield);
 
-        uint256 performanceFeeRecipientSharesBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 performanceFeeRecipientSharesBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         vault.processAccounting();
-        uint256 performanceFeeRecipientSharesAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 performanceFeeRecipientSharesAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
 
         assertEq(
             performanceFeeRecipientSharesAfter,
@@ -229,7 +238,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
             uint256 performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
             assertEq(
                 performanceFeeShares,
-                vault.balanceOf(vault.hooks().performanceFeeRecipient()),
+                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient()),
                 "performance fee shares should be equal to performance fee recipient's balance"
             );
             assertApproxEqAbs(
@@ -332,9 +341,11 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 performanceFeeAmount;
         {
             performanceFeeAmount = (yieldAmount1 * performanceFee) / 1 ether;
-            uint256 sharesOfFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 sharesOfFeeRecipientBefore =
+                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
             vault.processAccounting();
-            uint256 sharesOfFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+            uint256 sharesOfFeeRecipientAfter =
+                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
             performanceFeeShares = sharesOfFeeRecipientAfter - sharesOfFeeRecipientBefore;
         }
 
@@ -535,14 +546,16 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
 
         uint256 totalSupplyBefore = vault.totalSupply();
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
 
         vm.startPrank(address(vault));
         hooks.beforeWithdraw(withdrawalAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
 
         assertEq(totalSupplyAfter, totalSupplyBefore + sharesMinted, "total supply should increase by shares minted");
@@ -568,14 +581,16 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
 
         uint256 totalSupplyBefore = vault.totalSupply();
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
 
         vm.startPrank(address(vault));
         hooks.afterRedeem(shares, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter = vault.balanceOf(vault.hooks().performanceFeeRecipient());
+        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
 
         assertEq(totalSupplyAfter, totalSupplyBefore + sharesMinted, "total supply should increase by shares minted");
@@ -1018,7 +1033,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     function test_setPerformanceFeeRecipient_invalidRecipient() public {
         vm.startPrank(ADMIN);
-        vm.expectRevert(abi.encodeWithSelector(IHooks.InvalidPerformanceFeeRecipient.selector));
+        vm.expectRevert(abi.encodeWithSelector(IFeeHooks.InvalidPerformanceFeeRecipient.selector));
         hooks.setPerformanceFeeRecipient(address(0));
     }
 
@@ -1040,14 +1055,14 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function test_setPerformanceFee_invalidFee() public {
         uint256 newPerformanceFee = 1e19;
         vm.startPrank(ADMIN);
-        vm.expectRevert(abi.encodeWithSelector(IHooks.InvalidPerformanceFee.selector));
+        vm.expectRevert(abi.encodeWithSelector(IFeeHooks.InvalidPerformanceFee.selector));
         hooks.setPerformanceFee(newPerformanceFee);
     }
 
     function test_setHooks_revertsIfInvalidHooks() public {
         SetupVault setupVault = new SetupVault();
         (Vault dummyVault,) = setupVault.setup();
-        address invalidHooks = address(new Hooks(address(dummyVault)));
+        address invalidHooks = address(new FeeHooks(address(dummyVault)));
         vm.startPrank(ADMIN);
         vm.expectRevert(abi.encodeWithSelector(IVault.InvalidHooks.selector));
         vault.setHooks(invalidHooks);

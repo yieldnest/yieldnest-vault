@@ -18,7 +18,7 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {IERC4626} from "src/Common.sol";
-import {Hooks} from "src/module/Hooks.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
 contract SetupBase6DecimalsVault is SetupVault {
@@ -44,10 +44,10 @@ contract SetupBase6DecimalsVault is SetupVault {
         vault = Vault(payable(address(vaultProxy)));
 
         // fee module implementation
-        Hooks hooks = new Hooks(address(vaultProxy));
+        FeeHooks hooks = new FeeHooks(address(vaultProxy));
 
         TUProxy hooksProxy = new TUProxy(address(hooks), ADMIN, "");
-        hooks = Hooks(payable(address(hooksProxy)));
+        hooks = FeeHooks(payable(address(hooksProxy)));
 
         // Initialize the vault with the following parameters:
         // ADMIN: The address that will have admin privileges
@@ -74,7 +74,7 @@ contract SetupBase6DecimalsVault is SetupVault {
         }
     }
 
-    function configureLocal(Vault vault, Hooks hooks) internal override {
+    function configureLocal(Vault vault, FeeHooks hooks) internal override {
         mockAll();
 
         vm.startPrank(ADMIN);

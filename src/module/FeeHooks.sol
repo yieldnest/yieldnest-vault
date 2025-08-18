@@ -4,15 +4,16 @@ pragma solidity ^0.8.24;
 import {OwnableUpgradeable, IERC4626, ERC20} from "src/Common.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {Math} from "src/Common.sol";
 import {Vault} from "src/Vault.sol";
 
 /**
- * @title Hooks
- * @notice Hooks for the Vault
+ * @title FeeHooks
+ * @notice FeeHooks for the Vault
  * @dev This contract gets callback from the vault it's attached to
  */
-contract Hooks is OwnableUpgradeable, IHooks {
+contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
     using Math for uint256;
 
     // performance denominated in ether(i.e. 1e18 = 100%)
