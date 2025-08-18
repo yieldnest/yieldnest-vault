@@ -21,24 +21,39 @@ import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
-import {Hooks} from "src/Hooks.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
-    Hooks public hooks;
+    FeeHooks public hooks;
 
     function setUp() public virtual {
         vault = Vault(payable(MC.YNETHX));
         vault.processAccounting();
 
-        Hooks hooksImplementation = new Hooks(address(vault));
+        FeeHooks hooksImplementation = new FeeHooks(address(vault));
         TransparentUpgradeableProxy hooksProxy =
             new TransparentUpgradeableProxy(address(hooksImplementation), ADMIN, "");
-        hooks = Hooks(payable(address(hooksProxy)));
-        hooks.initialize(ADMIN, 1e17, ADMIN);
+        hooks = FeeHooks(payable(address(hooksProxy)));
+
+        IHooks.Config memory config = IHooks.Config({
+            beforeDeposit: false,
+            afterDeposit: false,
+            beforeMint: false,
+            afterMint: false,
+            beforeRedeem: false,
+            afterRedeem: true,
+            beforeWithdraw: true,
+            afterWithdraw: false,
+            beforeProcessAccounting: false,
+            afterProcessAccounting: true
+        });
+
+        hooks.initialize(ADMIN, 1e17, ADMIN, config);
 
         Vault newImplementation = new Vault();
         UpgradeUtils.timelockUpgrade(

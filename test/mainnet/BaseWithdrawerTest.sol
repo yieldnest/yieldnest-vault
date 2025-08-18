@@ -253,8 +253,10 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
     }
 
     function _requestWithdrawalWOETH(uint256 amount) internal returns (uint256 tokenId) {
-        vm.expectRevert(OriginWithdrawalLib.NotEnoughBalance.selector);
-        withdrawer.requestWithdrawalWOETH(amount);
+        if (IERC20(MC.WOETH).balanceOf(address(withdrawer)) < amount) {
+            vm.expectRevert(OriginWithdrawalLib.NotEnoughBalance.selector);
+            withdrawer.requestWithdrawalWOETH(amount);
+        }
         uint256 donatedAmount = _donate_single_asset(MC.WOETH, amount);
 
         address asset_ = MC.WOETH;
@@ -269,7 +271,7 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         IOETHVault.WithdrawalRequest memory request = oethVault.withdrawalRequests(tokenId);
 
         uint256 amountInBase = amount;
-        assertApproxEqAbs(request.amount, amountInBase, 3, "Amount should match");
+        assertApproxEqAbs(request.amount, amountInBase + assets, 3, "Amount should match");
 
         assets = withdrawer.asyncWithdrawalBalance(asset_);
         assertApproxEqAbs(assets, amountInBase, 3, "Queued assets should match");

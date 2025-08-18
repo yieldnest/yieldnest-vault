@@ -35,10 +35,17 @@ interface IVault is IERC4626 {
         address[] list;
     }
 
+    struct OverriddenBaseWithdrawalFeeFields {
+        /// @notice The base withdrawal fee in basis points (1e8 = 100%) for the user to override
+        uint64 baseWithdrawalFee;
+        /// @notice Whether the fee is overridden for the user
+        bool isOverridden;
+    }
+
     struct FeeStorage {
         /// @notice The base withdrawal fee in basis points (1e8 = 100%)
         uint64 baseWithdrawalFee;
-        mapping(address user => bool isExempted) withdrawalFeeExempted;
+        mapping(address user => OverriddenBaseWithdrawalFeeFields fields) overriddenBaseWithdrawalFee;
         IHooks hooks;
     }
 
@@ -117,7 +124,7 @@ interface IVault is IERC4626 {
     event UpdateAsset(uint256 indexed index, address indexed asset, AssetUpdateFields fields);
     event DeleteAsset(uint256 indexed index, address indexed asset);
     event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
-    event SetWithdrawalFeeExempted(address indexed user, bool isExempted);
+    event WithdrawalFeeOverridden(address indexed user, uint64 baseWithdrawalFee, bool isOverridden);
     event SetHooks(address indexed oldHooks, address indexed newHooks);
 
     // 4626-MAX
@@ -131,6 +138,7 @@ interface IVault is IERC4626 {
     function totalBaseAssets() external view returns (uint256);
     function hooks() external view returns (IHooks);
     function mintShares(address recipient, uint256 shares) external;
+    function computeTotalAssets() external view returns (uint256);
 
     // ADMIN
     function setProvider(address provider) external;
@@ -148,6 +156,6 @@ interface IVault is IERC4626 {
         returns (bytes[] memory);
 
     // FEES
-    function _feeOnRaw(uint256 assets) external view returns (uint256);
-    function _feeOnTotal(uint256 assets) external view returns (uint256);
+    function _feeOnRaw(uint256 amount, address user) external view returns (uint256);
+    function _feeOnTotal(uint256 amount, address user) external view returns (uint256);
 }

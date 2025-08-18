@@ -12,10 +12,11 @@ import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {console} from "lib/forge-std/src/console.sol";
-import {Hooks} from "src/Hooks.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {Math} from "src/Common.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
     using Math for uint256;
@@ -318,9 +319,8 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         uint256 performanceFeeAmount;
         {
             address hooks = address(vault.hooks());
-            uint256 performanceFee = Hooks(hooks).performanceFee();
+            uint256 performanceFee = FeeHooks(hooks).performanceFee();
             performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
-            uint256 totalBaseAssets = vault.computeTotalAssets();
         }
         uint256 vaultTotalSupplyBefore = vault.totalSupply();
         vault.processAccounting();
@@ -340,7 +340,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
                 "performance fee shares should be equal to performance fee amount"
             );
         }
-        address performanceFeeRecipient = IHooks(vault.hooks()).performanceFeeRecipient();
+        address performanceFeeRecipient = IFeeHooks(address(vault.hooks())).performanceFeeRecipient();
         assertEqThreshold(
             vault.balanceOf(performanceFeeRecipient),
             performanceFeeShares,
@@ -404,7 +404,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         yieldEarned += (methAmount * methRate) / (10 ** 18);
 
         address hooks = address(vault.hooks());
-        uint256 performanceFee = Hooks(hooks).performanceFee();
+        uint256 performanceFee = FeeHooks(hooks).performanceFee();
         uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
         uint256 performanceFeeShares;
         {
@@ -418,7 +418,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
                 1e12,
                 "vault total supply should be equal to vault total supply before plus performance fee shares"
             );
-            address performanceFeeRecipient = Hooks(address(hooks)).performanceFeeRecipient();
+            address performanceFeeRecipient = FeeHooks(address(hooks)).performanceFeeRecipient();
             assertEqThreshold(
                 vault.balanceOf(performanceFeeRecipient),
                 performanceFeeShares,
