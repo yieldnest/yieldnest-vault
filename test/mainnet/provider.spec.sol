@@ -22,7 +22,6 @@ contract ProviderTest is BaseIntegrationTest, Etches {
 
     function setUp() public override {
         super.setUp();
-        provider = Provider(vault.provider());
 
         MockStrategy implementation = new MockStrategy();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), admin, "");
@@ -54,6 +53,11 @@ contract ProviderTest is BaseIntegrationTest, Etches {
         // Set the new provider in the mock strategy
         vm.prank(admin);
         mockStrategy.setProvider(address(newProvider));
+
+        vm.prank(TIMELOCK);
+        vault.setProvider(address(newProvider));
+
+        provider = Provider(vault.provider());
     }
 
     function test_Provider_GetRateWETH() public view {
