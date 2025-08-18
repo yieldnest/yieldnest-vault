@@ -34,6 +34,7 @@ contract Provider is IProvider {
             return (
                 keccak256(bytes(version)) == keccak256(bytes("0.1.0"))
                     || keccak256(bytes(version)) == keccak256(bytes("0.2.0"))
+                    || keccak256(bytes(version)) == keccak256(bytes("0.3.0"))
             ) && vaultAsset == MC.WETH;
         } catch {
             return false;

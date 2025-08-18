@@ -16,6 +16,7 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {Provider} from "src/module/Provider.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     // Implementation addresses
@@ -41,6 +42,10 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
                 TimelockController(payable(TIMELOCK)), ADMIN, address(withdrawer), address(withdrawerImplementation)
             );
         }
+
+        Provider provider = new Provider();
+        vm.prank(TIMELOCK);
+        vault.setProvider(address(provider));
     }
 
     function test_Vault_Upgrade_Implementation_Set_Correctly() public {

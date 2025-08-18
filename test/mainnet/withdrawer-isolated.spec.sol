@@ -46,6 +46,6 @@ contract WithdrawerIsolatedMainnetTest is BaseWithdrawerMainnetTest {
         Withdrawer withdrawer = getWithdrawer();
 
         // Assert that the Withdrawer contract has the correct version
-        assertEq(withdrawer.STRATEGY_VERSION(), "0.2.0", "Withdrawer should have version 0.2.0");
+        assertEq(withdrawer.STRATEGY_VERSION(), "0.3.0", "Withdrawer should have version 0.3.0");
     }
 }
