@@ -58,6 +58,10 @@ contract Vault is BaseVault {
 
     //// FEES ////
 
+    function _getFeeStorage() internal pure returns (FeeStorage storage) {
+        return VaultLib.getFeeStorage();
+    }
+
     /**
      * @notice Returns the fee on amount where the fee would get added on top of the amount.
      * @param amount The amount on which the fee would get added.

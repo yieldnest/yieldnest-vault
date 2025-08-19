@@ -67,7 +67,7 @@ library HooksLib {
         address receiver,
         uint256 shares,
         uint256 baseAssets
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the beforeDeposit flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_DEPOSIT)) {
             callHook(self, abi.encodeCall(IHooks.beforeDeposit, (asset, assets, caller, receiver, shares, baseAssets)));
@@ -90,7 +90,7 @@ library HooksLib {
         address receiver,
         uint256 shares,
         uint256 baseAssets
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the afterDeposit flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_DEPOSIT)) {
             callHook(self, abi.encodeCall(IHooks.afterDeposit, (asset, assets, caller, receiver, shares, baseAssets)));
@@ -114,7 +114,7 @@ library HooksLib {
         address receiver,
         uint256 assets,
         uint256 baseAssets
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the beforeMint flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_MINT)) {
             callHook(self, abi.encodeCall(IHooks.beforeMint, (asset, shares, caller, receiver, assets, baseAssets)));
@@ -138,7 +138,7 @@ library HooksLib {
         address receiver,
         uint256 assets,
         uint256 baseAssets
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the afterMint flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_MINT)) {
             callHook(self, abi.encodeCall(IHooks.afterMint, (asset, shares, caller, receiver, assets, baseAssets)));
@@ -162,7 +162,7 @@ library HooksLib {
         address receiver,
         address owner,
         uint256 assets
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the beforeRedeem flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_REDEEM)) {
             callHook(self, abi.encodeCall(IHooks.beforeRedeem, (asset, shares, caller, receiver, owner, assets)));
@@ -186,7 +186,7 @@ library HooksLib {
         address receiver,
         address owner,
         uint256 assets
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the afterRedeem flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_REDEEM)) {
             callHook(self, abi.encodeCall(IHooks.afterRedeem, (asset, shares, caller, receiver, owner, assets)));
@@ -209,7 +209,7 @@ library HooksLib {
         address receiver,
         address owner,
         uint256 shares
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the beforeWithdraw flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_WITHDRAW)) {
             callHook(self, abi.encodeCall(IHooks.beforeWithdraw, (asset, assets, caller, receiver, owner, shares)));
@@ -232,7 +232,7 @@ library HooksLib {
         address receiver,
         address owner,
         uint256 shares
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the afterWithdraw flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_WITHDRAW)) {
             callHook(self, abi.encodeCall(IHooks.afterWithdraw, (asset, assets, caller, receiver, owner, shares)));
@@ -249,7 +249,7 @@ library HooksLib {
         uint256 totalAssetsBeforeAccounting,
         uint256 totalSupplyBeforeAccounting,
         uint256 totalBaseBalanceBeforeAccounting
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the beforeProcessAccounting flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_PROCESS_ACCOUNTING)) {
             callHook(
@@ -278,7 +278,7 @@ library HooksLib {
         uint256 totalSupplyAfterAccounting,
         uint256 totalBaseBalanceAfterAccounting,
         uint256 totalBaseBalanceBeforeAccounting
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the afterProcessAccounting flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_PROCESS_ACCOUNTING)) {
             callHook(

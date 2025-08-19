@@ -5,6 +5,7 @@ import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {IERC20} from "src/Common.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
+import {VaultLib} from "src/library/VaultLib.sol";
 
 contract MockStrategy is BaseStrategy {
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
@@ -17,6 +18,10 @@ contract MockStrategy is BaseStrategy {
         uint256 defaultAssetIndex_
     ) external initializer {
         _initialize(admin, name, symbol, 18, false, true, alwaysComputeTotalAssets_, defaultAssetIndex_);
+    }
+
+    function _getFeeStorage() internal pure returns (FeeStorage storage) {
+        return VaultLib.getFeeStorage();
     }
 
     /**

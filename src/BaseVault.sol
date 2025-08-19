@@ -851,13 +851,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _setHooks(address hooks_) internal virtual {
-        FeeStorage storage feesStorage = _getFeeStorage();
-        emit SetHooks(address(feesStorage.hooks), hooks_);
-        feesStorage.hooks = IHooks(hooks_);
+        HooksStorage storage hooksStorage = _getHooksStorage();
+        emit SetHooks(address(hooksStorage.hooks), hooks_);
+        hooksStorage.hooks = IHooks(hooks_);
     }
 
     function hooks() public view returns (IHooks) {
-        return _getFeeStorage().hooks;
+        return _getHooksStorage().hooks;
     }
 
     /**
@@ -885,11 +885,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
-     * @notice Internal function to get the fee storage.
-     * @return $ The fee storage.
+     * @notice Internal function to get the Hooks storage.
+     * @return $ The Hooks storage.
      */
-    function _getFeeStorage() internal pure returns (FeeStorage storage) {
-        return VaultLib.getFeeStorage();
+    function _getHooksStorage() internal pure returns (HooksStorage storage) {
+        return VaultLib.getHooksStorage();
     }
 
     constructor() {
