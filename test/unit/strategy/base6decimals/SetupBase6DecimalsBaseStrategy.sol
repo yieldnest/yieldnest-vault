@@ -19,6 +19,8 @@ import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 contract SetupBase6DecimalsBaseStrategy is Test, Etches, MainnetActors, SetupStrategy {
     MockSwapper public swapper;
@@ -38,14 +40,20 @@ contract SetupBase6DecimalsBaseStrategy is Test, Etches, MainnetActors, SetupStr
         // Set the default asset index to 1 (USDC)
         strategy.initialize("Mock Strategy", "MS", ADMIN, true, 1);
 
+        // fee module implementation
+        FeeHooks hooks = new FeeHooks(address(strategy));
+
+        TUProxy hooksProxy = new TUProxy(address(hooks), ADMIN, "");
+        hooks = FeeHooks(payable(address(hooksProxy)));
+
         wusdc = WrappedToken(address(new TUProxy(address(new WrappedToken()), ADMIN, "")));
         wusdc.initialize(IERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
 
         // Add WETH as an asset to the strategy
-        configureLocal(strategy);
+        configureLocal(strategy, hooks);
     }
 
-    function configureLocal(MockStrategy strategy) internal override {
+    function configureLocal(MockStrategy strategy, FeeHooks hooks) internal override {
         // etch to mock the mainnet contracts
         mockAll();
 
@@ -59,6 +67,8 @@ contract SetupBase6DecimalsBaseStrategy is Test, Etches, MainnetActors, SetupStr
         strategy.grantRole(strategy.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
         strategy.grantRole(strategy.PAUSER_ROLE(), PAUSER);
         strategy.grantRole(strategy.UNPAUSER_ROLE(), UNPAUSER);
+        strategy.grantRole(strategy.HOOKS_MANAGER_ROLE(), HOOKS_MANAGER);
+        strategy.grantRole(strategy.FEE_MANAGER_ROLE(), FEE_MANAGER);
 
         // Add assets: Base asset (WUSDC) first, default asset USDC second. then WBTC and an 18 decimal asset
         strategy.addAsset(address(wusdc), true, true); // WUSDC with 18 decimals
@@ -74,6 +84,23 @@ contract SetupBase6DecimalsBaseStrategy is Test, Etches, MainnetActors, SetupStr
 
         // Set the provider to the 6 decimals provider
         strategy.setProvider(address(mock6DecimalsProvider));
+
+        IHooks.Config memory config = IHooks.Config({
+            beforeDeposit: false,
+            afterDeposit: false,
+            beforeMint: false,
+            afterMint: false,
+            beforeRedeem: false,
+            afterRedeem: true,
+            beforeWithdraw: true,
+            afterWithdraw: false,
+            beforeProcessAccounting: false,
+            afterProcessAccounting: true
+        });
+
+        hooks.initialize(ADMIN, 1e17, FEE_MANAGER, config);
+
+        strategy.setHooks(address(hooks));
 
         mock6DecimalsProvider.setRate(MC.USDC, 1e18); // 1 USD USDC
         mock6DecimalsProvider.setRate(MC.USDC, 1e18); // 1 USD USDC
