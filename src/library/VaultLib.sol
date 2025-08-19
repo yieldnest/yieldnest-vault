@@ -74,6 +74,17 @@ library VaultLib {
     }
 
     /**
+     * @notice Get the hooks storage.
+     * @return $ The hooks storage.
+     */
+    function getHooksStorage() public pure returns (IVault.HooksStorage storage $) {
+        assembly {
+            // keccak256("yieldnest.storage.hooks")
+            $.slot := 0x888cd7e3a42ecdcdcee277d5e88e97f4970beef9c0100f5a9297676fe5dfa12f
+        }
+    }
+
+    /**
      * @notice Adds a new asset to the vault.
      * @param asset_ The address of the asset.
      * @param active_ Whether the asset is active or not.

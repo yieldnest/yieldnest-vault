@@ -46,6 +46,9 @@ interface IVault is IERC4626 {
         /// @notice The base withdrawal fee in basis points (1e8 = 100%)
         uint64 baseWithdrawalFee;
         mapping(address user => OverriddenBaseWithdrawalFeeFields fields) overriddenBaseWithdrawalFee;
+    }
+
+    struct HooksStorage {
         IHooks hooks;
     }
 

@@ -53,6 +53,7 @@ library HooksLib {
 
     // @notice Calls the beforeDeposit hook if the hook has the permission set
     // @param self The hooks contract
+    // @param asset The address of the asset to deposit
     // @param assets The amount of assets to deposit
     // @param caller The address of the caller
     // @param receiver The address of the receiver of shares
@@ -60,20 +61,22 @@ library HooksLib {
     // @param baseAssets The amount of base assets to be deposited
     function beforeDeposit(
         IHooks self,
+        address asset,
         uint256 assets,
         address caller,
         address receiver,
         uint256 shares,
         uint256 baseAssets
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the beforeDeposit flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_DEPOSIT)) {
-            callHook(self, abi.encodeCall(IHooks.beforeDeposit, (assets, caller, receiver, shares, baseAssets)));
+            callHook(self, abi.encodeCall(IHooks.beforeDeposit, (asset, assets, caller, receiver, shares, baseAssets)));
         }
     }
 
     // @notice Calls the afterDeposit hook if the hook has the permission set
     // @param self The hooks contract
+    // @param asset The address of the asset to deposit
     // @param assets The amount of assets to deposit
     // @param caller The address of the caller
     // @param receiver The address of the receiver of shares
@@ -81,21 +84,23 @@ library HooksLib {
     // @param baseAssets The amount of base assets to be deposited
     function afterDeposit(
         IHooks self,
+        address asset,
         uint256 assets,
         address caller,
         address receiver,
         uint256 shares,
         uint256 baseAssets
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the afterDeposit flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_DEPOSIT)) {
-            callHook(self, abi.encodeCall(IHooks.afterDeposit, (assets, caller, receiver, shares, baseAssets)));
+            callHook(self, abi.encodeCall(IHooks.afterDeposit, (asset, assets, caller, receiver, shares, baseAssets)));
         }
     }
 
     // @notice Calls the beforeMint hook if the hook has the permission set
     // @dev For mint function, asset to be deposited will be base asset of vault
     // @param self The hooks contract
+    // @param asset The address of the asset to deposit
     // @param shares The amount of shares to be minted
     // @param caller The address of the caller
     // @param receiver The address of the receiver of shares
@@ -103,21 +108,23 @@ library HooksLib {
     // @param baseAssets The amount of base assets to be deposited
     function beforeMint(
         IHooks self,
+        address asset,
         uint256 shares,
         address caller,
         address receiver,
         uint256 assets,
         uint256 baseAssets
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the beforeMint flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_MINT)) {
-            callHook(self, abi.encodeCall(IHooks.beforeMint, (shares, caller, receiver, assets, baseAssets)));
+            callHook(self, abi.encodeCall(IHooks.beforeMint, (asset, shares, caller, receiver, assets, baseAssets)));
         }
     }
 
     // @notice Calls the afterMint hook if the hook has the permission set
     // @dev For mint function, asset to be deposited will be base asset of vault
     // @param self The hooks contract
+    // @param asset The address of the asset to deposit
     // @param shares The amount of shares to be minted
     // @param caller The address of the caller
     // @param receiver The address of the receiver of shares
@@ -125,54 +132,70 @@ library HooksLib {
     // @param baseAssets The amount of base assets to be deposited
     function afterMint(
         IHooks self,
+        address asset,
         uint256 shares,
         address caller,
         address receiver,
         uint256 assets,
         uint256 baseAssets
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the afterMint flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_MINT)) {
-            callHook(self, abi.encodeCall(IHooks.afterMint, (shares, caller, receiver, assets, baseAssets)));
+            callHook(self, abi.encodeCall(IHooks.afterMint, (asset, shares, caller, receiver, assets, baseAssets)));
         }
     }
 
     // @notice Calls the beforeRedeem hook if the hook has the permission set
     // @param self The hooks contract
+    // @param asset The address of the asset to deposit
     // @param shares The amount of shares to be redeemed
     // @param caller The address of the caller
     // @param receiver The address of the receiver of shares
     // @param owner The address of the owner of the shares
     // @param assets The amount of assets to be redeemed
     // @param baseAssets The amount of base assets to be redeemed
-    function beforeRedeem(IHooks self, uint256 shares, address caller, address receiver, address owner, uint256 assets)
-        internal
-    {
+    function beforeRedeem(
+        IHooks self,
+        address asset,
+        uint256 shares,
+        address caller,
+        address receiver,
+        address owner,
+        uint256 assets
+    ) public {
         // checks if the hook is set and has the permission set for the beforeRedeem flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_REDEEM)) {
-            callHook(self, abi.encodeCall(IHooks.beforeRedeem, (shares, caller, receiver, owner, assets)));
+            callHook(self, abi.encodeCall(IHooks.beforeRedeem, (asset, shares, caller, receiver, owner, assets)));
         }
     }
 
     // @notice Calls the afterRedeem hook if the hook has the permission set
     // @param self The hooks contract
+    // @param asset The address of the asset to deposit
     // @param shares The amount of shares to be redeemed
     // @param caller The address of the caller
     // @param receiver The address of the receiver of shares
     // @param owner The address of the owner of the shares
     // @param assets The amount of assets to be redeemed
     // @param baseAssets The amount of base assets to be redeemed
-    function afterRedeem(IHooks self, uint256 shares, address caller, address receiver, address owner, uint256 assets)
-        internal
-    {
+    function afterRedeem(
+        IHooks self,
+        address asset,
+        uint256 shares,
+        address caller,
+        address receiver,
+        address owner,
+        uint256 assets
+    ) public {
         // checks if the hook is set and has the permission set for the afterRedeem flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_REDEEM)) {
-            callHook(self, abi.encodeCall(IHooks.afterRedeem, (shares, caller, receiver, owner, assets)));
+            callHook(self, abi.encodeCall(IHooks.afterRedeem, (asset, shares, caller, receiver, owner, assets)));
         }
     }
 
     // @notice Calls the beforeWithdraw hook if the hook has the permission set
     // @param self The hooks contract
+    // @param asset The address of the asset to deposit
     // @param assets The amount of assets to withdraw
     // @param caller The address of the caller
     // @param receiver The address of the receiver of shares
@@ -180,31 +203,39 @@ library HooksLib {
     // @param shares The amount of shares to be burned on withdraw
     function beforeWithdraw(
         IHooks self,
+        address asset,
         uint256 assets,
         address caller,
         address receiver,
         address owner,
         uint256 shares
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the beforeWithdraw flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_WITHDRAW)) {
-            callHook(self, abi.encodeCall(IHooks.beforeWithdraw, (assets, caller, receiver, owner, shares)));
+            callHook(self, abi.encodeCall(IHooks.beforeWithdraw, (asset, assets, caller, receiver, owner, shares)));
         }
     }
 
     // @notice Calls the afterWithdraw hook if the hook has the permission set
     // @param self The hooks contract
+    // @param asset The address of the asset to deposit
     // @param assets The amount of assets to withdraw
     // @param caller The address of the caller
     // @param receiver The address of the receiver of shares
     // @param owner The address of the owner of the shares
     // @param shares The amount of shares to be burned on withdraw
-    function afterWithdraw(IHooks self, uint256 assets, address caller, address receiver, address owner, uint256 shares)
-        internal
-    {
+    function afterWithdraw(
+        IHooks self,
+        address asset,
+        uint256 assets,
+        address caller,
+        address receiver,
+        address owner,
+        uint256 shares
+    ) public {
         // checks if the hook is set and has the permission set for the afterWithdraw flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_WITHDRAW)) {
-            callHook(self, abi.encodeCall(IHooks.afterWithdraw, (assets, caller, receiver, owner, shares)));
+            callHook(self, abi.encodeCall(IHooks.afterWithdraw, (asset, assets, caller, receiver, owner, shares)));
         }
     }
 
@@ -218,7 +249,7 @@ library HooksLib {
         uint256 totalAssetsBeforeAccounting,
         uint256 totalSupplyBeforeAccounting,
         uint256 totalBaseBalanceBeforeAccounting
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the beforeProcessAccounting flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.BEFORE_PROCESS_ACCOUNTING)) {
             callHook(
@@ -247,7 +278,7 @@ library HooksLib {
         uint256 totalSupplyAfterAccounting,
         uint256 totalBaseBalanceAfterAccounting,
         uint256 totalBaseBalanceBeforeAccounting
-    ) internal {
+    ) public {
         // checks if the hook is set and has the permission set for the afterProcessAccounting flag
         if (address(self) != address(0) && hooksEnabled(self, HookType.AFTER_PROCESS_ACCOUNTING)) {
             callHook(
