@@ -26,20 +26,67 @@ interface IHooks {
     function setConfig(Config memory config_) external;
     function getConfig() external view returns (Config memory);
 
-    function beforeDeposit(uint256 assets, address caller, address receiver, uint256 shares, uint256 baseAssets)
-        external;
-    function afterDeposit(uint256 assets, address caller, address receiver, uint256 shares, uint256 baseAssets)
+    function beforeDeposit(
+        address asset,
+        uint256 assets,
+        address caller,
+        address receiver,
+        uint256 shares,
+        uint256 baseAssets
+    ) external;
+    function afterDeposit(
+        address asset,
+        uint256 assets,
+        address caller,
+        address receiver,
+        uint256 shares,
+        uint256 baseAssets
+    ) external;
+
+    function beforeMint(
+        address asset,
+        uint256 shares,
+        address caller,
+        address receiver,
+        uint256 assets,
+        uint256 baseAssets
+    ) external;
+    function afterMint(
+        address asset,
+        uint256 shares,
+        address caller,
+        address receiver,
+        uint256 assets,
+        uint256 baseAssets
+    ) external;
+
+    function beforeRedeem(
+        address asset,
+        uint256 shares,
+        address caller,
+        address receiver,
+        address owner,
+        uint256 assets
+    ) external;
+    function afterRedeem(address asset, uint256 shares, address caller, address receiver, address owner, uint256 assets)
         external;
 
-    function beforeMint(uint256 shares, address caller, address receiver, uint256 assets, uint256 baseAssets)
-        external;
-    function afterMint(uint256 shares, address caller, address receiver, uint256 assets, uint256 baseAssets) external;
-
-    function beforeRedeem(uint256 shares, address caller, address receiver, address owner, uint256 assets) external;
-    function afterRedeem(uint256 shares, address caller, address receiver, address owner, uint256 assets) external;
-
-    function beforeWithdraw(uint256 assets, address caller, address receiver, address owner, uint256 shares) external;
-    function afterWithdraw(uint256 assets, address caller, address receiver, address owner, uint256 shares) external;
+    function beforeWithdraw(
+        address asset,
+        uint256 assets,
+        address caller,
+        address receiver,
+        address owner,
+        uint256 shares
+    ) external;
+    function afterWithdraw(
+        address asset,
+        uint256 assets,
+        address caller,
+        address receiver,
+        address owner,
+        uint256 shares
+    ) external;
 
     function beforeProcessAccounting(
         uint256 totalAssetsBeforeAccounting,

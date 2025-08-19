@@ -295,11 +295,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
         (uint256 shares, uint256 baseAssets) = _convertToShares(asset(), assets, Math.Rounding.Floor);
         IHooks hooks_ = hooks();
-        HooksLib.beforeDeposit(hooks_, assets, _msgSender(), receiver, shares, baseAssets);
+        HooksLib.beforeDeposit(hooks_, asset(), assets, _msgSender(), receiver, shares, baseAssets);
 
         _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
 
-        HooksLib.afterDeposit(hooks_, assets, _msgSender(), receiver, shares, baseAssets);
+        HooksLib.afterDeposit(hooks_, asset(), assets, _msgSender(), receiver, shares, baseAssets);
 
         return shares;
     }
@@ -316,11 +316,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
         (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
         IHooks hooks_ = hooks();
-        HooksLib.beforeMint(hooks_, shares, _msgSender(), receiver, assets, baseAssets);
+        HooksLib.beforeMint(hooks_, asset(), shares, _msgSender(), receiver, assets, baseAssets);
 
         _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
 
-        HooksLib.afterMint(hooks_, shares, _msgSender(), receiver, assets, baseAssets);
+        HooksLib.afterMint(hooks_, asset(), shares, _msgSender(), receiver, assets, baseAssets);
 
         return assets;
     }
@@ -348,11 +348,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         shares = previewWithdraw(assets);
 
         IHooks hooks_ = hooks();
-        HooksLib.beforeWithdraw(hooks_, assets, _msgSender(), receiver, owner, shares);
+        HooksLib.beforeWithdraw(hooks_, asset(), assets, _msgSender(), receiver, owner, shares);
 
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
-        HooksLib.afterWithdraw(hooks_, assets, _msgSender(), receiver, owner, shares);
+        HooksLib.afterWithdraw(hooks_, asset(), assets, _msgSender(), receiver, owner, shares);
     }
 
     /**
@@ -377,11 +377,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
         assets = previewRedeem(shares);
         IHooks hooks_ = hooks();
-        HooksLib.beforeRedeem(hooks_, shares, _msgSender(), receiver, owner, assets);
+        HooksLib.beforeRedeem(hooks_, asset(), shares, _msgSender(), receiver, owner, assets);
 
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
-        HooksLib.afterRedeem(hooks_, shares, _msgSender(), receiver, owner, assets);
+        HooksLib.afterRedeem(hooks_, asset(), shares, _msgSender(), receiver, owner, assets);
     }
 
     //// 4626-MAX ////

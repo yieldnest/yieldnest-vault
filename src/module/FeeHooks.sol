@@ -125,6 +125,7 @@ contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
      * @param caller The address of the caller(withdrawer)
      */
     function beforeWithdraw(
+        address asset,
         uint256 assets,
         address caller,
         address,
@@ -148,7 +149,7 @@ contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
         uint256 fees = VAULT._feeOnRaw(assets, caller);
         // converts the fees to equivalent amount of shares to mint to the performanceFeeRecipient
         // accounting is done before the withdraw is processed, so totalAssets is not updated yet
-        uint256 sharesToMint = VAULT.convertToShares(fees);
+        uint256 sharesToMint = VAULT.previewDepositAsset(asset, fees);
         if (sharesToMint > 0) {
             VAULT.mintShares(performanceFeeRecipient, sharesToMint);
             emit WithdrawFeeCharged(performanceFeeRecipient, sharesToMint, fees, assets);
@@ -163,6 +164,7 @@ contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
      * @param caller The address of the caller(redeemer)
      */
     function afterRedeem(
+        address, /*asset*/
         uint256 shares,
         address caller,
         address,
@@ -197,6 +199,7 @@ contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
      */
 
     function beforeDeposit(
+        address, /*asset*/
         uint256, /*assets*/
         address, /*caller*/
         address, /*receiver*/
@@ -209,6 +212,7 @@ contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
      * @dev This hook is called after the deposit is processed
      */
     function afterDeposit(
+        address, /*asset*/
         uint256, /*assets*/
         address, /*caller*/
         address, /*receiver*/
@@ -221,6 +225,7 @@ contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
      * @dev This hook is called before the mint is processed
      */
     function beforeMint(
+        address, /*asset*/
         uint256, /*shares*/
         address, /*caller*/
         address, /*receiver*/
@@ -233,6 +238,7 @@ contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
      * @dev This hook is called after the mint is processed
      */
     function afterMint(
+        address, /*asset*/
         uint256, /*shares*/
         address, /*caller*/
         address, /*receiver*/
@@ -245,6 +251,7 @@ contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
      * @dev This hook is called before the redeem is processed
      */
     function beforeRedeem(
+        address, /*asset*/
         uint256, /*shares*/
         address, /*caller*/
         address, /*receiver*/
@@ -257,6 +264,7 @@ contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
      * @dev This hook is called after the withdraw is processed
      */
     function afterWithdraw(
+        address, /*asset*/
         uint256, /*assets*/
         address, /*caller*/
         address, /*receiver*/

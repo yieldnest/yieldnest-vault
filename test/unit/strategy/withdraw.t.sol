@@ -10,6 +10,8 @@ import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {SetupStrategy} from "test/unit/helpers/SetupStrategy.sol";
 import {IVault} from "src/interface/IVault.sol";
+import {FeeMath} from "src/module/FeeMath.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
@@ -23,6 +25,9 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
     function setUp() public {
         SetupStrategy setupStrategy = new SetupStrategy();
         (strategy, weth) = setupStrategy.setup();
+
+        vm.prank(ADMIN);
+        strategy.setAlwaysComputeTotalAssets(false);
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
@@ -92,6 +97,94 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
         assertApproxEqAbs(strategy.balanceOf(alice), 0, 5, "Alice should have no shares remaining");
     }
 
+    function test_Strategy_WithdrawAsset_WithFees(uint256 assets, uint64 baseWithdrawalFee) external {
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+
+        vm.prank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+
+        assets = bound(assets, 1000, 100_000 ether);
+
+        vm.prank(alice);
+        weth.approve(address(strategy), assets);
+
+        vm.prank(alice);
+        strategy.deposit(assets, alice);
+
+        uint256 maxWithdraw = strategy.maxWithdrawAsset(address(weth), alice);
+        uint256 previewRedeemAssets = strategy.previewRedeemAsset(address(weth), strategy.balanceOf(alice));
+
+        assertEq(
+            maxWithdraw, previewRedeemAssets, "Max withdraw should equal previewRedeemAssets assets with full buffer"
+        );
+
+        if (strategy.maxWithdrawAsset(address(weth), alice) < maxWithdraw) {
+            maxWithdraw = strategy.maxWithdrawAsset(address(weth), alice);
+        }
+
+        uint256 expectedFee = (maxWithdraw * baseWithdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 expectedShares = strategy.convertToShares(maxWithdraw + expectedFee);
+        uint256 feeShares = strategy.convertToShares(expectedFee);
+        // Verify we can actually withdraw the max amount
+        vm.prank(alice);
+        uint256 withdrawnShares = strategy.withdrawAsset(address(weth), maxWithdraw, alice, alice);
+        assertApproxEqAbs(withdrawnShares, expectedShares, 5, "Withdrawn shares should match expected");
+        assertApproxEqAbs(strategy.balanceOf(alice), 0, 5, "Alice should have no shares remaining");
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+    }
+
+    function test_Strategy_WithdrawAsset_WithOverrideFee(
+        uint256 assets,
+        uint64 baseWithdrawalFee,
+        uint64 overrideBaseWithdrawalFee
+    ) external {
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+        overrideBaseWithdrawalFee = uint64(bound(overrideBaseWithdrawalFee, 0, FeeMath.BASIS_POINT_SCALE));
+
+        vm.startPrank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+        strategy.overrideBaseWithdrawalFee(alice, overrideBaseWithdrawalFee, true);
+        vm.stopPrank();
+
+        assets = bound(assets, 1000, 100_000 ether);
+
+        vm.prank(alice);
+        weth.approve(address(strategy), assets);
+
+        vm.startPrank(alice);
+        strategy.deposit(assets, alice);
+
+        uint256 maxWithdraw = strategy.maxWithdrawAsset(address(weth), alice);
+        uint256 previewRedeemAssets = strategy.previewRedeemAsset(address(weth), strategy.balanceOf(alice));
+
+        assertEq(
+            maxWithdraw, previewRedeemAssets, "Max withdraw should equal previewRedeemAssets assets with full buffer"
+        );
+
+        if (strategy.maxWithdrawAsset(address(weth), alice) < maxWithdraw) {
+            maxWithdraw = strategy.maxWithdrawAsset(address(weth), alice);
+        }
+
+        uint256 expectedFee = (maxWithdraw * overrideBaseWithdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 expectedShares = strategy.convertToShares(maxWithdraw + expectedFee);
+        uint256 feeShares = strategy.convertToShares(expectedFee);
+
+        uint256 withdrawnShares = strategy.withdrawAsset(address(weth), maxWithdraw, alice, alice);
+        assertApproxEqAbs(withdrawnShares, expectedShares, 5, "Withdrawn shares should match expected");
+        assertApproxEqAbs(strategy.balanceOf(alice), 0, 5, "Alice should have no shares remaining");
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+    }
+
     function test_Strategy_RedeemAsset(uint256 assets) external {
         // Bound inputs to valid ranges
         vm.assume(assets >= 100000 && assets <= 100_000 ether);
@@ -115,6 +208,89 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
         assertApproxEqRel(redeemedAmount, convertedAssets, 1e14, "Redeemed amount should be total assets minus fee");
 
         assertEq(strategy.balanceOf(alice), shares - maxShares, "Alice should have correct shares remaining");
+    }
+
+    function test_Strategy_RedeemAsset_WithFees(uint256 assets, uint64 baseWithdrawalFee) external {
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+
+        vm.prank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+
+        assets = bound(assets, 1000, 100_000 ether);
+
+        vm.prank(alice);
+        weth.approve(address(strategy), assets);
+
+        vm.startPrank(alice);
+        uint256 shares = strategy.depositAsset(address(weth), assets, alice);
+
+        uint256 maxShares = strategy.maxRedeemAsset(address(weth), alice);
+        uint256 expectedAssets = strategy.previewRedeemAsset(address(weth), maxShares);
+
+        uint256 initialAliceBalance = weth.balanceOf(alice);
+
+        uint256 redeemedAmount = strategy.redeemAsset(address(weth), maxShares, alice, alice);
+        uint256 feeAmount = redeemedAmount * baseWithdrawalFee / FeeMath.BASIS_POINT_SCALE;
+        uint256 feeShares = strategy.convertToShares(feeAmount);
+
+        vm.stopPrank();
+
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+        assertApproxEqRel(redeemedAmount, expectedAssets, 1e14, "Redeemed amount should match preview");
+        assertEq(strategy.balanceOf(alice), shares - maxShares, "Alice should have correct shares remaining");
+        assertApproxEqAbs(
+            weth.balanceOf(alice), initialAliceBalance + redeemedAmount, 5, "Alice should have correct assets remaining"
+        );
+    }
+
+    function test_Strategy_RedeemAsset_WithOverrideFee(
+        uint256 assets,
+        uint64 baseWithdrawalFee,
+        uint64 overrideBaseWithdrawalFee
+    ) external {
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+        overrideBaseWithdrawalFee = uint64(bound(overrideBaseWithdrawalFee, 0, FeeMath.BASIS_POINT_SCALE));
+
+        vm.startPrank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+        strategy.overrideBaseWithdrawalFee(alice, overrideBaseWithdrawalFee, true);
+        vm.stopPrank();
+
+        assets = bound(assets, 1000, 100_000 ether);
+
+        vm.prank(alice);
+        weth.approve(address(strategy), assets);
+
+        vm.startPrank(alice);
+        uint256 shares = strategy.depositAsset(address(weth), assets, alice);
+
+        uint256 maxShares = strategy.maxRedeemAsset(address(weth), alice);
+        uint256 expectedAssets = strategy.previewRedeemAsset(address(weth), maxShares);
+
+        uint256 initialAliceBalance = weth.balanceOf(alice);
+
+        uint256 redeemedAmount = strategy.redeemAsset(address(weth), maxShares, alice, alice);
+        uint256 feeAmount = redeemedAmount * overrideBaseWithdrawalFee / FeeMath.BASIS_POINT_SCALE;
+        uint256 feeShares = strategy.convertToShares(feeAmount);
+
+        vm.stopPrank();
+
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+        assertApproxEqRel(redeemedAmount, expectedAssets, 1e14, "Redeemed amount should match preview");
+        assertEq(strategy.balanceOf(alice), shares - maxShares, "Alice should have correct shares remaining");
+        assertApproxEqAbs(
+            weth.balanceOf(alice), initialAliceBalance + redeemedAmount, 5, "Alice should have correct assets remaining"
+        );
     }
 
     function test_Strategy_WithdrawAsset_notOwner(uint256 assets) public {
@@ -142,6 +318,89 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
         assertEq(strategy.balanceOf(address(this)), shares - maxShares, "Receiver should have correct shares remaining");
     }
 
+    function test_Strategy_WithdrawAsset_WithFees_notOwner(uint256 assets, uint64 baseWithdrawalFee) public {
+        // Bound inputs to valid ranges
+        assets = bound(assets, 1000, 100_000 ether);
+
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+
+        vm.prank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+
+        vm.startPrank(alice);
+        weth.approve(address(strategy), assets);
+        strategy.approve(address(this), type(uint256).max);
+
+        uint256 shares = strategy.depositAsset(address(weth), assets, alice);
+
+        uint256 maxShares = strategy.maxRedeemAsset(address(weth), alice);
+        if (maxShares > strategy.maxWithdrawAsset(address(weth), alice)) {
+            maxShares = strategy.maxWithdrawAsset(address(weth), alice);
+        }
+        uint256 expectedFee = (maxShares * baseWithdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 feeShares = strategy.convertToShares(expectedFee);
+        uint256 expectedAssets = strategy.convertToShares(maxShares + expectedFee);
+        uint256 redeemedAmount = strategy.withdrawAsset(address(weth), maxShares, address(this), alice);
+        vm.stopPrank();
+
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+        assertEq(strategy.balanceOf(address(this)), 0, "Receiver should have correct shares remaining");
+        assertGt(redeemedAmount, 0, "Redeemed amount should be greater than 0");
+        assertApproxEqAbs(redeemedAmount, expectedAssets, 5, "Redeemed amount should match preview");
+
+        assertEq(strategy.balanceOf(alice), shares - redeemedAmount, "Receiver should have correct shares remaining");
+    }
+
+    function test_Strategy_WithdrawAsset_WithOverrideFee_notOwner(
+        uint256 assets,
+        uint64 baseWithdrawalFee,
+        uint64 overrideBaseWithdrawalFee
+    ) public {
+        // Bound inputs to valid ranges
+        assets = bound(assets, 1000, 100_000 ether);
+
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+        overrideBaseWithdrawalFee = uint64(bound(overrideBaseWithdrawalFee, 0, FeeMath.BASIS_POINT_SCALE));
+
+        vm.startPrank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+        strategy.overrideBaseWithdrawalFee(alice, overrideBaseWithdrawalFee, true);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        weth.approve(address(strategy), assets);
+        strategy.approve(address(this), type(uint256).max);
+
+        uint256 shares = strategy.depositAsset(address(weth), assets, alice);
+
+        uint256 maxShares = strategy.maxRedeemAsset(address(weth), alice);
+        if (maxShares > strategy.maxWithdrawAsset(address(weth), alice)) {
+            maxShares = strategy.maxWithdrawAsset(address(weth), alice);
+        }
+        uint256 expectedFee = (maxShares * overrideBaseWithdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 feeShares = strategy.convertToShares(expectedFee);
+        uint256 expectedAssets = strategy.convertToShares(maxShares + expectedFee);
+        uint256 redeemedAmount = strategy.withdrawAsset(address(weth), maxShares, address(this), alice);
+        vm.stopPrank();
+
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+        assertEq(strategy.balanceOf(address(this)), 0, "Receiver should have correct shares remaining");
+        assertGt(redeemedAmount, 0, "Redeemed amount should be greater than 0");
+        assertApproxEqAbs(redeemedAmount, expectedAssets, 5, "Redeemed amount should match preview");
+
+        assertEq(strategy.balanceOf(alice), shares - redeemedAmount, "Receiver should have correct shares remaining");
+    }
+
     function test_Strategy_Withdraw_notOwner(uint256 assets) public {
         // Bound inputs to valid ranges
         vm.assume(assets >= 100000 && assets <= 100_000 ether);
@@ -167,6 +426,90 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
         assertEq(strategy.balanceOf(address(this)), shares - maxShares, "Receiver should have correct shares remaining");
     }
 
+    function test_Strategy_Withdraw_WithFees_notOwner(uint256 assets, uint64 baseWithdrawalFee) public {
+        assets = bound(assets, 1000, 100_000 ether);
+
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+
+        vm.prank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+
+        vm.startPrank(alice);
+        weth.approve(address(strategy), assets);
+        strategy.approve(address(this), type(uint256).max);
+
+        uint256 shares = strategy.deposit(assets, alice);
+
+        uint256 maxShares = strategy.maxRedeem(alice);
+        if (maxShares > strategy.maxWithdraw(alice)) {
+            maxShares = strategy.maxWithdraw(alice);
+        }
+
+        uint256 expectedFee = (maxShares * baseWithdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 feeShares = strategy.convertToShares(expectedFee);
+        uint256 expectedSharesBurned = strategy.convertToShares(maxShares + expectedFee);
+
+        vm.stopPrank();
+        uint256 redeemedAmount = strategy.withdraw(maxShares, address(this), alice);
+
+        assertGt(redeemedAmount, 0, "Redeemed amount should be greater than 0");
+        assertApproxEqAbs(redeemedAmount, expectedSharesBurned, 5, "Redeemed amount should match preview");
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+        assertEq(strategy.balanceOf(address(this)), 0, "Receiver should have correct shares remaining");
+        assertEq(strategy.balanceOf(alice), shares - redeemedAmount, "Receiver should have correct shares remaining");
+    }
+
+    function test_Strategy_Withdraw_WithOverrideFee_notOwner(
+        uint256 assets,
+        uint64 baseWithdrawalFee,
+        uint64 overrideBaseWithdrawalFee
+    ) public {
+        assets = bound(assets, 1000, 100_000 ether);
+
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+        overrideBaseWithdrawalFee = uint64(bound(overrideBaseWithdrawalFee, 0, FeeMath.BASIS_POINT_SCALE));
+
+        vm.startPrank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+        strategy.overrideBaseWithdrawalFee(address(this), overrideBaseWithdrawalFee, true);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        weth.approve(address(strategy), assets);
+        strategy.approve(address(this), type(uint256).max);
+
+        uint256 shares = strategy.deposit(assets, alice);
+        vm.stopPrank();
+
+        uint256 maxShares = strategy.maxRedeem(alice);
+        if (maxShares > strategy.maxWithdraw(alice)) {
+            maxShares = strategy.maxWithdraw(alice);
+        }
+
+        uint256 expectedFee = (maxShares * overrideBaseWithdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 feeShares = strategy.convertToShares(expectedFee);
+        uint256 expectedSharesBurned = strategy.convertToShares(maxShares + expectedFee);
+
+        uint256 redeemedAmount = strategy.withdraw(maxShares, address(this), alice);
+
+        assertGt(redeemedAmount, 0, "Redeemed amount should be greater than 0");
+        assertApproxEqAbs(redeemedAmount, expectedSharesBurned, 5, "Redeemed amount should match preview");
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+        assertEq(strategy.balanceOf(address(this)), 0, "Receiver should have correct shares remaining");
+        assertEq(strategy.balanceOf(alice), shares - redeemedAmount, "Receiver should have correct shares remaining");
+        vm.stopPrank();
+    }
+
     function test_Strategy_Withdraw(uint256 assets) public {
         // Bound inputs to valid ranges
         vm.assume(assets >= 100000 && assets <= 100_000 ether);
@@ -189,6 +532,85 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
         assertApproxEqRel(redeemedAmount, convertedAssets, 1e14, "Redeemed amount should be total assets minus fee");
 
         assertEq(strategy.balanceOf(alice), shares - maxShares, "Receiver should have correct shares remaining");
+    }
+
+    function test_Strategy_Withdraw_WithFees(uint256 assets, uint64 baseWithdrawalFee) public {
+        // Bound inputs to valid ranges
+        assets = bound(assets, 1000, 100_000 ether);
+
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+
+        vm.prank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+
+        vm.startPrank(alice);
+        weth.approve(address(strategy), assets);
+
+        uint256 shares = strategy.deposit(assets, alice);
+
+        uint256 maxShares = strategy.maxRedeem(alice);
+        if (maxShares > strategy.maxWithdraw(alice)) {
+            maxShares = strategy.maxWithdraw(alice);
+        }
+        uint256 expectedFee = (maxShares * baseWithdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 expectedSharesBurned = strategy.convertToShares(maxShares + expectedFee);
+        uint256 feeShares = strategy.convertToShares(expectedFee);
+
+        uint256 redeemedAmount = strategy.withdraw(maxShares, alice, alice);
+        vm.stopPrank();
+
+        assertGt(redeemedAmount, 0, "Redeemed amount should be greater than 0");
+        assertApproxEqAbs(redeemedAmount, expectedSharesBurned, 5, "Redeemed amount should match preview");
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+        assertEq(strategy.balanceOf(alice), shares - redeemedAmount, "Receiver should have correct shares remaining");
+    }
+
+    function test_Strategy_Withdraw_WithOverrideFee(
+        uint256 assets,
+        uint64 baseWithdrawalFee,
+        uint64 overrideBaseWithdrawalFee
+    ) public {
+        // Bound inputs to valid ranges
+        assets = bound(assets, 1000, 100_000 ether);
+
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+        overrideBaseWithdrawalFee = uint64(bound(overrideBaseWithdrawalFee, 0, FeeMath.BASIS_POINT_SCALE));
+
+        vm.startPrank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+        strategy.overrideBaseWithdrawalFee(alice, overrideBaseWithdrawalFee, true);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        weth.approve(address(strategy), assets);
+
+        uint256 shares = strategy.deposit(assets, alice);
+
+        uint256 maxShares = strategy.maxRedeem(alice);
+        if (maxShares > strategy.maxWithdraw(alice)) {
+            maxShares = strategy.maxWithdraw(alice);
+        }
+        uint256 expectedFee = (maxShares * overrideBaseWithdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 expectedSharesBurned = strategy.convertToShares(maxShares + expectedFee);
+        uint256 feeShares = strategy.convertToShares(expectedFee);
+
+        uint256 redeemedAmount = strategy.withdraw(maxShares, alice, alice);
+        vm.stopPrank();
+
+        assertGt(redeemedAmount, 0, "Redeemed amount should be greater than 0");
+        assertApproxEqAbs(redeemedAmount, expectedSharesBurned, 5, "Redeemed amount should match preview");
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+        assertEq(strategy.balanceOf(alice), shares - redeemedAmount, "Receiver should have correct shares remaining");
     }
 
     function test_Strategy_Withdrawable_Asset_Revert_NotWithdrawable(uint256 assets) public {
@@ -236,6 +658,91 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
 
         assertApproxEqRel(redeemedAmount, convertedAssets, 1e14, "Redeemed amount should be total assets minus fee");
 
+        assertEq(strategy.balanceOf(alice), shares - maxShares, "Receiver should have correct shares remaining");
+    }
+
+    function test_Strategy_Redeem_WithFees(uint256 assets, uint64 baseWithdrawalFee) public {
+        // Bound inputs to valid ranges
+        assets = bound(assets, 1000, 100_000 ether);
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+
+        vm.prank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+
+        vm.startPrank(alice);
+        weth.approve(address(strategy), assets);
+
+        uint256 shares = strategy.deposit(assets, alice);
+
+        uint256 maxShares = strategy.maxRedeem(alice);
+        if (maxShares > strategy.maxRedeem(alice)) {
+            maxShares = strategy.maxRedeem(alice);
+        }
+        uint256 initialAliceBalance = weth.balanceOf(alice);
+        uint256 redeemedAmount = strategy.redeem(maxShares, alice, alice);
+
+        uint256 expectedFee = (redeemedAmount * baseWithdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 feeShares = strategy.convertToShares(expectedFee);
+
+        vm.stopPrank();
+
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+
+        assertGt(redeemedAmount, 0, "Redeemed amount should be greater than 0");
+        assertEq(
+            weth.balanceOf(alice), initialAliceBalance + redeemedAmount, "Alice should have correct assets remaining"
+        );
+        assertEq(strategy.balanceOf(alice), shares - maxShares, "Receiver should have correct shares remaining");
+    }
+
+    function test_Strategy_Redeem_WithOverrideFee(
+        uint256 assets,
+        uint64 baseWithdrawalFee,
+        uint64 overrideBaseWithdrawalFee
+    ) public {
+        // Bound inputs to valid ranges
+        assets = bound(assets, 1000, 100_000 ether);
+        baseWithdrawalFee = uint64(bound(baseWithdrawalFee, 100, FeeMath.BASIS_POINT_SCALE));
+        overrideBaseWithdrawalFee = uint64(bound(overrideBaseWithdrawalFee, 0, FeeMath.BASIS_POINT_SCALE));
+
+        vm.startPrank(FEE_MANAGER);
+        strategy.setBaseWithdrawalFee(baseWithdrawalFee);
+        strategy.overrideBaseWithdrawalFee(alice, overrideBaseWithdrawalFee, true);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        weth.approve(address(strategy), assets);
+
+        uint256 shares = strategy.deposit(assets, alice);
+
+        uint256 maxShares = strategy.maxRedeem(alice);
+        if (maxShares > strategy.maxRedeem(alice)) {
+            maxShares = strategy.maxRedeem(alice);
+        }
+        uint256 initialAliceBalance = weth.balanceOf(alice);
+        uint256 redeemedAmount = strategy.redeem(maxShares, alice, alice);
+
+        uint256 expectedFee = (redeemedAmount * overrideBaseWithdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 feeShares = strategy.convertToShares(expectedFee);
+
+        vm.stopPrank();
+
+        assertApproxEqAbs(
+            strategy.balanceOf(IFeeHooks(address(strategy.hooks())).performanceFeeRecipient()),
+            feeShares,
+            5,
+            "Performance fee recipient should have correct shares"
+        );
+
+        assertGt(redeemedAmount, 0, "Redeemed amount should be greater than 0");
+        assertEq(
+            weth.balanceOf(alice), initialAliceBalance + redeemedAmount, "Alice should have correct assets remaining"
+        );
         assertEq(strategy.balanceOf(alice), shares - maxShares, "Receiver should have correct shares remaining");
     }
 

@@ -412,7 +412,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(sharesAmount, alice, alice, alice, 0);
+        hooks.afterRedeem(MC.WETH, sharesAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -433,7 +433,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(shares, alice, alice, alice, 0);
+        hooks.afterRedeem(MC.WETH, shares, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -455,7 +455,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(shares, alice, alice, alice, 0);
+        hooks.afterRedeem(MC.WETH, shares, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -474,7 +474,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.beforeWithdraw(sharesAmount, alice, alice, alice, 0);
+        hooks.beforeWithdraw(MC.WETH, sharesAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -495,7 +495,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.beforeWithdraw(depositAmount, alice, alice, alice, 0);
+        hooks.beforeWithdraw(MC.WETH, depositAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -517,7 +517,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.beforeWithdraw(depositAmount, alice, alice, alice, 0);
+        hooks.beforeWithdraw(MC.WETH, depositAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -550,7 +550,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
             vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
 
         vm.startPrank(address(vault));
-        hooks.beforeWithdraw(withdrawalAmount, alice, alice, alice, 0);
+        hooks.beforeWithdraw(MC.WETH, withdrawalAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -585,7 +585,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
             vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(shares, alice, alice, alice, 0);
+        hooks.afterRedeem(MC.WETH, shares, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -606,42 +606,42 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function test_beforeWithdraw_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeWithdraw(1 ether, alice, alice, alice, 0);
+        hooks.beforeWithdraw(MC.WETH, 1 ether, alice, alice, alice, 0);
         vm.stopPrank();
     }
 
     function test_afterRedeem_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterRedeem(1 ether, alice, alice, alice, 0);
+        hooks.afterRedeem(MC.WETH, 1 ether, alice, alice, alice, 0);
         vm.stopPrank();
     }
 
     function test_HooksFunction_OnlyCallableByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeDeposit(1 ether, alice, alice, 0, 0);
+        hooks.beforeDeposit(MC.WETH, 1 ether, alice, alice, 0, 0);
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterDeposit(1 ether, alice, alice, 0, 0);
+        hooks.afterDeposit(MC.WETH, 1 ether, alice, alice, 0, 0);
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeMint(1 ether, alice, alice, 0, 0);
+        hooks.beforeMint(MC.WETH, 1 ether, alice, alice, 0, 0);
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterMint(1 ether, alice, alice, 0, 0);
+        hooks.afterMint(MC.WETH, 1 ether, alice, alice, 0, 0);
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeRedeem(1 ether, alice, alice, alice, 0);
+        hooks.beforeRedeem(MC.WETH, 1 ether, alice, alice, alice, 0);
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterRedeem(1 ether, alice, alice, alice, 0);
+        hooks.afterRedeem(MC.WETH, 1 ether, alice, alice, alice, 0);
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeWithdraw(1 ether, alice, alice, alice, 0);
+        hooks.beforeWithdraw(MC.WETH, 1 ether, alice, alice, alice, 0);
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterWithdraw(1 ether, alice, alice, alice, 0);
+        hooks.afterWithdraw(MC.WETH, 1 ether, alice, alice, alice, 0);
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
         hooks.beforeProcessAccounting(1 ether, 1 ether, 1 ether);
@@ -651,14 +651,14 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
 
         vm.startPrank(address(vault));
-        hooks.beforeDeposit(1 ether, alice, alice, 0, 0);
-        hooks.afterDeposit(1 ether, alice, alice, 0, 0);
-        hooks.beforeMint(1 ether, alice, alice, 0, 0);
-        hooks.afterMint(1 ether, alice, alice, 0, 0);
-        hooks.beforeRedeem(1 ether, alice, alice, alice, 0);
-        hooks.afterRedeem(1 ether, alice, alice, alice, 0);
-        hooks.beforeWithdraw(1 ether, alice, alice, alice, 0);
-        hooks.afterWithdraw(1 ether, alice, alice, alice, 0);
+        hooks.beforeDeposit(MC.WETH, 1 ether, alice, alice, 0, 0);
+        hooks.afterDeposit(MC.WETH, 1 ether, alice, alice, 0, 0);
+        hooks.beforeMint(MC.WETH, 1 ether, alice, alice, 0, 0);
+        hooks.afterMint(MC.WETH, 1 ether, alice, alice, 0, 0);
+        hooks.beforeRedeem(MC.WETH, 1 ether, alice, alice, alice, 0);
+        hooks.afterRedeem(MC.WETH, 1 ether, alice, alice, alice, 0);
+        hooks.beforeWithdraw(MC.WETH, 1 ether, alice, alice, alice, 0);
+        hooks.afterWithdraw(MC.WETH, 1 ether, alice, alice, alice, 0);
         hooks.beforeProcessAccounting(1 ether, 1 ether, 1 ether);
         hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether, 0, 0, 0);
         vm.stopPrank();
@@ -685,10 +685,10 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(caller);
         // expect beforeDeposit and afterDeposit to be called by 1 time
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.beforeDeposit, (1 ether, caller, alice, 1 ether, 1 ether)), 1
+            address(hooks), abi.encodeCall(IHooks.beforeDeposit, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 1
         );
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.afterDeposit, (1 ether, caller, alice, 1 ether, 1 ether)), 1
+            address(hooks), abi.encodeCall(IHooks.afterDeposit, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 1
         );
         vault.deposit(1 ether, alice);
         vm.stopPrank();
@@ -715,10 +715,10 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(caller);
         // expect beforeDeposit and afterDeposit to not be called
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.beforeDeposit, (1 ether, caller, alice, 1 ether, 1 ether)), 0
+            address(hooks), abi.encodeCall(IHooks.beforeDeposit, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 0
         );
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.afterDeposit, (1 ether, caller, alice, 1 ether, 1 ether)), 0
+            address(hooks), abi.encodeCall(IHooks.afterDeposit, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 0
         );
         vault.deposit(1 ether, alice);
         vm.stopPrank();
@@ -744,8 +744,12 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
         vm.startPrank(caller);
         // expect beforeMint and afterMint to be called by 1 time
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeMint, (1 ether, caller, alice, 1 ether, 1 ether)), 1);
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.afterMint, (1 ether, caller, alice, 1 ether, 1 ether)), 1);
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.beforeMint, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 1
+        );
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.afterMint, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 1
+        );
         vault.mint(1 ether, alice);
         vm.stopPrank();
     }
@@ -770,8 +774,12 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
         vm.startPrank(caller);
         // expect beforeMint and afterMint to not be called
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeMint, (1 ether, caller, alice, 1 ether, 1 ether)), 0);
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.afterMint, (1 ether, caller, alice, 1 ether, 1 ether)), 0);
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.beforeMint, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 0
+        );
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.afterMint, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 0
+        );
         vault.mint(1 ether, alice);
         vm.stopPrank();
     }
@@ -806,11 +814,13 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // expect beforeRedeem and afterRedeem to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeRedeem, (sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            abi.encodeCall(IHooks.beforeRedeem, (MC.WETH, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
             1
         );
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.afterRedeem, (sharesToRedeem, alice, alice, alice, assetsToRedeem)), 1
+            address(hooks),
+            abi.encodeCall(IHooks.afterRedeem, (MC.WETH, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            1
         );
         vault.redeem(sharesToRedeem, alice, alice);
         vm.stopPrank();
@@ -844,8 +854,12 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
         vm.startPrank(alice);
         // expect beforeRedeem and afterRedeem to not be called
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeRedeem, (1 ether, alice, alice, alice, 1 ether)), 0);
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.afterRedeem, (1 ether, alice, alice, alice, 1 ether)), 0);
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.beforeRedeem, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 0
+        );
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.afterRedeem, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 0
+        );
         vault.redeem(1 ether, alice, alice);
         vm.stopPrank();
     }
@@ -879,8 +893,12 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
         vm.startPrank(alice);
         // expect beforeWithdraw and afterWithdraw to be called by 1 time
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeWithdraw, (1 ether, alice, alice, alice, 1 ether)), 1);
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.afterWithdraw, (1 ether, alice, alice, alice, 1 ether)), 1);
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.beforeWithdraw, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 1
+        );
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.afterWithdraw, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 1
+        );
         vault.withdraw(1 ether, alice, alice);
         vm.stopPrank();
     }
@@ -914,8 +932,12 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
         vm.startPrank(alice);
         // expect beforeWithdraw and afterWithdraw to not be called
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeWithdraw, (1 ether, alice, alice, alice, 1 ether)), 0);
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.afterWithdraw, (1 ether, alice, alice, alice, 1 ether)), 0);
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.beforeWithdraw, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 0
+        );
+        vm.expectCall(
+            address(hooks), abi.encodeCall(IHooks.afterWithdraw, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 0
+        );
         vault.withdraw(1 ether, alice, alice);
         vm.stopPrank();
     }
