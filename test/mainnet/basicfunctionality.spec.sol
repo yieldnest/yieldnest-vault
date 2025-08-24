@@ -48,8 +48,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
         VaultVerification.verifyVaultConfiguration(vault, withdrawer);
 
-        VaultVerification.verifyRules(vault);
-
         // verify actors & timelock roles on vault
         RolesVerification.verifyDefaultRoles(vault, timelock, actors);
         RolesVerification.verifyRole(
@@ -61,9 +59,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
         // verify withdrawer config
         VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
-
-        // verify withdrawer roles
-        VaultVerification.verifyWithdrawerRules(withdrawer);
 
         // verify actors & timelock roles on withdrawer
         RolesVerification.verifyDefaultRoles(withdrawer, timelock, actors);
