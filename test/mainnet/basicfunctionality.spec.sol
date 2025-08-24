@@ -487,7 +487,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
     function test_depositWstETH_requestWithdrawal(uint256 depositAmount) public {
         vm.assume(depositAmount > 1e9);
-        vm.assume(depositAmount < 1_000 ether);
+        vm.assume(depositAmount < 10_000 ether);
 
         uint256 actualAmount;
 
@@ -554,14 +554,32 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         uint256 asyncWithdrawalBalanceBefore = withdrawer.asyncWithdrawalBalance(asset);
 
         vm.startPrank(PROCESSOR);
-        // Request withdrawal from withdrawer
-        uint256 tokenId = WithdrawerProcessorUtils.processRequestWithdrawalWstETH(withdrawer, asset, actualAmount);
+        // Request withdrawal from withdrawer in chunks of max 1000 ether
+        uint256 remainingAmount = actualAmount;
+        uint256[] memory tokenIds = new uint256[](0);
+        uint256 maxChunkSize = IwstETH(MC.WSTETH).getWstETHByStETH(1000 ether);
+
+        while (remainingAmount > 0) {
+            uint256 chunkAmount = remainingAmount > maxChunkSize ? maxChunkSize : remainingAmount;
+            console.log("chunkAmount", chunkAmount);
+            uint256 tokenId = WithdrawerProcessorUtils.processRequestWithdrawalWstETH(withdrawer, asset, chunkAmount);
+
+            // Expand tokenIds array and add new tokenId
+            uint256[] memory newTokenIds = new uint256[](tokenIds.length + 1);
+            for (uint256 i = 0; i < tokenIds.length; i++) {
+                newTokenIds[i] = tokenIds[i];
+            }
+            newTokenIds[tokenIds.length] = tokenId;
+            tokenIds = newTokenIds;
+
+            remainingAmount -= chunkAmount;
+        }
         vm.stopPrank();
 
         assertApproxEqAbs(
             withdrawer.asyncWithdrawalBalance(asset) - asyncWithdrawalBalanceBefore,
             IwstETH(MC.WSTETH).getStETHByWstETH(actualAmount),
-            3,
+            10,
             "asyncWithdrawalBalance should increase by expected amount"
         );
 
@@ -569,11 +587,16 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         vault.processAccounting();
 
         assertApproxEqAbs(
-            vault.totalAssets(), totalAssetsBefore, 1e3, "Total assets should remain the same after withdrawal request"
+            vault.totalAssets(),
+            totalAssetsBefore,
+            tokenIds.length * 1e3,
+            "Total assets should remain the same after withdrawal request"
         );
         uint256 withdrawerETHBefore = address(withdrawer).balance;
 
-        WithdrawerProcessorUtils.claimWithdrawalWstETH(withdrawer, PROCESSOR, tokenId);
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            WithdrawerProcessorUtils.claimWithdrawalWstETH(withdrawer, PROCESSOR, tokenIds[i]);
+        }
 
         withdrawer.processAccounting();
         vault.processAccounting();
@@ -586,7 +609,10 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         );
 
         assertApproxEqAbs(
-            vault.totalAssets(), totalAssetsBefore, 1e3, "Total assets should remain the same after withdrawal claim"
+            vault.totalAssets(),
+            totalAssetsBefore,
+            tokenIds.length * 1e3,
+            "Total assets should remain the same after withdrawal claim"
         );
     }
 
