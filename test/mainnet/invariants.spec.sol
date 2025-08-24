@@ -1192,7 +1192,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         }
 
         {
-            _processWithdrawAsset(address(withdrawer), MC.WETH, amount);
+            _processWithdraw(address(withdrawer), amount);
 
             if (processAfterWithdrawAsset) {
                 withdrawer.processAccounting();

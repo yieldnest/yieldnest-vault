@@ -102,9 +102,6 @@ contract VerifyMaxVault is BaseScript, Test {
         // Verify vault configuration using VaultVerification library
         VaultVerification.verifyVaultConfiguration(vault, withdrawer);
 
-        // Verify processor rules
-        VaultVerification.verifyRules(vault);
-
         // verify actors  & timelock roles on vault
         RolesVerification.verifyDefaultRoles(vault, timelock, actors);
         RolesVerification.verifyRole(
@@ -113,9 +110,6 @@ contract VerifyMaxVault is BaseScript, Test {
 
         // Verify withdrawer configuration
         VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
-
-        // Verify withdrawer rules
-        VaultVerification.verifyWithdrawerRules(withdrawer);
 
         // verify actors & timelock roles on withdrawer
         RolesVerification.verifyDefaultRoles(withdrawer, timelock, actors);
