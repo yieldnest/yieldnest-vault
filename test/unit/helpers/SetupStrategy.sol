@@ -29,11 +29,21 @@ contract SetupStrategy is Test, Etches, MainnetActors {
         // Set the default asset index to 0 (WETH)
         strategy.initialize("Mock Strategy", "MS", ADMIN, true, 0);
 
-        // fee module implementation
-        FeeHooks hooks = new FeeHooks(address(strategy));
+        IHooks.Config memory config = IHooks.Config({
+            beforeDeposit: false,
+            afterDeposit: false,
+            beforeMint: false,
+            afterMint: false,
+            beforeRedeem: false,
+            afterRedeem: true,
+            beforeWithdraw: true,
+            afterWithdraw: false,
+            beforeProcessAccounting: false,
+            afterProcessAccounting: true
+        });
 
-        TransparentUpgradeableProxy hooksProxy = new TransparentUpgradeableProxy(address(hooks), ADMIN, "");
-        hooks = FeeHooks(payable(address(hooksProxy)));
+        // fee module implementation
+        FeeHooks hooks = new FeeHooks(address(strategy), ADMIN, 1e17, FEE_MANAGER, config);
 
         // Add WETH as an asset to the strategy
         configureLocal(strategy, hooks);
@@ -66,21 +76,6 @@ contract SetupStrategy is Test, Etches, MainnetActors {
         strategy.setAssetWithdrawable(MC.WETH, true);
         strategy.setAssetWithdrawable(MC.STETH, true);
         strategy.setAssetWithdrawable(MC.WBTC, true);
-
-        IHooks.Config memory config = IHooks.Config({
-            beforeDeposit: false,
-            afterDeposit: false,
-            beforeMint: false,
-            afterMint: false,
-            beforeRedeem: false,
-            afterRedeem: true,
-            beforeWithdraw: true,
-            afterWithdraw: false,
-            beforeProcessAccounting: false,
-            afterProcessAccounting: true
-        });
-
-        hooks.initialize(ADMIN, 1e17, FEE_MANAGER, config);
 
         strategy.setHooks(address(hooks));
 

@@ -35,10 +35,19 @@ contract Setup6DecimalsVault is SetupVault {
         weth = WETH9(payable(MC.WETH));
 
         // fee module implementation
-        FeeHooks hooks = new FeeHooks(address(vaultProxy));
-
-        TUProxy hooksProxy = new TUProxy(address(hooks), ADMIN, "");
-        hooks = FeeHooks(payable(address(hooksProxy)));
+        IHooks.Config memory config = IHooks.Config({
+            beforeDeposit: false,
+            afterDeposit: false,
+            beforeMint: false,
+            afterMint: false,
+            beforeRedeem: false,
+            afterRedeem: true,
+            beforeWithdraw: true,
+            afterWithdraw: false,
+            beforeProcessAccounting: false,
+            afterProcessAccounting: true
+        });
+        FeeHooks hooks = new FeeHooks(address(vaultProxy), ADMIN, 1e17, FEE_MANAGER, config);
 
         // Initialize the vault with the following parameters:
         // ADMIN: The address that will have admin privileges
@@ -95,20 +104,6 @@ contract Setup6DecimalsVault is SetupVault {
         // Set rates in provider
         mock6DecimalsProvider.setRate(MC.USDC, 1e6); // 1 USD USDC
         mock6DecimalsProvider.addERC4626(MC.BUFFER);
-
-        IHooks.Config memory config = IHooks.Config({
-            beforeDeposit: false,
-            afterDeposit: false,
-            beforeMint: false,
-            afterMint: false,
-            beforeRedeem: false,
-            afterRedeem: true,
-            beforeWithdraw: true,
-            afterWithdraw: false,
-            beforeProcessAccounting: false,
-            afterProcessAccounting: true
-        });
-        hooks.initialize(ADMIN, 1e17, FEE_MANAGER, config);
 
         vault.unpause();
         vm.stopPrank();

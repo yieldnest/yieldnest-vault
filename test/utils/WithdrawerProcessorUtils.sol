@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: BSD Clause-3
 pragma solidity ^0.8.24;
 
@@ -8,7 +7,6 @@ import {IVault} from "src/interface/IVault.sol";
 import {IWithdrawalQueue} from "src/interface/external/lido/IWithdrawalQueue.sol";
 
 library WithdrawerProcessorUtils {
-
     address internal constant CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
     bytes32 internal constant QUEUE_POSITION = keccak256("lido.WithdrawalQueue.queue");
 
@@ -51,7 +49,6 @@ library WithdrawerProcessorUtils {
     }
 
     function claimWithdrawalWstETH(IVault vault_, address processor, uint256 tokenId) internal {
-
         Vm vm = Vm(CHEATCODE_ADDRESS);
 
         IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
@@ -110,5 +107,4 @@ library WithdrawerProcessorUtils {
             reportTimestamp: uint40(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 5))))
         });
     }
-
 }

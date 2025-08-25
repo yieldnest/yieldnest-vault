@@ -32,9 +32,20 @@ contract SetupVault is Test, Etches, MainnetActors {
         // Initialize the vault
         vault.initialize(ADMIN, name, symbol, 18, 0, true, false, 0);
 
-        FeeHooks hooks = new FeeHooks(address(vaultProxy));
-        TUProxy hooksProxy = new TUProxy(address(hooks), ADMIN, "");
-        hooks = FeeHooks(payable(address(hooksProxy)));
+        IHooks.Config memory config = IHooks.Config({
+            beforeDeposit: false,
+            afterDeposit: false,
+            beforeMint: false,
+            afterMint: false,
+            beforeRedeem: false,
+            afterRedeem: true,
+            beforeWithdraw: true,
+            afterWithdraw: false,
+            beforeProcessAccounting: false,
+            afterProcessAccounting: true
+        });
+
+        FeeHooks hooks = new FeeHooks(address(vaultProxy), ADMIN, 1e17, FEE_MANAGER, config);
 
         weth = WETH9(payable(MC.WETH));
 
@@ -76,21 +87,6 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.addAsset(MC.STETH, true);
         vault.addAsset(MC.WBTC, true);
         vault.addAsset(MC.METH, true);
-
-        IHooks.Config memory config = IHooks.Config({
-            beforeDeposit: false,
-            afterDeposit: false,
-            beforeMint: false,
-            afterMint: false,
-            beforeRedeem: false,
-            afterRedeem: true,
-            beforeWithdraw: true,
-            afterWithdraw: false,
-            beforeProcessAccounting: false,
-            afterProcessAccounting: true
-        });
-
-        hooks.initialize(ADMIN, 1e17, FEE_MANAGER, config);
 
         // configure processor rules
         setDepositRule(vault, MC.BUFFER, address(vault));

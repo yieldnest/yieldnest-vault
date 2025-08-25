@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {OwnableUpgradeable, IERC4626, ERC20} from "src/Common.sol";
+import {Ownable, ERC20} from "src/Common.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
@@ -13,7 +13,7 @@ import {Vault} from "src/Vault.sol";
  * @notice FeeHooks for the Vault
  * @dev This contract gets callback from the vault it's attached to
  */
-contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
+contract FeeHooks is Ownable, IHooks, IFeeHooks {
     using Math for uint256;
 
     // performance denominated in ether(i.e. 1e18 = 100%)
@@ -21,32 +21,24 @@ contract FeeHooks is OwnableUpgradeable, IHooks, IFeeHooks {
     address public performanceFeeRecipient;
     uint256 public constant FEE_DENOMINATOR = 1 ether;
     IVault public immutable VAULT;
-    uint256 public immutable VAULT_DECIMALS;
     Config public config;
 
     /**
      * @notice Constructor
      * @param vault_ The address of the Vault to which this hooks contract is attached
-     */
-    constructor(address vault_) {
-        VAULT = IVault(payable(vault_));
-        VAULT_DECIMALS = ERC20(address(VAULT)).decimals();
-    }
-
-    /**
-     * @notice Initialize the Hooks contract
      * @param owner_ The address of the owner of the contract
      * @param performanceFee_ The performance fee to be charged(denominated in 1e18)
      * @param performanceFeeRecipient_ The address of the performance fee recipient
      * @param config_ The hooks config struct
      */
-    function initialize(
+    constructor(
+        address vault_,
         address owner_,
         uint256 performanceFee_,
         address performanceFeeRecipient_,
         Config memory config_
-    ) external initializer {
-        __Ownable_init(owner_);
+    ) Ownable(owner_) {
+        VAULT = IVault(payable(vault_));
         if (performanceFee_ > FEE_DENOMINATOR) revert InvalidPerformanceFee();
         if (performanceFeeRecipient_ == address(0)) revert InvalidPerformanceFeeRecipient();
         performanceFee = performanceFee_;

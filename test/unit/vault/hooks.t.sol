@@ -1084,7 +1084,19 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function test_setHooks_revertsIfInvalidHooks() public {
         SetupVault setupVault = new SetupVault();
         (Vault dummyVault,) = setupVault.setup();
-        address invalidHooks = address(new FeeHooks(address(dummyVault)));
+        IHooks.Config memory config = IHooks.Config({
+            beforeDeposit: false,
+            afterDeposit: false,
+            beforeMint: false,
+            afterMint: false,
+            beforeRedeem: false,
+            afterRedeem: true,
+            beforeWithdraw: true,
+            afterWithdraw: false,
+            beforeProcessAccounting: false,
+            afterProcessAccounting: true
+        });
+        address invalidHooks = address(new FeeHooks(address(dummyVault), ADMIN, 1e17, FEE_MANAGER, config));
         vm.startPrank(ADMIN);
         vm.expectRevert(abi.encodeWithSelector(IVault.InvalidHooks.selector));
         vault.setHooks(invalidHooks);

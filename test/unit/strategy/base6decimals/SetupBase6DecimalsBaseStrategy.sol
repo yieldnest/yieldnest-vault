@@ -40,11 +40,21 @@ contract SetupBase6DecimalsBaseStrategy is Test, Etches, MainnetActors, SetupStr
         // Set the default asset index to 1 (USDC)
         strategy.initialize("Mock Strategy", "MS", ADMIN, true, 1);
 
-        // fee module implementation
-        FeeHooks hooks = new FeeHooks(address(strategy));
+        IHooks.Config memory config = IHooks.Config({
+            beforeDeposit: false,
+            afterDeposit: false,
+            beforeMint: false,
+            afterMint: false,
+            beforeRedeem: false,
+            afterRedeem: true,
+            beforeWithdraw: true,
+            afterWithdraw: false,
+            beforeProcessAccounting: false,
+            afterProcessAccounting: true
+        });
 
-        TUProxy hooksProxy = new TUProxy(address(hooks), ADMIN, "");
-        hooks = FeeHooks(payable(address(hooksProxy)));
+        // fee module implementation
+        FeeHooks hooks = new FeeHooks(address(strategy), ADMIN, 1e17, FEE_MANAGER, config);
 
         wusdc = WrappedToken(address(new TUProxy(address(new WrappedToken()), ADMIN, "")));
         wusdc.initialize(IERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
@@ -84,21 +94,6 @@ contract SetupBase6DecimalsBaseStrategy is Test, Etches, MainnetActors, SetupStr
 
         // Set the provider to the 6 decimals provider
         strategy.setProvider(address(mock6DecimalsProvider));
-
-        IHooks.Config memory config = IHooks.Config({
-            beforeDeposit: false,
-            afterDeposit: false,
-            beforeMint: false,
-            afterMint: false,
-            beforeRedeem: false,
-            afterRedeem: true,
-            beforeWithdraw: true,
-            afterWithdraw: false,
-            beforeProcessAccounting: false,
-            afterProcessAccounting: true
-        });
-
-        hooks.initialize(ADMIN, 1e17, FEE_MANAGER, config);
 
         strategy.setHooks(address(hooks));
 

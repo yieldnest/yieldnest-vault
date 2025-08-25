@@ -35,11 +35,6 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         vault = Vault(payable(MC.YNETHX));
         vault.processAccounting();
 
-        FeeHooks hooksImplementation = new FeeHooks(address(vault));
-        TransparentUpgradeableProxy hooksProxy =
-            new TransparentUpgradeableProxy(address(hooksImplementation), ADMIN, "");
-        hooks = FeeHooks(payable(address(hooksProxy)));
-
         IHooks.Config memory config = IHooks.Config({
             beforeDeposit: false,
             afterDeposit: false,
@@ -53,7 +48,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
             afterProcessAccounting: true
         });
 
-        hooks.initialize(ADMIN, 1e17, ADMIN, config);
+        hooks = new FeeHooks(address(vault), ADMIN, 1e17, ADMIN, config);
 
         Vault newImplementation = new Vault();
         UpgradeUtils.timelockUpgrade(
