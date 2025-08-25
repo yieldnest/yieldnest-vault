@@ -404,6 +404,16 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+     * @notice Returns whether a given asset exists in the asset list of the vault.
+     * @param asset_ The address of the asset.
+     */
+    function hasAsset(address asset_) public view virtual returns (bool) {
+        AssetStorage storage assetStorage = _getAssetStorage();
+        AssetParams memory assetParams = assetStorage.assets[asset_];
+        return assetStorage.list[assetParams.index] == asset_;
+    }
+
+    /**
      * @notice Returns the function rule for a given contract address and function signature.
      * @param contractAddress The address of the contract.
      * @param funcSig The function signature.
@@ -551,6 +561,62 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+     * @notice Withdraws a given amount of assets and transfers the equivalent amount of shares to the receiver.
+     * @dev This is a permissioned function that requires the ASSET_WITHDRAWER_ROLE.
+     * @param asset_ The address of the asset.
+     * @param assets The amount of assets to withdraw.
+     * @param receiver The address of the receiver.
+     * @param owner The address of the owner.
+     * @return shares The equivalent amount of shares.
+     */
+    function withdrawAsset(address asset_, uint256 assets, address receiver, address owner)
+        public
+        virtual
+        onlyRole(ASSET_WITHDRAWER_ROLE)
+        returns (uint256 shares)
+    {
+        (shares,) = _convertToShares(asset_, assets, Math.Rounding.Ceil);
+        if (assets > IERC20(asset_).balanceOf(address(this)) || balanceOf(owner) < shares) {
+            revert ExceededMaxWithdraw(owner, assets, IERC20(asset_).balanceOf(address(this)));
+        }
+
+        _withdrawAsset(asset_, _msgSender(), receiver, owner, assets, shares);
+    }
+
+    /**
+     * @notice Internal function to handle withdrawals for specific assets.
+     * @param asset_ The address of the asset.
+     * @param caller The address of the caller.
+     * @param receiver The address of the receiver.
+     * @param owner The address of the owner.
+     * @param assets The amount of assets to withdraw.
+     * @param shares The equivalent amount of shares.
+     */
+    function _withdrawAsset(
+        address asset_,
+        address caller,
+        address receiver,
+        address owner,
+        uint256 assets,
+        uint256 shares
+    ) internal virtual {
+        if (!hasAsset(asset_)) revert InvalidAsset(asset_);
+
+        _subTotalAssets(_convertAssetToBase(asset_, assets));
+
+        if (caller != owner) {
+            _spendAllowance(owner, caller, shares);
+        }
+
+        // NOTE: burn shares before withdrawing the assets
+        _burn(owner, shares);
+
+        SafeERC20.safeTransfer(IERC20(asset_), receiver, assets);
+
+        emit WithdrawAsset(caller, receiver, owner, asset_, assets, shares);
+    }
+
+    /**
      * @notice Internal function to convert vault shares to the base asset.
      * @param asset_ The address of the asset.
      * @param shares The amount of shares to convert.
@@ -636,6 +702,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     bytes32 public constant ASSET_MANAGER_ROLE = keccak256("ASSET_MANAGER_ROLE");
     bytes32 public constant PROCESSOR_MANAGER_ROLE = keccak256("PROCESSOR_MANAGER_ROLE");
     bytes32 public constant HOOKS_MANAGER_ROLE = keccak256("HOOKS_MANAGER_ROLE");
+    bytes32 public constant ASSET_WITHDRAWER_ROLE = keccak256("ASSET_WITHDRAWER_ROLE");
 
     /**
      * @notice Sets the provider.
