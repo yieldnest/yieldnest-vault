@@ -68,7 +68,6 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
             vault.depositAsset(MC.YNLSDE, depositAmount, address(this));
             ynLSDeBalance = IERC20(MC.YNLSDE).balanceOf(address(vault));
         }
-
         {
             address[] memory targets = new address[](2);
             uint256[] memory values = new uint256[](2);

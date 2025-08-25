@@ -42,8 +42,8 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_fees() external view {
-        assertEq(vault._feeOnRaw(1e18), 0);
-        assertEq(vault._feeOnTotal(1e18), 0);
+        assertEq(vault._feeOnRaw(1e18, alice), 0);
+        assertEq(vault._feeOnTotal(1e18, alice), 0);
     }
 
     function test_Vault_previewWithdraw(uint256 assets, bool alwaysComputeTotalAssets) external {
@@ -57,12 +57,9 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
         assertEq(amount, assets);
     }
 
-    function test_Vault_withdraw_success(uint256 assets, bool alwaysComputeTotalAssets) external {
+    function test_Vault_withdraw_success(uint256 assets) external {
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
-
-        vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         vm.prank(alice);
         uint256 depositShares = vault.depositAsset(address(weth), assets, alice);

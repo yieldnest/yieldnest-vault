@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IERC4626} from "src/Common.sol";
 import {IValidator} from "src/interface/IValidator.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 interface IVault is IERC4626 {
     struct VaultStorage {
@@ -34,10 +35,21 @@ interface IVault is IERC4626 {
         address[] list;
     }
 
+    struct OverriddenBaseWithdrawalFeeFields {
+        /// @notice The base withdrawal fee in basis points (1e8 = 100%) for the user to override
+        uint64 baseWithdrawalFee;
+        /// @notice Whether the fee is overridden for the user
+        bool isOverridden;
+    }
+
     struct FeeStorage {
         /// @notice The base withdrawal fee in basis points (1e8 = 100%)
         uint64 baseWithdrawalFee;
-        mapping(address user => bool isExempted) withdrawalFeeExempted;
+        mapping(address user => OverriddenBaseWithdrawalFeeFields fields) overriddenBaseWithdrawalFee;
+    }
+
+    struct HooksStorage {
+        IHooks hooks;
     }
 
     enum ParamType {
@@ -90,7 +102,10 @@ interface IVault is IERC4626 {
     error InvalidNativeAssetDecimals(uint256 decimals);
     error InvalidAssetDecimals(uint256 decimals);
     error InvalidDefaultAssetIndex(uint256 index);
+    error ExceedsMaxPerformanceFee(uint256 value);
     error BaseAsset();
+    error CallerNotHooks();
+    error InvalidHooks();
 
     event DepositAsset(
         address indexed sender,
@@ -112,7 +127,8 @@ interface IVault is IERC4626 {
     event UpdateAsset(uint256 indexed index, address indexed asset, AssetUpdateFields fields);
     event DeleteAsset(uint256 indexed index, address indexed asset);
     event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
-    event SetWithdrawalFeeExempted(address indexed user, bool isExempted);
+    event WithdrawalFeeOverridden(address indexed user, uint64 baseWithdrawalFee, bool isOverridden);
+    event SetHooks(address indexed oldHooks, address indexed newHooks);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);
@@ -123,6 +139,9 @@ interface IVault is IERC4626 {
     function provider() external view returns (address);
     function buffer() external view returns (address);
     function totalBaseAssets() external view returns (uint256);
+    function hooks() external view returns (IHooks);
+    function mintShares(address recipient, uint256 shares) external;
+    function computeTotalAssets() external view returns (uint256);
 
     // ADMIN
     function setProvider(address provider) external;
@@ -131,6 +150,7 @@ interface IVault is IERC4626 {
     function setProcessorRules(address[] memory targets, bytes4[] memory functionSigs, FunctionRule[] memory rules)
         external;
     function addAsset(address asset_, bool active_) external;
+    function deleteAsset(uint256 index) external;
     function pause() external;
     function unpause() external;
 
@@ -140,6 +160,6 @@ interface IVault is IERC4626 {
         returns (bytes[] memory);
 
     // FEES
-    function _feeOnRaw(uint256 assets) external view returns (uint256);
-    function _feeOnTotal(uint256 assets) external view returns (uint256);
+    function _feeOnRaw(uint256 amount, address user) external view returns (uint256);
+    function _feeOnTotal(uint256 amount, address user) external view returns (uint256);
 }

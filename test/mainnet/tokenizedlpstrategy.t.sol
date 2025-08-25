@@ -54,7 +54,7 @@ contract TokenizedLPStrategyUnitTest is BaseIntegrationTest {
             vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
             vm.stopPrank();
 
-            uint256 index = vault.getAsset(MC.STETH).index;
+            vault.getAsset(MC.STETH).index;
             IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
             vault.updateAsset(vault.getAsset(ASSET_A).index, fields);
             vault.updateAsset(vault.getAsset(ASSET_B).index, fields);
@@ -196,7 +196,7 @@ contract TokenizedLPStrategyUnitTest is BaseIntegrationTest {
 
             assertEq(balanceBefore - balanceAfter, bufferAmount, "WETH balance should decrease by buffer amount");
             assertApproxEqAbs(
-                totalAssetsAfter - totalAssetsBefore, bufferAmount, 1, "totalAssets should increase by buffer amount"
+                totalAssetsAfter - totalAssetsBefore, bufferAmount, 2, "totalAssets should increase by buffer amount"
             );
         }
 

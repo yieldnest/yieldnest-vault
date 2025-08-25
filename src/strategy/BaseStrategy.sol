@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {IERC20Metadata as IERC20, Math, SafeERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
 import {IBaseStrategy} from "src/interface/IBaseStrategy.sol";
+import {HooksLib} from "src/library/HooksLib.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 /**
  * @title BaseStrategy
@@ -12,8 +14,10 @@ import {IBaseStrategy} from "src/interface/IBaseStrategy.sol";
  * vault.
  */
 abstract contract BaseStrategy is BaseVault, IBaseStrategy {
+    using HooksLib for IHooks;
+
     /// @notice The version of the strategy contract.
-    string public constant STRATEGY_VERSION = "0.2.0";
+    string public constant STRATEGY_VERSION = "0.3.0";
     /// @notice Role for allocator permissions
     bytes32 public constant ALLOCATOR_ROLE = keccak256("ALLOCATOR_ROLE");
     /// @notice Role for allocator manager permissions
@@ -172,7 +176,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      */
     function previewRedeemAsset(address asset_, uint256 shares) public view virtual returns (uint256 assets) {
         (assets,) = _convertToAssets(asset_, shares, Math.Rounding.Floor);
-        assets = assets - _feeOnTotal(assets);
+        assets = assets - _feeOnTotal(assets, _msgSender());
     }
 
     /**
@@ -182,7 +186,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      * @return shares The equivalent amount of shares.
      */
     function previewWithdrawAsset(address asset_, uint256 assets) public view virtual returns (uint256 shares) {
-        uint256 fee = _feeOnRaw(assets);
+        uint256 fee = _feeOnRaw(assets, _msgSender());
         (shares,) = _convertToShares(asset_, assets + fee, Math.Rounding.Ceil);
     }
 
@@ -240,7 +244,12 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
             revert ExceededMaxWithdraw(owner, assets, maxAssets);
         }
         shares = previewWithdrawAsset(asset_, assets);
+
+        IHooks hooks_ = hooks();
+
+        HooksLib.beforeWithdraw(hooks_, asset_, assets, _msgSender(), receiver, owner, shares);
         _withdrawAsset(asset_, _msgSender(), receiver, owner, assets, shares);
+        HooksLib.afterWithdraw(hooks_, asset_, assets, _msgSender(), receiver, owner, shares);
     }
 
     /**
@@ -348,7 +357,12 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
             revert ExceededMaxRedeem(owner, shares, maxShares);
         }
         assets = previewRedeemAsset(asset_, shares);
+
+        IHooks hooks_ = hooks();
+
+        HooksLib.beforeRedeem(hooks_, asset_, shares, _msgSender(), receiver, owner, assets);
         _withdrawAsset(asset_, _msgSender(), receiver, owner, assets, shares);
+        HooksLib.afterRedeem(hooks_, asset_, shares, _msgSender(), receiver, owner, assets);
     }
 
     /**

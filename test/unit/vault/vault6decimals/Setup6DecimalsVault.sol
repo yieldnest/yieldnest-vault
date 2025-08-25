@@ -21,17 +21,7 @@ import {IERC4626} from "src/Common.sol";
 import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
-contract SetupBase6DecimalsVault is SetupVault {
-    MockSwapper public swapper;
-
-    WrappedToken public wusdc;
-
-    function mockUSDCBuffer() public {
-        MockERC4626 usdcBuffer = new MockERC4626(ERC20(address(MC.USDC)), "Staked USDC", "sUSDC");
-        bytes memory code = address(usdcBuffer).code;
-        vm.etch(MC.BUFFER, code);
-    }
-
+contract Setup6DecimalsVault is SetupVault {
     function setup() public override returns (Vault vault, WETH9 weth) {
         string memory name = "YieldNest MAX";
         string memory symbol = "ynMAx";
@@ -42,7 +32,9 @@ contract SetupBase6DecimalsVault is SetupVault {
         TUProxy vaultProxy = new TUProxy(address(vaultImplementation), ADMIN, "");
 
         vault = Vault(payable(address(vaultProxy)));
+        weth = WETH9(payable(MC.WETH));
 
+        // fee module implementation
         IHooks.Config memory config = IHooks.Config({
             beforeDeposit: false,
             afterDeposit: false,
@@ -55,7 +47,6 @@ contract SetupBase6DecimalsVault is SetupVault {
             beforeProcessAccounting: false,
             afterProcessAccounting: true
         });
-
         FeeHooks hooks = new FeeHooks(address(vaultProxy), ADMIN, 1e17, FEE_MANAGER, config);
 
         // Initialize the vault with the following parameters:
@@ -66,13 +57,8 @@ contract SetupBase6DecimalsVault is SetupVault {
         // 0: The withdrawal fee in basis points
         // false: Whether to count native assets (ETH) in the vault
         // false: Whether to always compute total assets (instead of tracking incrementally)
-        // 1: The default asset index to use (in this case, the second asset added will be default)
-        vault.initialize(ADMIN, name, symbol, 18, 0, false, false, 1);
-
-        weth = WETH9(payable(MC.WETH));
-
-        wusdc = WrappedToken(address(new TUProxy(address(new WrappedToken()), ADMIN, "")));
-        wusdc.initialize(IERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
+        // 0: The default asset index to use (in this case, the first asset i.e. USDC added will be default)
+        vault.initialize(ADMIN, name, symbol, 6, 0, false, false, 0);
 
         if (block.chainid == 31337) {
             configureLocal(vault, hooks);
@@ -81,6 +67,12 @@ contract SetupBase6DecimalsVault is SetupVault {
         if (block.chainid == 1) {
             configureMainnet(vault);
         }
+    }
+
+    function mockUSDCBuffer() public {
+        MockERC4626 usdcBuffer = new MockERC4626(ERC20(address(MC.USDC)), "Staked USDC", "sUSDC");
+        bytes memory code = address(usdcBuffer).code;
+        vm.etch(MC.BUFFER, code);
     }
 
     function configureLocal(Vault vault, FeeHooks hooks) internal override {
@@ -96,31 +88,21 @@ contract SetupBase6DecimalsVault is SetupVault {
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
-        vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
         vault.grantRole(vault.HOOKS_MANAGER_ROLE(), HOOKS_MANAGER);
+        vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
 
         // Deploy Mock6DecimalsProvider
         Mock6DecimalsProvider mock6DecimalsProvider = new Mock6DecimalsProvider();
         // Set the provider to the 6 decimals provider
         vault.setProvider(address(mock6DecimalsProvider));
 
-        // Add assets: Base asset (USDC) first, then WBTC and an 18 decimal asset
+        mockUSDCBuffer();
 
-        vault.addAsset(address(wusdc), true);
+        // Add assets: Base asset (USDC) first
         vault.addAsset(MC.USDC, true); // USDC mocked at WETH address
         vault.addAsset(MC.BUFFER, false);
-        vault.addAsset(MC.WBTC, true);
-        vault.addAsset(MC.STETH, true); // 18 decimals asset
-        vault.addAsset(MC.USDE, true); // 18 decimals USDE
-        vault.addAsset(MC.SUSDE, true); // sUSDE (ERC4626 for USDE)
-
         // Set rates in provider
-        mock6DecimalsProvider.setRate(address(wusdc), 1e18); // 1 USD USDC
-        mock6DecimalsProvider.setRate(MC.USDC, 1e18); // 1 USD USDC
-        mock6DecimalsProvider.setRate(MC.USDE, 1e18); // 1 USD USDE
-        mock6DecimalsProvider.setRate(MC.WBTC, 100_000e18); // 100k USD bitcoin
-        mock6DecimalsProvider.setRate(MC.STETH, 10_000e18); // 10k USD steth
-        mock6DecimalsProvider.addERC4626(MC.SUSDE);
+        mock6DecimalsProvider.setRate(MC.USDC, 1e6); // 1 USD USDC
         mock6DecimalsProvider.addERC4626(MC.BUFFER);
 
         vault.unpause();
@@ -131,44 +113,9 @@ contract SetupBase6DecimalsVault is SetupVault {
         vm.stopPrank();
 
         {
-            // Deposit 100 million USDE to SUSDE vault
-            uint256 amount = 100_000_000_000e18;
-            address depositor = address(0xDEADBEEF);
-            deal(MC.USDE, depositor, amount);
-            vm.startPrank(depositor);
-            IERC20(MC.USDE).approve(address(MC.SUSDE), amount);
-            MockERC4626(MC.SUSDE).deposit(amount, depositor);
-            vm.stopPrank();
-
-            // Donate 123456789 USDE to the vault
-            address donor = address(0xCAFEBABE);
-            uint256 donationAmount = 12_345_678_900e18;
-            deal(MC.USDE, donor, donationAmount);
-            vm.startPrank(donor);
-            IERC20(MC.USDE).approve(address(MC.SUSDE), donationAmount);
-            IERC20(MC.USDE).transfer(address(MC.SUSDE), donationAmount);
-            vm.stopPrank();
-        }
-
-        {
-            vm.startPrank(ADMIN);
-            // Transfer 10 billion of each asset to the Swapper
-            address[] memory swapableAssets = new address[](5);
-            swapableAssets[0] = MC.USDC;
-            swapableAssets[1] = MC.WBTC;
-            swapableAssets[2] = MC.STETH;
-            swapableAssets[3] = MC.USDE;
-            swapableAssets[4] = MC.SUSDE;
-            swapper = setupSwapper(vault, swapableAssets);
-            vm.stopPrank();
-        }
-
-        {
             vm.startPrank(ADMIN);
             // Configure processor rules
             setDepositRule(vault, MC.BUFFER, address(vault));
-
-            mockUSDCBuffer();
 
             vault.setBuffer(MC.BUFFER);
             vm.stopPrank();
@@ -191,42 +138,11 @@ contract SetupBase6DecimalsVault is SetupVault {
 
         {
             vm.startPrank(ADMIN);
-            address[] memory allowList = new address[](3);
-            allowList[0] = address(wusdc);
-            allowList[1] = address(swapper);
-            allowList[2] = address(MC.BUFFER);
+            address[] memory allowList = new address[](1);
+            allowList[0] = address(MC.BUFFER);
             SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(address(MC.USDC), allowList);
             vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
 
-            vm.stopPrank();
-        }
-
-        {
-            vm.startPrank(ADMIN);
-            // Configure processor rules for WUSDC
-
-            // Rule for unwrapping WUSDC back to USDC
-            SafeRules.RuleParams memory redeemRule = BaseRules.getRedeemRule(address(wusdc), address(vault));
-            vault.setProcessorRule(redeemRule.contractAddress, redeemRule.funcSig, redeemRule.rule);
-
-            // Rule for wrapping USDC to WUSDC
-            SafeRules.RuleParams memory depositRule = BaseRules.getDepositRule(address(wusdc), address(vault));
-            vault.setProcessorRule(depositRule.contractAddress, depositRule.funcSig, depositRule.rule);
-
-            vm.stopPrank();
-        }
-
-        {
-            // Set up approval rule for USDE to SUSDE
-            vm.startPrank(PROCESSOR_MANAGER);
-            // Create an allowlist with both SUSDE and swapper
-            address[] memory allowList = new address[](2);
-            allowList[0] = MC.SUSDE;
-            allowList[1] = address(swapper);
-            SafeRules.RuleParams memory ruleParams = BaseRules.getApprovalRule(MC.USDE, allowList);
-            vault.setProcessorRule(ruleParams.contractAddress, ruleParams.funcSig, ruleParams.rule);
-            SafeRules.RuleParams memory depositRuleParams = BaseRules.getDepositRule(MC.SUSDE, address(vault));
-            vault.setProcessorRule(depositRuleParams.contractAddress, depositRuleParams.funcSig, depositRuleParams.rule);
             vm.stopPrank();
         }
     }

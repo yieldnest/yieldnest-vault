@@ -16,6 +16,11 @@ import {VaultLib} from "src/library/VaultLib.sol";
 
 import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
+import {FeeMath} from "src/module/FeeMath.sol";
+
+import {IHooks} from "src/interface/IHooks.sol";
+import {HooksLib} from "src/library/HooksLib.sol";
+import {IERC4626} from "src/Common.sol";
 
 /**
  * @title BaseVault
@@ -55,6 +60,8 @@ import {IStrategy} from "src/interface/IStrategy.sol";
  *   despite the higher gas cost of querying external contracts on each totalAssets() call
  */
 abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+    using HooksLib for IHooks;
+
     /// INITIALIZATION
 
     /**
@@ -200,7 +207,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return shares The equivalent amount of shares.
      */
     function previewWithdraw(uint256 assets) public view virtual returns (uint256 shares) {
-        uint256 fee = _feeOnRaw(assets);
+        uint256 fee = _feeOnRaw(assets, _msgSender());
         (shares,) = _convertToShares(asset(), assets + fee, Math.Rounding.Ceil);
     }
 
@@ -211,7 +218,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function previewRedeem(uint256 shares) public view virtual returns (uint256 assets) {
         (assets,) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
-        return assets - _feeOnTotal(assets);
+        return assets - _feeOnTotal(assets, _msgSender());
     }
 
     /**
@@ -287,7 +294,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert Paused();
         }
         (uint256 shares, uint256 baseAssets) = _convertToShares(asset(), assets, Math.Rounding.Floor);
+        IHooks hooks_ = hooks();
+        HooksLib.beforeDeposit(hooks_, asset(), assets, _msgSender(), receiver, shares, baseAssets);
+
         _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
+
+        HooksLib.afterDeposit(hooks_, asset(), assets, _msgSender(), receiver, shares, baseAssets);
+
         return shares;
     }
 
@@ -302,7 +315,13 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert Paused();
         }
         (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
+        IHooks hooks_ = hooks();
+        HooksLib.beforeMint(hooks_, asset(), shares, _msgSender(), receiver, assets, baseAssets);
+
         _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
+
+        HooksLib.afterMint(hooks_, asset(), shares, _msgSender(), receiver, assets, baseAssets);
+
         return assets;
     }
 
@@ -328,7 +347,12 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
         shares = previewWithdraw(assets);
 
+        IHooks hooks_ = hooks();
+        HooksLib.beforeWithdraw(hooks_, asset(), assets, _msgSender(), receiver, owner, shares);
+
         _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        HooksLib.afterWithdraw(hooks_, asset(), assets, _msgSender(), receiver, owner, shares);
     }
 
     /**
@@ -352,7 +376,12 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert ExceededMaxRedeem(owner, shares, maxShares);
         }
         assets = previewRedeem(shares);
+        IHooks hooks_ = hooks();
+        HooksLib.beforeRedeem(hooks_, asset(), shares, _msgSender(), receiver, owner, assets);
+
         _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        HooksLib.afterRedeem(hooks_, asset(), shares, _msgSender(), receiver, owner, assets);
     }
 
     //// 4626-MAX ////
@@ -606,6 +635,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     bytes32 public constant BUFFER_MANAGER_ROLE = keccak256("BUFFER_MANAGER_ROLE");
     bytes32 public constant ASSET_MANAGER_ROLE = keccak256("ASSET_MANAGER_ROLE");
     bytes32 public constant PROCESSOR_MANAGER_ROLE = keccak256("PROCESSOR_MANAGER_ROLE");
+    bytes32 public constant HOOKS_MANAGER_ROLE = keccak256("HOOKS_MANAGER_ROLE");
 
     /**
      * @notice Sets the provider.
@@ -775,11 +805,59 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _processAccounting() internal virtual {
-        uint256 totalBaseBalance = computeTotalAssets();
+        uint256 totalAssetsBeforeAccounting = totalAssets();
+        uint256 totalSupplyBeforeAccounting = totalSupply();
+        uint256 totalBaseBalanceBeforeAccounting = _getVaultStorage().totalAssets;
 
-        _getVaultStorage().totalAssets = totalBaseBalance;
+        IHooks hooks_ = hooks();
+
+        HooksLib.beforeProcessAccounting(
+            hooks_, totalAssetsBeforeAccounting, totalSupplyBeforeAccounting, totalBaseBalanceBeforeAccounting
+        );
+
+        uint256 totalBaseBalanceAfterAccounting = computeTotalAssets();
+
+        _getVaultStorage().totalAssets = totalBaseBalanceAfterAccounting;
         // solhint-disable-next-line not-rely-on-time
-        emit ProcessAccounting(block.timestamp, totalBaseBalance);
+        emit ProcessAccounting(block.timestamp, totalBaseBalanceAfterAccounting);
+
+        uint256 totalAssetsAfterAccounting = totalAssets();
+        uint256 totalSupplyAfterAccounting = totalSupply();
+
+        HooksLib.afterProcessAccounting(
+            hooks_,
+            totalAssetsBeforeAccounting,
+            totalAssetsAfterAccounting,
+            totalSupplyBeforeAccounting,
+            totalSupplyAfterAccounting,
+            totalBaseBalanceAfterAccounting,
+            totalBaseBalanceBeforeAccounting
+        );
+    }
+
+    function mintShares(address recipient, uint256 shares) external {
+        if (msg.sender != address(hooks())) {
+            revert CallerNotHooks();
+        }
+
+        _mint(recipient, shares);
+    }
+
+    function setHooks(address hooks_) external onlyRole(HOOKS_MANAGER_ROLE) {
+        if (hooks_ != address(0) && address(IHooks(hooks_).VAULT()) != address(this)) {
+            revert InvalidHooks();
+        }
+        _setHooks(hooks_);
+    }
+
+    function _setHooks(address hooks_) internal virtual {
+        HooksStorage storage hooksStorage = _getHooksStorage();
+        emit SetHooks(address(hooksStorage.hooks), hooks_);
+        hooksStorage.hooks = IHooks(hooks_);
+    }
+
+    function hooks() public view returns (IHooks) {
+        return _getHooksStorage().hooks;
     }
 
     /**
@@ -806,6 +884,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         return VaultLib.processor(targets, values, data);
     }
 
+    /**
+     * @notice Internal function to get the Hooks storage.
+     * @return $ The Hooks storage.
+     */
+    function _getHooksStorage() internal pure returns (HooksStorage storage) {
+        return VaultLib.getHooksStorage();
+    }
+
     constructor() {
         _disableInitializers();
     }
@@ -819,16 +905,18 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /// FEES ///
     /**
-     * @notice Returns the fee on raw assets where the fee would get added on top of the assets.
-     * @param assets The amount of assets.
-     * @return The fee on raw assets.
+     * @notice Returns the fee on amount where the fee would get added on top of the amount.
+     * @param amount The amount on which the fee would get added.
+     * @param user The address of the user.
+     * @return The fee amount.
      */
-    function _feeOnRaw(uint256 assets) public view virtual override returns (uint256);
+    function _feeOnRaw(uint256 amount, address user) public view virtual override returns (uint256);
 
     /**
-     * @notice Returns the fee on total assets where the fee is already included.
-     * @param assets The amount of assets.
-     * @return The fee on total assets.
+     * @notice Returns the fee amount where fee is already included in amount
+     * @param amount The amount on which the fee is already included.
+     * @param user The address of the user.
+     * @return The fee amount.
      */
-    function _feeOnTotal(uint256 assets) public view virtual override returns (uint256);
+    function _feeOnTotal(uint256 amount, address user) public view virtual override returns (uint256);
 }

@@ -8,7 +8,6 @@ import {Vault} from "src/Vault.sol";
 import {TimelockController, TransparentUpgradeableProxy} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {YnETHx} from "src/YnETHx.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 
 contract SetupVault is Test, MainnetActors {

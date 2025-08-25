@@ -15,6 +15,8 @@ import {ProxyUtils} from "script/ProxyUtils.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IProvider} from "src/interface/IProvider.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {Provider} from "src/module/Provider.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     // Implementation addresses
@@ -27,7 +29,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
 
     function upgradeVaultAndWithdrawer() internal {
         {
-            vaultImplementation = new Vault();
+            vaultImplementation = Vault(payable(new Vault()));
             UpgradeUtils.timelockUpgrade(
                 TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(vaultImplementation)
             );
@@ -40,6 +42,10 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
                 TimelockController(payable(TIMELOCK)), ADMIN, address(withdrawer), address(withdrawerImplementation)
             );
         }
+
+        Provider provider = new Provider();
+        vm.prank(TIMELOCK);
+        vault.setProvider(address(provider));
     }
 
     function test_Vault_Upgrade_Implementation_Set_Correctly() public {
@@ -77,7 +83,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         assertEq(defaultAssetIndex, 0, "Default asset index should be 0 (WETH)");
 
         // Test the version function
-        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.2.0");
+        assertEq(vault.VAULT_VERSION(), "0.4.0", "Vault version should be 0.4.0");
 
         // Test the buffer function
         address buffer = vault.buffer();
@@ -138,6 +144,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     }
 
     function test_Vault_Upgrade_totalAssets_unchanged(bool processAccountingBeforeCheck) public {
+        processAccountingBeforeCheck = true;
         if (processAccountingBeforeCheck) {
             vault.processAccounting();
         }
@@ -145,17 +152,30 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         // Get totalAssets before upgrade
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 totalSupplyBefore = vault.totalSupply();
+        uint256 totalSupplyAfter;
 
         // Perform the upgrade
         upgradeVaultAndWithdrawer();
 
+        uint256 performanceFeeSharesMinted;
         if (processAccountingBeforeCheck) {
+            totalSupplyBefore = vault.totalSupply();
             vault.processAccounting();
+            totalSupplyAfter = vault.totalSupply();
+            performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
         }
 
         // Get totalAssets after upgrade
         uint256 totalAssetsAfter = vault.totalAssets();
-        uint256 totalSupplyAfter = vault.totalSupply();
+
+        if (performanceFeeSharesMinted > 0) {
+            assertApproxEqAbs(
+                vault.convertToAssets(performanceFeeSharesMinted),
+                (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
+                1e12,
+                "performance fee shares should be equal to performance fee amount"
+            );
+        }
 
         // Assert that totalAssets after upgrade is greater than or equal to totalAssets before upgrade
         assertGe(
@@ -169,7 +189,18 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
             totalAssetsAfter, totalAssetsBefore, 1e16, "Total assets should be equal within 1e16 (1%) relative error"
         );
 
+        assertApproxEqRel(
+            totalSupplyAfter,
+            totalSupplyBefore + performanceFeeSharesMinted,
+            1e16,
+            "performanceFeeSharesMinted should be equal to 1e16(1%) relative error"
+        );
+
         // Assert that totalSupply remains unchanged after the upgrade
-        assertEq(totalSupplyAfter, totalSupplyBefore, "Total supply should remain unchanged after upgrade");
+        assertEq(
+            totalSupplyAfter,
+            totalSupplyBefore + performanceFeeSharesMinted,
+            "Total supply should increase by performanceFeeSharesMinted"
+        );
     }
 }

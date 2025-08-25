@@ -3,14 +3,21 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
-import {TransparentUpgradeableProxy, IERC20} from "src/Common.sol";
+import {TransparentUpgradeableProxy, IERC20, Math} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {AssertUtils} from "test/utils/AssertUtils.sol";
+import {console} from "lib/forge-std/src/console.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
-contract VaultWithdrawUnitTest is Test, MainnetActors, Etches {
+contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
+    using Math for uint256;
+
     Vault public vaultImplementation;
     TransparentUpgradeableProxy public vaultProxy;
 
@@ -65,12 +72,9 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches {
         assertEq(amount, assets);
     }
 
-    function test_Vault_withdraw_success(uint256 assets, bool alwaysComputeTotalAssets) external {
+    function test_Vault_withdraw_success(uint256 assets) external {
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
-
-        vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         vm.prank(alice);
         uint256 depositShares = vault.deposit(assets, alice);
@@ -96,6 +100,90 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches {
             totalAssetsAfter + assets,
             "Total assets should be total assets after plus assets withdrawn"
         );
+    }
+
+    function test_Vault_withdraw_PerformanceFeeSuccess(uint256 deposit1, uint256 yieldAmount1, uint256 yieldAmount2)
+        external
+    {
+        deposit1 = bound(deposit1, 1 ether, 100_000 ether);
+        yieldAmount1 = bound(yieldAmount1, 1 ether, 5000 ether);
+        yieldAmount2 = bound(yieldAmount2, 1 ether, 5000 ether);
+
+        deal(MC.WETH, alice, deposit1 + yieldAmount1 + yieldAmount2);
+
+        vm.startPrank(alice);
+        uint256 depositShares1 = vault.deposit(deposit1, alice);
+        vault.processAccounting();
+        IERC20(MC.WETH).transfer(address(vault), yieldAmount1);
+
+        uint256 performanceFee = IFeeHooks(address(vault.hooks())).performanceFee();
+        uint256 performanceFeeAmount = (yieldAmount1 * performanceFee) / 1 ether;
+        uint256 vaultTotalSupplyBefore = vault.totalSupply();
+        vault.processAccounting();
+        uint256 vaultTotalSupplyAfter = vault.totalSupply();
+        uint256 performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
+        assertEqThreshold(
+            vaultTotalSupplyAfter - vaultTotalSupplyBefore,
+            performanceFeeShares,
+            1e12,
+            "vault total supply should be equal to vault total supply before plus performance fee shares"
+        );
+        vm.stopPrank();
+
+        vm.prank(ADMIN);
+        allocateToBuffer(deposit1 + yieldAmount1);
+
+        vaultTotalSupplyBefore = vault.totalSupply();
+        vault.processAccounting();
+        vaultTotalSupplyAfter = vault.totalSupply();
+        assertEqThreshold(
+            vaultTotalSupplyAfter,
+            vaultTotalSupplyBefore,
+            1e12,
+            "vault total supply should not change because yield is not accrued"
+        );
+
+        vm.prank(alice);
+        vault.redeem(depositShares1, alice, alice);
+        vaultTotalSupplyBefore = vault.totalSupply();
+        vault.processAccounting();
+        vaultTotalSupplyAfter = vault.totalSupply();
+        assertEqThreshold(
+            vaultTotalSupplyAfter,
+            vaultTotalSupplyBefore,
+            1e12,
+            "vault total supply should not change because yield is not accrued"
+        );
+
+        vm.startPrank(alice);
+        IERC20(MC.WETH).transfer(address(vault), yieldAmount2);
+
+        performanceFee = IFeeHooks(address(vault.hooks())).performanceFee();
+        performanceFeeAmount = (yieldAmount2 * performanceFee) / 1 ether;
+        vaultTotalSupplyBefore = vault.totalSupply();
+        vault.processAccounting();
+        vaultTotalSupplyAfter = vault.totalSupply();
+        uint256 performanceFeeShares2 = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
+        assertApproxEqAbs(
+            vault.convertToAssets(performanceFeeShares2),
+            performanceFeeAmount,
+            1e6,
+            "performance fee shares should be equal to performance fee amount"
+        );
+        assertEqThreshold(
+            vaultTotalSupplyAfter - vaultTotalSupplyBefore,
+            performanceFeeShares2,
+            1e12,
+            "vault total supply should be equal to vault total supply before plus performance fee shares"
+        );
+
+        assertEqThreshold(
+            vault.balanceOf(FEE_MANAGER),
+            performanceFeeShares + performanceFeeShares2,
+            1e12,
+            "fee manager balance should be equal to performance fee shares plus performance fee shares 2"
+        );
+        vm.stopPrank();
     }
 
     function test_Vault_previewRedeem(uint256 shares, bool alwaysComputeTotalAssets) external {

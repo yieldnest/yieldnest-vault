@@ -16,13 +16,48 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {Provider} from "src/module/Provider.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {
+    ITransparentUpgradeableProxy,
+    TransparentUpgradeableProxy
+} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
+    FeeHooks public hooks;
 
     function setUp() public virtual {
         vault = Vault(payable(MC.YNETHX));
+        vault.processAccounting();
+
+        IHooks.Config memory config = IHooks.Config({
+            beforeDeposit: false,
+            afterDeposit: false,
+            beforeMint: false,
+            afterMint: false,
+            beforeRedeem: false,
+            afterRedeem: true,
+            beforeWithdraw: true,
+            afterWithdraw: false,
+            beforeProcessAccounting: false,
+            afterProcessAccounting: true
+        });
+
+        hooks = new FeeHooks(address(vault), ADMIN, 1e17, ADMIN, config);
+
+        Vault newImplementation = new Vault();
+        UpgradeUtils.timelockUpgrade(
+            TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(newImplementation)
+        );
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), ADMIN);
+        vault.setHooks(address(hooks));
+        vm.stopPrank();
+        vault.processAccounting();
     }
 }

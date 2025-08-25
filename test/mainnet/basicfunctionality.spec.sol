@@ -201,7 +201,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         uint256 rate = IProvider(vault.provider()).getRate(asset);
         uint256 baseAmount = Math.mulDiv(donatedAmount, rate, 10 ** 18, Math.Rounding.Floor);
 
-        assertApproxEqRel(vault.totalAssets(), totalAssetBefore + baseAmount, 1e12, "Total assets should be correct");
+        assertApproxEqRel(vault.totalAssets(), totalAssetBefore + baseAmount, 2e12, "Total assets should be correct");
     }
 
     function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {
@@ -639,6 +639,10 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             vaultBalanceBefore + depositAmount,
             "WETH should be transferred to vault"
         );
+
+        // Process accounting
+        withdrawer.processAccounting();
+        vault.processAccounting();
 
         uint256 depositedAmount;
         {

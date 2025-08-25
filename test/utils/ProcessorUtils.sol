@@ -6,7 +6,6 @@ import {Vm} from "lib/forge-std/src/Vm.sol";
 import {IVault} from "src/interface/IVault.sol";
 
 library ProcessorUtils {
-
     address internal constant CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
 
     /**
@@ -17,14 +16,9 @@ library ProcessorUtils {
      * @param amount The amount to allocate
      * @param processor The processor address
      */
-    function allocateToERC4626(
-        address vault,
-        address asset,
-        address strategy,
-        uint256 amount,
-        address processor
-    ) internal {
-
+    function allocateToERC4626(address vault, address asset, address strategy, uint256 amount, address processor)
+        internal
+    {
         Vm vm = Vm(CHEATCODE_ADDRESS);
         address[] memory targets = new address[](2);
         targets[0] = asset;
