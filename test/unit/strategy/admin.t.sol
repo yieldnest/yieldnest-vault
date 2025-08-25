@@ -190,4 +190,18 @@ contract StrategAdminUnitTest is Test, Etches, MainnetActors {
         vm.prank(UNAUTHORIZED);
         strategy.addAsset(address(asset), true, true);
     }
+
+    function test_deleteAsset_Withdrawable() public {
+        assertTrue(strategy.getAsset(address(MC.STETH)).active, "STETH should be active");
+        assertTrue(strategy.getAssetWithdrawable(address(MC.STETH)), "STETH should be withdrawable");
+
+        vm.startPrank(ASSET_MANAGER);
+        strategy.deleteAsset(strategy.getAsset(address(MC.STETH)).index);
+        vm.stopPrank();
+
+        assertEq(strategy.getAsset(address(MC.STETH)).active, false, "STETH should not be active");
+        assertEq(strategy.getAsset(address(MC.STETH)).index, 0, "STETH should have index 0");
+        assertEq(strategy.getAsset(address(MC.STETH)).decimals, 0, "STETH should have 0 decimals after deletion");
+        assertEq(strategy.getAssetWithdrawable(address(MC.STETH)), false, "STETH should not be withdrawable");
+    }
 }

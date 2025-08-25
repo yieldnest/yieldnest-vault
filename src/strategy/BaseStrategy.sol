@@ -427,6 +427,12 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
         _setAssetWithdrawable(asset_, withdrawable_);
     }
 
+    function _deleteAsset(uint256 index) internal virtual override {
+        address asset_ = _getAssetStorage().list[index];
+        super._deleteAsset(index);
+        _setAssetWithdrawable(asset_, false);
+    }
+
     /**
      * @notice Internal function to get the available amount of assets.
      * @param asset_ The address of the asset.

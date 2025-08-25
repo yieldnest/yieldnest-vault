@@ -12,6 +12,10 @@ import {SetupStrategy} from "test/unit/helpers/SetupStrategy.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
+import {IProvider} from "src/interface/IProvider.sol";
+import {MockERC20} from "test/unit/mocks/MockERC20.sol";
+import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 
 contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
@@ -58,6 +62,42 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
         strategy.depositAsset(address(weth), INITIAL_BALANCE, alice);
         vm.expectRevert();
         strategy.withdrawAsset(address(weth), INITIAL_BALANCE, alice, alice);
+        vm.stopPrank();
+    }
+
+    function test_Strategy_WithdrawAsset_Revert_AssetDeleted() public {
+        MockERC20 newAsset = new MockERC20("New Asset", "NEW");
+
+        vm.prank(ASSET_MANAGER);
+        strategy.addAsset(address(newAsset), 18, true, true);
+
+        vm.prank(ASSET_MANAGER);
+        strategy.setAssetWithdrawable(address(newAsset), true);
+
+        // Set new asset rate to 1 ETH
+        MockProvider(MC.PROVIDER).setRate(address(newAsset), 1e18);
+
+        vm.startPrank(alice);
+        weth.approve(address(strategy), INITIAL_BALANCE);
+        strategy.depositAsset(address(weth), INITIAL_BALANCE, alice);
+        vm.stopPrank();
+
+        vm.startPrank(ASSET_MANAGER);
+        strategy.deleteAsset(strategy.getAsset(address(newAsset)).index);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        deal(address(newAsset), alice, 1 ether);
+        IERC20(newAsset).transfer(address(strategy), 1 ether);
+        vm.stopPrank();
+
+        assertEq(strategy.balanceOf(alice), INITIAL_BALANCE, "Alice should have the assets");
+
+        strategy.processAccounting();
+
+        vm.startPrank(alice);
+        vm.expectRevert();
+        strategy.withdrawAsset(address(newAsset), 1e5, alice, alice);
         vm.stopPrank();
     }
 
