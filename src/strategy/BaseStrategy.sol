@@ -218,6 +218,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
     function withdrawAsset(address asset_, uint256 assets, address receiver, address owner)
         public
         virtual
+        override(BaseVault, IBaseStrategy)
         nonReentrant
         returns (uint256 shares)
     {
@@ -284,23 +285,12 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
         address owner,
         uint256 assets,
         uint256 shares
-    ) internal virtual onlyAllocator {
+    ) internal virtual override onlyAllocator {
         if (!_getBaseStrategyStorage().isAssetWithdrawable[asset_]) {
             revert AssetNotWithdrawable();
         }
 
-        _subTotalAssets(_convertAssetToBase(asset_, assets));
-
-        if (caller != owner) {
-            _spendAllowance(owner, caller, shares);
-        }
-
-        // NOTE: burn shares before withdrawing the assets
-        _burn(owner, shares);
-
-        SafeERC20.safeTransfer(IERC20(asset_), receiver, assets);
-
-        emit WithdrawAsset(caller, receiver, owner, asset_, assets, shares);
+        super._withdrawAsset(asset_, caller, receiver, owner, assets, shares);
     }
 
     /**
