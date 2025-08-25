@@ -1335,8 +1335,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         IERC20(assets[i]).transfer(address(vault), donatedAmount);
         vm.stopPrank();
 
-        vault.processAccounting();
         withdrawer.processAccounting();
+        vault.processAccounting();
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
@@ -1380,6 +1380,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             vm.stopPrank();
         }
 
+        withdrawer.processAccounting();
+        vault.processAccounting();
+
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
 
@@ -1400,6 +1403,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             _processWithdraw(address(withdrawer), amount);
 
             if (processAfterWithdraw) {
+                withdrawer.processAccounting();
                 vault.processAccounting();
             }
 
@@ -1421,9 +1425,10 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         }
 
         {
-            _processWithdrawAsset(address(withdrawer), MC.WETH, amount);
+            _processWithdraw(address(withdrawer), amount);
 
             if (processAfterWithdrawAsset) {
+                withdrawer.processAccounting();
                 vault.processAccounting();
             }
 

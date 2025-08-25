@@ -81,6 +81,7 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
         vault.depositAsset(MC.YNLSDE, ynLSDeBalance, address(this));
         vm.stopPrank();
 
+        withdrawer.processAccounting();
         vault.processAccounting();
 
         {
