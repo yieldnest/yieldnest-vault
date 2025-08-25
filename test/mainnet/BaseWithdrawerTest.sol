@@ -149,6 +149,7 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
 
         withdrawer.processAccounting();
         vault.processAccounting();
+        uint256 initialAsyncBalance = withdrawer.asyncWithdrawalBalance(MC.WSTETH);
 
         uint256 tokenId = _requestWithdrawalWstETH(amount);
 
@@ -161,7 +162,7 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         totalAssetsInvariant(totalAssets);
 
         uint256 assets = withdrawer.asyncWithdrawalBalance(MC.WSTETH);
-        assertEq(assets, 0, "Queued assets should match");
+        assertEq(assets, initialAsyncBalance, "Async withdrawal balance should be back to initial value after claim");
     }
 
     function test_Vault_RequestWithdrawal_WOETH(uint256 amount) public {
@@ -337,8 +338,7 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         uint256 donatedAmount = _donate_single_asset(MC.WSTETH, amount);
 
         address asset_ = MC.WSTETH;
-        uint256 assets = withdrawer.asyncWithdrawalBalance(asset_);
-        assertEq(assets, 0, "Queued assets should be zero");
+        uint256 initialAsyncBalance = withdrawer.asyncWithdrawalBalance(asset_);
         uint256 totalAssets = withdrawer.totalAssets();
 
         tokenId = WithdrawerProcessorUtils.processRequestWithdrawalWstETH(withdrawer, asset_, donatedAmount);
@@ -348,10 +348,12 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
 
         assertApproxEqAbs(status.amountOfShares, donatedAmount, 3, "Amount should match");
 
-        assets = withdrawer.asyncWithdrawalBalance(asset_);
+        uint256 asyncWithdrawalBalanceAfter = withdrawer.asyncWithdrawalBalance(asset_);
         uint256 amountInBase = amount;
 
-        assertApproxEqAbs(assets, amountInBase, 3, "Queued assets should match");
+        assertApproxEqAbs(
+            asyncWithdrawalBalanceAfter - initialAsyncBalance, amountInBase, 3, "Queued assets should match"
+        );
         totalAssetsInvariant(totalAssets);
     }
 
