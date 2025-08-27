@@ -69,15 +69,7 @@ contract Vault is BaseVault {
      * @return The fee amount.
      */
     function _feeOnRaw(uint256 amount, address user) public view override returns (uint256) {
-        FeeStorage storage fees = _getFeeStorage();
-        bool isFeeOverridenForUser = fees.overriddenBaseWithdrawalFee[user].isOverridden;
-        uint64 feesToCharge;
-        if (isFeeOverridenForUser) {
-            feesToCharge = fees.overriddenBaseWithdrawalFee[user].baseWithdrawalFee;
-        } else {
-            feesToCharge = fees.baseWithdrawalFee;
-        }
-        return FeeMath.feeOnRaw(amount, feesToCharge);
+        return FeeMath.feeOnRaw(amount, _feesToCharge(user));
     }
 
     /**
@@ -89,15 +81,22 @@ contract Vault is BaseVault {
      * Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
      */
     function _feeOnTotal(uint256 amount, address user) public view override returns (uint256) {
+        return FeeMath.feeOnTotal(amount, _feesToCharge(user));
+    }
+
+    /**
+     * @notice Returns the fee to charge for a user based on whether the fee is overridden for the user
+     * @param user The address of the user.
+     * @return The fee to charge.
+     */
+    function _feesToCharge(address user) internal view returns (uint64) {
         FeeStorage storage fees = _getFeeStorage();
         bool isFeeOverridenForUser = fees.overriddenBaseWithdrawalFee[user].isOverridden;
-        uint64 feesToCharge;
         if (isFeeOverridenForUser) {
-            feesToCharge = fees.overriddenBaseWithdrawalFee[user].baseWithdrawalFee;
+            return fees.overriddenBaseWithdrawalFee[user].baseWithdrawalFee;
         } else {
-            feesToCharge = fees.baseWithdrawalFee;
+            return fees.baseWithdrawalFee;
         }
-        return FeeMath.feeOnTotal(amount, feesToCharge);
     }
 
     //// FEES ADMIN ////

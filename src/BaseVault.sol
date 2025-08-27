@@ -575,6 +575,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         onlyRole(ASSET_WITHDRAWER_ROLE)
         returns (uint256 shares)
     {
+        if (paused()) {
+            revert Paused();
+        }
         (shares,) = _convertToShares(asset_, assets, Math.Rounding.Ceil);
         if (assets > IERC20(asset_).balanceOf(address(this)) || balanceOf(owner) < shares) {
             revert ExceededMaxWithdraw(owner, assets, IERC20(asset_).balanceOf(address(this)));
