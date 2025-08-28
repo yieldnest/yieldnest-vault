@@ -12,6 +12,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "src/Common.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 contract VaultWithdrawAssetUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -238,7 +239,6 @@ contract VaultWithdrawAssetUnitTest is Test, MainnetActors, Etches {
 
     function test_withdrawAsset_InsufficientAssets() public {
         uint256 depositAmount = 1000 ether;
-        uint256 withdrawAmount = 500 ether;
 
         // Give Bob some tokens and have him deposit
         deal(bob, INITIAL_BALANCE);
@@ -316,5 +316,14 @@ contract VaultWithdrawAssetUnitTest is Test, MainnetActors, Etches {
             initialManagerBalance + withdrawAmount,
             "WithdrawerManager should receive the withdrawn assets"
         );
+    }
+
+    function test_withdrawAsset_RevertWhenPaused() public {
+        vm.prank(PAUSER);
+        vault.pause();
+
+        vm.prank(withdrawerManager);
+        vm.expectRevert(abi.encodeWithSelector(IVault.Paused.selector));
+        vault.withdrawAsset(address(weth), 1, withdrawerManager, bob);
     }
 }
