@@ -37,7 +37,7 @@ contract Provider is IProvider {
     function isUSDCStrategyVault(address asset) public view returns (bool) {
         try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
             address vaultAsset = IVault(asset).asset();
-            return (keccak256(bytes(version)) == keccak256(bytes("0.2.0"))) && vaultAsset == MC.USDC;
+            return (keccak256(bytes(version)) == keccak256(bytes("0.2.0")) || keccak256(bytes(version)) == keccak256(bytes("0.3.0"))) && vaultAsset == MC.USDC;
         } catch {
             return false;
         }
