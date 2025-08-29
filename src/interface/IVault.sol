@@ -142,14 +142,13 @@ interface IVault is IERC4626 {
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);
     function getAsset(address asset_) external view returns (AssetParams memory);
+    function hasAsset(address asset_) external view returns (bool);
     function getProcessorRule(address contractAddress, bytes4 funcSig) external view returns (FunctionRule memory);
     function previewDepositAsset(address assetAddress, uint256 assets) external view returns (uint256);
     function depositAsset(address assetAddress, uint256 amount, address receiver) external returns (uint256);
     function provider() external view returns (address);
     function buffer() external view returns (address);
     function totalBaseAssets() external view returns (uint256);
-    function hooks() external view returns (IHooks);
-    function mintShares(address recipient, uint256 shares) external;
     function computeTotalAssets() external view returns (uint256);
 
     // ADMIN
@@ -162,6 +161,12 @@ interface IVault is IERC4626 {
     function deleteAsset(uint256 index) external;
     function pause() external;
     function unpause() external;
+    function hooks() external view returns (IHooks);
+    function setHooks(address hooks) external;
+    function mintShares(address recipient, uint256 shares) external;
+    function withdrawAsset(address asset_, uint256 assets, address receiver, address owner)
+        external
+        returns (uint256);
 
     function processAccounting() external;
     function processor(address[] calldata targets, uint256[] calldata values, bytes[] calldata data)
