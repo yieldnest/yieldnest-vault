@@ -58,10 +58,18 @@ contract BaseTest is Test, MainnetActors, TestHelper {
     }
 
     function _upgradeForHooksSupport(Vault vault) internal {
-        // proxy admin address
+        // proxy admin address for vault
         vm.startPrank(0xe7B204706c948DE3b83d23fA6996000c182e25B3);
         Vault newVaultImplementation = new Vault();
         ITransparentUpgradeableProxy(payable(address(vault))).upgradeToAndCall(address(newVaultImplementation), "");
+        vm.stopPrank();
+
+        // proxy admin address for withdrawer
+        vm.startPrank(0x3867Ff9489d1308CC2b4EDB79BfD464f76d37f22);
+        Withdrawer newWithdrawerImplementation = new Withdrawer();
+        ITransparentUpgradeableProxy(payable(address(withdrawer))).upgradeToAndCall(
+            address(newWithdrawerImplementation), ""
+        );
         vm.stopPrank();
 
         FeeHooks feeHooks = new FeeHooks(
@@ -89,6 +97,12 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         vm.startPrank(TIMELOCK);
         vault.setHooks(address(feeHooks));
+        vm.stopPrank();
+
+        Provider provider = new Provider(MC.WRAPPED_USDC);
+
+        vm.startPrank(TIMELOCK);
+        vault.setProvider(address(provider));
         vm.stopPrank();
     }
 
