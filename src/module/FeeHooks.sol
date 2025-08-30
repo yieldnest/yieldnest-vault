@@ -171,7 +171,10 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @dev This hook is called after the withdraw is processed
      */
     function afterWithdraw(
-        address asset,
+        address,
+        /**
+         * asset*
+         */
         uint256 assets,
         address caller,
         address,
