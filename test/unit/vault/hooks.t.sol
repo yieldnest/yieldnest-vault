@@ -462,7 +462,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertGt(totalSupplyAfter, totalSupplyBefore, "totalSupply should increase due to fee overriden");
     }
 
-    function test_beforeWithdraw_Increases_Shares(uint256 sharesAmount) public {
+    function test_afterWithdraw_Increases_Shares(uint256 sharesAmount) public {
         vm.prank(FEE_MANAGER);
         vault.setBaseWithdrawalFee(250000);
 
@@ -475,6 +475,13 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
         vm.startPrank(address(vault));
         hooks.beforeWithdraw(MC.WETH, sharesAmount, alice, alice, alice, 0);
+        vm.stopPrank();
+
+        uint256 totalSupplyAfterBeforeWithdraw = vault.totalSupply();
+        assertEq(totalSupplyAfterBeforeWithdraw, totalSupplyBefore, "totalSupply should increase by sharesAmount");
+
+        vm.startPrank(address(vault));
+        hooks.afterWithdraw(MC.WETH, sharesAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -502,7 +509,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEq(totalSupplyAfter, totalSupplyBefore, "totalSupply should not increase due to fee exemption");
     }
 
-    function test_beforeWithdraw_OverriddenFee(uint256 depositAmount, uint64 overriddenFee) public {
+    function test_beforeWithdraw_and_afterWithdraw_OverriddenFee(uint256 depositAmount, uint64 overriddenFee) public {
         depositAmount = bound(depositAmount, 1 ether, 100_000 ether);
         overriddenFee = uint64(bound(overriddenFee, 2500, FeeMath.BASIS_POINT_SCALE));
         vm.startPrank(FEE_MANAGER);
@@ -518,6 +525,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
         vm.startPrank(address(vault));
         hooks.beforeWithdraw(MC.WETH, depositAmount, alice, alice, alice, 0);
+        hooks.afterWithdraw(MC.WETH, depositAmount, alice, alice, alice, 0);
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();

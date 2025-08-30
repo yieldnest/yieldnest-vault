@@ -142,9 +142,46 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
         // converts the fees to equivalent amount of shares to mint to the performanceFeeRecipient
         // accounting is done before the withdraw is processed, so totalAssets is not updated yet
         uint256 sharesToMint = VAULT.previewDepositAsset(asset, fees);
+
+        // Store sharesToMint in transient storage for use in afterWithdraw
+        assembly {
+            tstore(0x01, sharesToMint)
+        }
+    }
+
+    /**
+     * @notice After withdraw hook function
+     * @dev This hook is called after the withdraw is processed
+     */
+    function afterWithdraw(
+        address asset,
+        uint256 assets,
+        address caller,
+        address,
+        /**
+         * receiver*
+         */
+        address,
+        /**
+         * owner*
+         */
+        uint256
+    )
+        /**
+         * shares*
+         */
+        external
+        onlyVault
+    {
+        // Load sharesToMint from transient storage
+        uint256 sharesToMint;
+        assembly {
+            sharesToMint := tload(0x01)
+        }
+
         if (sharesToMint > 0) {
             VAULT.mintShares(performanceFeeRecipient, sharesToMint);
-            emit WithdrawFeeCharged(performanceFeeRecipient, sharesToMint, fees, assets);
+            emit WithdrawFeeCharged(performanceFeeRecipient, sharesToMint, 0, assets);
         }
     }
 
@@ -249,19 +286,6 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
         address, /*receiver*/
         address, /*owner*/
         uint256 /*assets*/
-    ) external onlyVault {}
-
-    /**
-     * @notice After withdraw hook function
-     * @dev This hook is called after the withdraw is processed
-     */
-    function afterWithdraw(
-        address, /*asset*/
-        uint256, /*assets*/
-        address, /*caller*/
-        address, /*receiver*/
-        address, /*owner*/
-        uint256 /*shares*/
     ) external onlyVault {}
 
     /**

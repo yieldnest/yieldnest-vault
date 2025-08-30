@@ -51,7 +51,7 @@ contract SetupBase6DecimalsVault is SetupVault {
             beforeRedeem: false,
             afterRedeem: true,
             beforeWithdraw: true,
-            afterWithdraw: false,
+            afterWithdraw: true,
             beforeProcessAccounting: false,
             afterProcessAccounting: true
         });
