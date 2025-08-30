@@ -16,6 +16,13 @@ import {Vault} from "src/Vault.sol";
 contract FeeHooks is Ownable, IHooks, IFeeHooks {
     using Math for uint256;
 
+    uint256 private constant WITHDRAW_SHARESTOMINT_SLOT = 0x01;
+    uint256 private constant WITHDRAW_FEES_SLOT = 0x02;
+    uint256 private constant WITHDRAW_SHARESTOMINT_SET_SLOT = 0x03;
+
+    error SharesToMintNotSet();
+    error SharesToMintAlreadySet();
+
     // performance denominated in ether(i.e. 1e18 = 100%)
     uint256 public performanceFee;
     address public performanceFeeRecipient;
@@ -136,6 +143,14 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
         external
         onlyVault
     {
+        bool sharesToMintSet;
+        assembly {
+            sharesToMintSet := tload(WITHDRAW_SHARESTOMINT_SET_SLOT)
+        }
+        if (sharesToMintSet) {
+            revert SharesToMintAlreadySet();
+        }
+
         // calculates the fee to be added on top of the assets to withdraw
         // NOTE: In withdraw, assets to withdraw is fixed. So, fees is taken on top of the assets to withdraw
         uint256 fees = VAULT._feeOnRaw(assets, caller);
@@ -145,7 +160,9 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
 
         // Store sharesToMint in transient storage for use in afterWithdraw
         assembly {
-            tstore(0x01, sharesToMint)
+            tstore(WITHDRAW_SHARESTOMINT_SLOT, sharesToMint)
+            tstore(WITHDRAW_FEES_SLOT, fees)
+            tstore(WITHDRAW_SHARESTOMINT_SET_SLOT, true)
         }
     }
 
@@ -175,13 +192,27 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
     {
         // Load sharesToMint from transient storage
         uint256 sharesToMint;
+        uint256 fees;
+        bool sharestToMintSet;
         assembly {
-            sharesToMint := tload(0x01)
+            sharesToMint := tload(WITHDRAW_SHARESTOMINT_SLOT)
+            fees := tload(WITHDRAW_FEES_SLOT)
+            sharestToMintSet := tload(WITHDRAW_SHARESTOMINT_SET_SLOT)
+        }
+        if (!sharestToMintSet) {
+            revert SharesToMintNotSet();
         }
 
         if (sharesToMint > 0) {
             VAULT.mintShares(performanceFeeRecipient, sharesToMint);
-            emit WithdrawFeeCharged(performanceFeeRecipient, sharesToMint, 0, assets);
+            emit WithdrawFeeCharged(performanceFeeRecipient, sharesToMint, fees, assets);
+        }
+
+        // clear
+        assembly {
+            tstore(WITHDRAW_SHARESTOMINT_SLOT, 0)
+            tstore(WITHDRAW_FEES_SLOT, 0)
+            tstore(WITHDRAW_SHARESTOMINT_SET_SLOT, false)
         }
     }
 
