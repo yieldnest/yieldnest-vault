@@ -15,6 +15,7 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 import {Vault} from "src/Vault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract YnBNBxForkTest is BaseIntegrationTest {
     IERC20 public wbnb;
@@ -23,8 +24,8 @@ contract YnBNBxForkTest is BaseIntegrationTest {
         super.setUp();
         wbnb = IERC20(MainnetContracts.WBNB);
 
-        // verify alwaysComputeTotalAssets is true
-        assertTrue(vault.alwaysComputeTotalAssets(), "alwaysComputeTotalAssets should be true");
+        // verify alwaysComputeTotalAssets is false
+        assertFalse(vault.alwaysComputeTotalAssets(), "alwaysComputeTotalAssets should be false");
     }
 
     function testDepositAndStake() public {
@@ -381,14 +382,35 @@ contract YnBNBxForkTest is BaseIntegrationTest {
 
         vm.stopPrank();
 
+        vault.processAccounting();
+
+        uint256 performanceFeeSharesMinted = vault.totalSupply() - vaultSharesBefore;
+        uint256 performanceFee = IFeeHooks(address(vault.hooks())).performanceFee() * donationAmount / 1e18;
+
+        assertEq(
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient()),
+            performanceFeeSharesMinted,
+            "Performance fee shares minted should be equal to donation shares"
+        );
+        assertApproxEqAbs(
+            vault.convertToAssets(performanceFeeSharesMinted),
+            performanceFee,
+            5,
+            "Performance fee assets should be equal to donation amount"
+        );
         // Verify donation increased total assets but not shares
         assertEq(vault.totalAssets(), vaultAssetsBefore + donationAmount, "Total assets should increase by donation");
-        assertEq(vault.totalSupply(), vaultSharesBefore, "Total supply should remain unchanged");
+        assertEq(
+            vault.totalSupply(),
+            vaultSharesBefore + performanceFeeSharesMinted,
+            "Total supply should increase by performance fee shares"
+        );
         assertEq(vault.balanceOf(alice), aliceSharesBefore, "Alice's shares should remain unchanged");
 
         // Verify rate increased due to donation
         uint256 newRate = vault.convertToAssets(1e18);
-        uint256 expectedRate = ((vaultAssetsBefore + donationAmount) * 1e18) / vaultSharesBefore;
+        uint256 expectedRate =
+            ((vaultAssetsBefore + donationAmount) * 1e18) / (vaultSharesBefore + performanceFeeSharesMinted);
         assertApproxEqAbs(newRate, expectedRate, 1, "New rate should reflect donation");
     }
 
