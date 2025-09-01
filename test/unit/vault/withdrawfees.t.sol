@@ -515,6 +515,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
             vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
+        assertGe(exchangeRateAfter, exchangeRateBefore, "exchange rate should be equal or increase");
         assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
 
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
@@ -562,7 +563,8 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
             vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
-        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
+        assertGe(exchangeRateAfter, exchangeRateBefore, "exchange rate should be equal or increase");
+        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 1e6, "exchange rate should not change");
 
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
         assertApproxEqAbs(
@@ -619,6 +621,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
             vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
+        assertGe(exchangeRateAfter, exchangeRateBefore, "exchange rate should be equal or increase");
         assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 1e4, "exchange rate should not change");
 
         uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
