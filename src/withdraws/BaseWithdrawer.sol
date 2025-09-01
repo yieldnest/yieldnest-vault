@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {BaseStrategy} from "src/strategy/BaseStrategy.sol";
 import {VaultLib} from "src/library/VaultLib.sol";
 import {IVault} from "src/interface/IVault.sol";
+import {Math} from "src/Common.sol";
 
 abstract contract BaseWithdrawer is BaseStrategy {
     /**
@@ -34,7 +35,7 @@ abstract contract BaseWithdrawer is BaseStrategy {
      * @notice Returns the fee on raw assets where the fee would get added on top of the assets.
      * @return The fee on raw assets.
      */
-    function _feeOnRaw(uint256, address) public pure override returns (uint256) {
+    function _feeOnRaw(uint256, address, Math.Rounding) public pure override returns (uint256) {
         return 0;
     }
 
@@ -42,7 +43,7 @@ abstract contract BaseWithdrawer is BaseStrategy {
      * @notice Returns the fee on total assets where the fee is already included.
      * @return The fee on total assets.
      */
-    function _feeOnTotal(uint256, address) public pure override returns (uint256) {
+    function _feeOnTotal(uint256, address, Math.Rounding) public pure override returns (uint256) {
         return 0;
     }
 

@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {BaseVault} from "src/BaseVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {VaultLib} from "src/library/VaultLib.sol";
+import {Math} from "src/Common.sol";
 
 /**
  * @title Vault
@@ -68,8 +69,8 @@ contract Vault is BaseVault {
      * @param user The address of the user.
      * @return The fee amount.
      */
-    function _feeOnRaw(uint256 amount, address user) public view override returns (uint256) {
-        return FeeMath.feeOnRaw(amount, _feesToCharge(user));
+    function _feeOnRaw(uint256 amount, address user, Math.Rounding rounding) public view override returns (uint256) {
+        return FeeMath.feeOnRaw(amount, _feesToCharge(user), rounding);
     }
 
     /**
@@ -80,8 +81,8 @@ contract Vault is BaseVault {
      * @dev Calculates the fee part of an amount `amount` that already includes fees.
      * Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
      */
-    function _feeOnTotal(uint256 amount, address user) public view override returns (uint256) {
-        return FeeMath.feeOnTotal(amount, _feesToCharge(user));
+    function _feeOnTotal(uint256 amount, address user, Math.Rounding rounding) public view override returns (uint256) {
+        return FeeMath.feeOnTotal(amount, _feesToCharge(user), rounding);
     }
 
     /**

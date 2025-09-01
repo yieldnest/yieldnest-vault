@@ -9,6 +9,7 @@ import {Etches} from "test/unit/helpers/Etches.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupWithdrawer} from "test/unit/helpers/SetupWithdrawer.sol";
 import {MainnetActors} from "script/Actors.sol";
+import {Math} from "src/Common.sol";
 
 contract WithdrawerUnitTest is Test, MainnetActors, Etches {
     Withdrawer public vaultImplementation;
@@ -42,8 +43,8 @@ contract WithdrawerUnitTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_fees() external view {
-        assertEq(vault._feeOnRaw(1e18, alice), 0);
-        assertEq(vault._feeOnTotal(1e18, alice), 0);
+        assertEq(vault._feeOnRaw(1e18, alice, Math.Rounding.Ceil), 0);
+        assertEq(vault._feeOnTotal(1e18, alice, Math.Rounding.Ceil), 0);
     }
 
     function test_Vault_previewWithdraw(uint256 assets, bool alwaysComputeTotalAssets) external {

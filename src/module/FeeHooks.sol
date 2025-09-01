@@ -138,7 +138,7 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
     {
         // calculates the fee to be added on top of the assets to withdraw
         // NOTE: In withdraw, assets to withdraw is fixed. So, fees is taken on top of the assets to withdraw
-        uint256 fees = VAULT._feeOnRaw(assets, caller);
+        uint256 fees = VAULT._feeOnRaw(assets, caller, Math.Rounding.Ceil);
         // converts the fees to equivalent amount of shares to mint to the performanceFeeRecipient
         // accounting is done before the withdraw is processed, so totalAssets is not updated yet
         uint256 sharesToMint = VAULT.previewDepositAsset(asset, fees);
@@ -179,7 +179,7 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
         // NOTE: In redeem, shares to burn is fixed. So, fee taken from users is already included in the shares to burn
         // If the assets corresponding to shares to redeem is X and fees is F, then X includes F already
         // So, we calculate the shares corresponding to fees F
-        uint256 sharesToMint = VAULT._feeOnTotal(shares, caller);
+        uint256 sharesToMint = VAULT._feeOnTotal(shares, caller, Math.Rounding.Ceil);
         if (sharesToMint > 0) {
             VAULT.mintShares(performanceFeeRecipient, sharesToMint);
             emit RedeemFeeCharged(performanceFeeRecipient, sharesToMint, shares);

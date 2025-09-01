@@ -6,6 +6,7 @@ import {MainnetContracts} from "script/Contracts.sol";
 import {IERC20} from "src/Common.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {VaultLib} from "src/library/VaultLib.sol";
+import {Math} from "src/Common.sol";
 
 contract MockStrategy is BaseStrategy {
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
@@ -30,7 +31,7 @@ contract MockStrategy is BaseStrategy {
      * @param user The address of the user.
      * @return The fee amount.
      */
-    function _feeOnRaw(uint256 amount, address user) public view override returns (uint256) {
+    function _feeOnRaw(uint256 amount, address user, Math.Rounding rounding) public view override returns (uint256) {
         FeeStorage storage fees = _getFeeStorage();
         bool isFeeOverridenForUser = fees.overriddenBaseWithdrawalFee[user].isOverridden;
         uint64 feesToCharge;
@@ -39,7 +40,7 @@ contract MockStrategy is BaseStrategy {
         } else {
             feesToCharge = fees.baseWithdrawalFee;
         }
-        return FeeMath.feeOnRaw(amount, feesToCharge);
+        return FeeMath.feeOnRaw(amount, feesToCharge, rounding);
     }
 
     /**
@@ -50,7 +51,7 @@ contract MockStrategy is BaseStrategy {
      * @dev Calculates the fee part of an amount `amount` that already includes fees.
      * Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
      */
-    function _feeOnTotal(uint256 amount, address user) public view override returns (uint256) {
+    function _feeOnTotal(uint256 amount, address user, Math.Rounding rounding) public view override returns (uint256) {
         FeeStorage storage fees = _getFeeStorage();
         bool isFeeOverridenForUser = fees.overriddenBaseWithdrawalFee[user].isOverridden;
         uint64 feesToCharge;
@@ -59,7 +60,7 @@ contract MockStrategy is BaseStrategy {
         } else {
             feesToCharge = fees.baseWithdrawalFee;
         }
-        return FeeMath.feeOnTotal(amount, feesToCharge);
+        return FeeMath.feeOnTotal(amount, feesToCharge, rounding);
     }
 
     //// FEES ADMIN ////

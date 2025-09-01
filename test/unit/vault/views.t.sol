@@ -14,6 +14,7 @@ import {IERC20, IERC20Metadata} from "src/Common.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MockERC20} from "test/unit/mocks/MockERC20.sol";
+import {Math} from "src/Common.sol";
 
 contract VaultViewsUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
@@ -70,7 +71,7 @@ contract VaultViewsUnitTest is Test, Etches, MainnetActors {
     }
 
     function test_Vault_feeOnTotal() public view {
-        uint256 fee = vault._feeOnTotal(1e18, alice);
+        uint256 fee = vault._feeOnTotal(1e18, alice, Math.Rounding.Ceil);
         assertEq(fee, 0, "Fee on total should be zero");
     }
 

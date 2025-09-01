@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC4626} from "src/Common.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {Math} from "src/Common.sol";
 
 interface IVault is IERC4626 {
     struct VaultStorage {
@@ -174,6 +175,6 @@ interface IVault is IERC4626 {
         returns (bytes[] memory);
 
     // FEES
-    function _feeOnRaw(uint256 amount, address user) external view returns (uint256);
-    function _feeOnTotal(uint256 amount, address user) external view returns (uint256);
+    function _feeOnRaw(uint256 amount, address user, Math.Rounding rounding) external view returns (uint256);
+    function _feeOnTotal(uint256 amount, address user, Math.Rounding rounding) external view returns (uint256);
 }

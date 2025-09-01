@@ -207,7 +207,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return shares The equivalent amount of shares.
      */
     function previewWithdraw(uint256 assets) public view virtual returns (uint256 shares) {
-        uint256 fee = _feeOnRaw(assets, _msgSender());
+        uint256 fee = _feeOnRaw(assets, _msgSender(), Math.Rounding.Ceil);
         (shares,) = _convertToShares(asset(), assets + fee, Math.Rounding.Ceil);
     }
 
@@ -218,7 +218,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function previewRedeem(uint256 shares) public view virtual returns (uint256 assets) {
         (assets,) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
-        return assets - _feeOnTotal(assets, _msgSender());
+        return assets - _feeOnTotal(assets, _msgSender(), Math.Rounding.Ceil);
     }
 
     /**
@@ -978,15 +978,27 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @notice Returns the fee on amount where the fee would get added on top of the amount.
      * @param amount The amount on which the fee would get added.
      * @param user The address of the user.
+     * @param rounding The rounding mode.
      * @return The fee amount.
      */
-    function _feeOnRaw(uint256 amount, address user) public view virtual override returns (uint256);
+    function _feeOnRaw(uint256 amount, address user, Math.Rounding rounding)
+        public
+        view
+        virtual
+        override
+        returns (uint256);
 
     /**
      * @notice Returns the fee amount where fee is already included in amount
      * @param amount The amount on which the fee is already included.
      * @param user The address of the user.
+     * @param rounding The rounding mode.
      * @return The fee amount.
      */
-    function _feeOnTotal(uint256 amount, address user) public view virtual override returns (uint256);
+    function _feeOnTotal(uint256 amount, address user, Math.Rounding rounding)
+        public
+        view
+        virtual
+        override
+        returns (uint256);
 }

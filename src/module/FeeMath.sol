@@ -21,19 +21,19 @@ library FeeMath {
 
     function linearFee(uint256 amount, uint256 fee, FeeType feeType) internal pure returns (uint256) {
         if (feeType == FeeType.OnRaw) {
-            return feeOnRaw(amount, fee);
+            return feeOnRaw(amount, fee, Math.Rounding.Ceil);
         } else if (feeType == FeeType.OnTotal) {
-            return feeOnTotal(amount, fee);
+            return feeOnTotal(amount, fee, Math.Rounding.Ceil);
         } else {
             revert UnsupportedFeeType(feeType);
         }
     }
 
-    function feeOnRaw(uint256 amount, uint256 fee) internal pure returns (uint256) {
-        return amount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
+    function feeOnRaw(uint256 amount, uint256 fee, Math.Rounding rounding) internal pure returns (uint256) {
+        return amount.mulDiv(fee, BASIS_POINT_SCALE, rounding);
     }
 
-    function feeOnTotal(uint256 amount, uint256 fee) internal pure returns (uint256) {
-        return amount.mulDiv(fee, fee + BASIS_POINT_SCALE, Math.Rounding.Ceil);
+    function feeOnTotal(uint256 amount, uint256 fee, Math.Rounding rounding) internal pure returns (uint256) {
+        return amount.mulDiv(fee, fee + BASIS_POINT_SCALE, rounding);
     }
 }

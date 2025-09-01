@@ -231,7 +231,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         assertApproxEqAbs(
             previewedRedeemAssets,
-            convertedAssets - vault._feeOnTotal(convertedAssets, user),
+            convertedAssets - vault._feeOnTotal(convertedAssets, user, Math.Rounding.Ceil),
             3,
             "Previewed redeem assets should equal the original assets with withdrawal fee applied"
         );
@@ -348,7 +348,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         {
             convertedAssets = vault.convertToAssets(depositedShares);
             withdrawableAssets = vault.maxWithdraw(user);
-            uint256 withdrawalFee = vault._feeOnTotal(convertedAssets, user);
+            uint256 withdrawalFee = vault._feeOnTotal(convertedAssets, user, Math.Rounding.Ceil);
             assertApproxEqAbs(
                 withdrawableAssets * vault.baseWithdrawalFee() / FeeMath.BASIS_POINT_SCALE,
                 withdrawalFee,

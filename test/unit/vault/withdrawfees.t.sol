@@ -12,6 +12,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {Math} from "src/Common.sol";
 
 contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -868,7 +869,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 withdrawnAssets = maxBufferAssets / 2;
 
-        uint256 fee = vault._feeOnRaw(withdrawnAssets, alice);
+        uint256 fee = vault._feeOnRaw(withdrawnAssets, alice, Math.Rounding.Ceil);
 
         // Base withdrawal fee is 0.1% (100_000)
         // Buffer flat fee ratio is 80% (80_000_000)
@@ -894,7 +895,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 withdrawnAssets = maxBufferAssets / 2;
 
-        uint256 fee = vault._feeOnRaw(withdrawnAssets, alice);
+        uint256 fee = vault._feeOnRaw(withdrawnAssets, alice, Math.Rounding.Ceil);
 
         // Base withdrawal fee is 0.1% (100_000)
         // Buffer flat fee ratio is 80% (80_000_000)
@@ -906,7 +907,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vault.overrideBaseWithdrawalFee(alice, 0, false);
         vm.stopPrank();
 
-        fee = vault._feeOnRaw(withdrawnAssets, alice);
+        fee = vault._feeOnRaw(withdrawnAssets, alice, Math.Rounding.Ceil);
         expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
         assertApproxEqAbs(fee, expectedFee, 1, "Fee should be same as expected fees");
     }
@@ -925,7 +926,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.startPrank(feeExemptedUser);
         uint256 withdrawnAssets = maxBufferAssets / 2;
 
-        uint256 fee = vault._feeOnRaw(withdrawnAssets, feeExemptedUser);
+        uint256 fee = vault._feeOnRaw(withdrawnAssets, feeExemptedUser, Math.Rounding.Ceil);
 
         // Base withdrawal fee is 0.1% (100_000)
         // since feeExemptedUser is exempted from fees, fee should be 0
@@ -947,7 +948,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.startPrank(feeExemptedUser);
         uint256 withdrawnAssets = maxBufferAssets / 2;
 
-        uint256 fee = vault._feeOnTotal(withdrawnAssets, feeExemptedUser);
+        uint256 fee = vault._feeOnTotal(withdrawnAssets, feeExemptedUser, Math.Rounding.Ceil);
 
         // Base withdrawal fee is 0.1% (100_000)
         // since feeExemptedUser is exempted from fees, fee should be 0
