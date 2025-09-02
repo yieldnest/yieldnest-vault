@@ -396,6 +396,31 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         assertEq(redeemedAmount, withdrawnAssets, "Withdrawal fee should be 0 for users exempted from fees");
     }
 
+    function test_Vault_withdrawWithFees(uint256 assets, uint256 withdrawnAssets) external {
+        vm.assume(assets >= 100000 && assets <= 10_000 ether);
+        vm.assume(withdrawnAssets <= assets);
+        vm.assume(withdrawnAssets > 0);
+
+        vm.prank(alice);
+        vault.deposit(assets, alice);
+
+        vm.prank(ADMIN);
+        allocateToBuffer(assets);
+
+        uint256 maxWithdraw = vault.maxWithdraw(alice);
+        if (withdrawnAssets > maxWithdraw) {
+            withdrawnAssets = maxWithdraw;
+        }
+
+        uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
+        uint256 expectedShares = vault.convertToShares(withdrawnAssets + expectedFee);
+
+        vm.prank(alice);
+        uint256 withdrawAmount = vault.withdraw(withdrawnAssets, alice, alice);
+
+        assertApproxEqAbs(withdrawAmount, expectedShares, 2, "Preview withdraw shares should match expected");
+    }
+
     function test_Vault_withdrawWithExemptedFees(uint256 assets, uint256 withdrawnAssets) external {
         vm.assume(assets >= 100000 && assets <= 10_000 ether);
         vm.assume(withdrawnAssets <= assets);
