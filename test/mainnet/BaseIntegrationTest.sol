@@ -41,8 +41,8 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
             beforeMint: false,
             afterMint: false,
             beforeRedeem: false,
-            afterRedeem: true,
-            beforeWithdraw: true,
+            afterRedeem: false,
+            beforeWithdraw: false,
             afterWithdraw: false,
             beforeProcessAccounting: false,
             afterProcessAccounting: true

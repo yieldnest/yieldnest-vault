@@ -46,8 +46,8 @@ contract SetupBase6DecimalsBaseStrategy is Test, Etches, MainnetActors, SetupStr
             beforeMint: false,
             afterMint: false,
             beforeRedeem: false,
-            afterRedeem: true,
-            beforeWithdraw: true,
+            afterRedeem: false,
+            beforeWithdraw: false,
             afterWithdraw: false,
             beforeProcessAccounting: false,
             afterProcessAccounting: true
