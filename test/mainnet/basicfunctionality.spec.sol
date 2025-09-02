@@ -739,6 +739,59 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         );
     }
 
+    function test_depositAndWithdrawFromBuffer_onBehalfOfUser() public {
+        uint256 depositAmount = 100 ether;
+
+        address alice = makeAddr("alice");
+        deal(MC.WETH, alice, 1000 ether);
+
+        // Get initial balances
+        uint256 aliceWethBalanceBefore = IERC20(MC.WETH).balanceOf(alice);
+        uint256 vaultTotalAssetsBefore = vault.totalAssets();
+
+        // Approve and deposit WETH
+        vm.startPrank(alice);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        // Verify deposit
+        assertEq(
+            IERC20(MC.WETH).balanceOf(alice),
+            aliceWethBalanceBefore - depositAmount,
+            "User WETH balance should decrease"
+        );
+        assertEq(vault.totalAssets(), vaultTotalAssetsBefore + depositAmount, "Vault total assets should increase");
+
+        ProcessorUtils.allocateToBuffer(vault, depositAmount, PROCESSOR);
+
+        // Process accounting
+        vault.processAccounting();
+
+        // User withdraws max amount
+        vm.startPrank(alice);
+        uint256 maxWithdraw = vault.maxWithdraw(alice);
+        vault.withdraw(maxWithdraw, alice, alice);
+        vm.stopPrank();
+        // Calculate withdrawal fee
+        uint256 fee = depositAmount * vault.baseWithdrawalFee() / 1e8;
+        uint256 amountAfterFee = depositAmount - fee;
+
+        // Verify withdrawal
+        assertApproxEqAbs(
+            IERC20(MC.WETH).balanceOf(alice),
+            aliceWethBalanceBefore - depositAmount + amountAfterFee,
+            1e15, // withdrawal fee precision error is at 0.01% of amount
+            "User should receive original WETH amount back minus fee"
+        );
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            vaultTotalAssetsBefore + fee,
+            1e15, // withdrawal fee precision error is at 0.01% of amount
+            "Vault total assets should include withdrawal fee"
+        );
+    }
+
     function testDepositYnETHAndYnLSDeToConnector() public {
         uint256 depositAmount = 1000e18;
         uint256 vaultTotalAssetsBefore = vault.totalAssets();
