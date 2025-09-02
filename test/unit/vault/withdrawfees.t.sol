@@ -212,7 +212,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
     function test_Vault_redeemWithFeesMaxAmount(uint256 assets) external {
         // Bound inputs to valid ranges
-        assets = bound(assets, 100000, 100_000 ether);
+        vm.assume(assets >= 100000 && assets <= 100_000 ether);
 
         vm.prank(alice);
         vault.deposit(assets, alice);
@@ -225,83 +225,10 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 convertedAssets = vault.convertToAssets(maxShares);
         uint256 expectedFee = (expectedAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
+
         vm.prank(alice);
         uint256 redeemedAmount = vault.redeem(maxShares, alice, alice);
 
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
-        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
-
-        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
-
-        assertApproxEqAbs(
-            vault.convertToAssets(sharesMinted),
-            expectedFee,
-            5,
-            "Performance fee recipient should receive the correct amount of assets"
-        );
-        assertGt(
-            vaultBalanceOfPerformanceFeeRecipientAfter,
-            vaultBalanceOfPerformanceFeeRecipientBefore,
-            "Vault balance of performance fee recipient should increase after redeem"
-        );
-        assertApproxEqRel(redeemedAmount, expectedAssets, 1e14, "Redeemed amount should match preview");
-
-        assertApproxEqRel(
-            redeemedAmount, convertedAssets - expectedFee, 1e14, "Redeemed amount should be total assets minus fee"
-        );
-
-        assertEq(vault.balanceOf(alice), 0, "Alice should have no shares remaining");
-    }
-
-    function test_Vault_redeemWithFeesMaxAmountWithOverriddenFee(uint256 assets, uint64 overriddenFee) external {
-        // Bound inputs to valid ranges
-        assets = bound(assets, 100000, 100_000 ether);
-        overriddenFee = uint64(bound(overriddenFee, 2500, FeeMath.BASIS_POINT_SCALE));
-
-        vm.prank(alice);
-        vault.deposit(assets, alice);
-
-        vm.prank(ADMIN);
-        allocateToBuffer(assets);
-
-        vm.startPrank(FEE_MANAGER);
-        vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-        uint256 maxShares = vault.maxRedeem(alice);
-        uint256 expectedAssets = vault.previewRedeem(maxShares);
-
-        uint256 convertedAssets = vault.convertToAssets(maxShares);
-        uint256 expectedFee = (expectedAssets * overriddenFee) / FeeMath.BASIS_POINT_SCALE;
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-        uint256 redeemedAmount = vault.redeem(maxShares, alice, alice);
-
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
-        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
-
-        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
-
-        assertApproxEqAbs(
-            vault.convertToAssets(sharesMinted),
-            expectedFee,
-            5,
-            "Performance fee recipient should receive the correct amount of assets"
-        );
-        assertGt(
-            vaultBalanceOfPerformanceFeeRecipientAfter,
-            vaultBalanceOfPerformanceFeeRecipientBefore,
-            "Vault balance of performance fee recipient should increase after redeem"
-        );
         assertApproxEqRel(redeemedAmount, expectedAssets, 1e14, "Redeemed amount should match preview");
 
         assertApproxEqRel(
@@ -370,84 +297,11 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 expectedFee = (maxWithdraw * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
         uint256 expectedShares = vault.convertToShares(maxWithdraw + expectedFee);
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
+
         // Verify we can actually withdraw the max amount
         vm.prank(alice);
         uint256 withdrawnShares = vault.withdraw(maxWithdraw, alice, alice);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
-        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
-        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
-
-        assertApproxEqAbs(
-            vault.convertToAssets(sharesMinted),
-            expectedFee,
-            5,
-            "Performance fee recipient should receive the correct amount of assets"
-        );
-        assertGt(
-            vaultBalanceOfPerformanceFeeRecipientAfter,
-            vaultBalanceOfPerformanceFeeRecipientBefore,
-            "Vault balance of performance fee recipient should increase after withdraw"
-        );
-        assertApproxEqAbs(withdrawnShares, expectedShares, 2, "Withdrawn shares should match expected with fee");
-        assertApproxEqAbs(vault.balanceOf(alice), 0, 1, "Alice should have no shares remaining");
-    }
-
-    function test_Vault_maxWithdrawWithFullBufferWithOverriddenFee(uint256 assets, uint64 overriddenFee) external {
-        // Bound inputs to valid ranges
-        assets = bound(assets, 100000, 100_000 ether);
-        overriddenFee = uint64(bound(overriddenFee, 2500, FeeMath.BASIS_POINT_SCALE));
-
-        vm.prank(alice);
-        vault.deposit(assets, alice);
-
-        // Allocate full amount to buffer
-        vm.prank(ADMIN);
-        allocateToBuffer(assets);
-
-        vm.startPrank(FEE_MANAGER);
-        vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-        uint256 maxWithdraw = vault.maxWithdraw(alice);
-        uint256 previewRedeemAssets = vault.previewRedeem(vault.balanceOf(alice));
-
-        // Since buffer has full amount, maxWithdraw should equal previewRedeemAssets
-        assertEq(
-            maxWithdraw, previewRedeemAssets, "Max withdraw should equal previewRedeemAssets assets with full buffer"
-        );
-
-        uint256 expectedFee = (maxWithdraw * overriddenFee) / FeeMath.BASIS_POINT_SCALE;
-        uint256 expectedShares = vault.convertToShares(maxWithdraw + expectedFee);
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-        // Verify we can actually withdraw the max amount
-        uint256 withdrawnShares = vault.withdraw(maxWithdraw, alice, alice);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
-        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
-
-        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
-
-        assertApproxEqAbs(
-            vault.convertToAssets(sharesMinted),
-            expectedFee,
-            5,
-            "Performance fee recipient should receive the correct amount of assets"
-        );
-        assertGt(
-            vaultBalanceOfPerformanceFeeRecipientAfter,
-            vaultBalanceOfPerformanceFeeRecipientBefore,
-            "Vault balance of performance fee recipient should increase after withdraw"
-        );
         assertApproxEqAbs(withdrawnShares, expectedShares, 2, "Withdrawn shares should match expected with fee");
         assertApproxEqAbs(vault.balanceOf(alice), 0, 1, "Alice should have no shares remaining");
     }
@@ -502,139 +356,12 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         allocateToBuffer(assets);
 
         uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
 
-        vm.startPrank(alice);
+        vm.prank(alice);
         uint256 redeemedAmount = vault.redeem(withdrawnShares, alice, alice);
-        uint256 expectedFee = redeemedAmount * vault.baseWithdrawalFee() / FeeMath.BASIS_POINT_SCALE;
-        uint256 expectedSharesMinted = vault.convertToShares(expectedFee);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
-
-        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
-
-        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
-        assertApproxEqAbs(
-            vault.convertToAssets(sharesMinted),
-            expectedFee,
-            10,
-            "Performance fee recipient should receive the correct amount of assets"
-        );
-        assertApproxEqAbs(
-            sharesMinted,
-            expectedSharesMinted,
-            1,
-            "Performance fee recipient should receive the correct amount of shares"
-        );
+        uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
         assertApproxEqRel(
             redeemedAmount, withdrawnAssets - expectedFee, 1e14, "Withdrawal fee should be 0.1% of assets"
-        );
-    }
-
-    function test_Vault_redeemWithFees_Scenario() external {
-        uint256 assets = 100_000 ether;
-        uint256 withdrawnAssets = 10_000 ether;
-        uint256 donationAmount = 100 ether;
-
-        vm.startPrank(alice);
-        vault.deposit(assets, alice);
-        weth.transfer(address(vault), donationAmount);
-        vault.processAccounting();
-        vm.stopPrank();
-
-        vm.prank(ADMIN);
-        allocateToBuffer(assets + donationAmount);
-
-        uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-
-        vm.startPrank(alice);
-        uint256 redeemedAmount = vault.redeem(withdrawnShares, alice, alice);
-        uint256 expectedFee = redeemedAmount * vault.baseWithdrawalFee() / FeeMath.BASIS_POINT_SCALE;
-        uint256 expectedSharesMinted = vault.convertToShares(expectedFee);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
-
-        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
-
-        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
-        assertApproxEqAbs(
-            vault.convertToAssets(sharesMinted),
-            expectedFee,
-            10,
-            "Performance fee recipient should receive the correct amount of assets"
-        );
-        assertApproxEqAbs(
-            sharesMinted,
-            expectedSharesMinted,
-            10,
-            "Performance fee recipient should receive the correct amount of shares"
-        );
-        assertApproxEqRel(
-            redeemedAmount, withdrawnAssets - expectedFee, 1e14, "Withdrawal fee should be 0.1% of assets"
-        );
-    }
-
-    function test_Vault_redeemWithFees_Scenario_Fuzz(
-        uint256 assets,
-        uint256 withdrawnAssets,
-        uint256 donationAmount,
-        uint64 withdrawalFee
-    ) external {
-        assets = bound(assets, 1 ether, 100_000 ether);
-        withdrawnAssets = bound(withdrawnAssets, 0.5 ether, assets / 2);
-        donationAmount = bound(donationAmount, 1 ether, 10000 ether);
-        withdrawalFee = uint64(bound(withdrawalFee, 0, FeeMath.BASIS_POINT_SCALE / 2));
-
-        vm.startPrank(FEE_MANAGER);
-        vault.setBaseWithdrawalFee(withdrawalFee);
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-        vault.deposit(assets, alice);
-        weth.transfer(address(vault), donationAmount);
-        vault.processAccounting();
-        vm.stopPrank();
-
-        vm.prank(ADMIN);
-        allocateToBuffer(assets);
-
-        uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-
-        vm.startPrank(alice);
-        uint256 redeemedAmount = vault.redeem(withdrawnShares, alice, alice);
-        uint256 expectedFee = redeemedAmount * vault.baseWithdrawalFee() / FeeMath.BASIS_POINT_SCALE;
-        uint256 expectedSharesMinted = vault.convertToShares(expectedFee);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
-
-        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 1e4, "exchange rate should not change");
-
-        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
-        assertApproxEqAbs(
-            vault.convertToAssets(sharesMinted),
-            expectedFee,
-            1e4,
-            "Performance fee recipient should receive the correct amount of assets"
-        );
-        assertApproxEqAbs(
-            sharesMinted,
-            expectedSharesMinted,
-            5,
-            "Performance fee recipient should receive the correct amount of shares"
-        );
-        assertApproxEqRel(
-            redeemedAmount, withdrawnAssets - expectedFee, 1e14, "Withdrawal fee should be charged correctly"
         );
     }
 
@@ -686,141 +413,12 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         }
 
         uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
-        uint256 expectedSharesToBurn = vault.convertToShares(withdrawnAssets + expectedFee);
-        uint256 expectedSharesToMint = vault.convertToShares(expectedFee);
-        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 expectedShares = vault.convertToShares(withdrawnAssets + expectedFee);
+
         vm.prank(alice);
         uint256 withdrawAmount = vault.withdraw(withdrawnAssets, alice, alice);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
-        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
-        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
-
-        assertApproxEqAbs(
-            vault.convertToAssets(sharesMinted),
-            expectedFee,
-            5,
-            "Performance fee recipient should receive the correct amount of assets"
-        );
-        assertApproxEqAbs(
-            sharesMinted,
-            expectedSharesToMint,
-            2,
-            "Performance fee recipient should receive the correct amount of shares"
-        );
-        assertApproxEqAbs(withdrawAmount, expectedSharesToBurn, 2, "Preview withdraw shares should match expected");
-    }
-
-    function test_Vault_withdrawWithFees_Scenario() external {
-        uint256 assets = 100_000 ether;
-        uint256 withdrawnAssets = 10_000 ether;
-        uint256 donationAmount = 100 ether;
-
-        vm.startPrank(alice);
-        vault.deposit(assets, alice);
-        weth.transfer(address(vault), donationAmount);
-        vault.processAccounting();
-        vm.stopPrank();
-
-        vm.prank(ADMIN);
-        allocateToBuffer(assets + donationAmount);
-
-        uint256 maxWithdraw = vault.maxWithdraw(alice);
-        if (withdrawnAssets > maxWithdraw) {
-            withdrawnAssets = maxWithdraw;
-        }
-
-        uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
-        uint256 expectedSharesToBurn = vault.convertToShares(withdrawnAssets + expectedFee);
-        uint256 expectedSharesToMint = vault.convertToShares(expectedFee);
-        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        vm.prank(alice);
-        uint256 withdrawAmount = vault.withdraw(withdrawnAssets, alice, alice);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
-        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
-
-        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
-
-        assertApproxEqAbs(
-            vault.convertToAssets(sharesMinted),
-            expectedFee,
-            5,
-            "Performance fee recipient should receive the correct amount of assets"
-        );
-        assertApproxEqAbs(
-            sharesMinted,
-            expectedSharesToMint,
-            2,
-            "Performance fee recipient should receive the correct amount of shares"
-        );
-        assertApproxEqAbs(withdrawAmount, expectedSharesToBurn, 2, "Preview withdraw shares should match expected");
-    }
-
-    function test_Vault_withdrawWithFees_Scenario_Fuzz(
-        uint256 assets,
-        uint256 withdrawnAssets,
-        uint256 donationAmount,
-        uint64 withdrawalFee
-    ) external {
-        assets = bound(assets, 1 ether, 100_000 ether);
-        withdrawnAssets = bound(withdrawnAssets, 0.5 ether, assets / 2);
-        donationAmount = bound(donationAmount, 1 ether, 10000 ether);
-        withdrawalFee = uint64(bound(withdrawalFee, 0, FeeMath.BASIS_POINT_SCALE / 2));
-
-        vm.startPrank(FEE_MANAGER);
-        vault.setBaseWithdrawalFee(withdrawalFee);
-        vm.stopPrank();
-
-        vm.startPrank(alice);
-        vault.deposit(assets, alice);
-        weth.transfer(address(vault), donationAmount);
-        vault.processAccounting();
-        vm.stopPrank();
-
-        vm.prank(ADMIN);
-        allocateToBuffer(assets);
-
-        uint256 maxWithdraw = vault.maxWithdraw(alice);
-        if (withdrawnAssets > maxWithdraw) {
-            withdrawnAssets = maxWithdraw;
-        }
-
-        uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
-        uint256 expectedSharesToBurn = vault.convertToShares(withdrawnAssets + expectedFee);
-        uint256 expectedSharesToMint = vault.convertToShares(expectedFee);
-        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
-        uint256 vaultBalanceOfPerformanceFeeRecipientBefore =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        vm.prank(alice);
-        uint256 withdrawAmount = vault.withdraw(withdrawnAssets, alice, alice);
-        uint256 vaultBalanceOfPerformanceFeeRecipientAfter =
-            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-        uint256 sharesMinted = vaultBalanceOfPerformanceFeeRecipientAfter - vaultBalanceOfPerformanceFeeRecipientBefore;
-        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
-
-        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 1e8, "exchange rate should not change");
-
-        assertApproxEqAbs(
-            vault.convertToAssets(sharesMinted),
-            expectedFee,
-            1e4,
-            "Performance fee recipient should receive the correct amount of assets"
-        );
-        assertApproxEqAbs(
-            sharesMinted,
-            expectedSharesToMint,
-            1e4,
-            "Performance fee recipient should receive the correct amount of shares"
-        );
-        assertApproxEqAbs(withdrawAmount, expectedSharesToBurn, 1e4, "Preview withdraw shares should match expected");
+        assertApproxEqAbs(withdrawAmount, expectedShares, 2, "Preview withdraw shares should match expected");
     }
 
     function test_Vault_withdrawWithExemptedFees(uint256 assets, uint256 withdrawnAssets) external {

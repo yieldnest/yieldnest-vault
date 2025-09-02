@@ -400,7 +400,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEqThreshold(totalSupplyBeforeProcessing, expectedTotalSupply, 5000, "totalSupply should match expected");
     }
 
-    function test_afterRedeem_Increases_Shares(uint256 sharesAmount) public {
+    function test_afterRedeem_NoChangeInShares(uint256 sharesAmount) public {
         vm.prank(FEE_MANAGER);
         vault.setBaseWithdrawalFee(250000);
 
@@ -416,7 +416,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
-        assertGt(totalSupplyAfter, totalSupplyBefore, "totalSupply should increase");
+        assertEq(totalSupplyAfter, totalSupplyBefore, "totalSupply should not increase");
     }
 
     function test_afterRedeem_ExemptedFromFee(uint256 depositAmount) public {
@@ -459,10 +459,10 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
-        assertGt(totalSupplyAfter, totalSupplyBefore, "totalSupply should increase due to fee overriden");
+        assertEq(totalSupplyAfter, totalSupplyBefore, "totalSupply should not increase due to fee overriden");
     }
 
-    function test_beforeWithdraw_Increases_Shares(uint256 sharesAmount) public {
+    function test_beforeWithdraw_NoChangeInShares(uint256 sharesAmount) public {
         vm.prank(FEE_MANAGER);
         vault.setBaseWithdrawalFee(250000);
 
@@ -478,7 +478,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
-        assertGt(totalSupplyAfter, totalSupplyBefore, "totalSupply should increase by sharesAmount");
+        assertEq(totalSupplyAfter, totalSupplyBefore, "totalSupply should not increase by sharesAmount");
     }
 
     function test_beforeWithdraw_ExemptedFromFee(uint256 depositAmount) public {
@@ -521,7 +521,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
-        assertGt(totalSupplyAfter, totalSupplyBefore, "totalSupply should increase due to fee overriden");
+        assertEq(totalSupplyAfter, totalSupplyBefore, "totalSupply should increase due to fee overriden");
     }
 
     function test_beforeWithdraw_MintsToFeeRecipient(

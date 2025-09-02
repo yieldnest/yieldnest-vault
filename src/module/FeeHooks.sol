@@ -111,15 +111,12 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
     /**
      * @notice Before withdraw hook function
      * @dev This hook is called before the withdraw is processed
-     * @dev This hook is mints the shares corresponding to the withdrawal fee to the performanceFeeRecipient
      * @dev This hook is called before the shares and assets are updated in the vault
-     * @param assets The amount of assets to withdraw
-     * @param caller The address of the caller(withdrawer)
      */
     function beforeWithdraw(
-        address asset,
-        uint256 assets,
-        address caller,
+        address, /*asset*/
+        uint256, /*assets*/
+        address, /*caller*/
         address,
         /**
          * receiver*
@@ -135,30 +132,16 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
          */
         external
         onlyVault
-    {
-        // calculates the fee to be added on top of the assets to withdraw
-        // NOTE: In withdraw, assets to withdraw is fixed. So, fees is taken on top of the assets to withdraw
-        uint256 fees = VAULT._feeOnRaw(assets, caller);
-        // converts the fees to equivalent amount of shares to mint to the performanceFeeRecipient
-        // accounting is done before the withdraw is processed, so totalAssets is not updated yet
-        uint256 sharesToMint = VAULT.previewDepositAsset(asset, fees);
-        if (sharesToMint > 0) {
-            VAULT.mintShares(performanceFeeRecipient, sharesToMint);
-            emit WithdrawFeeCharged(performanceFeeRecipient, sharesToMint, fees, assets);
-        }
-    }
+    {}
 
     /**
      * @notice After redeem hook function
      * @dev This hook is called after the redeem is processed
-     * @dev This hook is mints the shares corresponding to the withdraw fee to the performanceFeeRecipient
-     * @param shares The amount of shares to redeem
-     * @param caller The address of the caller(redeemer)
      */
     function afterRedeem(
         address, /*asset*/
-        uint256 shares,
-        address caller,
+        uint256, /*shares*/
+        address, /*caller*/
         address,
         /**
          * receiver*
@@ -174,22 +157,11 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
          */
         external
         onlyVault
-    {
-        // calculates the fee included in the shares to redeem
-        // NOTE: In redeem, shares to burn is fixed. So, fee taken from users is already included in the shares to burn
-        // If the assets corresponding to shares to redeem is X and fees is F, then X includes F already
-        // So, we calculate the shares corresponding to fees F
-        uint256 sharesToMint = VAULT._feeOnTotal(shares, caller);
-        if (sharesToMint > 0) {
-            VAULT.mintShares(performanceFeeRecipient, sharesToMint);
-            emit RedeemFeeCharged(performanceFeeRecipient, sharesToMint, shares);
-        }
-    }
+    {}
     /**
      * @notice Before deposit hook function
      * @dev This hook is called before the deposit is processed
      */
-
     function beforeDeposit(
         address, /*asset*/
         uint256, /*assets*/
