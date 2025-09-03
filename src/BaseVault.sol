@@ -293,15 +293,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (paused()) {
             revert Paused();
         }
-        (uint256 shares, uint256 baseAssets) = _convertToShares(asset(), assets, Math.Rounding.Floor);
-        IHooks hooks_ = hooks();
-        HooksLib.beforeDeposit(hooks_, asset(), assets, _msgSender(), receiver, shares, baseAssets);
 
-        _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
-
-        HooksLib.afterDeposit(hooks_, asset(), assets, _msgSender(), receiver, shares, baseAssets);
-
-        return shares;
+        return _depositAsset(asset(), assets, receiver);
     }
 
     /**
@@ -315,6 +308,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert Paused();
         }
         (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
+
         IHooks hooks_ = hooks();
         HooksLib.beforeMint(hooks_, asset(), shares, _msgSender(), receiver, assets, baseAssets);
 
@@ -478,12 +472,31 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (paused()) {
             revert Paused();
         }
-        (uint256 shares, uint256 baseAssets) = _convertToShares(asset_, assets, Math.Rounding.Floor);
-        _deposit(asset_, _msgSender(), receiver, assets, shares, baseAssets);
-        return shares;
+
+        return _depositAsset(asset_, assets, receiver);
     }
 
     //// INTERNAL ////
+
+    /**
+     * @notice Internal function to handle deposits for specific assets.
+     * @param asset_ The address of the asset.
+     * @param assets The amount of assets to deposit.
+     * @param receiver The address of the receiver.
+     * @return uint256 The equivalent amount of shares.
+     */
+    function _depositAsset(address asset_, uint256 assets, address receiver) internal virtual returns (uint256) {
+        (uint256 shares, uint256 baseAssets) = _convertToShares(asset_, assets, Math.Rounding.Floor);
+
+        IHooks hooks_ = hooks();
+        HooksLib.beforeDeposit(hooks_, asset_, assets, _msgSender(), receiver, shares, baseAssets);
+
+        _deposit(asset_, _msgSender(), receiver, assets, shares, baseAssets);
+
+        HooksLib.afterDeposit(hooks_, asset_, assets, _msgSender(), receiver, shares, baseAssets);
+
+        return shares;
+    }
 
     /**
      * @notice Internal function to handle deposits.
