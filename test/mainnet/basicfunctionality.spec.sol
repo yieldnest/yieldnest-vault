@@ -586,10 +586,12 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         withdrawer.processAccounting();
         vault.processAccounting();
 
+        uint256 fixedDelta = 2e3;
+
         assertApproxEqAbs(
             vault.totalAssets(),
             totalAssetsBefore,
-            tokenIds.length * 1e3,
+            tokenIds.length * fixedDelta,
             "Total assets should remain the same after withdrawal request"
         );
         uint256 withdrawerETHBefore = address(withdrawer).balance;
@@ -604,14 +606,14 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         assertApproxEqAbs(
             address(withdrawer).balance - withdrawerETHBefore,
             IwstETH(MC.WSTETH).getStETHByWstETH(actualAmount),
-            1e3,
+            fixedDelta,
             "ETH balance should increase by expected amount after withdrawal claim"
         );
 
         assertApproxEqAbs(
             vault.totalAssets(),
             totalAssetsBefore,
-            tokenIds.length * 1e3,
+            tokenIds.length * fixedDelta,
             "Total assets should remain the same after withdrawal claim"
         );
     }
