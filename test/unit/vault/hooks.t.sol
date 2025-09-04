@@ -26,6 +26,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {TestHelpers} from "test/unit/helpers/TestHelpers.sol";
+import {MockNoOpHooks} from "test/unit/mocks/MockNoOpHooks.sol";
 
 contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
