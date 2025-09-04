@@ -52,27 +52,6 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         strategy.setAssetWithdrawable(address(weth), true);
     }
 
-    function test_AfterProcessAccounting_NotCalledByVault() public {
-        vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether, 0, 0, 0);
-        vm.stopPrank();
-    }
-
-    function test_beforeWithdraw_NotCalledByVault() public {
-        vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeWithdraw(address(weth), 1 ether, alice, alice, alice, 0);
-        vm.stopPrank();
-    }
-
-    function test_afterRedeem_NotCalledByVault() public {
-        vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterRedeem(address(weth), 1 ether, alice, alice, alice, 0);
-        vm.stopPrank();
-    }
-
     function test_HooksFunction_OnlyCallableByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
