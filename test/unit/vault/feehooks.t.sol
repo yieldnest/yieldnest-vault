@@ -400,4 +400,47 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should match expected");
         assertEqThreshold(totalSupplyBeforeProcessing, expectedTotalSupply, 5000, "totalSupply should match expected");
     }
+
+    function test_setPerformanceFeeRecipient() public {
+        address newPerformanceFeeRecipient = makeAddr("newPerformanceFeeRecipient");
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFeeRecipient(newPerformanceFeeRecipient);
+        assertEq(hooks.performanceFeeRecipient(), newPerformanceFeeRecipient);
+    }
+
+    function test_setPerformanceFeeRecipient_notAdmin() public {
+        address newPerformanceFeeRecipient = makeAddr("newPerformanceFeeRecipient");
+        address notAdmin = makeAddr("notAdmin");
+        vm.startPrank(notAdmin);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notAdmin));
+        hooks.setPerformanceFeeRecipient(newPerformanceFeeRecipient);
+    }
+
+    function test_setPerformanceFeeRecipient_invalidRecipient() public {
+        vm.startPrank(ADMIN);
+        vm.expectRevert(abi.encodeWithSelector(IFeeHooks.InvalidPerformanceFeeRecipient.selector));
+        hooks.setPerformanceFeeRecipient(address(0));
+    }
+
+    function test_setPerformanceFee() public {
+        uint256 newPerformanceFee = 1e16;
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFee(newPerformanceFee);
+        assertEq(hooks.performanceFee(), newPerformanceFee);
+    }
+
+    function test_setPerformanceFee_notAdmin() public {
+        uint256 newPerformanceFee = 1e16;
+        address notAdmin = makeAddr("notAdmin");
+        vm.startPrank(notAdmin);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notAdmin));
+        hooks.setPerformanceFee(newPerformanceFee);
+    }
+
+    function test_setPerformanceFee_invalidFee() public {
+        uint256 newPerformanceFee = 1e19;
+        vm.startPrank(ADMIN);
+        vm.expectRevert(abi.encodeWithSelector(IFeeHooks.InvalidPerformanceFee.selector));
+        hooks.setPerformanceFee(newPerformanceFee);
+    }
 }

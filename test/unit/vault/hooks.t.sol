@@ -38,7 +38,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
     WETH9 public weth;
     MockSTETH public steth;
-    FeeHooks public hooks;
+    IHooks public hooks;
 
     address public alice = address(0x1);
     address public caller = address(0x2);
@@ -47,7 +47,10 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function setUp() public {
         SetupVault setupVault = new SetupVault();
         (vault, weth) = setupVault.setup();
-        hooks = FeeHooks(address(vault.hooks()));
+        hooks = MockNoOpHooks(address(vault.hooks()));
+
+        vm.prank(ADMIN);
+        vault.setHooks(address(hooks));
 
         // Replace the steth mock with our custom MockSTETH
         steth = MockSTETH(payable(MC.STETH));
@@ -817,49 +820,6 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterWithdraw.selector), 0);
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeProcessAccounting.selector), 0);
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterProcessAccounting.selector), 0);
-    }
-
-    function test_setPerformanceFeeRecipient() public {
-        address newPerformanceFeeRecipient = makeAddr("newPerformanceFeeRecipient");
-        vm.startPrank(ADMIN);
-        hooks.setPerformanceFeeRecipient(newPerformanceFeeRecipient);
-        assertEq(hooks.performanceFeeRecipient(), newPerformanceFeeRecipient);
-    }
-
-    function test_setPerformanceFeeRecipient_notAdmin() public {
-        address newPerformanceFeeRecipient = makeAddr("newPerformanceFeeRecipient");
-        address notAdmin = makeAddr("notAdmin");
-        vm.startPrank(notAdmin);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notAdmin));
-        hooks.setPerformanceFeeRecipient(newPerformanceFeeRecipient);
-    }
-
-    function test_setPerformanceFeeRecipient_invalidRecipient() public {
-        vm.startPrank(ADMIN);
-        vm.expectRevert(abi.encodeWithSelector(IFeeHooks.InvalidPerformanceFeeRecipient.selector));
-        hooks.setPerformanceFeeRecipient(address(0));
-    }
-
-    function test_setPerformanceFee() public {
-        uint256 newPerformanceFee = 1e16;
-        vm.startPrank(ADMIN);
-        hooks.setPerformanceFee(newPerformanceFee);
-        assertEq(hooks.performanceFee(), newPerformanceFee);
-    }
-
-    function test_setPerformanceFee_notAdmin() public {
-        uint256 newPerformanceFee = 1e16;
-        address notAdmin = makeAddr("notAdmin");
-        vm.startPrank(notAdmin);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notAdmin));
-        hooks.setPerformanceFee(newPerformanceFee);
-    }
-
-    function test_setPerformanceFee_invalidFee() public {
-        uint256 newPerformanceFee = 1e19;
-        vm.startPrank(ADMIN);
-        vm.expectRevert(abi.encodeWithSelector(IFeeHooks.InvalidPerformanceFee.selector));
-        hooks.setPerformanceFee(newPerformanceFee);
     }
 
     function test_setHooks_revertsIfInvalidHooks() public {
