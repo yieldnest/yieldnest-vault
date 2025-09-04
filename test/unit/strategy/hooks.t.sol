@@ -471,9 +471,38 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         vm.stopPrank();
     }
 
-    function test_HooksNotSet() public {
+    function test_HooksAllSet() public {
         vm.prank(ADMIN);
-        strategy.setHooks(address(0));
+        strategy.setHooks(address(hooks));
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: true,
+                afterDeposit: true,
+                beforeMint: true,
+                afterMint: true,
+                beforeRedeem: true,
+                afterRedeem: true,
+                beforeWithdraw: true,
+                afterWithdraw: true,
+                beforeProcessAccounting: true,
+                afterProcessAccounting: true
+            })
+        );
+        vm.stopPrank();
+
+        // expect all of the hooks to be called
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeDeposit.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterDeposit.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeMint.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterMint.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeRedeem.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterRedeem.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeWithdraw.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterWithdraw.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeProcessAccounting.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterProcessAccounting.selector), 1);
 
         vm.startPrank(caller);
         strategy.deposit(1 ether, alice);
@@ -487,6 +516,11 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         strategy.redeem(1 wei, alice, alice);
         strategy.withdraw(1 wei, alice, alice);
         vm.stopPrank();
+    }
+
+    function test_HooksNotSet() public {
+        vm.prank(ADMIN);
+        strategy.setHooks(address(0));
 
         // expect none of the hooks to not be called
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeDeposit.selector), 0);
@@ -499,5 +533,18 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterWithdraw.selector), 0);
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeProcessAccounting.selector), 0);
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterProcessAccounting.selector), 0);
+
+        vm.startPrank(caller);
+        strategy.deposit(1 ether, alice);
+        strategy.mint(1 ether, alice);
+        vm.stopPrank();
+        // allocateToBuffer(1 ether);
+
+        strategy.processAccounting();
+
+        vm.startPrank(alice);
+        strategy.redeem(1 wei, alice, alice);
+        strategy.withdraw(1 wei, alice, alice);
+        vm.stopPrank();
     }
 }
