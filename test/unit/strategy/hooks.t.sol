@@ -14,13 +14,14 @@ import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {MockNoOpHooks} from "test/unit/mocks/MockNoOpHooks.sol";
 
-contract HooksUnitTest is Test, Etches, MainnetActors {
+contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
 
     MockStrategy public strategy;
     WETH9 public weth;
-    FeeHooks public hooks;
+    IHooks public hooks;
 
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 100_000 ether;
@@ -33,7 +34,10 @@ contract HooksUnitTest is Test, Etches, MainnetActors {
         vm.prank(ADMIN);
         strategy.setAlwaysComputeTotalAssets(false);
 
-        hooks = FeeHooks(address(strategy.hooks()));
+        hooks = MockNoOpHooks(address(strategy.hooks()));
+
+        vm.prank(ADMIN);
+        strategy.setHooks(address(hooks));
 
         // Give Alice some tokens
         deal(caller, INITIAL_BALANCE);
