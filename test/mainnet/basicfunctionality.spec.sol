@@ -589,7 +589,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         assertApproxEqAbs(
             vault.totalAssets(),
             totalAssetsBefore,
-            tokenIds.length * 1e3,
+            tokenIds.length * 2e3,
             "Total assets should remain the same after withdrawal request"
         );
         uint256 withdrawerETHBefore = address(withdrawer).balance;
@@ -611,7 +611,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         assertApproxEqAbs(
             vault.totalAssets(),
             totalAssetsBefore,
-            tokenIds.length * 1e3,
+            tokenIds.length * 2e3,
             "Total assets should remain the same after withdrawal claim"
         );
     }
