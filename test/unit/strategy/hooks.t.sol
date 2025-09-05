@@ -377,6 +377,124 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         vm.stopPrank();
     }
 
+    function test_redeemAssetHooks_Enabled(uint8 assetIndex) public {
+        address[] memory activeAssets = TestHelpers.getActiveAssets(IVault(address(strategy)));
+        vm.assume(activeAssets.length > 0);
+        vm.assume(assetIndex < activeAssets.length);
+
+        // Use the asset at the given index
+        address asset = activeAssets[assetIndex];
+
+        // Setup caller with the selected asset
+        if (asset == MC.WETH) {
+            // Already set up in setUp()
+        } else {
+            // Deal tokens for other assets
+            deal(asset, caller, INITIAL_BALANCE);
+        }
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: true,
+                afterRedeem: true,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        uint256 depositAmount = 1 ether;
+
+        vm.startPrank(caller);
+        IERC20(asset).approve(address(strategy), depositAmount);
+        uint256 depositShares = strategy.depositAsset(asset, depositAmount, alice);
+        vm.stopPrank();
+
+        uint256 sharesToRedeem = depositShares;
+        uint256 assetsToRedeem = strategy.previewRedeemAsset(asset, sharesToRedeem);
+
+        vm.startPrank(alice);
+        // expect beforeRedeem and afterRedeem to be called by 1 time
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.beforeRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            1
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            1
+        );
+        strategy.redeemAsset(asset, sharesToRedeem, alice, alice);
+        vm.stopPrank();
+    }
+
+    function test_redeemAssetHooks_Disabled(uint8 assetIndex) public {
+        address[] memory activeAssets = TestHelpers.getActiveAssets(IVault(address(strategy)));
+        vm.assume(activeAssets.length > 0);
+        vm.assume(assetIndex < activeAssets.length);
+
+        // Use the asset at the given index
+        address asset = activeAssets[assetIndex];
+
+        // Setup caller with the selected asset
+        if (asset == MC.WETH) {
+            // Already set up in setUp()
+        } else {
+            // Deal tokens for other assets
+            deal(asset, caller, INITIAL_BALANCE);
+        }
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        uint256 depositAmount = 1 ether;
+
+        vm.startPrank(caller);
+        IERC20(asset).approve(address(strategy), depositAmount);
+        uint256 depositShares = strategy.depositAsset(asset, depositAmount, alice);
+        vm.stopPrank();
+
+        uint256 sharesToRedeem = depositShares;
+        uint256 assetsToRedeem = strategy.previewRedeemAsset(asset, sharesToRedeem);
+
+        vm.startPrank(alice);
+        // expect beforeRedeem and afterRedeem to be called by 1 time
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.beforeRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            0
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            0
+        );
+        strategy.redeemAsset(asset, sharesToRedeem, alice, alice);
+        vm.stopPrank();
+    }
+
     function test_withdrawHooks_Enabled() public {
         vm.startPrank(HOOKS_MANAGER);
         hooks.setConfig(
