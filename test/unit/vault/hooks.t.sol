@@ -27,6 +27,7 @@ import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {TestHelpers} from "test/unit/helpers/TestHelpers.sol";
 import {MockNoOpHooks} from "test/unit/mocks/MockNoOpHooks.sol";
+import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 
 contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
@@ -588,7 +589,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.prank(caller);
         uint256 depositShares = vault.deposit(1 ether, alice);
 
-        allocateToBuffer(1 ether);
+        ProcessorUtils.allocateToBuffer(vault, 1 ether, PROCESSOR);
 
         uint256 sharesToRedeem = depositShares;
         uint256 assetsToRedeem = vault.previewRedeem(sharesToRedeem);
@@ -630,7 +631,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.prank(caller);
         uint256 depositShares = vault.deposit(1 ether, alice);
 
-        allocateToBuffer(1 ether);
+        ProcessorUtils.allocateToBuffer(vault, 1 ether, PROCESSOR);
 
         uint256 sharesToRedeem = depositShares;
         vault.previewRedeem(sharesToRedeem);
@@ -669,7 +670,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 depositShares = vault.deposit(1 ether, alice);
         vm.stopPrank();
 
-        allocateToBuffer(1 ether);
+        ProcessorUtils.allocateToBuffer(vault, 1 ether, PROCESSOR);
 
         uint256 sharesToRedeem = depositShares;
         vault.previewRedeem(sharesToRedeem);
@@ -708,7 +709,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 depositShares = vault.deposit(1 ether, alice);
         vm.stopPrank();
 
-        allocateToBuffer(1 ether);
+        ProcessorUtils.allocateToBuffer(vault, 1 ether, PROCESSOR);
 
         uint256 sharesToRedeem = depositShares;
         vault.previewRedeem(sharesToRedeem);
@@ -800,7 +801,7 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vault.mint(1 ether, alice);
 
         vm.stopPrank();
-        allocateToBuffer(1 ether);
+        ProcessorUtils.allocateToBuffer(vault, 1 ether, PROCESSOR);
 
         vault.processAccounting();
 
@@ -847,22 +848,5 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(ADMIN);
         vault.setHooks(address(0));
         assertEq(address(vault.hooks()), address(0));
-    }
-
-    function allocateToBuffer(uint256 amount) internal {
-        address[] memory targets = new address[](2);
-        targets[0] = MC.WETH;
-        targets[1] = MC.BUFFER;
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
-        data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
-
-        vm.prank(PROCESSOR);
-        vault.processor(targets, values, data);
     }
 }
