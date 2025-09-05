@@ -5,7 +5,7 @@ import {Vault} from "src/Vault.sol";
 import {IVault} from "src/interface/IVault.sol";
 
 library TestHelpers {
-    function getActiveAssets(Vault vault) public view returns (address[] memory) {
+    function getActiveAssets(IVault vault) public view returns (address[] memory) {
         // Get all assets and filter for active ones
         address[] memory allAssets = vault.getAssets();
         address[] memory activeAssets = new address[](allAssets.length);

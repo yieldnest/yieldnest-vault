@@ -15,6 +15,9 @@ import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {MockNoOpHooks} from "test/unit/mocks/MockNoOpHooks.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
+import {TestHelpers} from "test/unit/helpers/TestHelpers.sol";
+import {Vault} from "src/Vault.sol";
 
 contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
@@ -164,6 +167,61 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
             0
         );
         strategy.deposit(1 ether, alice);
+        vm.stopPrank();
+    }
+
+    function test_depositAssetHooks_Enabled(uint8 assetIndex) public {
+        address[] memory activeAssets = TestHelpers.getActiveAssets(IVault(address(strategy)));
+        vm.assume(activeAssets.length > 0);
+        vm.assume(assetIndex < activeAssets.length);
+
+        // Use the asset at the given index
+        address asset = activeAssets[assetIndex];
+
+        // Setup caller with the selected asset
+        if (asset == MC.WETH) {
+            // Already set up in setUp()
+        } else {
+            // Deal tokens for other assets
+            deal(asset, caller, INITIAL_BALANCE);
+        }
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: true,
+                afterDeposit: true,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        uint256 depositAmount = 1 ether;
+        uint256 sharesAmount = strategy.previewDepositAsset(asset, depositAmount);
+        uint256 baseAssetAmount = strategy.convertToAssets(sharesAmount);
+
+        vm.startPrank(caller);
+        // Approve the strategy to spend the asset
+        IERC20(asset).approve(address(strategy), 1 ether);
+        // expect beforeDeposit and afterDeposit to be called by 1 time
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.beforeDeposit, (asset, depositAmount, caller, alice, sharesAmount, baseAssetAmount)),
+            1
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterDeposit, (asset, depositAmount, caller, alice, sharesAmount, baseAssetAmount)),
+            1
+        );
+        strategy.depositAsset(asset, depositAmount, alice);
         vm.stopPrank();
     }
 
