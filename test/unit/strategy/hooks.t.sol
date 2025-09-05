@@ -463,6 +463,126 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         vm.stopPrank();
     }
 
+    function test_withdrawAssetHooks_Enabled(uint8 assetIndex) public {
+        address[] memory activeAssets = TestHelpers.getActiveAssets(IVault(address(strategy)));
+        vm.assume(activeAssets.length > 0);
+        vm.assume(assetIndex < activeAssets.length);
+
+        // Use the asset at the given index
+        address asset = activeAssets[assetIndex];
+
+        // Setup caller with the selected asset
+        if (asset == MC.WETH) {
+            // Already set up in setUp()
+        } else {
+            // Deal tokens for other assets
+            deal(asset, caller, INITIAL_BALANCE);
+        }
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: true,
+                afterWithdraw: true,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        uint256 depositAmount = 1 ether;
+
+        vm.startPrank(caller);
+        IERC20(asset).approve(address(strategy), type(uint256).max);
+        strategy.depositAsset(asset, depositAmount, alice);
+        vm.stopPrank();
+
+        // allocateToBuffer(1 ether);
+
+        uint256 sharesToBurn = strategy.previewWithdrawAsset(asset, depositAmount);
+
+        vm.startPrank(alice);
+        // expect beforeWithdraw and afterWithdraw to be called by 1 time
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.beforeWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            1
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            1
+        );
+        strategy.withdrawAsset(asset, depositAmount, alice, alice);
+        vm.stopPrank();
+    }
+
+    function test_withdrawAssetHooks_Disabled(uint8 assetIndex) public {
+        address[] memory activeAssets = TestHelpers.getActiveAssets(IVault(address(strategy)));
+        vm.assume(activeAssets.length > 0);
+        vm.assume(assetIndex < activeAssets.length);
+
+        // Use the asset at the given index
+        address asset = activeAssets[assetIndex];
+
+        // Setup caller with the selected asset
+        if (asset == MC.WETH) {
+            // Already set up in setUp()
+        } else {
+            // Deal tokens for other assets
+            deal(asset, caller, INITIAL_BALANCE);
+        }
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        uint256 depositAmount = 1 ether;
+
+        vm.startPrank(caller);
+        IERC20(asset).approve(address(strategy), type(uint256).max);
+        strategy.depositAsset(asset, depositAmount, alice);
+        vm.stopPrank();
+
+        // allocateToBuffer(1 ether);
+
+        uint256 sharesToBurn = strategy.previewWithdrawAsset(asset, depositAmount);
+
+        vm.startPrank(alice);
+        // expect beforeWithdraw and afterWithdraw to be called by 1 time
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.beforeWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            0
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            0
+        );
+        strategy.withdrawAsset(asset, depositAmount, alice, alice);
+        vm.stopPrank();
+    }
+
     function test_processAccountingHooks_Enabled() public {
         vm.startPrank(HOOKS_MANAGER);
         hooks.setConfig(
