@@ -47,5 +47,9 @@ contract SetupWithdrawer is Test, MainnetActors {
 
         vm.prank(MC.TIMELOCK);
         vault.setProvider(address(provider));
+
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), MC.TIMELOCK);
+        vm.stopPrank();
     }
 }
