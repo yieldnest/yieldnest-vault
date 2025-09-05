@@ -792,14 +792,44 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
     }
 
-    function test_HooksNotSet() public {
+    function test_HooksAllSet() public {
         vm.prank(ADMIN);
-        vault.setHooks(address(0));
+        vault.setHooks(address(hooks));
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: true,
+                afterDeposit: true,
+                beforeMint: true,
+                afterMint: true,
+                beforeRedeem: true,
+                afterRedeem: true,
+                beforeWithdraw: true,
+                afterWithdraw: true,
+                beforeProcessAccounting: true,
+                afterProcessAccounting: true
+            })
+        );
+        vm.stopPrank();
+
+        // expect all of the hooks to be called
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeDeposit.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterDeposit.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeMint.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterMint.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeRedeem.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterRedeem.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeWithdraw.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterWithdraw.selector), 1);
+
+        // called twice, once by allocateToBuffer and once by processAccounting
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeProcessAccounting.selector), 2);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterProcessAccounting.selector), 2);
 
         vm.startPrank(caller);
         vault.deposit(1 ether, alice);
         vault.mint(1 ether, alice);
-
         vm.stopPrank();
         ProcessorUtils.allocateToBuffer(vault, 1 ether, PROCESSOR);
 
@@ -809,6 +839,11 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vault.redeem(1 wei, alice, alice);
         vault.withdraw(1 wei, alice, alice);
         vm.stopPrank();
+    }
+
+    function test_HooksNotSet() public {
+        vm.prank(ADMIN);
+        vault.setHooks(address(0));
 
         // expect none of the hooks to not be called
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeDeposit.selector), 0);
@@ -821,6 +856,19 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterWithdraw.selector), 0);
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeProcessAccounting.selector), 0);
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterProcessAccounting.selector), 0);
+
+        vm.startPrank(caller);
+        vault.deposit(1 ether, alice);
+        vault.mint(1 ether, alice);
+        vm.stopPrank();
+        ProcessorUtils.allocateToBuffer(vault, 1 ether, PROCESSOR);
+
+        vault.processAccounting();
+
+        vm.startPrank(alice);
+        vault.redeem(1 wei, alice, alice);
+        vault.withdraw(1 wei, alice, alice);
+        vm.stopPrank();
     }
 
     function test_setHooks_revertsIfInvalidHooks() public {
