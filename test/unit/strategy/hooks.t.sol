@@ -14,13 +14,17 @@ import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {MockNoOpHooks} from "test/unit/mocks/MockNoOpHooks.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
+import {TestHelpers} from "test/unit/helpers/TestHelpers.sol";
+import {Vault} from "src/Vault.sol";
 
-contract HooksUnitTest is Test, Etches, MainnetActors {
+contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
 
     MockStrategy public strategy;
     WETH9 public weth;
-    FeeHooks public hooks;
+    IHooks public hooks;
 
     address public alice = address(0x1);
     uint256 public constant INITIAL_BALANCE = 100_000 ether;
@@ -33,7 +37,10 @@ contract HooksUnitTest is Test, Etches, MainnetActors {
         vm.prank(ADMIN);
         strategy.setAlwaysComputeTotalAssets(false);
 
-        hooks = FeeHooks(address(strategy.hooks()));
+        hooks = MockNoOpHooks(address(strategy.hooks()));
+
+        vm.prank(ADMIN);
+        strategy.setHooks(address(hooks));
 
         // Give Alice some tokens
         deal(caller, INITIAL_BALANCE);
@@ -46,27 +53,6 @@ contract HooksUnitTest is Test, Etches, MainnetActors {
 
         vm.prank(ASSET_MANAGER);
         strategy.setAssetWithdrawable(address(weth), true);
-    }
-
-    function test_AfterProcessAccounting_NotCalledByVault() public {
-        vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether, 0, 0, 0);
-        vm.stopPrank();
-    }
-
-    function test_beforeWithdraw_NotCalledByVault() public {
-        vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeWithdraw(address(weth), 1 ether, alice, alice, alice, 0);
-        vm.stopPrank();
-    }
-
-    function test_afterRedeem_NotCalledByVault() public {
-        vm.startPrank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterRedeem(address(weth), 1 ether, alice, alice, alice, 0);
-        vm.stopPrank();
     }
 
     function test_HooksFunction_OnlyCallableByVault() public {
@@ -181,6 +167,61 @@ contract HooksUnitTest is Test, Etches, MainnetActors {
             0
         );
         strategy.deposit(1 ether, alice);
+        vm.stopPrank();
+    }
+
+    function test_depositAssetHooks_Enabled(uint8 assetIndex) public {
+        address[] memory activeAssets = TestHelpers.getActiveAssets(IVault(address(strategy)));
+        vm.assume(activeAssets.length > 0);
+        vm.assume(assetIndex < activeAssets.length);
+
+        // Use the asset at the given index
+        address asset = activeAssets[assetIndex];
+
+        // Setup caller with the selected asset
+        if (asset == MC.WETH) {
+            // Already set up in setUp()
+        } else {
+            // Deal tokens for other assets
+            deal(asset, caller, INITIAL_BALANCE);
+        }
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: true,
+                afterDeposit: true,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        uint256 depositAmount = 1 ether;
+        uint256 sharesAmount = strategy.previewDepositAsset(asset, depositAmount);
+        uint256 baseAssetAmount = strategy.convertToAssets(sharesAmount);
+
+        vm.startPrank(caller);
+        // Approve the strategy to spend the asset
+        IERC20(asset).approve(address(strategy), 1 ether);
+        // expect beforeDeposit and afterDeposit to be called by 1 time
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.beforeDeposit, (asset, depositAmount, caller, alice, sharesAmount, baseAssetAmount)),
+            1
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterDeposit, (asset, depositAmount, caller, alice, sharesAmount, baseAssetAmount)),
+            1
+        );
+        strategy.depositAsset(asset, depositAmount, alice);
         vm.stopPrank();
     }
 
@@ -336,6 +377,124 @@ contract HooksUnitTest is Test, Etches, MainnetActors {
         vm.stopPrank();
     }
 
+    function test_redeemAssetHooks_Enabled(uint8 assetIndex) public {
+        address[] memory activeAssets = TestHelpers.getActiveAssets(IVault(address(strategy)));
+        vm.assume(activeAssets.length > 0);
+        vm.assume(assetIndex < activeAssets.length);
+
+        // Use the asset at the given index
+        address asset = activeAssets[assetIndex];
+
+        // Setup caller with the selected asset
+        if (asset == MC.WETH) {
+            // Already set up in setUp()
+        } else {
+            // Deal tokens for other assets
+            deal(asset, caller, INITIAL_BALANCE);
+        }
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: true,
+                afterRedeem: true,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        uint256 depositAmount = 1 ether;
+
+        vm.startPrank(caller);
+        IERC20(asset).approve(address(strategy), depositAmount);
+        uint256 depositShares = strategy.depositAsset(asset, depositAmount, alice);
+        vm.stopPrank();
+
+        uint256 sharesToRedeem = depositShares;
+        uint256 assetsToRedeem = strategy.previewRedeemAsset(asset, sharesToRedeem);
+
+        vm.startPrank(alice);
+        // expect beforeRedeem and afterRedeem to be called by 1 time
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.beforeRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            1
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            1
+        );
+        strategy.redeemAsset(asset, sharesToRedeem, alice, alice);
+        vm.stopPrank();
+    }
+
+    function test_redeemAssetHooks_Disabled(uint8 assetIndex) public {
+        address[] memory activeAssets = TestHelpers.getActiveAssets(IVault(address(strategy)));
+        vm.assume(activeAssets.length > 0);
+        vm.assume(assetIndex < activeAssets.length);
+
+        // Use the asset at the given index
+        address asset = activeAssets[assetIndex];
+
+        // Setup caller with the selected asset
+        if (asset == MC.WETH) {
+            // Already set up in setUp()
+        } else {
+            // Deal tokens for other assets
+            deal(asset, caller, INITIAL_BALANCE);
+        }
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        uint256 depositAmount = 1 ether;
+
+        vm.startPrank(caller);
+        IERC20(asset).approve(address(strategy), depositAmount);
+        uint256 depositShares = strategy.depositAsset(asset, depositAmount, alice);
+        vm.stopPrank();
+
+        uint256 sharesToRedeem = depositShares;
+        uint256 assetsToRedeem = strategy.previewRedeemAsset(asset, sharesToRedeem);
+
+        vm.startPrank(alice);
+        // expect beforeRedeem and afterRedeem to be called by 1 time
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.beforeRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            0
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            0
+        );
+        strategy.redeemAsset(asset, sharesToRedeem, alice, alice);
+        vm.stopPrank();
+    }
+
     function test_withdrawHooks_Enabled() public {
         vm.startPrank(HOOKS_MANAGER);
         hooks.setConfig(
@@ -422,6 +581,126 @@ contract HooksUnitTest is Test, Etches, MainnetActors {
         vm.stopPrank();
     }
 
+    function test_withdrawAssetHooks_Enabled(uint8 assetIndex) public {
+        address[] memory activeAssets = TestHelpers.getActiveAssets(IVault(address(strategy)));
+        vm.assume(activeAssets.length > 0);
+        vm.assume(assetIndex < activeAssets.length);
+
+        // Use the asset at the given index
+        address asset = activeAssets[assetIndex];
+
+        // Setup caller with the selected asset
+        if (asset == MC.WETH) {
+            // Already set up in setUp()
+        } else {
+            // Deal tokens for other assets
+            deal(asset, caller, INITIAL_BALANCE);
+        }
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: true,
+                afterWithdraw: true,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        uint256 depositAmount = 1 ether;
+
+        vm.startPrank(caller);
+        IERC20(asset).approve(address(strategy), type(uint256).max);
+        strategy.depositAsset(asset, depositAmount, alice);
+        vm.stopPrank();
+
+        // allocateToBuffer(1 ether);
+
+        uint256 sharesToBurn = strategy.previewWithdrawAsset(asset, depositAmount);
+
+        vm.startPrank(alice);
+        // expect beforeWithdraw and afterWithdraw to be called by 1 time
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.beforeWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            1
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            1
+        );
+        strategy.withdrawAsset(asset, depositAmount, alice, alice);
+        vm.stopPrank();
+    }
+
+    function test_withdrawAssetHooks_Disabled(uint8 assetIndex) public {
+        address[] memory activeAssets = TestHelpers.getActiveAssets(IVault(address(strategy)));
+        vm.assume(activeAssets.length > 0);
+        vm.assume(assetIndex < activeAssets.length);
+
+        // Use the asset at the given index
+        address asset = activeAssets[assetIndex];
+
+        // Setup caller with the selected asset
+        if (asset == MC.WETH) {
+            // Already set up in setUp()
+        } else {
+            // Deal tokens for other assets
+            deal(asset, caller, INITIAL_BALANCE);
+        }
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: false
+            })
+        );
+        vm.stopPrank();
+
+        uint256 depositAmount = 1 ether;
+
+        vm.startPrank(caller);
+        IERC20(asset).approve(address(strategy), type(uint256).max);
+        strategy.depositAsset(asset, depositAmount, alice);
+        vm.stopPrank();
+
+        // allocateToBuffer(1 ether);
+
+        uint256 sharesToBurn = strategy.previewWithdrawAsset(asset, depositAmount);
+
+        vm.startPrank(alice);
+        // expect beforeWithdraw and afterWithdraw to be called by 1 time
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.beforeWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            0
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(IHooks.afterWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            0
+        );
+        strategy.withdrawAsset(asset, depositAmount, alice, alice);
+        vm.stopPrank();
+    }
+
     function test_processAccountingHooks_Enabled() public {
         vm.startPrank(HOOKS_MANAGER);
         hooks.setConfig(
@@ -488,9 +767,38 @@ contract HooksUnitTest is Test, Etches, MainnetActors {
         vm.stopPrank();
     }
 
-    function test_HooksNotSet() public {
+    function test_HooksAllSet() public {
         vm.prank(ADMIN);
-        strategy.setHooks(address(0));
+        strategy.setHooks(address(hooks));
+
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: true,
+                afterDeposit: true,
+                beforeMint: true,
+                afterMint: true,
+                beforeRedeem: true,
+                afterRedeem: true,
+                beforeWithdraw: true,
+                afterWithdraw: true,
+                beforeProcessAccounting: true,
+                afterProcessAccounting: true
+            })
+        );
+        vm.stopPrank();
+
+        // expect all of the hooks to be called
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeDeposit.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterDeposit.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeMint.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterMint.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeRedeem.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterRedeem.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeWithdraw.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterWithdraw.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeProcessAccounting.selector), 1);
+        vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterProcessAccounting.selector), 1);
 
         vm.startPrank(caller);
         strategy.deposit(1 ether, alice);
@@ -504,6 +812,11 @@ contract HooksUnitTest is Test, Etches, MainnetActors {
         strategy.redeem(1 wei, alice, alice);
         strategy.withdraw(1 wei, alice, alice);
         vm.stopPrank();
+    }
+
+    function test_HooksNotSet() public {
+        vm.prank(ADMIN);
+        strategy.setHooks(address(0));
 
         // expect none of the hooks to not be called
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeDeposit.selector), 0);
@@ -516,5 +829,18 @@ contract HooksUnitTest is Test, Etches, MainnetActors {
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterWithdraw.selector), 0);
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.beforeProcessAccounting.selector), 0);
         vm.expectCall(address(hooks), abi.encodeWithSelector(IHooks.afterProcessAccounting.selector), 0);
+
+        vm.startPrank(caller);
+        strategy.deposit(1 ether, alice);
+        strategy.mint(1 ether, alice);
+        vm.stopPrank();
+        // allocateToBuffer(1 ether);
+
+        strategy.processAccounting();
+
+        vm.startPrank(alice);
+        strategy.redeem(1 wei, alice, alice);
+        strategy.withdraw(1 wei, alice, alice);
+        vm.stopPrank();
     }
 }
