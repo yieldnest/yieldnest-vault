@@ -34,6 +34,9 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
     function getWithdrawer() public override returns (Withdrawer) {
         Withdrawer withdrawer = VaultVerification.getWithdrawer(vault);
 
+        SetupWithdrawer setup = new SetupWithdrawer();
+        setup.upgradeWithdrawerAndVault(withdrawer);
+
         _initVault(withdrawer);
         return withdrawer;
     }
@@ -46,7 +49,7 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
         Withdrawer withdrawer = getWithdrawer();
 
         // Assert that the Withdrawer contract has the correct version
-        assertEq(withdrawer.STRATEGY_VERSION(), "0.2.0", "Withdrawer should have version 0.2.0");
+        assertEq(withdrawer.STRATEGY_VERSION(), "0.3.0", "Withdrawer should have version 0.3.0");
     }
 
     function test_withdraw_ynLSDE(uint256 depositAmount) public {

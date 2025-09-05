@@ -85,6 +85,8 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         vm.startPrank(ADMIN);
         withdrawer.grantRole(withdrawer.PROCESSOR_ROLE(), address(this));
         vm.stopPrank();
+
+        assertEq(withdrawer.STRATEGY_VERSION(), "0.3.0", "Withdrawer should have version 0.3.0");
     }
 
     function _grantFinalizerRole(address queueManager_, address finalizer_) internal {

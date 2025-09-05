@@ -50,6 +50,8 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
 
         hooks = new FeeHooks(address(vault), ADMIN, 1e17, ADMIN, config);
 
+        Provider newProvider = new Provider();
+
         Vault newImplementation = new Vault();
         UpgradeUtils.timelockUpgrade(
             TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(newImplementation)
@@ -59,5 +61,8 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         vault.setHooks(address(hooks));
         vm.stopPrank();
         vault.processAccounting();
+
+        vm.prank(TIMELOCK);
+        vault.setProvider(address(newProvider));
     }
 }
