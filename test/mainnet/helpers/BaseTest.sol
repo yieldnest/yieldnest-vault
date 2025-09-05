@@ -83,8 +83,8 @@ contract BaseTest is Test, MainnetActors, TestHelper {
                 beforeMint: false,
                 afterMint: false,
                 beforeRedeem: false,
-                afterRedeem: true,
-                beforeWithdraw: true,
+                afterRedeem: false,
+                beforeWithdraw: false,
                 afterWithdraw: false,
                 beforeProcessAccounting: false,
                 afterProcessAccounting: true
@@ -93,6 +93,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         vm.startPrank(ADMIN);
         vault.grantRole(vault.HOOKS_MANAGER_ROLE(), TIMELOCK);
+        withdrawer.grantRole(withdrawer.HOOKS_MANAGER_ROLE(), TIMELOCK);
         vm.stopPrank();
 
         vm.startPrank(TIMELOCK);
@@ -103,6 +104,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         vm.startPrank(TIMELOCK);
         vault.setProvider(address(provider));
+        withdrawer.setProvider(address(provider));
         vm.stopPrank();
     }
 
