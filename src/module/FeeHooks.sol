@@ -66,28 +66,21 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @notice After process accounting hook function
      * @dev This hook is called after the totalBaseAssets is updated
      * @dev This hook is mints the shares corresponding to the performance fee to the performanceFeeRecipient
-     * @param totalAssetsBeforeAccounting The total assets before accounting
-     * @param totalSupplyBeforeAccounting The total supply before accounting
-     * @param totalAssetsAfterAccounting The total assets after accounting
+     * @param params The after process accounting parameters
      */
-    function afterProcessAccounting(
-        uint256 totalAssetsBeforeAccounting,
-        uint256 totalAssetsAfterAccounting,
-        uint256 totalSupplyBeforeAccounting,
-        uint256, /* totalSupplyAfterAccounting */
-        uint256, /* totalBaseAssetsBeforeAccounting */
-        uint256 /* totalBaseAssetsAfterAccounting */
-    ) external onlyVault {
+    function afterProcessAccounting(AfterProcessAccountingParams calldata params) external onlyVault {
         // if there is increase in total assets, then there is yield earned
-        if (totalAssetsAfterAccounting > totalAssetsBeforeAccounting) {
+        if (params.totalAssetsAfterAccounting > params.totalAssetsBeforeAccounting) {
             // calculate the yield earned and fees accrued
-            uint256 yieldEarned = totalAssetsAfterAccounting - totalAssetsBeforeAccounting;
+            uint256 yieldEarned = params.totalAssetsAfterAccounting - params.totalAssetsBeforeAccounting;
             uint256 feesAccrued = (yieldEarned * performanceFee) / FEE_DENOMINATOR;
 
             if (feesAccrued > 0) {
                 // totalAssetsAfterAccounting already includes the fees accrued
                 uint256 sharesToMint = feesAccrued.mulDiv(
-                    totalSupplyBeforeAccounting, totalAssetsAfterAccounting - feesAccrued, Math.Rounding.Floor
+                    params.totalSupplyBeforeAccounting,
+                    params.totalAssetsAfterAccounting - feesAccrued,
+                    Math.Rounding.Floor
                 );
                 if (sharesToMint > 0) {
                     VAULT.mintShares(performanceFeeRecipient, sharesToMint);
@@ -95,9 +88,9 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
                         performanceFeeRecipient,
                         sharesToMint,
                         feesAccrued,
-                        totalAssetsBeforeAccounting,
-                        totalAssetsAfterAccounting,
-                        totalSupplyBeforeAccounting
+                        params.totalAssetsBeforeAccounting,
+                        params.totalAssetsAfterAccounting,
+                        params.totalSupplyBeforeAccounting
                     );
                 }
             }
@@ -108,116 +101,65 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @notice Before withdraw hook function
      * @dev This hook is called before the withdraw is processed
      * @dev This hook is called before the shares and assets are updated in the vault
+     * @param params The withdraw parameters
      */
-    function beforeWithdraw(
-        address, /* asset */
-        uint256, /* assets */
-        address, /* caller */
-        address, /* receiver */
-        address, /* owner */
-        uint256 /* shares */
-    ) external onlyVault {}
+    function beforeWithdraw(WithdrawParams calldata params) external onlyVault {}
 
     /**
      * @notice After redeem hook function
      * @dev This hook is called after the redeem is processed
+     * @param params The redeem parameters
      */
-    function afterRedeem(
-        address, /* asset */
-        uint256, /* shares */
-        address, /* caller */
-        address, /* receiver */
-        address, /* owner */
-        uint256 /* assets */
-    ) external onlyVault {}
+    function afterRedeem(RedeemParams calldata params) external onlyVault {}
 
     /**
      * @notice Before deposit hook function
      * @dev This hook is called before the deposit is processed
+     * @param params The deposit parameters
      */
-    function beforeDeposit(
-        address, /* asset */
-        uint256, /* assets */
-        address, /* caller */
-        address, /* receiver */
-        uint256, /* shares */
-        uint256 /* baseAssets */
-    ) external onlyVault {}
+    function beforeDeposit(DepositParams calldata params) external onlyVault {}
 
     /**
      * @notice After deposit hook function
      * @dev This hook is called after the deposit is processed
+     * @param params The deposit parameters
      */
-    function afterDeposit(
-        address, /* asset */
-        uint256, /* assets */
-        address, /* caller */
-        address, /* receiver */
-        uint256, /* shares */
-        uint256 /* baseAssets */
-    ) external onlyVault {}
+    function afterDeposit(DepositParams calldata params) external onlyVault {}
 
     /**
      * @notice Before mint hook function
      * @dev This hook is called before the mint is processed
+     * @param params The mint parameters
      */
-    function beforeMint(
-        address, /* asset */
-        uint256, /* shares */
-        address, /* caller */
-        address, /* receiver */
-        uint256, /* assets */
-        uint256 /* baseAssets */
-    ) external onlyVault {}
+    function beforeMint(MintParams calldata params) external onlyVault {}
 
     /**
      * @notice After mint hook function
      * @dev This hook is called after the mint is processed
+     * @param params The mint parameters
      */
-    function afterMint(
-        address, /* asset */
-        uint256, /* shares */
-        address, /* caller */
-        address, /* receiver */
-        uint256, /* assets */
-        uint256 /* baseAssets */
-    ) external onlyVault {}
+    function afterMint(MintParams calldata params) external onlyVault {}
 
     /**
      * @notice Before redeem hook function
      * @dev This hook is called before the redeem is processed
+     * @param params The redeem parameters
      */
-    function beforeRedeem(
-        address, /* asset */
-        uint256, /* shares */
-        address, /* caller */
-        address, /* receiver */
-        address, /* owner */
-        uint256 /* assets */
-    ) external onlyVault {}
+    function beforeRedeem(RedeemParams calldata params) external onlyVault {}
 
     /**
      * @notice After withdraw hook function
      * @dev This hook is called after the withdraw is processed
+     * @param params The withdraw parameters
      */
-    function afterWithdraw(
-        address, /* asset */
-        uint256, /* assets */
-        address, /* caller */
-        address, /* receiver */
-        address, /* owner */
-        uint256 /* shares */
-    ) external onlyVault {}
+    function afterWithdraw(WithdrawParams calldata params) external onlyVault {}
 
     /**
      * @notice Before process accounting hook function
      * @dev This hook is called before the accounting is processed
+     * @param params The before process accounting parameters
      */
-    function beforeProcessAccounting(
-        uint256, /* totalAssetsBeforeAccounting */
-        uint256, /* totalSupplyBeforeAccounting */
-        uint256 /* totalBaseAssetsBeforeAccounting */
-    ) external onlyVault {}
+    function beforeProcessAccounting(BeforeProcessAccountingParams calldata params) external onlyVault {}
 
     /**
      * @notice Set the performance fee for the vault gains
