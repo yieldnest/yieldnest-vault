@@ -759,6 +759,82 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
     }
 
+    function test_processAccountingHooks_Enabled_with_yield() public {
+        vm.startPrank(HOOKS_MANAGER);
+        hooks.setConfig(
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: true,
+                afterProcessAccounting: true
+            })
+        );
+        vm.stopPrank();
+
+        uint256 depositAmount = 1 ether;
+
+        vm.startPrank(caller);
+        uint256 mintedShares = vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        uint256 donationAmount = 0.1 ether;
+        {
+            // Add yield to the vault
+            address donor = address(0x999);
+            deal(donor, donationAmount);
+            vm.startPrank(donor);
+            weth.deposit{value: donationAmount}();
+            weth.transfer(address(vault), donationAmount);
+            vm.stopPrank();
+        }
+
+        {
+            // expect beforeProcessAccounting to be called by 1 time
+            vm.expectCall(
+                address(hooks),
+                abi.encodeCall(
+                    IHooks.beforeProcessAccounting,
+                    (
+                        depositAmount, // totalAssetsBefore
+                        mintedShares, // totalSupplyBefore
+                        depositAmount // totalBaseAssetsBefore
+                    )
+                ),
+                1
+            );
+        }
+
+        {
+            uint256 expectedTotalAssetsAfter = depositAmount + donationAmount;
+            uint256 expectedTotalSupplyAfter = mintedShares;
+            uint256 expectedTotalBaseAssetsAfter = expectedTotalAssetsAfter;
+            // Expect afterProcessAccounting hook to be called exactly once
+            vm.expectCall(
+                address(hooks),
+                abi.encodeCall(
+                    IHooks.afterProcessAccounting,
+                    (
+                        depositAmount, // totalAssetsBefore
+                        expectedTotalAssetsAfter, // totalAssetsAfter
+                        mintedShares, // totalSupplyBefore
+                        expectedTotalSupplyAfter, // totalSupplyAfter
+                        depositAmount, // totalBaseAssetsBefore
+                        expectedTotalBaseAssetsAfter // totalBaseAssetsAfter
+                    )
+                ),
+                1 // call count
+            );
+        }
+        vault.processAccounting();
+        vm.stopPrank();
+    }
+
     function test_processAccountingHooks_Disabled() public {
         vm.startPrank(HOOKS_MANAGER);
         hooks.setConfig(
@@ -782,11 +858,34 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
 
         // expect beforeProcessAccounting and afterProcessAccounting to not be called
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeProcessAccounting, (1 ether, 1 ether, 1 ether)), 0);
+        // Expect beforeProcessAccounting hook to not be called when hooks are disabled
+        vm.expectCall(
+            address(hooks), // hooks contract address
+            abi.encodeCall(
+                IHooks.beforeProcessAccounting, // function selector
+                (
+                    1 ether, // totalAssetsBefore
+                    1 ether, // totalSupplyBefore
+                    1 ether // totalSupplyBefore
+                )
+            ),
+            0 // call count - should not be called since hooks are disabled
+        );
+        // Expect afterProcessAccounting hook to not be called when hooks are disabled
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterProcessAccounting, (1 ether, 1 ether, 1 ether, 1 ether, 1 ether, 1 ether)),
-            0
+            abi.encodeCall(
+                IHooks.afterProcessAccounting,
+                (
+                    1 ether, // totalAssetsBefore
+                    1 ether, // totalAssetsAfter
+                    1 ether, // totalSupplyBefore
+                    1 ether, // totalSupplyAfter
+                    1 ether, // totalBaseAssetsBefore
+                    1 ether // totalBaseAssetsAfter
+                )
+            ),
+            0 // call count - should not be called
         );
         vault.processAccounting();
         vm.stopPrank();

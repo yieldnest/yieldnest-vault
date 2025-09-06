@@ -289,8 +289,8 @@ library HooksLib {
      * @param totalAssetsAfterAccounting The total assets after accounting
      * @param totalSupplyBeforeAccounting The total supply before accounting
      * @param totalSupplyAfterAccounting The total supply after accounting
-     * @param totalBaseAssetsAfterAccounting The total base assets after accounting
      * @param totalBaseAssetsBeforeAccounting The total base assets before accounting
+     * @param totalBaseAssetsAfterAccounting The total base assets after accounting
      */
     function afterProcessAccounting(
         IHooks self,
@@ -298,8 +298,8 @@ library HooksLib {
         uint256 totalAssetsAfterAccounting,
         uint256 totalSupplyBeforeAccounting,
         uint256 totalSupplyAfterAccounting,
-        uint256 totalBaseAssetsAfterAccounting,
-        uint256 totalBaseAssetsBeforeAccounting
+        uint256 totalBaseAssetsBeforeAccounting,
+        uint256 totalBaseAssetsAfterAccounting
     ) public {
         // checks if the hook is set and has the permission set for the afterProcessAccounting flag
         if (address(self) != address(0) && hookEnabled(self, HookType.AFTER_PROCESS_ACCOUNTING)) {
@@ -312,8 +312,8 @@ library HooksLib {
                         totalAssetsAfterAccounting,
                         totalSupplyBeforeAccounting,
                         totalSupplyAfterAccounting,
-                        totalBaseAssetsAfterAccounting,
-                        totalBaseAssetsBeforeAccounting
+                        totalBaseAssetsBeforeAccounting,
+                        totalBaseAssetsAfterAccounting
                     )
                 )
             );

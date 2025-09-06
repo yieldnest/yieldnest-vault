@@ -199,15 +199,15 @@ interface IHooks {
      * @param totalAssetsAfterAccounting The total assets after accounting
      * @param totalSupplyBeforeAccounting The total supply before accounting
      * @param totalSupplyAfterAccounting The total supply after accounting
-     * @param totalBaseAssetsAfterAccounting The total base assets after accounting
      * @param totalBaseAssetsBeforeAccounting The total base assets before accounting
+     * @param totalBaseAssetsAfterAccounting The total base assets after accounting
      */
     function afterProcessAccounting(
         uint256 totalAssetsBeforeAccounting,
         uint256 totalAssetsAfterAccounting,
         uint256 totalSupplyBeforeAccounting,
         uint256 totalSupplyAfterAccounting,
-        uint256 totalBaseAssetsAfterAccounting,
-        uint256 totalBaseAssetsBeforeAccounting
+        uint256 totalBaseAssetsBeforeAccounting,
+        uint256 totalBaseAssetsAfterAccounting
     ) external;
 }
