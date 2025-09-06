@@ -64,7 +64,7 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
 
     /**
      * @notice After process accounting hook function
-     * @dev This hook is called after the totalBaseBalance is updated
+     * @dev This hook is called after the totalBaseAssets is updated
      * @dev This hook is mints the shares corresponding to the performance fee to the performanceFeeRecipient
      * @param totalAssetsBeforeAccounting The total assets before accounting
      * @param totalAssetsAfterAccounting The total assets after accounting
@@ -75,8 +75,8 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
         uint256 totalAssetsAfterAccounting,
         uint256 totalSupplyBeforeAccounting,
         uint256, /* totalSupplyAfterAccounting */
-        uint256, /* totalBaseBalanceAfterAccounting */
-        uint256 /* totalBaseBalanceBeforeAccounting */
+        uint256, /* totalBaseAssetsAfterAccounting */
+        uint256 /* totalBaseAssetsBeforeAccounting */
     ) external onlyVault {
         // if there is increase in total assets, then there is yield earned
         if (totalAssetsAfterAccounting > totalAssetsBeforeAccounting) {
@@ -216,7 +216,7 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
     function beforeProcessAccounting(
         uint256, /* totalAssetsBeforeAccounting */
         uint256, /* totalSupplyBeforeAccounting */
-        uint256 /* totalBaseBalanceBeforeAccounting */
+        uint256 /* totalBaseAssetsBeforeAccounting */
     ) external onlyVault {}
 
     /**
