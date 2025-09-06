@@ -900,19 +900,19 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function _processAccounting() internal virtual {
         uint256 totalAssetsBeforeAccounting = totalAssets();
         uint256 totalSupplyBeforeAccounting = totalSupply();
-        uint256 totalBaseBalanceBeforeAccounting = _getVaultStorage().totalAssets;
+        uint256 totalBaseAssetsBeforeAccounting = _getVaultStorage().totalAssets;
 
         IHooks hooks_ = hooks();
 
         HooksLib.beforeProcessAccounting(
-            hooks_, totalAssetsBeforeAccounting, totalSupplyBeforeAccounting, totalBaseBalanceBeforeAccounting
+            hooks_, totalAssetsBeforeAccounting, totalSupplyBeforeAccounting, totalBaseAssetsBeforeAccounting
         );
 
-        uint256 totalBaseBalanceAfterAccounting = computeTotalAssets();
+        uint256 totalBaseAssetsAfterAccounting = computeTotalAssets();
 
-        _getVaultStorage().totalAssets = totalBaseBalanceAfterAccounting;
+        _getVaultStorage().totalAssets = totalBaseAssetsAfterAccounting;
         // solhint-disable-next-line not-rely-on-time
-        emit ProcessAccounting(block.timestamp, totalBaseBalanceAfterAccounting);
+        emit ProcessAccounting(block.timestamp, totalBaseAssetsAfterAccounting);
 
         uint256 totalAssetsAfterAccounting = totalAssets();
         uint256 totalSupplyAfterAccounting = totalSupply();
@@ -923,17 +923,17 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             totalAssetsAfterAccounting,
             totalSupplyBeforeAccounting,
             totalSupplyAfterAccounting,
-            totalBaseBalanceAfterAccounting,
-            totalBaseBalanceBeforeAccounting
+            totalBaseAssetsAfterAccounting,
+            totalBaseAssetsBeforeAccounting
         );
     }
 
     /**
      * @notice Computes the total assets in the vault.
-     * @return totalBaseBalance The total assets in the vault.
+     * @return totalBaseAssets The total base assets in the vault.
      */
-    function computeTotalAssets() public view virtual returns (uint256 totalBaseBalance) {
-        totalBaseBalance = VaultLib.computeTotalAssets();
+    function computeTotalAssets() public view virtual returns (uint256) {
+        return VaultLib.computeTotalAssets();
     }
 
     /**

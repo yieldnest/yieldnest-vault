@@ -185,12 +185,12 @@ interface IHooks {
      * @notice Hook called before process accounting is executed
      * @param totalAssetsBeforeAccounting The total assets before accounting
      * @param totalSupplyBeforeAccounting The total supply before accounting
-     * @param totalBaseBalanceBeforeAccounting The total base balance before accounting
+     * @param totalBaseAssetsBeforeAccounting The total base assets before accounting
      */
     function beforeProcessAccounting(
         uint256 totalAssetsBeforeAccounting,
         uint256 totalSupplyBeforeAccounting,
-        uint256 totalBaseBalanceBeforeAccounting
+        uint256 totalBaseAssetsBeforeAccounting
     ) external;
 
     /**
@@ -199,15 +199,15 @@ interface IHooks {
      * @param totalAssetsAfterAccounting The total assets after accounting
      * @param totalSupplyBeforeAccounting The total supply before accounting
      * @param totalSupplyAfterAccounting The total supply after accounting
-     * @param totalBaseBalanceAfterAccounting The total base balance after accounting
-     * @param totalBaseBalanceBeforeAccounting The total base balance before accounting
+     * @param totalBaseAssetsAfterAccounting The total base assets after accounting
+     * @param totalBaseAssetsBeforeAccounting The total base assets before accounting
      */
     function afterProcessAccounting(
         uint256 totalAssetsBeforeAccounting,
         uint256 totalAssetsAfterAccounting,
         uint256 totalSupplyBeforeAccounting,
         uint256 totalSupplyAfterAccounting,
-        uint256 totalBaseBalanceAfterAccounting,
-        uint256 totalBaseBalanceBeforeAccounting
+        uint256 totalBaseAssetsAfterAccounting,
+        uint256 totalBaseAssetsBeforeAccounting
     ) external;
 }

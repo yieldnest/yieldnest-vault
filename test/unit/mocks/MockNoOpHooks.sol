@@ -102,7 +102,7 @@ contract MockNoOpHooks is IHooks {
     function beforeProcessAccounting(
         uint256, /* totalAssetsBeforeAccounting */
         uint256, /* totalSupplyBeforeAccounting */
-        uint256 /* totalBaseBalanceBeforeAccounting */
+        uint256 /* totalBaseAssetsBeforeAccounting */
     ) external override onlyVault {}
 
     function afterProcessAccounting(
@@ -110,7 +110,7 @@ contract MockNoOpHooks is IHooks {
         uint256, /* totalAssetsAfterAccounting */
         uint256, /* totalSupplyBeforeAccounting */
         uint256, /* totalSupplyAfterAccounting */
-        uint256, /* totalBaseBalanceAfterAccounting */
-        uint256 /* totalBaseBalanceBeforeAccounting */
+        uint256, /* totalBaseAssetsAfterAccounting */
+        uint256 /* totalBaseAssetsBeforeAccounting */
     ) external override onlyVault {}
 }
