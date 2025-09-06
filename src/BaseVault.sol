@@ -923,8 +923,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             totalAssetsAfterAccounting,
             totalSupplyBeforeAccounting,
             totalSupplyAfterAccounting,
-            totalBaseAssetsAfterAccounting,
-            totalBaseAssetsBeforeAccounting
+            totalBaseAssetsBeforeAccounting,
+            totalBaseAssetsAfterAccounting
         );
     }
 

@@ -110,7 +110,7 @@ contract MockNoOpHooks is IHooks {
         uint256, /* totalAssetsAfterAccounting */
         uint256, /* totalSupplyBeforeAccounting */
         uint256, /* totalSupplyAfterAccounting */
-        uint256, /* totalBaseAssetsAfterAccounting */
-        uint256 /* totalBaseAssetsBeforeAccounting */
+        uint256, /* totalBaseAssetsBeforeAccounting */
+        uint256 /* totalBaseAssetsAfterAccounting */
     ) external override onlyVault {}
 }
