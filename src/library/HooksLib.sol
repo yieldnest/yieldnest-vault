@@ -7,7 +7,7 @@ error HookCallFailed(bytes result);
 error InvalidPermission();
 
 library HooksLib {
-    // @notice Flags for the hooks
+    /// @notice Flags for the hooks
     enum HookType {
         BEFORE_DEPOSIT,
         AFTER_DEPOSIT,
@@ -21,10 +21,12 @@ library HooksLib {
         AFTER_PROCESS_ACCOUNTING
     }
 
-    // @notice Checks if the hook has the permission set for the given flag to be called
-    // @param self The hooks contract
-    // @param hookType The hook type to check
-    // @return True if the hook has the permission, false otherwise
+    /**
+     * @notice Checks if the hook has the permission set for the given flag to be called
+     * @param self The hooks contract
+     * @param hookType The hook type to check
+     * @return True if the hook has the permission, false otherwise
+     */
     function hooksEnabled(IHooks self, HookType hookType) internal view returns (bool) {
         // gets the config struct from the hooks contract
         IHooks.Config memory config = self.getConfig();
@@ -41,24 +43,28 @@ library HooksLib {
         revert InvalidPermission();
     }
 
-    // @notice Calls the hook with the given data
-    // @param self The hooks contract
-    // @param data The data to call the hook with
-    // @return The result of the hook call
+    /**
+     * @notice Calls the hook with the given data
+     * @param self The hooks contract
+     * @param data The data to call the hook with
+     * @return The result of the hook call
+     */
     function callHook(IHooks self, bytes memory data) internal returns (bytes memory) {
         (bool success, bytes memory result) = address(self).call(data);
         if (!success) revert HookCallFailed(result);
         return result;
     }
 
-    // @notice Calls the beforeDeposit hook if the hook has the permission set
-    // @param self The hooks contract
-    // @param asset The address of the asset to deposit
-    // @param assets The amount of assets to deposit
-    // @param caller The address of the caller
-    // @param receiver The address of the receiver of shares
-    // @param shares The amount of shares to be minted on deposit
-    // @param baseAssets The amount of base assets to be deposited
+    /**
+     * @notice Calls the beforeDeposit hook if the hook is enabled
+     * @param self The hooks contract
+     * @param asset The address of the asset to deposit
+     * @param assets The amount of assets to deposit
+     * @param caller The address of the caller
+     * @param receiver The address of the receiver of shares
+     * @param shares The amount of shares to be minted on deposit
+     * @param baseAssets The amount of base assets to be deposited
+     */
     function beforeDeposit(
         IHooks self,
         address asset,
@@ -73,15 +79,17 @@ library HooksLib {
             callHook(self, abi.encodeCall(IHooks.beforeDeposit, (asset, assets, caller, receiver, shares, baseAssets)));
         }
     }
+    /**
+     * @notice Calls the afterDeposit hook if the hook is enabled
+     * @param self The hooks contract
+     * @param asset The address of the asset to deposit
+     * @param assets The amount of assets to deposit
+     * @param caller The address of the caller
+     * @param receiver The address of the receiver of shares
+     * @param shares The amount of shares to be minted on deposit
+     * @param baseAssets The amount of base assets to be deposited
+     */
 
-    // @notice Calls the afterDeposit hook if the hook has the permission set
-    // @param self The hooks contract
-    // @param asset The address of the asset to deposit
-    // @param assets The amount of assets to deposit
-    // @param caller The address of the caller
-    // @param receiver The address of the receiver of shares
-    // @param shares The amount of shares to be minted on deposit
-    // @param baseAssets The amount of base assets to be deposited
     function afterDeposit(
         IHooks self,
         address asset,
@@ -97,15 +105,17 @@ library HooksLib {
         }
     }
 
-    // @notice Calls the beforeMint hook if the hook has the permission set
-    // @dev For mint function, asset to be deposited will be base asset of vault
-    // @param self The hooks contract
-    // @param asset The address of the asset to deposit
-    // @param shares The amount of shares to be minted
-    // @param caller The address of the caller
-    // @param receiver The address of the receiver of shares
-    // @param assets The amount of assets to be deposited
-    // @param baseAssets The amount of base assets to be deposited
+    /**
+     * @notice Calls the beforeMint hook if the hook is enabled
+     * @dev For mint function, asset to be deposited will be base asset of vault
+     * @param self The hooks contract
+     * @param asset The address of the asset to deposit
+     * @param shares The amount of shares to be minted
+     * @param caller The address of the caller
+     * @param receiver The address of the receiver of shares
+     * @param assets The amount of assets to be deposited
+     * @param baseAssets The amount of base assets to be deposited
+     */
     function beforeMint(
         IHooks self,
         address asset,
@@ -121,15 +131,17 @@ library HooksLib {
         }
     }
 
-    // @notice Calls the afterMint hook if the hook has the permission set
-    // @dev For mint function, asset to be deposited will be base asset of vault
-    // @param self The hooks contract
-    // @param asset The address of the asset to deposit
-    // @param shares The amount of shares to be minted
-    // @param caller The address of the caller
-    // @param receiver The address of the receiver of shares
-    // @param assets The amount of assets to be deposited
-    // @param baseAssets The amount of base assets to be deposited
+    /**
+     * @notice Calls the afterMint hook if the hook is enabled
+     * @dev For mint function, asset to be deposited will be base asset of vault
+     * @param self The hooks contract
+     * @param asset The address of the asset to deposit
+     * @param shares The amount of shares to be minted
+     * @param caller The address of the caller
+     * @param receiver The address of the receiver of shares
+     * @param assets The amount of assets to be deposited
+     * @param baseAssets The amount of base assets to be deposited
+     */
     function afterMint(
         IHooks self,
         address asset,
@@ -145,15 +157,16 @@ library HooksLib {
         }
     }
 
-    // @notice Calls the beforeRedeem hook if the hook has the permission set
-    // @param self The hooks contract
-    // @param asset The address of the asset to deposit
-    // @param shares The amount of shares to be redeemed
-    // @param caller The address of the caller
-    // @param receiver The address of the receiver of shares
-    // @param owner The address of the owner of the shares
-    // @param assets The amount of assets to be redeemed
-    // @param baseAssets The amount of base assets to be redeemed
+    /**
+     * @notice Calls the beforeRedeem hook if the hook has the permission set
+     * @param self The hooks contract
+     * @param asset The address of the asset to redeem
+     * @param shares The amount of shares to be redeemed
+     * @param caller The address of the caller
+     * @param receiver The address of the receiver of assets
+     * @param owner The address of the owner of the shares
+     * @param assets The amount of assets to be redeemed
+     */
     function beforeRedeem(
         IHooks self,
         address asset,
@@ -169,15 +182,16 @@ library HooksLib {
         }
     }
 
-    // @notice Calls the afterRedeem hook if the hook has the permission set
-    // @param self The hooks contract
-    // @param asset The address of the asset to deposit
-    // @param shares The amount of shares to be redeemed
-    // @param caller The address of the caller
-    // @param receiver The address of the receiver of shares
-    // @param owner The address of the owner of the shares
-    // @param assets The amount of assets to be redeemed
-    // @param baseAssets The amount of base assets to be redeemed
+    /**
+     * @notice Calls the afterRedeem hook if the hook has the permission set
+     * @param self The hooks contract
+     * @param asset The address of the asset that was redeemed
+     * @param shares The amount of shares that were redeemed
+     * @param caller The address of the caller
+     * @param receiver The address of the receiver of assets
+     * @param owner The address of the owner of the shares
+     * @param assets The amount of assets that were redeemed
+     */
     function afterRedeem(
         IHooks self,
         address asset,
@@ -193,14 +207,16 @@ library HooksLib {
         }
     }
 
-    // @notice Calls the beforeWithdraw hook if the hook has the permission set
-    // @param self The hooks contract
-    // @param asset The address of the asset to deposit
-    // @param assets The amount of assets to withdraw
-    // @param caller The address of the caller
-    // @param receiver The address of the receiver of shares
-    // @param owner The address of the owner of the shares
-    // @param shares The amount of shares to be burned on withdraw
+    /**
+     * @notice Calls the beforeWithdraw hook if the hook has the permission set
+     * @param self The hooks contract
+     * @param asset The address of the asset to withdraw
+     * @param assets The amount of assets to withdraw
+     * @param caller The address of the caller
+     * @param receiver The address of the receiver of assets
+     * @param owner The address of the owner of the shares
+     * @param shares The amount of shares to be burned on withdraw
+     */
     function beforeWithdraw(
         IHooks self,
         address asset,
@@ -216,14 +232,16 @@ library HooksLib {
         }
     }
 
-    // @notice Calls the afterWithdraw hook if the hook has the permission set
-    // @param self The hooks contract
-    // @param asset The address of the asset to deposit
-    // @param assets The amount of assets to withdraw
-    // @param caller The address of the caller
-    // @param receiver The address of the receiver of shares
-    // @param owner The address of the owner of the shares
-    // @param shares The amount of shares to be burned on withdraw
+    /**
+     * @notice Calls the afterWithdraw hook if the hook is enabled
+     * @param self The hooks contract
+     * @param asset The address of the asset that was withdrawn
+     * @param assets The amount of assets that were withdrawn
+     * @param caller The address of the caller
+     * @param receiver The address of the receiver of assets
+     * @param owner The address of the owner of the shares
+     * @param shares The amount of shares that were burned on withdraw
+     */
     function afterWithdraw(
         IHooks self,
         address asset,
@@ -239,11 +257,13 @@ library HooksLib {
         }
     }
 
-    // @notice Calls the beforeProcessAccounting hook if the hook has the permission set
-    // @param self The hooks contract
-    // @param totalAssetsBeforeAccounting The total assets before accounting
-    // @param totalSupplyBeforeAccounting The total supply before accounting
-    // @param totalBaseBalanceBeforeAccounting The total base balance before accounting
+    /**
+     * @notice Calls the beforeProcessAccounting hook if the hook is enabled
+     * @param self The hooks contract
+     * @param totalAssetsBeforeAccounting The total assets before accounting
+     * @param totalSupplyBeforeAccounting The total supply before accounting
+     * @param totalBaseBalanceBeforeAccounting The total base balance before accounting
+     */
     function beforeProcessAccounting(
         IHooks self,
         uint256 totalAssetsBeforeAccounting,
@@ -262,14 +282,16 @@ library HooksLib {
         }
     }
 
-    // @notice Calls the afterProcessAccounting hook if the hook has the permission set
-    // @param self The hooks contract
-    // @param totalAssetsBeforeAccounting The total assets before accounting
-    // @param totalAssetsAfterAccounting The total assets after accounting
-    // @param totalSupplyBeforeAccounting The total supply before accounting
-    // @param totalSupplyAfterAccounting The total supply after accounting
-    // @param totalBaseBalanceAfterAccounting The total base balance after accounting
-    // @param totalBaseBalanceBeforeAccounting The total base balance before accounting
+    /**
+     * @notice Calls the afterProcessAccounting hook if the hook is enabled
+     * @param self The hooks contract
+     * @param totalAssetsBeforeAccounting The total assets before accounting
+     * @param totalAssetsAfterAccounting The total assets after accounting
+     * @param totalSupplyBeforeAccounting The total supply before accounting
+     * @param totalSupplyAfterAccounting The total supply after accounting
+     * @param totalBaseBalanceAfterAccounting The total base balance after accounting
+     * @param totalBaseBalanceBeforeAccounting The total base balance before accounting
+     */
     function afterProcessAccounting(
         IHooks self,
         uint256 totalAssetsBeforeAccounting,

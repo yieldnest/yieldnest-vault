@@ -684,6 +684,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         return VaultLib.convertBaseToAsset(asset_, assets);
     }
 
+    /// STORAGE ///
+
     /**
      * @notice Internal function to get the vault storage.
      * @return The vault storage.
@@ -706,6 +708,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function _getProcessorStorage() internal pure returns (ProcessorStorage storage) {
         return VaultLib.getProcessorStorage();
+    }
+
+    /**
+     * @notice Internal function to get the Hooks storage.
+     * @return $ The Hooks storage.
+     */
+    function _getHooksStorage() internal pure returns (HooksStorage storage) {
+        return VaultLib.getHooksStorage();
     }
 
     //// ADMIN ////
@@ -918,31 +928,6 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         );
     }
 
-    function mintShares(address recipient, uint256 shares) external {
-        if (msg.sender != address(hooks())) {
-            revert CallerNotHooks();
-        }
-
-        _mint(recipient, shares);
-    }
-
-    function setHooks(address hooks_) external onlyRole(HOOKS_MANAGER_ROLE) {
-        if (hooks_ != address(0) && address(IHooks(hooks_).VAULT()) != address(this)) {
-            revert InvalidHooks();
-        }
-        _setHooks(hooks_);
-    }
-
-    function _setHooks(address hooks_) internal virtual {
-        HooksStorage storage hooksStorage = _getHooksStorage();
-        emit SetHooks(address(hooksStorage.hooks), hooks_);
-        hooksStorage.hooks = IHooks(hooks_);
-    }
-
-    function hooks() public view returns (IHooks) {
-        return _getHooksStorage().hooks;
-    }
-
     /**
      * @notice Computes the total assets in the vault.
      * @return totalBaseBalance The total assets in the vault.
@@ -968,11 +953,41 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
-     * @notice Internal function to get the Hooks storage.
-     * @return $ The Hooks storage.
+     * @notice Mints shares to a recipient. Can ONLY be called by the hooks() contract.
+     * @param recipient The address of the recipient.
+     * @param shares The amount of shares to mint.
      */
-    function _getHooksStorage() internal pure returns (HooksStorage storage) {
-        return VaultLib.getHooksStorage();
+    function mintShares(address recipient, uint256 shares) external {
+        if (msg.sender != address(hooks())) {
+            revert CallerNotHooks();
+        }
+
+        _mint(recipient, shares);
+    }
+
+    /**
+     * @notice Sets the hooks contract.
+     * @param hooks_ The address of the hooks contract.
+     */
+    function setHooks(address hooks_) external onlyRole(HOOKS_MANAGER_ROLE) {
+        if (hooks_ != address(0) && address(IHooks(hooks_).VAULT()) != address(this)) {
+            revert InvalidHooks();
+        }
+        _setHooks(hooks_);
+    }
+
+    function _setHooks(address hooks_) internal virtual {
+        HooksStorage storage hooksStorage = _getHooksStorage();
+        emit SetHooks(address(hooksStorage.hooks), hooks_);
+        hooksStorage.hooks = IHooks(hooks_);
+    }
+
+    /**
+     * @notice Returns the hooks contract.
+     * @return IHooks The hooks contract.
+     */
+    function hooks() public view returns (IHooks) {
+        return _getHooksStorage().hooks;
     }
 
     constructor() {

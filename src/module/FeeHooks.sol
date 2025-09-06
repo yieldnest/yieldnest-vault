@@ -16,11 +16,19 @@ import {Vault} from "src/Vault.sol";
 contract FeeHooks is Ownable, IHooks, IFeeHooks {
     using Math for uint256;
 
-    // performance denominated in ether(i.e. 1e18 = 100%)
+    /// @notice The performance fee rate denominated in ether (1e18 = 100%)
     uint256 public performanceFee;
+
+    /// @notice The address that receives performance fees
     address public performanceFeeRecipient;
+
+    /// @notice The denominator used for fee calculations (1 ether = 100%)
     uint256 public constant FEE_DENOMINATOR = 1 ether;
+
+    /// @notice The vault contract that this hooks contract is attached to
     IVault public immutable VAULT;
+
+    /// @notice The configuration struct containing hook permissions
     Config public config;
 
     /**
@@ -66,22 +74,10 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
         uint256 totalAssetsBeforeAccounting,
         uint256 totalAssetsAfterAccounting,
         uint256 totalSupplyBeforeAccounting,
-        uint256,
-        /**
-         * totalSupplyAfterAccounting*
-         */
-        uint256,
-        /**
-         * totalBaseBalanceAfterAccounting*
-         */
-        uint256
-    )
-        /**
-         * totalBaseBalanceBeforeAccounting*
-         */
-        external
-        onlyVault
-    {
+        uint256, /* totalSupplyAfterAccounting */
+        uint256, /* totalBaseBalanceAfterAccounting */
+        uint256 /* totalBaseBalanceBeforeAccounting */
+    ) external onlyVault {
         // if there is increase in total assets, then there is yield earned
         if (totalAssetsAfterAccounting > totalAssetsBeforeAccounting) {
             // calculate the yield earned and fees accrued
@@ -114,61 +110,38 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @dev This hook is called before the shares and assets are updated in the vault
      */
     function beforeWithdraw(
-        address, /*asset*/
-        uint256, /*assets*/
-        address, /*caller*/
-        address,
-        /**
-         * receiver*
-         */
-        address,
-        /**
-         * owner*
-         */
-        uint256
-    )
-        /**
-         * shares*
-         */
-        external
-        onlyVault
-    {}
+        address, /* asset */
+        uint256, /* assets */
+        address, /* caller */
+        address, /* receiver */
+        address, /* owner */
+        uint256 /* shares */
+    ) external onlyVault {}
 
     /**
      * @notice After redeem hook function
      * @dev This hook is called after the redeem is processed
      */
     function afterRedeem(
-        address, /*asset*/
-        uint256, /*shares*/
-        address, /*caller*/
-        address,
-        /**
-         * receiver*
-         */
-        address,
-        /**
-         * owner*
-         */
-        uint256
-    )
-        /**
-         * assets*
-         */
-        external
-        onlyVault
-    {}
+        address, /* asset */
+        uint256, /* shares */
+        address, /* caller */
+        address, /* receiver */
+        address, /* owner */
+        uint256 /* assets */
+    ) external onlyVault {}
+
     /**
      * @notice Before deposit hook function
      * @dev This hook is called before the deposit is processed
      */
     function beforeDeposit(
-        address, /*asset*/
-        uint256, /*assets*/
-        address, /*caller*/
-        address, /*receiver*/
-        uint256, /*shares*/
-        uint256 /*baseAssets*/
+        address, /* asset */
+        uint256, /* assets */
+        address, /* caller */
+        address, /* receiver */
+        uint256, /* shares */
+        uint256 /* baseAssets */
     ) external onlyVault {}
 
     /**
@@ -176,12 +149,12 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @dev This hook is called after the deposit is processed
      */
     function afterDeposit(
-        address, /*asset*/
-        uint256, /*assets*/
-        address, /*caller*/
-        address, /*receiver*/
-        uint256, /*shares*/
-        uint256 /*baseAssets*/
+        address, /* asset */
+        uint256, /* assets */
+        address, /* caller */
+        address, /* receiver */
+        uint256, /* shares */
+        uint256 /* baseAssets */
     ) external onlyVault {}
 
     /**
@@ -189,12 +162,12 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @dev This hook is called before the mint is processed
      */
     function beforeMint(
-        address, /*asset*/
-        uint256, /*shares*/
-        address, /*caller*/
-        address, /*receiver*/
-        uint256, /*assets*/
-        uint256 /*baseAssets*/
+        address, /* asset */
+        uint256, /* shares */
+        address, /* caller */
+        address, /* receiver */
+        uint256, /* assets */
+        uint256 /* baseAssets */
     ) external onlyVault {}
 
     /**
@@ -202,12 +175,12 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @dev This hook is called after the mint is processed
      */
     function afterMint(
-        address, /*asset*/
-        uint256, /*shares*/
-        address, /*caller*/
-        address, /*receiver*/
-        uint256, /*assets*/
-        uint256 /*baseAssets*/
+        address, /* asset */
+        uint256, /* shares */
+        address, /* caller */
+        address, /* receiver */
+        uint256, /* assets */
+        uint256 /* baseAssets */
     ) external onlyVault {}
 
     /**
@@ -215,12 +188,12 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @dev This hook is called before the redeem is processed
      */
     function beforeRedeem(
-        address, /*asset*/
-        uint256, /*shares*/
-        address, /*caller*/
-        address, /*receiver*/
-        address, /*owner*/
-        uint256 /*assets*/
+        address, /* asset */
+        uint256, /* shares */
+        address, /* caller */
+        address, /* receiver */
+        address, /* owner */
+        uint256 /* assets */
     ) external onlyVault {}
 
     /**
@@ -228,12 +201,12 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @dev This hook is called after the withdraw is processed
      */
     function afterWithdraw(
-        address, /*asset*/
-        uint256, /*assets*/
-        address, /*caller*/
-        address, /*receiver*/
-        address, /*owner*/
-        uint256 /*shares*/
+        address, /* asset */
+        uint256, /* assets */
+        address, /* caller */
+        address, /* receiver */
+        address, /* owner */
+        uint256 /* shares */
     ) external onlyVault {}
 
     /**
@@ -241,13 +214,13 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @dev This hook is called before the accounting is processed
      */
     function beforeProcessAccounting(
-        uint256, /*totalAssetsBeforeAccounting*/
-        uint256, /*totalSupplyBeforeAccounting*/
-        uint256 /*totalBaseBalanceBeforeAccounting*/
+        uint256, /* totalAssetsBeforeAccounting */
+        uint256, /* totalSupplyBeforeAccounting */
+        uint256 /* totalBaseBalanceBeforeAccounting */
     ) external onlyVault {}
 
     /**
-     * @notice Set the performance fee
+     * @notice Set the performance fee for the vault gains
      * @param performanceFee_ The performance fee to be charged(denominated in 1e18)
      */
     function setPerformanceFee(uint256 performanceFee_) external onlyOwner {
@@ -257,7 +230,7 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
     }
 
     /**
-     * @notice Set the performance fee recipient
+     * @notice Set the performance fee recipient for the vault gains
      * @param performanceFeeRecipient_ The address of the performance fee recipient
      */
     function setPerformanceFeeRecipient(address performanceFeeRecipient_) external onlyOwner {
