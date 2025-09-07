@@ -85,7 +85,16 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(MC.WETH, sharesAmount, alice, alice, alice, 0);
+        hooks.afterRedeem(
+            IHooks.RedeemParams({
+                asset: MC.WETH,
+                shares: sharesAmount,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -106,7 +115,16 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(MC.WETH, shares, alice, alice, alice, 0);
+        hooks.afterRedeem(
+            IHooks.RedeemParams({
+                asset: MC.WETH,
+                shares: shares,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -128,7 +146,16 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(MC.WETH, shares, alice, alice, alice, 0);
+        hooks.afterRedeem(
+            IHooks.RedeemParams({
+                asset: MC.WETH,
+                shares: shares,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -147,7 +174,16 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.beforeWithdraw(MC.WETH, sharesAmount, alice, alice, alice, 0);
+        hooks.beforeWithdraw(
+            IHooks.WithdrawParams({
+                asset: MC.WETH,
+                assets: sharesAmount,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -168,7 +204,16 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.beforeWithdraw(MC.WETH, depositAmount, alice, alice, alice, 0);
+        hooks.beforeWithdraw(
+            IHooks.WithdrawParams({
+                asset: MC.WETH,
+                assets: depositAmount,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -190,7 +235,16 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 totalSupplyBefore = vault.totalSupply();
 
         vm.startPrank(address(vault));
-        hooks.beforeWithdraw(MC.WETH, depositAmount, alice, alice, alice, 0);
+        hooks.beforeWithdraw(
+            IHooks.WithdrawParams({
+                asset: MC.WETH,
+                assets: depositAmount,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -223,7 +277,16 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
             vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
 
         vm.startPrank(address(vault));
-        hooks.beforeWithdraw(MC.WETH, withdrawalAmount, alice, alice, alice, 0);
+        hooks.beforeWithdraw(
+            IHooks.WithdrawParams({
+                asset: MC.WETH,
+                assets: withdrawalAmount,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -258,7 +321,16 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
             vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
 
         vm.startPrank(address(vault));
-        hooks.afterRedeem(MC.WETH, shares, alice, alice, alice, 0);
+        hooks.afterRedeem(
+            IHooks.RedeemParams({
+                asset: MC.WETH,
+                shares: shares,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
         vm.stopPrank();
 
         uint256 totalSupplyAfter = vault.totalSupply();
@@ -272,68 +344,269 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function test_AfterProcessAccounting_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether, 0, 0, 0);
+        hooks.afterProcessAccounting(
+            IHooks.AfterProcessAccountingParams({
+                totalAssetsBeforeAccounting: 1 ether,
+                totalAssetsAfterAccounting: 1 ether,
+                totalSupplyBeforeAccounting: 1 ether,
+                totalSupplyAfterAccounting: 0,
+                totalBaseAssetsBeforeAccounting: 0,
+                totalBaseAssetsAfterAccounting: 0
+            })
+        );
         vm.stopPrank();
     }
 
     function test_beforeWithdraw_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeWithdraw(MC.WETH, 1 ether, alice, alice, alice, 0);
+        hooks.beforeWithdraw(
+            IHooks.WithdrawParams({
+                asset: MC.WETH,
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
         vm.stopPrank();
     }
 
     function test_afterRedeem_NotCalledByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterRedeem(MC.WETH, 1 ether, alice, alice, alice, 0);
+        hooks.afterRedeem(
+            IHooks.RedeemParams({
+                asset: MC.WETH,
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
         vm.stopPrank();
     }
 
     function test_HooksFunction_OnlyCallableByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeDeposit(MC.WETH, 1 ether, alice, alice, 0, 0);
+        hooks.beforeDeposit(
+            IHooks.DepositParams({
+                asset: MC.WETH,
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                shares: 0,
+                baseAssets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterDeposit(MC.WETH, 1 ether, alice, alice, 0, 0);
+        hooks.afterDeposit(
+            IHooks.DepositParams({
+                asset: MC.WETH,
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                shares: 0,
+                baseAssets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeMint(MC.WETH, 1 ether, alice, alice, 0, 0);
+        hooks.beforeMint(
+            IHooks.MintParams({
+                asset: MC.WETH,
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                assets: 0,
+                baseAssets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterMint(MC.WETH, 1 ether, alice, alice, 0, 0);
+        hooks.afterMint(
+            IHooks.MintParams({
+                asset: MC.WETH,
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                assets: 0,
+                baseAssets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeRedeem(MC.WETH, 1 ether, alice, alice, alice, 0);
+        hooks.beforeRedeem(
+            IHooks.RedeemParams({
+                asset: MC.WETH,
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterRedeem(MC.WETH, 1 ether, alice, alice, alice, 0);
+        hooks.afterRedeem(
+            IHooks.RedeemParams({
+                asset: MC.WETH,
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeWithdraw(MC.WETH, 1 ether, alice, alice, alice, 0);
+        hooks.beforeWithdraw(
+            IHooks.WithdrawParams({
+                asset: MC.WETH,
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterWithdraw(MC.WETH, 1 ether, alice, alice, alice, 0);
+        hooks.afterWithdraw(
+            IHooks.WithdrawParams({
+                asset: MC.WETH,
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeProcessAccounting(1 ether, 1 ether, 1 ether);
+        hooks.beforeProcessAccounting(
+            IHooks.BeforeProcessAccountingParams({
+                totalAssetsBeforeAccounting: 1 ether,
+                totalSupplyBeforeAccounting: 1 ether,
+                totalBaseAssetsBeforeAccounting: 1 ether
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether, 0, 0, 0);
+        hooks.afterProcessAccounting(
+            IHooks.AfterProcessAccountingParams({
+                totalAssetsBeforeAccounting: 1 ether,
+                totalAssetsAfterAccounting: 1 ether,
+                totalSupplyBeforeAccounting: 1 ether,
+                totalSupplyAfterAccounting: 0,
+                totalBaseAssetsBeforeAccounting: 0,
+                totalBaseAssetsAfterAccounting: 0
+            })
+        );
         vm.stopPrank();
 
         vm.startPrank(address(vault));
-        hooks.beforeDeposit(MC.WETH, 1 ether, alice, alice, 0, 0);
-        hooks.afterDeposit(MC.WETH, 1 ether, alice, alice, 0, 0);
-        hooks.beforeMint(MC.WETH, 1 ether, alice, alice, 0, 0);
-        hooks.afterMint(MC.WETH, 1 ether, alice, alice, 0, 0);
-        hooks.beforeRedeem(MC.WETH, 1 ether, alice, alice, alice, 0);
-        hooks.afterRedeem(MC.WETH, 1 ether, alice, alice, alice, 0);
-        hooks.beforeWithdraw(MC.WETH, 1 ether, alice, alice, alice, 0);
-        hooks.afterWithdraw(MC.WETH, 1 ether, alice, alice, alice, 0);
-        hooks.beforeProcessAccounting(1 ether, 1 ether, 1 ether);
-        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether, 0, 0, 0);
+        hooks.beforeDeposit(
+            IHooks.DepositParams({
+                asset: MC.WETH,
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                shares: 0,
+                baseAssets: 0
+            })
+        );
+        hooks.afterDeposit(
+            IHooks.DepositParams({
+                asset: MC.WETH,
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                shares: 0,
+                baseAssets: 0
+            })
+        );
+        hooks.beforeMint(
+            IHooks.MintParams({
+                asset: MC.WETH,
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                assets: 0,
+                baseAssets: 0
+            })
+        );
+        hooks.afterMint(
+            IHooks.MintParams({
+                asset: MC.WETH,
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                assets: 0,
+                baseAssets: 0
+            })
+        );
+        hooks.beforeRedeem(
+            IHooks.RedeemParams({
+                asset: MC.WETH,
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
+        hooks.afterRedeem(
+            IHooks.RedeemParams({
+                asset: MC.WETH,
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
+        hooks.beforeWithdraw(
+            IHooks.WithdrawParams({
+                asset: MC.WETH,
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
+        hooks.afterWithdraw(
+            IHooks.WithdrawParams({
+                asset: MC.WETH,
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
+        hooks.beforeProcessAccounting(
+            IHooks.BeforeProcessAccountingParams({
+                totalAssetsBeforeAccounting: 1 ether,
+                totalSupplyBeforeAccounting: 1 ether,
+                totalBaseAssetsBeforeAccounting: 1 ether
+            })
+        );
+        hooks.afterProcessAccounting(
+            IHooks.AfterProcessAccountingParams({
+                totalAssetsBeforeAccounting: 1 ether,
+                totalAssetsAfterAccounting: 1 ether,
+                totalSupplyBeforeAccounting: 1 ether,
+                totalSupplyAfterAccounting: 0,
+                totalBaseAssetsBeforeAccounting: 0,
+                totalBaseAssetsAfterAccounting: 0
+            })
+        );
         vm.stopPrank();
     }
 
@@ -358,10 +631,38 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(caller);
         // expect beforeDeposit and afterDeposit to be called by 1 time
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.beforeDeposit, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 1
+            address(hooks),
+            abi.encodeCall(
+                IHooks.beforeDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: MC.WETH,
+                        assets: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        shares: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
+            1
         );
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.afterDeposit, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 1
+            address(hooks),
+            abi.encodeCall(
+                IHooks.afterDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: MC.WETH,
+                        assets: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        shares: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
+            1
         );
         vault.deposit(1 ether, alice);
         vm.stopPrank();
@@ -410,12 +711,36 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // expect beforeDeposit and afterDeposit to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeDeposit, (asset, depositAmount, caller, alice, sharesAmount, baseAssetAmount)),
+            abi.encodeCall(
+                IHooks.beforeDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: asset,
+                        assets: depositAmount,
+                        caller: caller,
+                        receiver: alice,
+                        shares: sharesAmount,
+                        baseAssets: baseAssetAmount
+                    })
+                )
+            ),
             1
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterDeposit, (asset, depositAmount, caller, alice, sharesAmount, baseAssetAmount)),
+            abi.encodeCall(
+                IHooks.afterDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: asset,
+                        assets: depositAmount,
+                        caller: caller,
+                        receiver: alice,
+                        shares: sharesAmount,
+                        baseAssets: baseAssetAmount
+                    })
+                )
+            ),
             1
         );
         vault.depositAsset(asset, depositAmount, alice);
@@ -443,10 +768,38 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(caller);
         // expect beforeDeposit and afterDeposit to not be called
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.beforeDeposit, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 0
+            address(hooks),
+            abi.encodeCall(
+                IHooks.beforeDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: MC.WETH,
+                        assets: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        shares: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
+            0
         );
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.afterDeposit, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 0
+            address(hooks),
+            abi.encodeCall(
+                IHooks.afterDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: MC.WETH,
+                        assets: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        shares: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
+            0
         );
         vault.deposit(1 ether, alice);
         vm.stopPrank();
@@ -496,12 +849,36 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // expect beforeDeposit and afterDeposit to not be called
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeDeposit, (asset, depositAmount, caller, alice, sharesAmount, baseAssetAmount)),
+            abi.encodeCall(
+                IHooks.beforeDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: asset,
+                        assets: depositAmount,
+                        caller: caller,
+                        receiver: alice,
+                        shares: sharesAmount,
+                        baseAssets: baseAssetAmount
+                    })
+                )
+            ),
             0
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterDeposit, (asset, depositAmount, caller, alice, sharesAmount, baseAssetAmount)),
+            abi.encodeCall(
+                IHooks.afterDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: asset,
+                        assets: depositAmount,
+                        caller: caller,
+                        receiver: alice,
+                        shares: sharesAmount,
+                        baseAssets: baseAssetAmount
+                    })
+                )
+            ),
             0
         );
         vault.depositAsset(asset, depositAmount, alice);
@@ -529,10 +906,38 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(caller);
         // expect beforeMint and afterMint to be called by 1 time
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.beforeMint, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 1
+            address(hooks),
+            abi.encodeCall(
+                IHooks.beforeMint,
+                (
+                    IHooks.MintParams({
+                        asset: MC.WETH,
+                        shares: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        assets: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
+            1
         );
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.afterMint, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 1
+            address(hooks),
+            abi.encodeCall(
+                IHooks.afterMint,
+                (
+                    IHooks.MintParams({
+                        asset: MC.WETH,
+                        shares: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        assets: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
+            1
         );
         vault.mint(1 ether, alice);
         vm.stopPrank();
@@ -559,10 +964,38 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(caller);
         // expect beforeMint and afterMint to not be called
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.beforeMint, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 0
+            address(hooks),
+            abi.encodeCall(
+                IHooks.beforeMint,
+                (
+                    IHooks.MintParams({
+                        asset: MC.WETH,
+                        shares: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        assets: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
+            0
         );
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.afterMint, (MC.WETH, 1 ether, caller, alice, 1 ether, 1 ether)), 0
+            address(hooks),
+            abi.encodeCall(
+                IHooks.afterMint,
+                (
+                    IHooks.MintParams({
+                        asset: MC.WETH,
+                        shares: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        assets: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
+            0
         );
         vault.mint(1 ether, alice);
         vm.stopPrank();
@@ -598,12 +1031,36 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // expect beforeRedeem and afterRedeem to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeRedeem, (MC.WETH, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            abi.encodeCall(
+                IHooks.beforeRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: MC.WETH,
+                        shares: sharesToRedeem,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: assetsToRedeem
+                    })
+                )
+            ),
             1
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterRedeem, (MC.WETH, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            abi.encodeCall(
+                IHooks.afterRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: MC.WETH,
+                        shares: sharesToRedeem,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: assetsToRedeem
+                    })
+                )
+            ),
             1
         );
         vault.redeem(sharesToRedeem, alice, alice);
@@ -639,10 +1096,38 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(alice);
         // expect beforeRedeem and afterRedeem to not be called
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.beforeRedeem, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 0
+            address(hooks),
+            abi.encodeCall(
+                IHooks.beforeRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: MC.WETH,
+                        shares: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: 1 ether
+                    })
+                )
+            ),
+            0
         );
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.afterRedeem, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 0
+            address(hooks),
+            abi.encodeCall(
+                IHooks.afterRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: MC.WETH,
+                        shares: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: 1 ether
+                    })
+                )
+            ),
+            0
         );
         vault.redeem(1 ether, alice, alice);
         vm.stopPrank();
@@ -678,10 +1163,38 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(alice);
         // expect beforeWithdraw and afterWithdraw to be called by 1 time
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.beforeWithdraw, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 1
+            address(hooks),
+            abi.encodeCall(
+                IHooks.beforeWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: MC.WETH,
+                        assets: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: 1 ether
+                    })
+                )
+            ),
+            1
         );
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.afterWithdraw, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 1
+            address(hooks),
+            abi.encodeCall(
+                IHooks.afterWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: MC.WETH,
+                        assets: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: 1 ether
+                    })
+                )
+            ),
+            1
         );
         vault.withdraw(1 ether, alice, alice);
         vm.stopPrank();
@@ -717,10 +1230,38 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(alice);
         // expect beforeWithdraw and afterWithdraw to not be called
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.beforeWithdraw, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 0
+            address(hooks),
+            abi.encodeCall(
+                IHooks.beforeWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: MC.WETH,
+                        assets: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: 1 ether
+                    })
+                )
+            ),
+            0
         );
         vm.expectCall(
-            address(hooks), abi.encodeCall(IHooks.afterWithdraw, (MC.WETH, 1 ether, alice, alice, alice, 1 ether)), 0
+            address(hooks),
+            abi.encodeCall(
+                IHooks.afterWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: MC.WETH,
+                        assets: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: 1 ether
+                    })
+                )
+            ),
+            0
         );
         vault.withdraw(1 ether, alice, alice);
         vm.stopPrank();
@@ -749,10 +1290,35 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
 
         // expect beforeProcessAccounting and afterProcessAccounting to be called by 1 time
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeProcessAccounting, (1 ether, 1 ether, 1 ether)), 1);
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterProcessAccounting, (1 ether, 1 ether, 1 ether, 1 ether, 1 ether, 1 ether)),
+            abi.encodeCall(
+                IHooks.beforeProcessAccounting,
+                (
+                    IHooks.BeforeProcessAccountingParams({
+                        totalAssetsBeforeAccounting: 1 ether,
+                        totalSupplyBeforeAccounting: 1 ether,
+                        totalBaseAssetsBeforeAccounting: 1 ether
+                    })
+                )
+            ),
+            1
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(
+                IHooks.afterProcessAccounting,
+                (
+                    IHooks.AfterProcessAccountingParams({
+                        totalAssetsBeforeAccounting: 1 ether,
+                        totalAssetsAfterAccounting: 1 ether,
+                        totalSupplyBeforeAccounting: 1 ether,
+                        totalSupplyAfterAccounting: 1 ether,
+                        totalBaseAssetsBeforeAccounting: 1 ether,
+                        totalBaseAssetsAfterAccounting: 1 ether
+                    })
+                )
+            ),
             1
         );
         vault.processAccounting();
@@ -801,9 +1367,11 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
                 abi.encodeCall(
                     IHooks.beforeProcessAccounting,
                     (
-                        depositAmount, // totalAssetsBefore
-                        mintedShares, // totalSupplyBefore
-                        depositAmount // totalBaseAssetsBefore
+                        IHooks.BeforeProcessAccountingParams({
+                            totalAssetsBeforeAccounting: depositAmount, // totalAssetsBefore
+                            totalSupplyBeforeAccounting: mintedShares, // totalSupplyBefore
+                            totalBaseAssetsBeforeAccounting: depositAmount // totalBaseAssetsBefore
+                        })
                     )
                 ),
                 1
@@ -820,12 +1388,14 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
                 abi.encodeCall(
                     IHooks.afterProcessAccounting,
                     (
-                        depositAmount, // totalAssetsBefore
-                        expectedTotalAssetsAfter, // totalAssetsAfter
-                        mintedShares, // totalSupplyBefore
-                        expectedTotalSupplyAfter, // totalSupplyAfter
-                        depositAmount, // totalBaseAssetsBefore
-                        expectedTotalBaseAssetsAfter // totalBaseAssetsAfter
+                        IHooks.AfterProcessAccountingParams({
+                            totalAssetsBeforeAccounting: depositAmount, // totalAssetsBefore
+                            totalAssetsAfterAccounting: expectedTotalAssetsAfter, // totalAssetsAfter
+                            totalSupplyBeforeAccounting: mintedShares, // totalSupplyBefore
+                            totalSupplyAfterAccounting: expectedTotalSupplyAfter, // totalSupplyAfter
+                            totalBaseAssetsBeforeAccounting: depositAmount, // totalBaseAssetsBefore
+                            totalBaseAssetsAfterAccounting: expectedTotalBaseAssetsAfter // totalBaseAssetsAfter
+                        })
                     )
                 ),
                 1 // call count
@@ -864,9 +1434,11 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
             abi.encodeCall(
                 IHooks.beforeProcessAccounting, // function selector
                 (
-                    1 ether, // totalAssetsBefore
-                    1 ether, // totalSupplyBefore
-                    1 ether // totalSupplyBefore
+                    IHooks.BeforeProcessAccountingParams({
+                        totalAssetsBeforeAccounting: 1 ether, // totalAssetsBefore
+                        totalSupplyBeforeAccounting: 1 ether, // totalSupplyBefore
+                        totalBaseAssetsBeforeAccounting: 1 ether // totalSupplyBefore
+                    })
                 )
             ),
             0 // call count - should not be called since hooks are disabled
@@ -877,12 +1449,14 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
             abi.encodeCall(
                 IHooks.afterProcessAccounting,
                 (
-                    1 ether, // totalAssetsBefore
-                    1 ether, // totalAssetsAfter
-                    1 ether, // totalSupplyBefore
-                    1 ether, // totalSupplyAfter
-                    1 ether, // totalBaseAssetsBefore
-                    1 ether // totalBaseAssetsAfter
+                    IHooks.AfterProcessAccountingParams({
+                        totalAssetsBeforeAccounting: 1 ether, // totalAssetsBefore
+                        totalAssetsAfterAccounting: 1 ether, // totalAssetsAfter
+                        totalSupplyBeforeAccounting: 1 ether, // totalSupplyBefore
+                        totalSupplyAfterAccounting: 1 ether, // totalSupplyAfter
+                        totalBaseAssetsBeforeAccounting: 1 ether, // totalBaseAssetsBefore
+                        totalBaseAssetsAfterAccounting: 1 ether // totalBaseAssetsAfter
+                    })
                 )
             ),
             0 // call count - should not be called

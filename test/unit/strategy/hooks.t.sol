@@ -58,47 +58,221 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
     function test_HooksFunction_OnlyCallableByVault() public {
         vm.startPrank(alice);
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeDeposit(address(weth), 1 ether, alice, alice, 0, 0);
+        hooks.beforeDeposit(
+            IHooks.DepositParams({
+                asset: address(weth),
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                shares: 0,
+                baseAssets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterDeposit(address(weth), 1 ether, alice, alice, 0, 0);
+        hooks.afterDeposit(
+            IHooks.DepositParams({
+                asset: address(weth),
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                shares: 0,
+                baseAssets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeMint(address(weth), 1 ether, alice, alice, 0, 0);
+        hooks.beforeMint(
+            IHooks.MintParams({
+                asset: address(weth),
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                assets: 0,
+                baseAssets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterMint(address(weth), 1 ether, alice, alice, 0, 0);
+        hooks.afterMint(
+            IHooks.MintParams({
+                asset: address(weth),
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                assets: 0,
+                baseAssets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeRedeem(address(weth), 1 ether, alice, alice, alice, 0);
+        hooks.beforeRedeem(
+            IHooks.RedeemParams({
+                asset: address(weth),
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterRedeem(address(weth), 1 ether, alice, alice, alice, 0);
+        hooks.afterRedeem(
+            IHooks.RedeemParams({
+                asset: address(weth),
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeWithdraw(address(weth), 1 ether, alice, alice, alice, 0);
+        hooks.beforeWithdraw(
+            IHooks.WithdrawParams({
+                asset: address(weth),
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterWithdraw(address(weth), 1 ether, alice, alice, alice, 0);
+        hooks.afterWithdraw(
+            IHooks.WithdrawParams({
+                asset: address(weth),
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.beforeProcessAccounting(1 ether, 1 ether, 1 ether);
+        hooks.beforeProcessAccounting(
+            IHooks.BeforeProcessAccountingParams({
+                totalAssetsBeforeAccounting: 1 ether,
+                totalSupplyBeforeAccounting: 1 ether,
+                totalBaseAssetsBeforeAccounting: 1 ether
+            })
+        );
 
         vm.expectRevert(abi.encodeWithSelector(IHooks.CallerNotVault.selector));
-        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether, 0, 0, 0);
+        hooks.afterProcessAccounting(
+            IHooks.AfterProcessAccountingParams({
+                totalAssetsBeforeAccounting: 1 ether,
+                totalAssetsAfterAccounting: 1 ether,
+                totalSupplyBeforeAccounting: 1 ether,
+                totalSupplyAfterAccounting: 0,
+                totalBaseAssetsBeforeAccounting: 0,
+                totalBaseAssetsAfterAccounting: 0
+            })
+        );
         vm.stopPrank();
 
         vm.startPrank(address(strategy));
-        hooks.beforeDeposit(address(weth), 1 ether, alice, alice, 0, 0);
-        hooks.afterDeposit(address(weth), 1 ether, alice, alice, 0, 0);
-        hooks.beforeMint(address(weth), 1 ether, alice, alice, 0, 0);
-        hooks.afterMint(address(weth), 1 ether, alice, alice, 0, 0);
-        hooks.beforeRedeem(address(weth), 1 ether, alice, alice, alice, 0);
-        hooks.afterRedeem(address(weth), 1 ether, alice, alice, alice, 0);
-        hooks.beforeWithdraw(address(weth), 1 ether, alice, alice, alice, 0);
-        hooks.afterWithdraw(address(weth), 1 ether, alice, alice, alice, 0);
-        hooks.beforeProcessAccounting(1 ether, 1 ether, 1 ether);
-        hooks.afterProcessAccounting(1 ether, 1 ether, 1 ether, 0, 0, 0);
+        hooks.beforeDeposit(
+            IHooks.DepositParams({
+                asset: address(weth),
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                shares: 0,
+                baseAssets: 0
+            })
+        );
+        hooks.afterDeposit(
+            IHooks.DepositParams({
+                asset: address(weth),
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                shares: 0,
+                baseAssets: 0
+            })
+        );
+        hooks.beforeMint(
+            IHooks.MintParams({
+                asset: address(weth),
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                assets: 0,
+                baseAssets: 0
+            })
+        );
+        hooks.afterMint(
+            IHooks.MintParams({
+                asset: address(weth),
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                assets: 0,
+                baseAssets: 0
+            })
+        );
+        hooks.beforeRedeem(
+            IHooks.RedeemParams({
+                asset: address(weth),
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
+        hooks.afterRedeem(
+            IHooks.RedeemParams({
+                asset: address(weth),
+                shares: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                assets: 0
+            })
+        );
+        hooks.beforeWithdraw(
+            IHooks.WithdrawParams({
+                asset: address(weth),
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
+        hooks.afterWithdraw(
+            IHooks.WithdrawParams({
+                asset: address(weth),
+                assets: 1 ether,
+                caller: alice,
+                receiver: alice,
+                owner: alice,
+                shares: 0
+            })
+        );
+        hooks.beforeProcessAccounting(
+            IHooks.BeforeProcessAccountingParams({
+                totalAssetsBeforeAccounting: 1 ether,
+                totalSupplyBeforeAccounting: 1 ether,
+                totalBaseAssetsBeforeAccounting: 1 ether
+            })
+        );
+        hooks.afterProcessAccounting(
+            IHooks.AfterProcessAccountingParams({
+                totalAssetsBeforeAccounting: 1 ether,
+                totalAssetsAfterAccounting: 1 ether,
+                totalSupplyBeforeAccounting: 1 ether,
+                totalSupplyAfterAccounting: 0,
+                totalBaseAssetsBeforeAccounting: 0,
+                totalBaseAssetsAfterAccounting: 0
+            })
+        );
         vm.stopPrank();
     }
 
@@ -124,12 +298,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeDeposit and afterDeposit to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeDeposit, (address(weth), 1 ether, caller, alice, 1 ether, 1 ether)),
+            abi.encodeCall(
+                IHooks.beforeDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: address(weth),
+                        assets: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        shares: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
             1
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterDeposit, (address(weth), 1 ether, caller, alice, 1 ether, 1 ether)),
+            abi.encodeCall(
+                IHooks.afterDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: address(weth),
+                        assets: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        shares: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
             1
         );
         strategy.deposit(1 ether, alice);
@@ -158,12 +356,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeDeposit and afterDeposit to not be called
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeDeposit, (address(weth), 1 ether, caller, alice, 1 ether, 1 ether)),
+            abi.encodeCall(
+                IHooks.beforeDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: address(weth),
+                        assets: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        shares: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
             0
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterDeposit, (address(weth), 1 ether, caller, alice, 1 ether, 1 ether)),
+            abi.encodeCall(
+                IHooks.afterDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: address(weth),
+                        assets: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        shares: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
             0
         );
         strategy.deposit(1 ether, alice);
@@ -213,12 +435,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeDeposit and afterDeposit to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeDeposit, (asset, depositAmount, caller, alice, sharesAmount, baseAssetAmount)),
+            abi.encodeCall(
+                IHooks.beforeDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: asset,
+                        assets: depositAmount,
+                        caller: caller,
+                        receiver: alice,
+                        shares: sharesAmount,
+                        baseAssets: baseAssetAmount
+                    })
+                )
+            ),
             1
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterDeposit, (asset, depositAmount, caller, alice, sharesAmount, baseAssetAmount)),
+            abi.encodeCall(
+                IHooks.afterDeposit,
+                (
+                    IHooks.DepositParams({
+                        asset: asset,
+                        assets: depositAmount,
+                        caller: caller,
+                        receiver: alice,
+                        shares: sharesAmount,
+                        baseAssets: baseAssetAmount
+                    })
+                )
+            ),
             1
         );
         strategy.depositAsset(asset, depositAmount, alice);
@@ -247,12 +493,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeMint and afterMint to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeMint, (address(weth), 1 ether, caller, alice, 1 ether, 1 ether)),
+            abi.encodeCall(
+                IHooks.beforeMint,
+                (
+                    IHooks.MintParams({
+                        asset: address(weth),
+                        shares: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        assets: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
             1
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterMint, (address(weth), 1 ether, caller, alice, 1 ether, 1 ether)),
+            abi.encodeCall(
+                IHooks.afterMint,
+                (
+                    IHooks.MintParams({
+                        asset: address(weth),
+                        shares: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        assets: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
             1
         );
         strategy.mint(1 ether, alice);
@@ -281,12 +551,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeMint and afterMint to not be called
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeMint, (address(weth), 1 ether, caller, alice, 1 ether, 1 ether)),
+            abi.encodeCall(
+                IHooks.beforeMint,
+                (
+                    IHooks.MintParams({
+                        asset: address(weth),
+                        shares: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        assets: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
             0
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterMint, (address(weth), 1 ether, caller, alice, 1 ether, 1 ether)),
+            abi.encodeCall(
+                IHooks.afterMint,
+                (
+                    IHooks.MintParams({
+                        asset: address(weth),
+                        shares: 1 ether,
+                        caller: caller,
+                        receiver: alice,
+                        assets: 1 ether,
+                        baseAssets: 1 ether
+                    })
+                )
+            ),
             0
         );
         strategy.mint(1 ether, alice);
@@ -323,12 +617,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeRedeem and afterRedeem to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeRedeem, (address(weth), sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            abi.encodeCall(
+                IHooks.beforeRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: address(weth),
+                        shares: sharesToRedeem,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: assetsToRedeem
+                    })
+                )
+            ),
             1
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterRedeem, (address(weth), sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            abi.encodeCall(
+                IHooks.afterRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: address(weth),
+                        shares: sharesToRedeem,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: assetsToRedeem
+                    })
+                )
+            ),
             1
         );
         strategy.redeem(sharesToRedeem, alice, alice);
@@ -365,12 +683,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeRedeem and afterRedeem to not be called
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeRedeem, (address(weth), 1 ether, alice, alice, alice, 1 ether)),
+            abi.encodeCall(
+                IHooks.beforeRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: address(weth),
+                        shares: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: 1 ether
+                    })
+                )
+            ),
             0
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterRedeem, (address(weth), 1 ether, alice, alice, alice, 1 ether)),
+            abi.encodeCall(
+                IHooks.afterRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: address(weth),
+                        shares: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: 1 ether
+                    })
+                )
+            ),
             0
         );
         strategy.redeem(1 ether, alice, alice);
@@ -424,12 +766,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeRedeem and afterRedeem to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            abi.encodeCall(
+                IHooks.beforeRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: asset,
+                        shares: sharesToRedeem,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: assetsToRedeem
+                    })
+                )
+            ),
             1
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            abi.encodeCall(
+                IHooks.afterRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: asset,
+                        shares: sharesToRedeem,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: assetsToRedeem
+                    })
+                )
+            ),
             1
         );
         strategy.redeemAsset(asset, sharesToRedeem, alice, alice);
@@ -483,12 +849,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeRedeem and afterRedeem to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            abi.encodeCall(
+                IHooks.beforeRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: asset,
+                        shares: sharesToRedeem,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: assetsToRedeem
+                    })
+                )
+            ),
             0
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterRedeem, (asset, sharesToRedeem, alice, alice, alice, assetsToRedeem)),
+            abi.encodeCall(
+                IHooks.afterRedeem,
+                (
+                    IHooks.RedeemParams({
+                        asset: asset,
+                        shares: sharesToRedeem,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        assets: assetsToRedeem
+                    })
+                )
+            ),
             0
         );
         strategy.redeemAsset(asset, sharesToRedeem, alice, alice);
@@ -526,12 +916,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeWithdraw and afterWithdraw to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeWithdraw, (address(weth), 1 ether, alice, alice, alice, 1 ether)),
+            abi.encodeCall(
+                IHooks.beforeWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: address(weth),
+                        assets: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: 1 ether
+                    })
+                )
+            ),
             1
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterWithdraw, (address(weth), 1 ether, alice, alice, alice, 1 ether)),
+            abi.encodeCall(
+                IHooks.afterWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: address(weth),
+                        assets: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: 1 ether
+                    })
+                )
+            ),
             1
         );
         strategy.withdraw(1 ether, alice, alice);
@@ -569,12 +983,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeWithdraw and afterWithdraw to not be called
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeWithdraw, (address(weth), 1 ether, alice, alice, alice, 1 ether)),
+            abi.encodeCall(
+                IHooks.beforeWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: address(weth),
+                        assets: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: 1 ether
+                    })
+                )
+            ),
             0
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterWithdraw, (address(weth), 1 ether, alice, alice, alice, 1 ether)),
+            abi.encodeCall(
+                IHooks.afterWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: address(weth),
+                        assets: 1 ether,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: 1 ether
+                    })
+                )
+            ),
             0
         );
         strategy.withdraw(1 ether, alice, alice);
@@ -629,12 +1067,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeWithdraw and afterWithdraw to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            abi.encodeCall(
+                IHooks.beforeWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: asset,
+                        assets: depositAmount,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: sharesToBurn
+                    })
+                )
+            ),
             1
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            abi.encodeCall(
+                IHooks.afterWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: asset,
+                        assets: depositAmount,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: sharesToBurn
+                    })
+                )
+            ),
             1
         );
         strategy.withdrawAsset(asset, depositAmount, alice, alice);
@@ -689,12 +1151,36 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         // expect beforeWithdraw and afterWithdraw to be called by 1 time
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.beforeWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            abi.encodeCall(
+                IHooks.beforeWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: asset,
+                        assets: depositAmount,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: sharesToBurn
+                    })
+                )
+            ),
             0
         );
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterWithdraw, (asset, depositAmount, alice, alice, alice, sharesToBurn)),
+            abi.encodeCall(
+                IHooks.afterWithdraw,
+                (
+                    IHooks.WithdrawParams({
+                        asset: asset,
+                        assets: depositAmount,
+                        caller: alice,
+                        receiver: alice,
+                        owner: alice,
+                        shares: sharesToBurn
+                    })
+                )
+            ),
             0
         );
         strategy.withdrawAsset(asset, depositAmount, alice, alice);
@@ -724,10 +1210,35 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         vm.stopPrank();
 
         // expect beforeProcessAccounting and afterProcessAccounting to be called by 1 time
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeProcessAccounting, (1 ether, 1 ether, 1 ether)), 1);
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterProcessAccounting, (1 ether, 1 ether, 1 ether, 1 ether, 1 ether, 1 ether)),
+            abi.encodeCall(
+                IHooks.beforeProcessAccounting,
+                (
+                    IHooks.BeforeProcessAccountingParams({
+                        totalAssetsBeforeAccounting: 1 ether,
+                        totalSupplyBeforeAccounting: 1 ether,
+                        totalBaseAssetsBeforeAccounting: 1 ether
+                    })
+                )
+            ),
+            1
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(
+                IHooks.afterProcessAccounting,
+                (
+                    IHooks.AfterProcessAccountingParams({
+                        totalAssetsBeforeAccounting: 1 ether,
+                        totalAssetsAfterAccounting: 1 ether,
+                        totalSupplyBeforeAccounting: 1 ether,
+                        totalSupplyAfterAccounting: 1 ether,
+                        totalBaseAssetsBeforeAccounting: 1 ether,
+                        totalBaseAssetsAfterAccounting: 1 ether
+                    })
+                )
+            ),
             1
         );
         strategy.processAccounting();
@@ -757,10 +1268,35 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
         vm.stopPrank();
 
         // expect beforeProcessAccounting and afterProcessAccounting to not be called
-        vm.expectCall(address(hooks), abi.encodeCall(IHooks.beforeProcessAccounting, (1 ether, 1 ether, 1 ether)), 0);
         vm.expectCall(
             address(hooks),
-            abi.encodeCall(IHooks.afterProcessAccounting, (1 ether, 1 ether, 1 ether, 1 ether, 1 ether, 1 ether)),
+            abi.encodeCall(
+                IHooks.beforeProcessAccounting,
+                (
+                    IHooks.BeforeProcessAccountingParams({
+                        totalAssetsBeforeAccounting: 1 ether,
+                        totalSupplyBeforeAccounting: 1 ether,
+                        totalBaseAssetsBeforeAccounting: 1 ether
+                    })
+                )
+            ),
+            0
+        );
+        vm.expectCall(
+            address(hooks),
+            abi.encodeCall(
+                IHooks.afterProcessAccounting,
+                (
+                    IHooks.AfterProcessAccountingParams({
+                        totalAssetsBeforeAccounting: 1 ether,
+                        totalAssetsAfterAccounting: 1 ether,
+                        totalSupplyBeforeAccounting: 1 ether,
+                        totalSupplyAfterAccounting: 1 ether,
+                        totalBaseAssetsBeforeAccounting: 1 ether,
+                        totalBaseAssetsAfterAccounting: 1 ether
+                    })
+                )
+            ),
             0
         );
         strategy.processAccounting();

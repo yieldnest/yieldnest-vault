@@ -145,7 +145,16 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
         uint256 vaultTotalAssetsBefore = vault.totalAssets();
         uint256 vaultExchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
 
-        hooks.afterProcessAccounting(totalAssetsBefore, totalAssetsAfter, vaultTotalSupplyBefore, 0, 0, 0);
+        hooks.afterProcessAccounting(
+            IHooks.AfterProcessAccountingParams({
+                totalAssetsBeforeAccounting: totalAssetsBefore,
+                totalAssetsAfterAccounting: totalAssetsAfter,
+                totalSupplyBeforeAccounting: vaultTotalSupplyBefore,
+                totalSupplyAfterAccounting: 0,
+                totalBaseAssetsBeforeAccounting: 0,
+                totalBaseAssetsAfterAccounting: 0
+            })
+        );
         vm.stopPrank();
         vault.processAccounting();
 
