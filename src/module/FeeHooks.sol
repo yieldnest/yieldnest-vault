@@ -61,25 +61,26 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
         if (msg.sender != address(VAULT)) revert CallerNotVault();
         _;
     }
-
     /**
      * @notice After process accounting hook function
      * @dev This hook is called after the totalBaseAssets is updated
      * @dev This hook is mints the shares corresponding to the performance fee to the performanceFeeRecipient
      * @param params The after process accounting parameters
      */
-    function afterProcessAccounting(AfterProcessAccountingParams calldata params) external onlyVault {
-        // if there is increase in total assets, then there is yield earned
-        if (params.totalAssetsAfterAccounting > params.totalAssetsBeforeAccounting) {
-            // calculate the yield earned and fees accrued
-            uint256 yieldEarned = params.totalAssetsAfterAccounting - params.totalAssetsBeforeAccounting;
-            uint256 feesAccrued = (yieldEarned * performanceFee) / FEE_DENOMINATOR;
 
-            if (feesAccrued > 0) {
-                // totalAssetsAfterAccounting already includes the fees accrued
-                uint256 sharesToMint = feesAccrued.mulDiv(
+    function afterProcessAccounting(AfterProcessAccountingParams calldata params) external onlyVault {
+        // if there is increase in total base assets, then there is yield earned
+        if (params.totalBaseAssetsAfterAccounting > params.totalBaseAssetsBeforeAccounting) {
+            // calculate the yield earned and fees accrued
+            uint256 yieldEarnedInBaseAsset =
+                params.totalBaseAssetsAfterAccounting - params.totalBaseAssetsBeforeAccounting;
+            uint256 feesAccruedInBaseAsset = (yieldEarnedInBaseAsset * performanceFee) / FEE_DENOMINATOR;
+
+            if (feesAccruedInBaseAsset > 0) {
+                // totalBaseAssetsAfterAccounting already includes the fees accrued
+                uint256 sharesToMint = feesAccruedInBaseAsset.mulDiv(
                     params.totalSupplyBeforeAccounting,
-                    params.totalAssetsAfterAccounting - feesAccrued,
+                    params.totalBaseAssetsAfterAccounting - feesAccruedInBaseAsset,
                     Math.Rounding.Floor
                 );
                 if (sharesToMint > 0) {
@@ -87,9 +88,9 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
                     emit PerformanceFeeCharged(
                         performanceFeeRecipient,
                         sharesToMint,
-                        feesAccrued,
-                        params.totalAssetsBeforeAccounting,
-                        params.totalAssetsAfterAccounting,
+                        feesAccruedInBaseAsset,
+                        params.totalBaseAssetsBeforeAccounting,
+                        params.totalBaseAssetsAfterAccounting,
                         params.totalSupplyBeforeAccounting
                     );
                 }
