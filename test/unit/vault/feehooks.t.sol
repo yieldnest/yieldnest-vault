@@ -191,10 +191,26 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEq(vault.totalAssets(), 1 ether + yield, "vault's total assets should be 1 ether + yield");
     }
 
+    function test_ProcessAccounting_100_Percent_Performance_Fee_With_100_Percent_Yield() public {
+        uint256 rateBefore = vault.convertToAssets(1e18);
+
+        processAccounting_100_Percent_Performance_Fee(1 ether, 1 ether);
+
+        uint256 rateAfter = vault.convertToAssets(1e18);
+        assertEq(rateBefore, 1e18, "rate before should be 1e18");
+        assertEq(rateAfter, 1e18, "rate after should be 1e18");
+
+        assertEq(vault.totalAssets(), 2 ether, "vault's total assets should be 2 ether");
+        assertEq(vault.totalSupply(), 2 ether, "vault's total supply should be 2 ether");
+    }
+
     function test_ProcessAccounting_100_Percent_Performance_Fee(uint256 depositAmount, uint256 yield) public {
         depositAmount = bound(depositAmount, 1 ether, 10_000 ether);
-        yield = bound(yield, 0, depositAmount / 2);
+        yield = bound(yield, 0, depositAmount * 10);
+        processAccounting_100_Percent_Performance_Fee(depositAmount, yield);
+    }
 
+    function processAccounting_100_Percent_Performance_Fee(uint256 depositAmount, uint256 yield) public {
         vm.startPrank(ADMIN);
         hooks.setPerformanceFee(1 ether); // 100% performance fee
         vm.stopPrank();
