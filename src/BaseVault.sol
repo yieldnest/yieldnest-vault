@@ -310,11 +310,19 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
 
         IHooks hooks_ = hooks();
-        HooksLib.beforeMint(hooks_, asset(), shares, _msgSender(), receiver, assets, baseAssets);
+        IHooks.MintParams memory params = IHooks.MintParams({
+            asset: asset(),
+            shares: shares,
+            caller: _msgSender(),
+            receiver: receiver,
+            assets: assets,
+            baseAssets: baseAssets
+        });
+        HooksLib.beforeMint(hooks_, params);
 
         _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
 
-        HooksLib.afterMint(hooks_, asset(), shares, _msgSender(), receiver, assets, baseAssets);
+        HooksLib.afterMint(hooks_, params);
 
         return assets;
     }
@@ -342,11 +350,19 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         shares = previewWithdraw(assets);
 
         IHooks hooks_ = hooks();
-        HooksLib.beforeWithdraw(hooks_, asset(), assets, _msgSender(), receiver, owner, shares);
+        IHooks.WithdrawParams memory params = IHooks.WithdrawParams({
+            asset: asset(),
+            assets: assets,
+            caller: _msgSender(),
+            receiver: receiver,
+            owner: owner,
+            shares: shares
+        });
+        HooksLib.beforeWithdraw(hooks_, params);
 
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
-        HooksLib.afterWithdraw(hooks_, asset(), assets, _msgSender(), receiver, owner, shares);
+        HooksLib.afterWithdraw(hooks_, params);
     }
 
     /**
@@ -370,12 +386,21 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert ExceededMaxRedeem(owner, shares, maxShares);
         }
         assets = previewRedeem(shares);
+
         IHooks hooks_ = hooks();
-        HooksLib.beforeRedeem(hooks_, asset(), shares, _msgSender(), receiver, owner, assets);
+        IHooks.RedeemParams memory params = IHooks.RedeemParams({
+            asset: asset(),
+            shares: shares,
+            caller: _msgSender(),
+            receiver: receiver,
+            owner: owner,
+            assets: assets
+        });
+        HooksLib.beforeRedeem(hooks_, params);
 
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
-        HooksLib.afterRedeem(hooks_, asset(), shares, _msgSender(), receiver, owner, assets);
+        HooksLib.afterRedeem(hooks_, params);
     }
 
     //// 4626-MAX ////
@@ -489,11 +514,19 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         (uint256 shares, uint256 baseAssets) = _convertToShares(asset_, assets, Math.Rounding.Floor);
 
         IHooks hooks_ = hooks();
-        HooksLib.beforeDeposit(hooks_, asset_, assets, _msgSender(), receiver, shares, baseAssets);
+        IHooks.DepositParams memory params = IHooks.DepositParams({
+            asset: asset_,
+            assets: assets,
+            caller: _msgSender(),
+            receiver: receiver,
+            shares: shares,
+            baseAssets: baseAssets
+        });
+        HooksLib.beforeDeposit(hooks_, params);
 
         _deposit(asset_, _msgSender(), receiver, assets, shares, baseAssets);
 
-        HooksLib.afterDeposit(hooks_, asset_, assets, _msgSender(), receiver, shares, baseAssets);
+        HooksLib.afterDeposit(hooks_, params);
 
         return shares;
     }
@@ -902,29 +935,34 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         uint256 totalSupplyBeforeAccounting = totalSupply();
         uint256 totalBaseAssetsBeforeAccounting = _getVaultStorage().totalAssets;
 
+        // handle before hook call
         IHooks hooks_ = hooks();
-
         HooksLib.beforeProcessAccounting(
-            hooks_, totalAssetsBeforeAccounting, totalSupplyBeforeAccounting, totalBaseAssetsBeforeAccounting
+            hooks_,
+            IHooks.BeforeProcessAccountingParams({
+                totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
+                totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
+                totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting
+            })
         );
 
+        /// update total base assets
         uint256 totalBaseAssetsAfterAccounting = computeTotalAssets();
-
         _getVaultStorage().totalAssets = totalBaseAssetsAfterAccounting;
         // solhint-disable-next-line not-rely-on-time
         emit ProcessAccounting(block.timestamp, totalBaseAssetsAfterAccounting);
 
-        uint256 totalAssetsAfterAccounting = totalAssets();
-        uint256 totalSupplyAfterAccounting = totalSupply();
-
+        // handle after hook call
         HooksLib.afterProcessAccounting(
             hooks_,
-            totalAssetsBeforeAccounting,
-            totalAssetsAfterAccounting,
-            totalSupplyBeforeAccounting,
-            totalSupplyAfterAccounting,
-            totalBaseAssetsBeforeAccounting,
-            totalBaseAssetsAfterAccounting
+            IHooks.AfterProcessAccountingParams({
+                totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
+                totalAssetsAfterAccounting: totalAssets(),
+                totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
+                totalSupplyAfterAccounting: totalSupply(),
+                totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting,
+                totalBaseAssetsAfterAccounting: totalBaseAssetsAfterAccounting
+            })
         );
     }
 

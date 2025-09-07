@@ -27,90 +27,23 @@ contract MockNoOpHooks is IHooks {
         return _config;
     }
 
-    function beforeDeposit(
-        address, /* asset */
-        uint256, /* assets */
-        address, /* caller */
-        address, /* receiver */
-        uint256, /* shares */
-        uint256 /* baseAssets */
-    ) external override onlyVault {}
+    function beforeDeposit(DepositParams memory /* params */ ) external override onlyVault {}
 
-    function afterDeposit(
-        address, /* asset */
-        uint256, /* assets */
-        address, /* caller */
-        address, /* receiver */
-        uint256, /* shares */
-        uint256 /* baseAssets */
-    ) external override onlyVault {}
+    function afterDeposit(DepositParams memory /* params */ ) external override onlyVault {}
 
-    function beforeMint(
-        address, /* asset */
-        uint256, /* shares */
-        address, /* caller */
-        address, /* receiver */
-        uint256, /* assets */
-        uint256 /* baseAssets */
-    ) external override onlyVault {}
+    function beforeMint(MintParams memory /* params */ ) external override onlyVault {}
 
-    function afterMint(
-        address, /* asset */
-        uint256, /* shares */
-        address, /* caller */
-        address, /* receiver */
-        uint256, /* assets */
-        uint256 /* baseAssets */
-    ) external override onlyVault {}
+    function afterMint(MintParams memory /* params */ ) external override onlyVault {}
 
-    function beforeRedeem(
-        address, /* asset */
-        uint256, /* shares */
-        address, /* caller */
-        address, /* receiver */
-        address, /* owner */
-        uint256 /* assets */
-    ) external override onlyVault {}
+    function beforeRedeem(RedeemParams memory /* params */ ) external override onlyVault {}
 
-    function afterRedeem(
-        address, /* asset */
-        uint256, /* shares */
-        address, /* caller */
-        address, /* receiver */
-        address, /* owner */
-        uint256 /* assets */
-    ) external override onlyVault {}
+    function afterRedeem(RedeemParams memory /* params */ ) external override onlyVault {}
 
-    function beforeWithdraw(
-        address, /* asset */
-        uint256, /* assets */
-        address, /* caller */
-        address, /* receiver */
-        address, /* owner */
-        uint256 /* shares */
-    ) external override onlyVault {}
+    function beforeWithdraw(WithdrawParams memory /* params */ ) external override onlyVault {}
 
-    function afterWithdraw(
-        address, /* asset */
-        uint256, /* assets */
-        address, /* caller */
-        address, /* receiver */
-        address, /* owner */
-        uint256 /* shares */
-    ) external override onlyVault {}
+    function afterWithdraw(WithdrawParams memory /* params */ ) external override onlyVault {}
 
-    function beforeProcessAccounting(
-        uint256, /* totalAssetsBeforeAccounting */
-        uint256, /* totalSupplyBeforeAccounting */
-        uint256 /* totalBaseAssetsBeforeAccounting */
-    ) external override onlyVault {}
+    function beforeProcessAccounting(BeforeProcessAccountingParams memory /* params */ ) external override onlyVault {}
 
-    function afterProcessAccounting(
-        uint256, /* totalAssetsBeforeAccounting */
-        uint256, /* totalAssetsAfterAccounting */
-        uint256, /* totalSupplyBeforeAccounting */
-        uint256, /* totalSupplyAfterAccounting */
-        uint256, /* totalBaseAssetsBeforeAccounting */
-        uint256 /* totalBaseAssetsAfterAccounting */
-    ) external override onlyVault {}
+    function afterProcessAccounting(AfterProcessAccountingParams memory /* params */ ) external override onlyVault {}
 }

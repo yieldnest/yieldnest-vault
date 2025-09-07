@@ -5,6 +5,75 @@ import {IVault} from "src/interface/IVault.sol";
 
 interface IHooks {
     /**
+     * @notice Parameters for deposit operations
+     */
+    struct DepositParams {
+        address asset;
+        uint256 assets;
+        address caller;
+        address receiver;
+        uint256 shares;
+        uint256 baseAssets;
+    }
+
+    /**
+     * @notice Parameters for mint operations
+     */
+    struct MintParams {
+        address asset;
+        uint256 shares;
+        address caller;
+        address receiver;
+        uint256 assets;
+        uint256 baseAssets;
+    }
+
+    /**
+     * @notice Parameters for redeem operations
+     */
+    struct RedeemParams {
+        address asset;
+        uint256 shares;
+        address caller;
+        address receiver;
+        address owner;
+        uint256 assets;
+    }
+
+    /**
+     * @notice Parameters for withdraw operations
+     */
+    struct WithdrawParams {
+        address asset;
+        uint256 assets;
+        address caller;
+        address receiver;
+        address owner;
+        uint256 shares;
+    }
+
+    /**
+     * @notice Parameters for before process accounting operations
+     */
+    struct BeforeProcessAccountingParams {
+        uint256 totalAssetsBeforeAccounting;
+        uint256 totalSupplyBeforeAccounting;
+        uint256 totalBaseAssetsBeforeAccounting;
+    }
+
+    /**
+     * @notice Parameters for after process accounting operations
+     */
+    struct AfterProcessAccountingParams {
+        uint256 totalAssetsBeforeAccounting;
+        uint256 totalAssetsAfterAccounting;
+        uint256 totalSupplyBeforeAccounting;
+        uint256 totalSupplyAfterAccounting;
+        uint256 totalBaseAssetsBeforeAccounting;
+        uint256 totalBaseAssetsAfterAccounting;
+    }
+
+    /**
      * @notice Config struct for the hooks
      * @dev Each flag is a boolean value that indicates if the corresponding hook function is enabled for the vault
      * if the flag is true, the hook function must be called by the vault.
@@ -45,169 +114,61 @@ interface IHooks {
 
     /**
      * @notice Hook called before deposit is processed
-     * @param asset The address of the asset being deposited
-     * @param assets The amount of assets being deposited
-     * @param caller The address initiating the deposit
-     * @param receiver The address receiving the shares
-     * @param shares The amount of shares to be minted
-     * @param baseAssets The amount of base assets
+     * @param params The deposit parameters
      */
-    function beforeDeposit(
-        address asset,
-        uint256 assets,
-        address caller,
-        address receiver,
-        uint256 shares,
-        uint256 baseAssets
-    ) external;
+    function beforeDeposit(DepositParams memory params) external;
 
     /**
      * @notice Hook called after deposit is processed
-     * @param asset The address of the asset that was deposited
-     * @param assets The amount of assets that were deposited
-     * @param caller The address that initiated the deposit
-     * @param receiver The address that received the shares
-     * @param shares The amount of shares that were minted
-     * @param baseAssets The amount of base assets
+     * @param params The deposit parameters
      */
-    function afterDeposit(
-        address asset,
-        uint256 assets,
-        address caller,
-        address receiver,
-        uint256 shares,
-        uint256 baseAssets
-    ) external;
+    function afterDeposit(DepositParams memory params) external;
 
     /**
      * @notice Hook called before mint is processed
-     * @param asset The address of the asset being used for minting
-     * @param shares The amount of shares being minted
-     * @param caller The address initiating the mint
-     * @param receiver The address receiving the shares
-     * @param assets The amount of assets required
-     * @param baseAssets The amount of base assets
+     * @param params The mint parameters
      */
-    function beforeMint(
-        address asset,
-        uint256 shares,
-        address caller,
-        address receiver,
-        uint256 assets,
-        uint256 baseAssets
-    ) external;
+    function beforeMint(MintParams memory params) external;
 
     /**
      * @notice Hook called after mint is processed
-     * @param asset The address of the asset that was used for minting
-     * @param shares The amount of shares that were minted
-     * @param caller The address that initiated the mint
-     * @param receiver The address that received the shares
-     * @param assets The amount of assets that were required
-     * @param baseAssets The amount of base assets
+     * @param params The mint parameters
      */
-    function afterMint(
-        address asset,
-        uint256 shares,
-        address caller,
-        address receiver,
-        uint256 assets,
-        uint256 baseAssets
-    ) external;
+    function afterMint(MintParams memory params) external;
 
     /**
      * @notice Hook called before redeem is processed
-     * @param asset The address of the asset being redeemed
-     * @param shares The amount of shares being redeemed
-     * @param caller The address initiating the redeem
-     * @param receiver The address receiving the assets
-     * @param owner The address owning the shares
-     * @param assets The amount of assets to be received
+     * @param params The redeem parameters
      */
-    function beforeRedeem(
-        address asset,
-        uint256 shares,
-        address caller,
-        address receiver,
-        address owner,
-        uint256 assets
-    ) external;
+    function beforeRedeem(RedeemParams memory params) external;
 
     /**
      * @notice Hook called after redeem is processed
-     * @param asset The address of the asset that was redeemed
-     * @param shares The amount of shares that were redeemed
-     * @param caller The address that initiated the redeem
-     * @param receiver The address that received the assets
-     * @param owner The address that owned the shares
-     * @param assets The amount of assets that were received
+     * @param params The redeem parameters
      */
-    function afterRedeem(address asset, uint256 shares, address caller, address receiver, address owner, uint256 assets)
-        external;
+    function afterRedeem(RedeemParams memory params) external;
 
     /**
      * @notice Hook called before withdraw is processed
-     * @param asset The address of the asset being withdrawn
-     * @param assets The amount of assets being withdrawn
-     * @param caller The address initiating the withdraw
-     * @param receiver The address receiving the assets
-     * @param owner The address owning the shares
-     * @param shares The amount of shares to be burned
+     * @param params The withdraw parameters
      */
-    function beforeWithdraw(
-        address asset,
-        uint256 assets,
-        address caller,
-        address receiver,
-        address owner,
-        uint256 shares
-    ) external;
+    function beforeWithdraw(WithdrawParams memory params) external;
 
     /**
      * @notice Hook called after withdraw is processed
-     * @param asset The address of the asset that was withdrawn
-     * @param assets The amount of assets that were withdrawn
-     * @param caller The address that initiated the withdraw
-     * @param receiver The address that received the assets
-     * @param owner The address that owned the shares
-     * @param shares The amount of shares that were burned
+     * @param params The withdraw parameters
      */
-    function afterWithdraw(
-        address asset,
-        uint256 assets,
-        address caller,
-        address receiver,
-        address owner,
-        uint256 shares
-    ) external;
+    function afterWithdraw(WithdrawParams memory params) external;
 
     /**
      * @notice Hook called before process accounting is executed
-     * @param totalAssetsBeforeAccounting The total assets before accounting
-     * @param totalSupplyBeforeAccounting The total supply before accounting
-     * @param totalBaseAssetsBeforeAccounting The total base assets before accounting
+     * @param params The before process accounting parameters
      */
-    function beforeProcessAccounting(
-        uint256 totalAssetsBeforeAccounting,
-        uint256 totalSupplyBeforeAccounting,
-        uint256 totalBaseAssetsBeforeAccounting
-    ) external;
+    function beforeProcessAccounting(BeforeProcessAccountingParams memory params) external;
 
     /**
      * @notice Hook called after process accounting is executed
-     * @param totalAssetsBeforeAccounting The total assets before accounting
-     * @param totalAssetsAfterAccounting The total assets after accounting
-     * @param totalSupplyBeforeAccounting The total supply before accounting
-     * @param totalSupplyAfterAccounting The total supply after accounting
-     * @param totalBaseAssetsBeforeAccounting The total base assets before accounting
-     * @param totalBaseAssetsAfterAccounting The total base assets after accounting
+     * @param params The after process accounting parameters
      */
-    function afterProcessAccounting(
-        uint256 totalAssetsBeforeAccounting,
-        uint256 totalAssetsAfterAccounting,
-        uint256 totalSupplyBeforeAccounting,
-        uint256 totalSupplyAfterAccounting,
-        uint256 totalBaseAssetsBeforeAccounting,
-        uint256 totalBaseAssetsAfterAccounting
-    ) external;
+    function afterProcessAccounting(AfterProcessAccountingParams memory params) external;
 }
