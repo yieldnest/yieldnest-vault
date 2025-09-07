@@ -386,6 +386,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert ExceededMaxRedeem(owner, shares, maxShares);
         }
         assets = previewRedeem(shares);
+
         IHooks hooks_ = hooks();
         IHooks.RedeemParams memory params = IHooks.RedeemParams({
             asset: asset(),
@@ -934,17 +935,16 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         uint256 totalSupplyBeforeAccounting = totalSupply();
         uint256 totalBaseAssetsBeforeAccounting = _getVaultStorage().totalAssets;
 
+        // handle before hook call
         IHooks hooks_ = hooks();
-
-        {
-            // handle before hook call
-            IHooks.BeforeProcessAccountingParams memory beforeParams = IHooks.BeforeProcessAccountingParams({
+        HooksLib.beforeProcessAccounting(
+            hooks_,
+            IHooks.BeforeProcessAccountingParams({
                 totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
                 totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
                 totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting
-            });
-            HooksLib.beforeProcessAccounting(hooks_, beforeParams);
-        }
+            })
+        );
 
         /// update total base assets
         uint256 totalBaseAssetsAfterAccounting = computeTotalAssets();
@@ -952,21 +952,18 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         // solhint-disable-next-line not-rely-on-time
         emit ProcessAccounting(block.timestamp, totalBaseAssetsAfterAccounting);
 
-        {
-            // handle after hook call
-            uint256 totalAssetsAfterAccounting = totalAssets();
-            uint256 totalSupplyAfterAccounting = totalSupply();
-
-            IHooks.AfterProcessAccountingParams memory afterParams = IHooks.AfterProcessAccountingParams({
+        // handle after hook call
+        HooksLib.afterProcessAccounting(
+            hooks_,
+            IHooks.AfterProcessAccountingParams({
                 totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
-                totalAssetsAfterAccounting: totalAssetsAfterAccounting,
+                totalAssetsAfterAccounting: totalAssets(),
                 totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
-                totalSupplyAfterAccounting: totalSupplyAfterAccounting,
+                totalSupplyAfterAccounting: totalSupply(),
                 totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting,
                 totalBaseAssetsAfterAccounting: totalBaseAssetsAfterAccounting
-            });
-            HooksLib.afterProcessAccounting(hooks_, afterParams);
-        }
+            })
+        );
     }
 
     /**
