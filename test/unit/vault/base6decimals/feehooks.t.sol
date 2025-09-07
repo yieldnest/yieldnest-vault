@@ -150,9 +150,9 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
                 totalAssetsBeforeAccounting: totalAssetsBefore,
                 totalAssetsAfterAccounting: totalAssetsAfter,
                 totalSupplyBeforeAccounting: vaultTotalSupplyBefore,
-                totalSupplyAfterAccounting: 0,
-                totalBaseAssetsBeforeAccounting: 0,
-                totalBaseAssetsAfterAccounting: 0
+                totalSupplyAfterAccounting: 1 ether,
+                totalBaseAssetsBeforeAccounting: 1 ether,
+                totalBaseAssetsAfterAccounting: 1 ether
             })
         );
         vm.stopPrank();
