@@ -204,7 +204,7 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEq(vault.totalSupply(), 2 ether, "vault's total supply should be 2 ether");
     }
 
-    function test_ProcessAccounting_100_Percent_Performance_Fee(uint256 depositAmount, uint256 yield) public {
+    function test_Fuzz_ProcessAccounting_100_Percent_Performance_Fee(uint256 depositAmount, uint256 yield) public {
         depositAmount = bound(depositAmount, 1 ether, 10_000 ether);
         yield = bound(yield, 0, depositAmount * 10);
         processAccounting_100_Percent_Performance_Fee(depositAmount, yield);
@@ -226,7 +226,9 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         weth.transfer(address(vault), yield);
         uint256 performanceFeeRecipientSharesBefore =
             vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+
         uint256 convertToAssetsBefore = vault.convertToAssets(1e18);
+        assertEq(convertToAssetsBefore, 1e18, "vault's convertToAssets should be 1e18");
 
         vault.processAccounting();
 
@@ -261,6 +263,48 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
             assertEq(vault.totalSupply(), depositAmount, "vault's total supply should remain depositAmount");
             assertEq(vault.totalAssets(), depositAmount, "vault's total assets should remain depositAmount");
         }
+    }
+
+    function test_ProcessAccounting_50_Percent_Performance_Fee_With_200_Percent_Yield() public {
+        uint256 depositAmount = 1 ether;
+        uint256 yield = 2 ether;
+
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFee(0.5 ether); // 50% performance fee
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(depositAmount, alice);
+        vault.processAccounting();
+
+        assertEq(vault.totalSupply(), depositAmount, "vault's total supply should be depositAmount");
+        assertEq(vault.totalAssets(), depositAmount, "vault's total assets should be depositAmount");
+        assertEq(shares, depositAmount, "shares should be depositAmount");
+
+        weth.transfer(address(vault), yield);
+        uint256 performanceFeeRecipientSharesBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 convertToAssetsBefore = vault.convertToAssets(1e18);
+        assertEq(convertToAssetsBefore, 1e18, "vault's convertToAssets should be 1e18");
+
+        vault.processAccounting();
+
+        uint256 performanceFeeRecipientSharesAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+
+        assertApproxEqAbs(vault.convertToAssets(1e18), 2e18, 1, "vault's convertToAssets should be 2e18");
+
+        // 50% fee applied to the shares equivalent of 2 ether in yield at a rate of 2e18
+        // Therefore the 50% fee is applied to 1e18 shares = 0.5 ether
+
+        assertEq(
+            performanceFeeRecipientSharesAfter - performanceFeeRecipientSharesBefore,
+            0.5 ether,
+            "vault should have gained 0.5 ether in shares"
+        );
+
+        assertEq(vault.totalAssets(), 3 ether, "vault's total assets should be 3 ether");
+        assertEq(vault.totalSupply(), 1.5 ether, "vault's total supply should be 2 ether");
     }
 
     function test_AfterProcessAccounting_Invariants(
