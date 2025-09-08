@@ -307,6 +307,43 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEq(vault.totalSupply(), 1.5 ether, "vault's total supply should be 2 ether");
     }
 
+    function test_ProcessAccounting_20_Percent_Performance_Fee_With_100_Percent_Yield() public {
+        uint256 depositAmount = 1 ether;
+        uint256 yield = 1 ether;
+
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFee(0.2 ether); // 20% performance fee
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(depositAmount, alice);
+        vault.processAccounting();
+
+        assertEq(vault.totalSupply(), depositAmount, "vault's total supply should be depositAmount");
+        assertEq(vault.totalAssets(), depositAmount, "vault's total assets should be depositAmount");
+        assertEq(shares, depositAmount, "shares should be depositAmount");
+
+        weth.transfer(address(vault), yield);
+        uint256 performanceFeeRecipientSharesBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 convertToAssetsBefore = vault.convertToAssets(1e18);
+        assertEq(convertToAssetsBefore, 1e18, "vault's convertToAssets should be 1e18");
+
+        vault.processAccounting();
+
+        uint256 performanceFeeRecipientSharesAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 performanceFeeSharesReceived = performanceFeeRecipientSharesAfter - performanceFeeRecipientSharesBefore;
+
+        assertApproxEqAbs(vault.convertToAssets(1e18), 1.8 ether, 1, "vault's convertToAssets should be 1.8 ether");
+
+        assertEq(
+            performanceFeeSharesReceived, 0.111111111111111111 ether, "vault should have gained 0.2 ether in shares"
+        );
+
+        assertEq(vault.totalAssets(), 2 ether, "vault's total assets should be 2 ether");
+    }
+
     function test_AfterProcessAccounting_Invariants(
         uint256 totalAssetsBefore,
         uint256 totalAssetsAfter,
