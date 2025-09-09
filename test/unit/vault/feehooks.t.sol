@@ -338,7 +338,7 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertApproxEqAbs(vault.convertToAssets(1e18), 1.8 ether, 1, "vault's convertToAssets should be 1.8 ether");
 
         assertEq(
-            performanceFeeSharesReceived, 0.111111111111111111 ether, "vault should have gained 0.2 ether in shares"
+            performanceFeeSharesReceived, 0.111111111111111111 ether, "vault should have gained 0.2 ether worth of shares"
         );
 
         assertEq(vault.totalAssets(), 2 ether, "vault's total assets should be 2 ether");
