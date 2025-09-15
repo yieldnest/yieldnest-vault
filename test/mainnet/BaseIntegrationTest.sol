@@ -33,11 +33,36 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
 
         viewer = MaxVaultViewer(MC.YNRWAX_VIEWER);
         wusdc = WrappedToken(MC.WUSDC);
+
+        addRWAStrategy();
     }
 
-    function upgradeVault(address newVault) public {
-        vm.startPrank(TIMELOCK); // Prank as the current contract
-        vault.setBuffer(vault.buffer()); // Set the new buffer to the provided newVault address
+    function addRWAStrategy() public {
+        // Deploy new provider
+        Provider newProvider = new Provider(MC.WUSDC);
+
+        // Set the new provider on the vault
+        vm.startPrank(TIMELOCK);
+        vault.setProvider(address(newProvider));
+        vm.stopPrank();
+
+        vm.startPrank(TIMELOCK);
+        vault.addAsset(MC.FLEX_STRATEGY_USDC, false);
+        vm.stopPrank();
+
+        // Add approval rule for FLEX_STRATEGY_USDC
+        SafeRules.RuleParams memory approvalRule = BaseRules.getApprovalRule(MC.USDC, MC.FLEX_STRATEGY_USDC);
+
+        // Add deposit rule for FLEX_STRATEGY_USDC
+        SafeRules.RuleParams memory depositRule = BaseRules.getDepositRule(MC.FLEX_STRATEGY_USDC, address(vault));
+
+        // Set the processor rules for the vault
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](2);
+        rules[0] = approvalRule;
+        rules[1] = depositRule;
+
+        vm.startPrank(TIMELOCK);
+        SafeRules.setProcessorRules(vault, rules);
         vm.stopPrank();
     }
 }
