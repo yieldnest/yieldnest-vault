@@ -26,6 +26,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {TestHelpers} from "test/unit/helpers/TestHelpers.sol";
+import {MathUtils} from "test/utils/MathUtils.sol";
 
 contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
@@ -338,7 +339,9 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertApproxEqAbs(vault.convertToAssets(1e18), 1.8 ether, 1, "vault's convertToAssets should be 1.8 ether");
 
         assertEq(
-            performanceFeeSharesReceived, 0.111111111111111111 ether, "vault should have gained 0.2 ether worth of shares"
+            performanceFeeSharesReceived,
+            0.111111111111111111 ether,
+            "vault should have gained 0.2 ether worth of shares"
         );
 
         assertEq(vault.totalAssets(), 2 ether, "vault's total assets should be 2 ether");
@@ -395,10 +398,18 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
                 vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient()),
                 "performance fee shares should be equal to performance fee recipient's balance"
             );
+
+            // The error is proportionate to the multiplication factor of the exchange rate
+            // The reason for this is that the shares minted are inversely proportionate
+            // to to the exchange rate
+            // Therefore if exchange rate increases a lot the amount of shares minted will be less
+            uint256 exchangeRateMultiplier = vaultExchangeRateAfter / vaultExchangeRateBefore;
+            uint256 log10ExchangeRateMultiplier = MathUtils.log10(exchangeRateMultiplier) + 1;
+
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeShares),
                 feesAccrued,
-                1e12,
+                10 ** log10ExchangeRateMultiplier,
                 "performance fee shares should be equal to performance fee amount"
             );
         } else {
