@@ -122,7 +122,9 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
         } else {
             // With no yield, no performance fee should be collected
             assertEq(performanceFeeSharesReceived, 0, "performance fee shares received should be 0 with no yield");
-            assertEq(vault.totalSupply(), depositAmount, "vault's total supply should remain depositAmount");
+            assertEq(
+                vault.totalSupply(), depositAmount * 1e12, "vault's total supply should remain depositAmount * 1e12"
+            );
             assertEq(vault.totalAssets(), depositAmount, "vault's total assets should remain depositAmount");
         }
     }
