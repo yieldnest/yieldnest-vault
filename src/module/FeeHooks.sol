@@ -65,6 +65,7 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @notice After process accounting hook function
      * @dev This hook is called after the totalBaseAssets is updated
      * @dev This hook is mints the shares corresponding to the performance fee to the performanceFeeRecipient
+     * @dev Computations are done in the base asset for maximum precision
      * @param params The after process accounting parameters
      */
 
