@@ -406,6 +406,11 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
             uint256 exchangeRateMultiplier = vaultExchangeRateAfter / vaultExchangeRateBefore;
             uint256 log10ExchangeRateMultiplier = MathUtils.log10(exchangeRateMultiplier) + 1;
 
+            assertLe(
+                vault.convertToAssets(performanceFeeShares),
+                feesAccrued,
+                "performance fee shares should be less than or equal to performance fee amount"
+            );
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeShares),
                 feesAccrued,

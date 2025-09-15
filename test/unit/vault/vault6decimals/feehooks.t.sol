@@ -87,6 +87,11 @@ contract Vault6DecimalsHooksUnitTest is Test, MainnetActors, Etches {
             uint256 exchangeRateMultiplier = vaultExchangeRateAfter / vaultExchangeRateBefore;
             uint256 log10ExchangeRateMultiplier = MathUtils.log10(exchangeRateMultiplier) + 1;
 
+            assertLe(
+                vault.convertToAssets(performanceFeeShares),
+                feesAccrued,
+                "performance fee shares should be less than or equal to performance fee amount"
+            );
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeShares),
                 feesAccrued,
@@ -113,6 +118,12 @@ contract Vault6DecimalsHooksUnitTest is Test, MainnetActors, Etches {
                 vaultTotalSupplyAfter, vaultTotalSupplyBefore, "vault's total supply should not change due to no fee"
             );
         }
+
+        assertGe(
+            vaultExchangeRateAfter,
+            vaultExchangeRateBefore,
+            "vault's exchange rate should always increase due to donation"
+        );
         assertLt(vaultTotalSupplyAfter, 1e13, "vault's total supply should be less than 1e13");
 
         vm.stopPrank();
