@@ -84,6 +84,22 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
         if (feesAccrued > 0) {
             uint256 performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
 
+            assertLe(
+                vault.convertToAssets(performanceFeeShares),
+                feesAccrued,
+                "performance fee shares should be less than or equal to performance fee amount"
+            );
+
+            if (vaultExchangeRateAfter < 3e6) {
+                // for a "normal" rate range.
+                assertApproxEqAbs(
+                    vault.convertToAssets(performanceFeeShares),
+                    feesAccrued,
+                    3,
+                    "performance fee shares should be equal to performance fee amount"
+                );
+            }
+
             // The error is proportionate to the multiplication factor of the exchange rate
             // The reason for this is that the shares minted are inversely proportionate
             // to to the exchange rate

@@ -393,11 +393,28 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
                 "vault's total supply should increase due to fee shares minted"
             );
             uint256 performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
+
             assertEq(
                 performanceFeeShares,
                 vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient()),
                 "performance fee shares should be equal to performance fee recipient's balance"
             );
+
+            assertLe(
+                vault.convertToAssets(performanceFeeShares),
+                feesAccrued,
+                "performance fee shares should be less than or equal to performance fee amount"
+            );
+
+            if (vaultExchangeRateAfter < 3 ether) {
+                // for a "normal" rate range.
+                assertApproxEqAbs(
+                    vault.convertToAssets(performanceFeeShares),
+                    feesAccrued,
+                    3,
+                    "performance fee shares should be equal to performance fee amount"
+                );
+            }
 
             // The error is proportionate to the multiplication factor of the exchange rate
             // The reason for this is that the shares minted are inversely proportionate
@@ -406,11 +423,6 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
             uint256 exchangeRateMultiplier = vaultExchangeRateAfter / vaultExchangeRateBefore;
             uint256 log10ExchangeRateMultiplier = MathUtils.log10(exchangeRateMultiplier) + 1;
 
-            assertLe(
-                vault.convertToAssets(performanceFeeShares),
-                feesAccrued,
-                "performance fee shares should be less than or equal to performance fee amount"
-            );
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeShares),
                 feesAccrued,
