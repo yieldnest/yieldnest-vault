@@ -27,6 +27,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {MathUtils} from "test/utils/MathUtils.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
@@ -44,6 +45,86 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
+    }
+
+    function test_ProcessAccounting_100_Percent_Performance_Fee_With_100_Percent_Yield() public {
+        uint256 rateBefore = vault.convertToAssets(1e18);
+
+        processAccounting_100_Percent_Performance_Fee(1000e6, 1000e6);
+
+        uint256 rateAfter = vault.convertToAssets(1e18);
+        assertEq(rateBefore, 1e6, "rate before should be 1e6");
+        assertEq(rateAfter, 1e6, "rate after should be 1e6");
+
+        assertEq(vault.totalAssets(), 2000e6, "vault's total assets should be 2000e6");
+        assertEq(vault.totalSupply(), 2000e18, "vault's total supply should be 2e18");
+    }
+
+    function test_Fuzz_ProcessAccounting_100_Percent_Performance_Fee(uint256 depositAmount, uint256 yield) public {
+        depositAmount = bound(depositAmount, 1e6, 1_000_000e6);
+        yield = bound(yield, 0, depositAmount * 10);
+        processAccounting_100_Percent_Performance_Fee(depositAmount, yield);
+    }
+
+    function processAccounting_100_Percent_Performance_Fee(uint256 depositAmount, uint256 yield) public {
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFee(1 ether); // 100% performance fee
+        vm.stopPrank();
+
+        deal(MC.USDC, alice, depositAmount);
+
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), depositAmount);
+        uint256 shares = vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+        vault.processAccounting();
+
+        assertEq(vault.totalSupply(), depositAmount * 1e12, "vault's total supply should be depositAmount * 1e12");
+        assertEq(vault.totalAssets(), depositAmount, "vault's total assets should be depositAmount");
+        assertEq(shares, depositAmount * 1e12, "shares should be depositAmount * 1e12");
+
+        deal(MC.USDC, address(this), yield);
+
+        IERC20(MC.USDC).transfer(address(vault), yield);
+        uint256 performanceFeeRecipientSharesBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+
+        uint256 convertToAssetsBefore = vault.convertToAssets(1e18);
+        assertEq(convertToAssetsBefore, 1e6, "vault's convertToAssets should be 1e6");
+
+        vault.processAccounting();
+
+        uint256 performanceFeeRecipientSharesAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 performanceFeeSharesReceived = performanceFeeRecipientSharesAfter - performanceFeeRecipientSharesBefore;
+        uint256 convertToAssetsAfter = vault.convertToAssets(1e18);
+
+        assertEq(convertToAssetsBefore, convertToAssetsAfter, "convertToAssets for 1e18 should stay the same");
+
+        if (yield > 0) {
+            // With 100% performance fee, all yield should go to fee recipient as shares
+            uint256 expectedPerformanceFeeShares = vault.convertToShares(yield);
+            assertEq(
+                performanceFeeSharesReceived,
+                expectedPerformanceFeeShares,
+                "performance fee shares received should equal expected shares for 100% fee"
+            );
+            assertEq(
+                vault.totalSupply(),
+                depositAmount * 1e12 + performanceFeeSharesReceived,
+                "vault's total supply should include fee shares"
+            );
+            assertEq(vault.totalAssets(), depositAmount + yield, "vault's total assets should be depositAmount + yield");
+
+            // Alice's share value should remain the same (depositAmount worth of assets)
+            uint256 aliceAssetValue = vault.convertToAssets(vault.balanceOf(alice));
+            assertEq(aliceAssetValue, depositAmount, "Alice's asset value should remain depositAmount");
+        } else {
+            // With no yield, no performance fee should be collected
+            assertEq(performanceFeeSharesReceived, 0, "performance fee shares received should be 0 with no yield");
+            assertEq(vault.totalSupply(), depositAmount, "vault's total supply should remain depositAmount");
+            assertEq(vault.totalAssets(), depositAmount, "vault's total assets should remain depositAmount");
+        }
     }
 
     function test_AfterProcessAccounting_Invariants(uint256 totalAssetsBefore, uint256 totalAssetsAfter) public {
