@@ -26,6 +26,7 @@ import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {MathUtils} from "test/utils/MathUtils.sol";
 
 contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
@@ -82,10 +83,18 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
 
         if (feesAccrued > 0) {
             uint256 performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
+
+            // The error is proportionate to the multiplication factor of the exchange rate
+            // The reason for this is that the shares minted are inversely proportionate
+            // to to the exchange rate
+            // Therefore if exchange rate increases a lot the amount of shares minted will be less
+            uint256 exchangeRateMultiplier = vaultExchangeRateAfter / vaultExchangeRateBefore;
+            uint256 log10ExchangeRateMultiplier = MathUtils.log10(exchangeRateMultiplier) + 1;
+
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeShares),
                 feesAccrued,
-                1e2,
+                10 ** log10ExchangeRateMultiplier,
                 "performance fee shares should be equal to performance fee amount"
             );
             assertGt(
@@ -108,6 +117,12 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
                 vaultTotalSupplyAfter, vaultTotalSupplyBefore, "vault's total supply should not change due to no fee"
             );
         }
+
+        assertGe(
+            vaultExchangeRateAfter,
+            vaultExchangeRateBefore,
+            "vault's exchange rate should always increase due to donation"
+        );
 
         vm.stopPrank();
     }
