@@ -47,6 +47,57 @@ contract Vault6DecimalsBaseHooksUnitTest is Test, MainnetActors, Etches {
         deal(alice, INITIAL_BALANCE);
     }
 
+    function test_ProcessAccounting_Basic() public {
+        uint256 depositAmount = 1000e6; // 1000 USDC (6 decimals)
+        uint256 yield = 100e6; // 100 USDC yield
+        uint256 performanceFee = 10e6; // 10 USDC performance fee (10% of yield)
+
+        // Give alice USDC tokens
+        deal(MC.USDC, alice, depositAmount + yield);
+
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), depositAmount);
+        uint256 shares = vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+        vault.processAccounting();
+
+        // Vault has 6 decimals, so shares should be scaled by 1e12 (18-6)
+        assertEq(vault.totalSupply(), depositAmount * 1e12, "vault's total supply should be depositAmount * 1e12");
+        assertEq(vault.totalAssets(), depositAmount, "vault's total assets should be depositAmount");
+
+        // alice transfers yield to vault
+        vm.prank(alice);
+        IERC20(MC.USDC).transfer(address(vault), yield);
+
+        uint256 performanceFeeRecipientSharesBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        vault.processAccounting();
+
+        uint256 performanceFeeRecipientSharesAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 performanceFeeSharesReceived = performanceFeeRecipientSharesAfter - performanceFeeRecipientSharesBefore;
+
+        assertLe(
+            vault.convertToAssets(performanceFeeSharesReceived),
+            performanceFee,
+            "performance fee shares received should be less than or equal to performance fee"
+        );
+        assertApproxEqAbs(
+            vault.convertToAssets(performanceFeeSharesReceived),
+            performanceFee,
+            2,
+            "performance fee shares received should be equal to performance fee"
+        );
+        assertEq(
+            vault.totalSupply(),
+            shares + performanceFeeSharesReceived,
+            "vault's total supply should be equal to shares + performance fee shares received"
+        );
+        assertEq(
+            vault.totalAssets(), depositAmount + yield, "vault's total assets should be equal to depositAmount + yield"
+        );
+    }
+
     function test_ProcessAccounting_100_Percent_Performance_Fee_With_100_Percent_Yield() public {
         uint256 rateBefore = vault.convertToAssets(1e18);
 

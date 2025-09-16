@@ -69,7 +69,7 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         weth.approve(address(vault), type(uint256).max);
     }
 
-    function test_ProcessAccounting_Scenario() public {
+    function test_ProcessAccounting_Basic() public {
         // alice deposits 1 ether to vault
         vm.startPrank(alice);
         uint256 shares = vault.deposit(1 ether, alice);
@@ -83,7 +83,7 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // alice transfers 10% of vault's balance to vault which will be considered as yield
         weth.transfer(address(vault), yield);
 
-        uint256 performanceFee = yield * hooks.performanceFee() / 1 ether;
+        uint256 performanceFee = 0.01 ether;
         uint256 performanceFeeRecipientSharesBefore =
             vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
         vault.processAccounting();
@@ -94,7 +94,7 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertApproxEqAbs(
             vault.convertToAssets(performanceFeeSharesReceived),
             performanceFee,
-            5,
+            1,
             "performance fee shares received should be equal to performance fee"
         );
         assertEq(
