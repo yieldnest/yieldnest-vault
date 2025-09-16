@@ -26,6 +26,8 @@ import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {MathUtils} from "test/utils/MathUtils.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract Vault6DecimalsHooksUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
@@ -40,6 +42,56 @@ contract Vault6DecimalsHooksUnitTest is Test, MainnetActors, Etches {
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
+    }
+
+    function test_ProcessAccounting_Basic() public {
+        uint256 depositAmount = 1000e6; // 1000 USDC (6 decimals)
+        uint256 yield = 100e6; // 100 USDC yield
+        uint256 performanceFee = 10e6; // 10 USDC performance fee (10% of yield)
+
+        // Give alice USDC tokens
+        deal(MC.USDC, alice, depositAmount + yield);
+
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), depositAmount);
+        uint256 shares = vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+        vault.processAccounting();
+
+        assertEq(vault.totalSupply(), depositAmount, "vault's total supply should be depositAmount");
+        assertEq(vault.totalAssets(), depositAmount, "vault's total assets should be depositAmount");
+
+        // alice transfers yield to vault
+        vm.prank(alice);
+        IERC20(MC.USDC).transfer(address(vault), yield);
+
+        uint256 performanceFeeRecipientSharesBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        vault.processAccounting();
+
+        uint256 performanceFeeRecipientSharesAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 performanceFeeSharesReceived = performanceFeeRecipientSharesAfter - performanceFeeRecipientSharesBefore;
+
+        assertLe(
+            vault.convertToAssets(performanceFeeSharesReceived),
+            performanceFee,
+            "performance fee shares received should be less than or equal to performance fee"
+        );
+        assertApproxEqAbs(
+            vault.convertToAssets(performanceFeeSharesReceived),
+            performanceFee,
+            2,
+            "performance fee shares received should be equal to performance fee"
+        );
+        assertEq(
+            vault.totalSupply(),
+            shares + performanceFeeSharesReceived,
+            "vault's total supply should be equal to shares + performance fee shares received"
+        );
+        assertEq(
+            vault.totalAssets(), depositAmount + yield, "vault's total assets should be equal to depositAmount + yield"
+        );
     }
 
     function test_AfterProcessAccounting_Invariants(uint256 totalAssetsBefore, uint256 totalAssetsAfter) public {
@@ -78,10 +130,34 @@ contract Vault6DecimalsHooksUnitTest is Test, MainnetActors, Etches {
 
         if (feesAccrued > 0) {
             uint256 performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
+
+            assertLe(
+                vault.convertToAssets(performanceFeeShares),
+                feesAccrued,
+                "performance fee shares should be less than or equal to performance fee amount"
+            );
+
+            if (vaultExchangeRateAfter < 3e6) {
+                // for a "normal" rate range.
+                assertApproxEqAbs(
+                    vault.convertToAssets(performanceFeeShares),
+                    feesAccrued,
+                    3,
+                    "performance fee shares should be equal to performance fee amount"
+                );
+            }
+
+            // The error is proportionate to the multiplication factor of the exchange rate
+            // The reason for this is that the shares minted are inversely proportionate
+            // to to the exchange rate
+            // Therefore if exchange rate increases a lot the amount of shares minted will be less
+            uint256 exchangeRateMultiplier = vaultExchangeRateAfter / vaultExchangeRateBefore;
+            uint256 log10ExchangeRateMultiplier = MathUtils.log10(exchangeRateMultiplier) + 1;
+
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeShares),
                 feesAccrued,
-                1e6,
+                10 ** log10ExchangeRateMultiplier,
                 "performance fee shares should be equal to performance fee amount"
             );
             assertGt(
@@ -104,6 +180,12 @@ contract Vault6DecimalsHooksUnitTest is Test, MainnetActors, Etches {
                 vaultTotalSupplyAfter, vaultTotalSupplyBefore, "vault's total supply should not change due to no fee"
             );
         }
+
+        assertGe(
+            vaultExchangeRateAfter,
+            vaultExchangeRateBefore,
+            "vault's exchange rate should always increase due to donation"
+        );
         assertLt(vaultTotalSupplyAfter, 1e13, "vault's total supply should be less than 1e13");
 
         vm.stopPrank();
@@ -147,9 +229,9 @@ contract Vault6DecimalsHooksUnitTest is Test, MainnetActors, Etches {
                 totalAssetsBeforeAccounting: totalAssetsBefore,
                 totalAssetsAfterAccounting: totalAssetsAfter,
                 totalSupplyBeforeAccounting: vaultTotalSupplyBefore,
-                totalSupplyAfterAccounting: 0,
-                totalBaseAssetsBeforeAccounting: 0,
-                totalBaseAssetsAfterAccounting: 0
+                totalSupplyAfterAccounting: vaultTotalSupplyBefore,
+                totalBaseAssetsBeforeAccounting: totalAssetsBefore,
+                totalBaseAssetsAfterAccounting: totalAssetsAfter
             })
         );
         vm.stopPrank();

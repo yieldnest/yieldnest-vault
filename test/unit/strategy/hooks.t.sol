@@ -168,9 +168,9 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
                 totalAssetsBeforeAccounting: 1 ether,
                 totalAssetsAfterAccounting: 1 ether,
                 totalSupplyBeforeAccounting: 1 ether,
-                totalSupplyAfterAccounting: 0,
-                totalBaseAssetsBeforeAccounting: 0,
-                totalBaseAssetsAfterAccounting: 0
+                totalSupplyAfterAccounting: 1 ether,
+                totalBaseAssetsBeforeAccounting: 1 ether,
+                totalBaseAssetsAfterAccounting: 1 ether
             })
         );
         vm.stopPrank();
@@ -268,9 +268,9 @@ contract StrategyHooksUnitTest is Test, Etches, MainnetActors {
                 totalAssetsBeforeAccounting: 1 ether,
                 totalAssetsAfterAccounting: 1 ether,
                 totalSupplyBeforeAccounting: 1 ether,
-                totalSupplyAfterAccounting: 0,
-                totalBaseAssetsBeforeAccounting: 0,
-                totalBaseAssetsAfterAccounting: 0
+                totalSupplyAfterAccounting: 1 ether,
+                totalBaseAssetsBeforeAccounting: 1 ether,
+                totalBaseAssetsAfterAccounting: 1 ether
             })
         );
         vm.stopPrank();
