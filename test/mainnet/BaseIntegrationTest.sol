@@ -51,7 +51,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         vm.stopPrank();
 
         // Add approval rule for FLEX_STRATEGY_USDC
-        SafeRules.RuleParams memory approvalRule = BaseRules.getApprovalRule(MC.USDC, MC.FLEX_STRATEGY_USDC);
+        SafeRules.RuleParams memory approvalRule = BaseRules.getAppendApprovalRule(MC.USDC, MC.FLEX_STRATEGY_USDC, vault);
 
         // Add deposit rule for FLEX_STRATEGY_USDC
         SafeRules.RuleParams memory depositRule = BaseRules.getDepositRule(MC.FLEX_STRATEGY_USDC, address(vault));
