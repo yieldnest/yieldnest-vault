@@ -209,6 +209,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Withdraws assets and burns equivalent shares from the owner.
+     * @dev Overrides BaseVault.withdrawAsset; ASSET_WITHDRAWER_ROLE withdrawals no longer possible.
      * @param asset_ The address of the asset.
      * @param assets The amount of assets to withdraw.
      * @param receiver The address of the receiver.
@@ -264,6 +265,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Internal function to handle withdrawals.
+     * @dev Overrides BaseVault._withdraw to eliminate the use of the Buffer.
      * @param caller The address of the caller.
      * @param receiver The address of the receiver.
      * @param owner The address of the owner.
@@ -280,6 +282,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Internal function to handle withdrawals for specific assets.
+     * @dev Overrides BaseVault._withdrawAsset to check for isAssetWithdrawable.
      * @param asset_ The address of the asset.
      * @param caller The address of the caller.
      * @param receiver The address of the receiver.
