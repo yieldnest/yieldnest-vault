@@ -57,10 +57,14 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         // Add deposit rule for FLEX_STRATEGY_USDC
         SafeRules.RuleParams memory depositRule = BaseRules.getDepositRule(MC.FLEX_STRATEGY_USDC, address(vault));
 
+        // Add withdraw rule for FLEX_STRATEGY_USDC
+        SafeRules.RuleParams memory withdrawRule = BaseRules.getWithdrawRule(MC.FLEX_STRATEGY_USDC, address(vault));
+
         // Set the processor rules for the vault
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](2);
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](3);
         rules[0] = approvalRule;
         rules[1] = depositRule;
+        rules[2] = withdrawRule;
 
         vm.startPrank(TIMELOCK);
         SafeRules.setProcessorRules(vault, rules);
