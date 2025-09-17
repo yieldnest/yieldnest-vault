@@ -154,14 +154,11 @@ contract VaultDepositTest is BaseIntegrationTest, TestHelper {
 
         // Deposit USDC to vault
         vm.prank(alice);
-        uint256 shares = vault.deposit(depositAmount, alice);
+        vault.deposit(depositAmount, alice);
 
         uint256 safeBalanceBefore = IERC20(MC.USDC).balanceOf(safe);
 
         uint256 allocationAmount = 1000e6;
-        // Get initial balances
-        uint256 initialVaultUSDC = IERC20(MC.USDC).balanceOf(address(vault));
-        uint256 initialStrategyTotalAssets = IERC4626(MC.FLEX_STRATEGY_USDC).totalAssets();
 
         ProcessorUtils.allocateToERC4626(address(vault), MC.USDC, MC.FLEX_STRATEGY_USDC, allocationAmount, PROCESSOR);
 
