@@ -132,7 +132,7 @@ interface IVault is IERC4626 {
     event Pause(bool paused);
     event SetProcessorRule(address indexed target, bytes4, FunctionRule);
     event NativeDeposit(uint256 amount);
-    event ProcessAccounting(uint256 timestamp, uint256 totalAssets);
+    event ProcessAccounting(uint256 timestamp, uint256 totalAssetsBefore, uint256 totalAssetsAfter);
     event UpdateAsset(uint256 indexed index, address indexed asset, AssetUpdateFields fields);
     event DeleteAsset(uint256 indexed index, address indexed asset);
     event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
