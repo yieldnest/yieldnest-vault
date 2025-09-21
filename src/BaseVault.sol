@@ -950,7 +950,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         uint256 totalBaseAssetsAfterAccounting = computeTotalAssets();
         _getVaultStorage().totalAssets = totalBaseAssetsAfterAccounting;
         // solhint-disable-next-line not-rely-on-time
-        emit ProcessAccounting(block.timestamp, totalBaseAssetsAfterAccounting);
+        emit ProcessAccounting(block.timestamp, totalBaseAssetsBeforeAccounting, totalBaseAssetsAfterAccounting);
 
         // handle after hook call
         HooksLib.afterProcessAccounting(
