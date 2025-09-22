@@ -284,12 +284,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 );
             }
         }
-        assertEqThreshold(
-            vault.totalSupply(),
-            initialSupply + depositedShares - redeemableShares + performanceFeeSharesMinted,
-            1e12,
-            "totalSupply should be equal to initialSupply plus depositedShares minus redeemableShares plus performanceFeeSharesMinted"
-        );
+        totalSupplyInvariant(initialSupply + depositedShares - redeemableShares + performanceFeeSharesMinted);
         totalAssetsInvariant(initialAssets + assets - redeemedAssets);
     }
 
@@ -375,12 +370,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 );
             }
         }
-        assertEqThreshold(
-            vault.totalSupply(),
-            initialSupply + depositedShares - withdrawnShares + performanceFeeSharesMinted,
-            1e12,
-            "totalSupply should be equal to initialSupply plus depositedShares minus withdrawnShares plus performanceFeeSharesMinted"
-        );
+        totalSupplyInvariant(initialSupply + depositedShares - withdrawnShares + performanceFeeSharesMinted);
         totalAssetsInvariant(initialAssets + assets - withdrawableAssets);
 
         uint256 finalBalance = IERC20(baseAsset).balanceOf(user);
@@ -1507,6 +1497,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             5,
             "totalSupply not as expected"
         );
+        totalSupplyInvariant(initialSupply + depositedShares - burnedShares + performanceFeeShares);
         totalAssetsInvariant(initialAssets + initialDepositedAmount - withdrawableAssets);
     }
 }
