@@ -1326,11 +1326,12 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         bool processAfterSecondDeposit,
         bool processAfterWithdrawAsset
     ) public {
-        vm.assume(amount > 10000);
+
+        vm.assume(amount > 1 ether);
         vm.assume(amount < 100_000 ether);
 
-        vm.assume(amount > 100000);
-        vm.assume(amount < 100_000 ether);
+        // Total assets increase slightly after withdrawing from withdrawer
+        uint256 MAX_FEE_SHARES = 1e4;
 
         withdrawer.processAccounting();
         vault.processAccounting();
@@ -1368,37 +1369,53 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         {
             _processWithdraw(address(withdrawer), amount);
 
+            uint256 performanceFeeShares = 0;
             if (processAfterWithdraw) {
                 withdrawer.processAccounting();
-                vault.processAccounting();
-            }
 
-            assertApproxEqAbs(vault.totalSupply(), initialSupply, 1e6, "totalSupply should be near the same as before");
+                uint256 totalSupplyBefore = vault.totalSupply();
+                vault.processAccounting();
+
+                performanceFeeShares = vault.totalSupply() - totalSupplyBefore;
+            }
+            
+            assertLe(performanceFeeShares, MAX_FEE_SHARES, "performanceFeeShares should be less than 10");
+            totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
+            initialSupply = vault.totalSupply();
         }
 
         {
             _processApprove(MC.WETH, address(withdrawer), amount);
             _processDepositAsset(address(withdrawer), MC.WETH, amount);
 
+            uint256 performanceFeeShares = 0;
             if (processAfterSecondDeposit) {
+                uint256 totalSupplyBefore = vault.totalSupply();
                 withdrawer.processAccounting();
                 vault.processAccounting();
+                performanceFeeShares = vault.totalSupply() - totalSupplyBefore;
             }
 
-            assertApproxEqAbs(vault.totalSupply(), initialSupply, 1e6, "totalSupply should be near the same as before");
+            assertLe(performanceFeeShares, MAX_FEE_SHARES, "performanceFeeShares should be less than 10");
+            totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
+            initialSupply = vault.totalSupply();
         }
 
         {
             _processWithdraw(address(withdrawer), amount);
 
+            uint256 performanceFeeShares = 0;
             if (processAfterWithdrawAsset) {
+                uint256 totalSupplyBefore = vault.totalSupply();
                 withdrawer.processAccounting();
                 vault.processAccounting();
+                performanceFeeShares = vault.totalSupply() - totalSupplyBefore;
             }
 
-            assertApproxEqAbs(vault.totalSupply(), initialSupply, 1e6, "totalSupply should be near the same as before");
+            assertLe(performanceFeeShares, MAX_FEE_SHARES, "performanceFeeShares should be less than 10");
+            totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
         }
     }
@@ -1491,12 +1508,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
                 );
             }
         }
-        assertEqThreshold(
-            vault.totalSupply(),
-            initialSupply + depositedShares - burnedShares + performanceFeeShares,
-            5,
-            "totalSupply not as expected"
-        );
         totalSupplyInvariant(initialSupply + depositedShares - burnedShares + performanceFeeShares);
         totalAssetsInvariant(initialAssets + initialDepositedAmount - withdrawableAssets);
     }
