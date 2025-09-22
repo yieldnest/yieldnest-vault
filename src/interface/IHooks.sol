@@ -95,6 +95,12 @@ interface IHooks {
     error CallerNotVault();
 
     /**
+     * @notice Returns the name of the hooks module
+     * @return The name of the hooks module
+     */
+    function name() external view returns (string memory);
+
+    /**
      * @notice Returns the vault that the hooks are attached to
      * @return The vault contract interface
      */
