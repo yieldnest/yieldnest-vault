@@ -1230,13 +1230,21 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         _processApprove(assets[i], address(withdrawer), donatedAmount);
         _processDepositAsset(address(withdrawer), assets[i], donatedAmount);
 
+        uint256 performanceFeeSharesMinted = 0;
         if (process) {
+            uint256 performanceFeeReceiverBalanceBefore = ViewUtils.getPerformanceFeeReceiverBalance(vault);
             withdrawer.processAccounting();
             vault.processAccounting();
+            uint256 performanceFeeReceiverBalanceAfter = ViewUtils.getPerformanceFeeReceiverBalance(vault);
+            performanceFeeSharesMinted = performanceFeeReceiverBalanceAfter - performanceFeeReceiverBalanceBefore;
         }
 
-        assertApproxEqRel(vault.totalSupply(), initialSupply, 1e15, "totalSupply should be near the same as before");
-        assertApproxEqRel(vault.totalAssets(), initialAssets, 1e15, "totalAssets should be near the same as before");
+        assertEq(
+            vault.totalSupply(),
+            initialSupply + performanceFeeSharesMinted,
+            "totalSupply should be near the same as before"
+        );
+        assertApproxEqRel(vault.totalAssets(), initialAssets, 10, "totalAssets should be the same as before");
     }
 
     function test_Vault_4626Invariants_Withdrawer_Withdraw(
