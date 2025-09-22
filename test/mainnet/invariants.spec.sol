@@ -69,11 +69,22 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         performanceFeeSharesMinted =
             ViewUtils.getPerformanceFeeReceiverBalance(vault) - performanceFeeReceiverBalanceBefore;
         if (performanceFeeSharesMinted > 0) {
+            uint256 valueOfPerformanceFeeSharesMinted = vault.convertToAssets(performanceFeeSharesMinted);
+            uint256 valueOfPerformanceFee =
+                (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18;
+
+            // TODO: figure out why this imprecision exists
             assertApproxEqAbs(
-                vault.convertToAssets(performanceFeeSharesMinted),
-                (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
-                1e12,
+                valueOfPerformanceFeeSharesMinted,
+                valueOfPerformanceFee,
+                100,
                 "performance fee shares should be equal to performance fee amount"
+            );
+            // fee minting errors on the side of  loss for the performance fee recipient
+            assertLe(
+                valueOfPerformanceFeeSharesMinted,
+                valueOfPerformanceFee,
+                "performance fee shares should be less than or equal to performance fee amount"
             );
         }
     }
