@@ -20,6 +20,7 @@ import {console} from "forge-std/console.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {ViewUtils} from "test/utils/ViewUtils.sol";
 
 contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     using Math for uint256;
@@ -269,12 +270,12 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         uint256 performanceFeeSharesMinted;
         {
-            uint256 totalSupplyBefore = vault.totalSupply();
             uint256 totalAssetsBefore = vault.totalAssets();
+            uint256 performanceFeeReceiverBalanceBefore = ViewUtils.getPerformanceFeeReceiverBalance(vault);
             vault.processAccounting();
-            uint256 totalSupplyAfter = vault.totalSupply();
             uint256 totalAssetsAfter = vault.totalAssets();
-            performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
+            performanceFeeSharesMinted =
+                ViewUtils.getPerformanceFeeReceiverBalance(vault) - performanceFeeReceiverBalanceBefore;
             if (performanceFeeSharesMinted > 0) {
                 assertApproxEqAbs(
                     vault.convertToAssets(performanceFeeSharesMinted),
