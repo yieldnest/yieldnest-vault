@@ -103,7 +103,11 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     }
 
     function test_Vault_Upgrade_ERC4626_view_functions() public {
+        // Get assets before upgrade
+        address[] memory assetsBefore = vault.getAssets();
+
         upgradeVaultAndWithdrawer();
+
         // Test the asset function
         assertEq(address(vault.asset()), MC.WETH, "Vault asset should be WETH");
 
@@ -138,9 +142,13 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         assertEq(maxRedeem, 0, "Max redeem should be zero");
 
         // Test the getAssets function
-        address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 13, "There should be 13 assets in the vault");
-        assertEq(assets[0], MC.WETH, "First asset should be WETH");
+        address[] memory assetsAfter = vault.getAssets();
+        // Assert assets are the same before and after
+        assertEq(assetsAfter.length, assetsBefore.length, "Assets length should be the same before and after upgrade");
+        for (uint256 i = 0; i < assetsBefore.length; i++) {
+            assertEq(assetsAfter[i], assetsBefore[i], "Asset at index should be the same before and after upgrade");
+        }
+        assertEq(assetsAfter[0], MC.WETH, "First asset should be WETH");
     }
 
     function test_Vault_Upgrade_totalAssets_unchanged(bool processAccountingBeforeCheck) public {

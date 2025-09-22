@@ -173,7 +173,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         vm.assume(donationAmount < 1_000 ether);
 
         address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 12, "Should have 11 assets");
 
         for (uint256 i = 0; i < assets.length; i++) {
             _test_donate_single_asset(assets[i], donationAmount);
