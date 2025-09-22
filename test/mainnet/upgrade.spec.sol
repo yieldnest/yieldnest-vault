@@ -17,6 +17,7 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {Provider} from "src/module/Provider.sol";
+import {ViewUtils} from "test/utils/ViewUtils.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     // Implementation addresses
@@ -168,9 +169,11 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         uint256 performanceFeeSharesMinted;
         if (processAccountingBeforeCheck) {
             totalSupplyBefore = vault.totalSupply();
+
+            uint256 performanceFeeReceiverBalanceBefore = ViewUtils.getPerformanceFeeReceiverBalance(vault);
             vault.processAccounting();
-            totalSupplyAfter = vault.totalSupply();
-            performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
+            uint256 performanceFeeReceiverBalanceAfter = ViewUtils.getPerformanceFeeReceiverBalance(vault);
+            performanceFeeSharesMinted = performanceFeeReceiverBalanceAfter - performanceFeeReceiverBalanceBefore;
         }
 
         // Get totalAssets after upgrade
@@ -180,7 +183,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeSharesMinted),
                 (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
-                1e12,
+                100,
                 "performance fee shares should be equal to performance fee amount"
             );
         }
@@ -197,12 +200,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
             totalAssetsAfter, totalAssetsBefore, 1e16, "Total assets should be equal within 1e16 (1%) relative error"
         );
 
-        assertApproxEqRel(
-            totalSupplyAfter,
-            totalSupplyBefore + performanceFeeSharesMinted,
-            1e16,
-            "performanceFeeSharesMinted should be equal to 1e16(1%) relative error"
-        );
+        totalSupplyAfter = vault.totalSupply();
 
         // Assert that totalSupply remains unchanged after the upgrade
         assertEq(
