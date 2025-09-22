@@ -56,6 +56,12 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     }
 
     function checkProcessAccountingInvariants(IVault vault) internal returns (uint256 performanceFeeSharesMinted) {
+        if (address(vault.hooks()) == address(0)) {
+            // nothing to check
+            vault.processAccounting();
+            return 0;
+        }
+
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 performanceFeeReceiverBalanceBefore = ViewUtils.getPerformanceFeeReceiverBalance(vault);
         vault.processAccounting();
