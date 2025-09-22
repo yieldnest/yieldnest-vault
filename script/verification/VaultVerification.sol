@@ -62,7 +62,7 @@ library VaultVerification {
 
         // Verify total number of assets
         address[] memory assets = vault.getAssets();
-        assertEq(assets[0], MC.WETH);
+        vm.assertEq(assets[0], MC.WETH);
 
         // Verify buffer configuration
         vm.assertEq(vault.buffer(), MC.MORPHO_MEV_CAPITAL_WETH, "Buffer should be set to Morpho MEV Capital WETH");
