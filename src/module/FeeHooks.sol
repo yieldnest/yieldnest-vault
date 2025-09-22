@@ -55,6 +55,14 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
     }
 
     /**
+     * @notice Returns the name of the hooks module
+     * @return The name of the hooks module
+     */
+    function name() external pure returns (string memory) {
+        return "PerformanceFeeHooks";
+    }
+
+    /**
      * @notice Modifier to ensure that the caller is the Vault
      */
     modifier onlyVault() {

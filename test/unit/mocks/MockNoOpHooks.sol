@@ -12,6 +12,10 @@ contract MockNoOpHooks is IHooks {
         VAULT = vault_;
     }
 
+    function name() external pure override returns (string memory) {
+        return "MockNoOpHooks";
+    }
+
     modifier onlyVault() {
         if (msg.sender != address(VAULT)) {
             revert CallerNotVault();

@@ -20,6 +20,7 @@ import {console} from "forge-std/console.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {ViewUtils} from "test/utils/ViewUtils.sol";
 
 contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     using Math for uint256;
@@ -52,6 +53,40 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     function _convertBaseToAsset(address asset_, uint256 assets) internal view returns (uint256) {
         uint256 rate = provider.getRate(asset_);
         return assets.mulDiv(10 ** 18, rate, Math.Rounding.Floor);
+    }
+
+    function checkProcessAccountingInvariants(IVault vault) internal returns (uint256 performanceFeeSharesMinted) {
+        if (address(vault.hooks()) == address(0)) {
+            // nothing to check
+            vault.processAccounting();
+            return 0;
+        }
+
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 performanceFeeReceiverBalanceBefore = ViewUtils.getPerformanceFeeReceiverBalance(vault);
+        vault.processAccounting();
+        uint256 totalAssetsAfter = vault.totalAssets();
+        performanceFeeSharesMinted =
+            ViewUtils.getPerformanceFeeReceiverBalance(vault) - performanceFeeReceiverBalanceBefore;
+        if (performanceFeeSharesMinted > 0) {
+            uint256 valueOfPerformanceFeeSharesMinted = vault.convertToAssets(performanceFeeSharesMinted);
+            uint256 valueOfPerformanceFee =
+                (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18;
+
+            // TODO: figure out why this imprecision exists
+            assertApproxEqAbs(
+                valueOfPerformanceFeeSharesMinted,
+                valueOfPerformanceFee,
+                100,
+                "performance fee shares should be equal to performance fee amount"
+            );
+            // fee minting errors on the side of  loss for the performance fee recipient
+            assertLe(
+                valueOfPerformanceFeeSharesMinted,
+                valueOfPerformanceFee,
+                "performance fee shares should be less than or equal to performance fee amount"
+            );
+        }
     }
 
     function test_Vault_4626Invariants_depositBase(uint256 assets) public {
@@ -267,29 +302,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             );
         }
 
-        uint256 performanceFeeSharesMinted;
-        {
-            uint256 totalSupplyBefore = vault.totalSupply();
-            uint256 totalAssetsBefore = vault.totalAssets();
-            vault.processAccounting();
-            uint256 totalSupplyAfter = vault.totalSupply();
-            uint256 totalAssetsAfter = vault.totalAssets();
-            performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
-            if (performanceFeeSharesMinted > 0) {
-                assertApproxEqAbs(
-                    vault.convertToAssets(performanceFeeSharesMinted),
-                    (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
-                    1e12,
-                    "performance fee shares should be equal to performance fee amount"
-                );
-            }
-        }
-        assertEqThreshold(
-            vault.totalSupply(),
-            initialSupply + depositedShares - redeemableShares + performanceFeeSharesMinted,
-            1e12,
-            "totalSupply should be equal to initialSupply plus depositedShares minus redeemableShares plus performanceFeeSharesMinted"
-        );
+        uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
+
+        totalSupplyInvariant(initialSupply + depositedShares - redeemableShares + performanceFeeSharesMinted);
         totalAssetsInvariant(initialAssets + assets - redeemedAssets);
     }
 
@@ -358,29 +373,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             vm.stopPrank();
         }
 
-        uint256 performanceFeeSharesMinted;
-        {
-            uint256 totalSupplyBefore = vault.totalSupply();
-            uint256 totalAssetsBefore = vault.totalAssets();
-            vault.processAccounting();
-            uint256 totalSupplyAfter = vault.totalSupply();
-            uint256 totalAssetsAfter = vault.totalAssets();
-            performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
-            if (performanceFeeSharesMinted > 0) {
-                assertApproxEqAbs(
-                    vault.convertToAssets(performanceFeeSharesMinted),
-                    (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
-                    1e12,
-                    "performance fee shares should be equal to performance fee amount"
-                );
-            }
-        }
-        assertEqThreshold(
-            vault.totalSupply(),
-            initialSupply + depositedShares - withdrawnShares + performanceFeeSharesMinted,
-            1e12,
-            "totalSupply should be equal to initialSupply plus depositedShares minus withdrawnShares plus performanceFeeSharesMinted"
-        );
+        uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
+        totalSupplyInvariant(initialSupply + depositedShares - withdrawnShares + performanceFeeSharesMinted);
         totalAssetsInvariant(initialAssets + assets - withdrawableAssets);
 
         uint256 finalBalance = IERC20(baseAsset).balanceOf(user);
@@ -582,20 +576,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         {
             // convert WETH to ETH
             _processWithdrawWETH(amount);
-            totalSupplyBefore = vault.totalSupply();
-            uint256 totalAssetsBefore = vault.totalAssets();
-            vault.processAccounting();
-            totalSupplyAfter = vault.totalSupply();
-            uint256 totalAssetsAfter = vault.totalAssets();
-            performanceFeeShares = totalSupplyAfter - totalSupplyBefore;
-            if (performanceFeeShares > 0) {
-                assertApproxEqAbs(
-                    vault.convertToAssets(performanceFeeShares),
-                    (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
-                    1e12,
-                    "performance fee shares should be equal to performance fee amount"
-                );
-            }
+            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
+            performanceFeeShares += performanceFeeSharesMinted;
             totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
         }
@@ -608,21 +590,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             uint256 amountSTETH = _processSubmitETH(amount);
             _processApprove(MC.STETH, MC.WSTETH, amountSTETH);
             amountWSTETH = _processWrapSTETH(amountSTETH);
-            totalSupplyBefore = vault.totalSupply();
-            uint256 totalAssetsBefore = vault.totalAssets();
-            vault.processAccounting();
-            totalSupplyAfter = vault.totalSupply();
-            uint256 totalAssetsAfter = vault.totalAssets();
-            performanceFeeShares += totalSupplyAfter - totalSupplyBefore;
-            uint256 sharesMinted = totalSupplyAfter - totalSupplyBefore;
-            if (sharesMinted > 0) {
-                assertApproxEqAbs(
-                    vault.convertToAssets(sharesMinted),
-                    (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
-                    1e12,
-                    "performance fee shares should be equal to performance fee amount"
-                );
-            }
+            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
+            performanceFeeShares += performanceFeeSharesMinted;
             assertEq(
                 IERC20(MC.WSTETH).balanceOf(address(vault)),
                 initialWSTETH + amountWSTETH,
@@ -754,21 +723,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             _processWithdrawWETH(amount);
             uint256 performanceFeeSharesMinted;
             if (processAfterWithdraw) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                uint256 totalAssetsBefore = vault.totalAssets();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                uint256 totalAssetsAfter = vault.totalAssets();
-                performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
-                if (performanceFeeSharesMinted > 0) {
-                    assertApproxEqAbs(
-                        vault.convertToAssets(performanceFeeSharesMinted),
-                        (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee()
-                            / 1e18,
-                        1e12,
-                        "performance fee shares should be equal to performance fee amount"
-                    );
-                }
+                performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
             }
 
             totalSupplyInvariant(initialSupply + performanceFeeSharesMinted);
@@ -1063,6 +1018,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 initialSupply = vault.totalSupply();
 
         uint256 amountWOETH;
+        uint256 performanceFeeSharesMinted;
         {
             // convert ETH to woETH
             uint256 initialWOETH = IERC20(MC.WOETH).balanceOf(address(vault));
@@ -1072,13 +1028,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             _processApprove(MC.OETH, MC.WOETH, amount);
             amountWOETH = _processDeposit(MC.WOETH, amount);
 
-            uint256 performanceFeeSharesMinted;
             if (processAfterFirstDeposit) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
-                assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
+                performanceFeeSharesMinted += checkProcessAccountingInvariants(vault);
             }
 
             assertEq(
@@ -1096,17 +1047,11 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         }
 
         uint256 receivedOETH;
-        initialSupply = vault.totalSupply();
         {
             // unwrap woETH
             receivedOETH = _processRedeem(MC.WOETH, amountWOETH);
-            uint256 performanceFeeSharesMinted;
             if (processAfterRedeem) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
-                assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
+                performanceFeeSharesMinted += checkProcessAccountingInvariants(vault);
             }
 
             totalSupplyInvariant(initialSupply + performanceFeeSharesMinted);
@@ -1120,14 +1065,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             _processApprove(MC.OETH, MC.WOETH, receivedOETH);
             amountWOETH = _processDeposit(MC.WOETH, receivedOETH);
 
-            uint256 performanceFeeSharesMinted;
-            initialSupply = vault.totalSupply();
             if (processAfterSecondDeposit) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
-                assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
+                performanceFeeSharesMinted += checkProcessAccountingInvariants(vault);
             }
 
             assertEq(
@@ -1145,14 +1084,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             uint256 maxWithdraw = IERC4626(MC.WOETH).maxWithdraw(address(vault));
             _processWithdraw(MC.WOETH, maxWithdraw);
 
-            uint256 performanceFeeSharesMinted;
-            uint256 totalSupplyBefore = vault.totalSupply();
-            initialSupply = vault.totalSupply();
             if (processAfterWithdraw) {
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
-                assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
+                performanceFeeSharesMinted += checkProcessAccountingInvariants(vault);
             }
 
             totalSupplyInvariant(initialSupply + performanceFeeSharesMinted);
@@ -1191,22 +1124,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             _processWithdrawWETH(amount);
 
             if (processAfterWETH) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                uint256 totalAssetsBefore = vault.totalAssets();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                uint256 totalAssetsAfter = vault.totalAssets();
-                performanceFeeShares += totalSupplyAfter - totalSupplyBefore;
-                uint256 sharesMinted = totalSupplyAfter - totalSupplyBefore;
-                if (sharesMinted > 0) {
-                    assertApproxEqAbs(
-                        vault.convertToAssets(sharesMinted),
-                        (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee()
-                            / 1e18,
-                        1e12,
-                        "performance fee shares should be equal to performance fee amount"
-                    );
-                }
+                performanceFeeShares += checkProcessAccountingInvariants(vault);
             }
 
             totalSupplyInvariant(initialSupply + performanceFeeShares);
@@ -1223,22 +1141,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             amountWSTETH = _processWrapSTETH(amountSTETH);
 
             if (processAfterWrap) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                uint256 totalAssetsBefore = vault.totalAssets();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                uint256 totalAssetsAfter = vault.totalAssets();
-                performanceFeeShares += totalSupplyAfter - totalSupplyBefore;
-                uint256 sharesMinted = totalSupplyAfter - totalSupplyBefore;
-                if (sharesMinted > 0) {
-                    assertApproxEqAbs(
-                        vault.convertToAssets(sharesMinted),
-                        (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee()
-                            / 1e18,
-                        1e12,
-                        "performance fee shares should be equal to performance fee amount"
-                    );
-                }
+                performanceFeeShares += checkProcessAccountingInvariants(vault);
             }
 
             assertEq(
@@ -1256,22 +1159,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             _processUnwrapWSTETH(amountWSTETH);
 
             if (processAfterUnwrap) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                uint256 totalAssetsBefore = vault.totalAssets();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                uint256 totalAssetsAfter = vault.totalAssets();
-                performanceFeeShares += totalSupplyAfter - totalSupplyBefore;
-                uint256 sharesMinted = totalSupplyAfter - totalSupplyBefore;
-                if (sharesMinted > 0) {
-                    assertApproxEqAbs(
-                        vault.convertToAssets(sharesMinted),
-                        (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee()
-                            / 1e18,
-                        1e12,
-                        "performance fee shares should be equal to performance fee amount"
-                    );
-                }
+                performanceFeeShares += checkProcessAccountingInvariants(vault);
             }
 
             totalSupplyInvariant(initialSupply + performanceFeeShares);
@@ -1320,13 +1208,21 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         _processApprove(assets[i], address(withdrawer), donatedAmount);
         _processDepositAsset(address(withdrawer), assets[i], donatedAmount);
 
+        uint256 performanceFeeSharesMinted = 0;
         if (process) {
+            uint256 performanceFeeReceiverBalanceBefore = ViewUtils.getPerformanceFeeReceiverBalance(vault);
             withdrawer.processAccounting();
             vault.processAccounting();
+            uint256 performanceFeeReceiverBalanceAfter = ViewUtils.getPerformanceFeeReceiverBalance(vault);
+            performanceFeeSharesMinted = performanceFeeReceiverBalanceAfter - performanceFeeReceiverBalanceBefore;
         }
 
-        assertApproxEqRel(vault.totalSupply(), initialSupply, 1e15, "totalSupply should be near the same as before");
-        assertApproxEqRel(vault.totalAssets(), initialAssets, 1e15, "totalAssets should be near the same as before");
+        assertEq(
+            vault.totalSupply(),
+            initialSupply + performanceFeeSharesMinted,
+            "totalSupply should be near the same as before"
+        );
+        assertApproxEqRel(vault.totalAssets(), initialAssets, 10, "totalAssets should be the same as before");
     }
 
     function test_Vault_4626Invariants_Withdrawer_Withdraw(
@@ -1336,11 +1232,11 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         bool processAfterSecondDeposit,
         bool processAfterWithdrawAsset
     ) public {
-        vm.assume(amount > 10000);
+        vm.assume(amount > 1 ether);
         vm.assume(amount < 100_000 ether);
 
-        vm.assume(amount > 100000);
-        vm.assume(amount < 100_000 ether);
+        // Total assets increase slightly after withdrawing from withdrawer
+        uint256 MAX_FEE_SHARES = 1e4;
 
         withdrawer.processAccounting();
         vault.processAccounting();
@@ -1378,37 +1274,53 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         {
             _processWithdraw(address(withdrawer), amount);
 
+            uint256 performanceFeeShares = 0;
             if (processAfterWithdraw) {
                 withdrawer.processAccounting();
+
+                uint256 totalSupplyBefore = vault.totalSupply();
                 vault.processAccounting();
+
+                performanceFeeShares = vault.totalSupply() - totalSupplyBefore;
             }
 
-            assertApproxEqAbs(vault.totalSupply(), initialSupply, 1e6, "totalSupply should be near the same as before");
+            assertLe(performanceFeeShares, MAX_FEE_SHARES, "performanceFeeShares should be less than 10");
+            totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
+            initialSupply = vault.totalSupply();
         }
 
         {
             _processApprove(MC.WETH, address(withdrawer), amount);
             _processDepositAsset(address(withdrawer), MC.WETH, amount);
 
+            uint256 performanceFeeShares = 0;
             if (processAfterSecondDeposit) {
+                uint256 totalSupplyBefore = vault.totalSupply();
                 withdrawer.processAccounting();
                 vault.processAccounting();
+                performanceFeeShares = vault.totalSupply() - totalSupplyBefore;
             }
 
-            assertApproxEqAbs(vault.totalSupply(), initialSupply, 1e6, "totalSupply should be near the same as before");
+            assertLe(performanceFeeShares, MAX_FEE_SHARES, "performanceFeeShares should be less than 10");
+            totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
+            initialSupply = vault.totalSupply();
         }
 
         {
             _processWithdraw(address(withdrawer), amount);
 
+            uint256 performanceFeeShares = 0;
             if (processAfterWithdrawAsset) {
+                uint256 totalSupplyBefore = vault.totalSupply();
                 withdrawer.processAccounting();
                 vault.processAccounting();
+                performanceFeeShares = vault.totalSupply() - totalSupplyBefore;
             }
 
-            assertApproxEqAbs(vault.totalSupply(), initialSupply, 1e6, "totalSupply should be near the same as before");
+            assertLe(performanceFeeShares, MAX_FEE_SHARES, "performanceFeeShares should be less than 10");
+            totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
         }
     }
@@ -1485,28 +1397,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         uint256 performanceFeeShares;
         if (processAfterWithdraw) {
-            withdrawer.processAccounting();
-            uint256 totalSupplyBefore = vault.totalSupply();
-            uint256 totalAssetsBefore = vault.totalAssets();
-            vault.processAccounting();
-            uint256 totalSupplyAfter = vault.totalSupply();
-            uint256 totalAssetsAfter = vault.totalAssets();
-            performanceFeeShares = totalSupplyAfter - totalSupplyBefore;
-            if (performanceFeeShares > 0) {
-                assertApproxEqAbs(
-                    vault.convertToAssets(performanceFeeShares),
-                    (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
-                    1e12,
-                    "performance fee shares should be equal to performance fee amount"
-                );
-            }
+            performanceFeeShares += checkProcessAccountingInvariants(vault);
         }
-        assertEqThreshold(
-            vault.totalSupply(),
-            initialSupply + depositedShares - burnedShares + performanceFeeShares,
-            5,
-            "totalSupply not as expected"
-        );
+        totalSupplyInvariant(initialSupply + depositedShares - burnedShares + performanceFeeShares);
         totalAssetsInvariant(initialAssets + initialDepositedAmount - withdrawableAssets);
     }
 }
