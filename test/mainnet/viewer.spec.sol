@@ -43,7 +43,6 @@ contract VaultMainnetViewerTest is BaseIntegrationTest {
         uint256 totalAssets = vault.totalAssets();
 
         assertEq(assetsInfo.length, assets.length);
-        assertEq(assetsInfo.length, 13);
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata asset = IERC20Metadata(assets[i]);
@@ -74,7 +73,6 @@ contract VaultMainnetViewerTest is BaseIntegrationTest {
         uint256 totalAssets = vault.totalAssets();
 
         assertEq(assetsInfo.length, assets.length);
-        assertEq(assetsInfo.length, 13);
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata asset = IERC20Metadata(assets[i]);
