@@ -1326,7 +1326,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         bool processAfterSecondDeposit,
         bool processAfterWithdrawAsset
     ) public {
-
         vm.assume(amount > 1 ether);
         vm.assume(amount < 100_000 ether);
 
@@ -1378,7 +1377,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
                 performanceFeeShares = vault.totalSupply() - totalSupplyBefore;
             }
-            
+
             assertLe(performanceFeeShares, MAX_FEE_SHARES, "performanceFeeShares should be less than 10");
             totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
