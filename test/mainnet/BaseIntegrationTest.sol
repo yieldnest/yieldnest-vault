@@ -59,5 +59,10 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         vault.setHooks(address(hooks));
         vm.stopPrank();
         vault.processAccounting();
+
+        // TODO: remove this
+        vm.startPrank(ADMIN);
+        VaultVerification.getWithdrawer(vault).unpause();
+        vm.stopPrank();
     }
 }
