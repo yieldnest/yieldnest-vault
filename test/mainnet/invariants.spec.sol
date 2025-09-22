@@ -570,8 +570,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
-        uint256 totalSupplyBefore;
-        uint256 totalSupplyAfter;
         uint256 performanceFeeShares;
         {
             // convert WETH to ETH
@@ -609,10 +607,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
             _processApprove(MC.WSTETH, MC.SMOKEHOUSE_WSTETH, amountWSTETH);
             amountSmokehouseWSTETH = _processDeposit(MC.SMOKEHOUSE_WSTETH, amountWSTETH);
-            totalSupplyBefore = vault.totalSupply();
-            vault.processAccounting();
-            totalSupplyAfter = vault.totalSupply();
-            performanceFeeShares += totalSupplyAfter - totalSupplyBefore;
+            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
+            performanceFeeShares += performanceFeeSharesMinted;
             assertApproxEqAbs(
                 IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault)),
                 initialSmokehouseWSTETH + amountSmokehouseWSTETH,
@@ -630,10 +626,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             uint256 initialReceivedWSTETH = IERC20(MC.WSTETH).balanceOf(address(vault));
 
             receivedWSTETH = _processRedeem(MC.SMOKEHOUSE_WSTETH, amountSmokehouseWSTETH);
-            totalSupplyBefore = vault.totalSupply();
-            vault.processAccounting();
-            totalSupplyAfter = vault.totalSupply();
-            performanceFeeShares += totalSupplyAfter - totalSupplyBefore;
+            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
+            performanceFeeShares += performanceFeeSharesMinted;
             assertEq(
                 IERC20(MC.WSTETH).balanceOf(address(vault)),
                 initialReceivedWSTETH + receivedWSTETH,
@@ -650,10 +644,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
             _processApprove(MC.WSTETH, MC.SMOKEHOUSE_WSTETH, receivedWSTETH);
             amountSmokehouseWSTETH = _processDeposit(MC.SMOKEHOUSE_WSTETH, receivedWSTETH);
-            totalSupplyBefore = vault.totalSupply();
-            vault.processAccounting();
-            totalSupplyAfter = vault.totalSupply();
-            performanceFeeShares += totalSupplyAfter - totalSupplyBefore;
+            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
+            performanceFeeShares += performanceFeeSharesMinted;
             assertApproxEqAbs(
                 IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault)),
                 initialSmokehouseWSTETH + amountSmokehouseWSTETH,
@@ -668,10 +660,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         {
             uint256 maxWithdraw = IERC4626(MC.SMOKEHOUSE_WSTETH).maxWithdraw(address(vault));
             _processWithdraw(MC.SMOKEHOUSE_WSTETH, maxWithdraw);
-            totalSupplyBefore = vault.totalSupply();
-            vault.processAccounting();
-            totalSupplyAfter = vault.totalSupply();
-            performanceFeeShares += totalSupplyAfter - totalSupplyBefore;
+            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
+            performanceFeeShares += performanceFeeSharesMinted;
             totalSupplyInvariant(initialSupply + performanceFeeShares);
             totalAssetsInvariant(initialAssets);
         }
@@ -949,10 +939,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
             uint256 performanceFeeSharesMinted;
             if (processAfterWOETH) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
+                performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
                 assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
             }
 
@@ -976,10 +963,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             initialSupply = vault.totalSupply();
             uint256 performanceFeeSharesMinted;
             if (processAfterYnLSDE) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
+                performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
                 assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
             }
 
@@ -1277,11 +1261,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             uint256 performanceFeeShares = 0;
             if (processAfterWithdraw) {
                 withdrawer.processAccounting();
-
-                uint256 totalSupplyBefore = vault.totalSupply();
-                vault.processAccounting();
-
-                performanceFeeShares = vault.totalSupply() - totalSupplyBefore;
+                performanceFeeShares = checkProcessAccountingInvariants(vault);
             }
 
             assertLe(performanceFeeShares, MAX_FEE_SHARES, "performanceFeeShares should be less than 10");
@@ -1296,10 +1276,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
             uint256 performanceFeeShares = 0;
             if (processAfterSecondDeposit) {
-                uint256 totalSupplyBefore = vault.totalSupply();
                 withdrawer.processAccounting();
-                vault.processAccounting();
-                performanceFeeShares = vault.totalSupply() - totalSupplyBefore;
+                performanceFeeShares = checkProcessAccountingInvariants(vault);
             }
 
             assertLe(performanceFeeShares, MAX_FEE_SHARES, "performanceFeeShares should be less than 10");
@@ -1313,10 +1291,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
             uint256 performanceFeeShares = 0;
             if (processAfterWithdrawAsset) {
-                uint256 totalSupplyBefore = vault.totalSupply();
                 withdrawer.processAccounting();
-                vault.processAccounting();
-                performanceFeeShares = vault.totalSupply() - totalSupplyBefore;
+                performanceFeeShares = checkProcessAccountingInvariants(vault);
             }
 
             assertLe(performanceFeeShares, MAX_FEE_SHARES, "performanceFeeShares should be less than 10");
