@@ -1018,6 +1018,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 initialSupply = vault.totalSupply();
 
         uint256 amountWOETH;
+        uint256 performanceFeeSharesMinted;
         {
             // convert ETH to woETH
             uint256 initialWOETH = IERC20(MC.WOETH).balanceOf(address(vault));
@@ -1027,13 +1028,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             _processApprove(MC.OETH, MC.WOETH, amount);
             amountWOETH = _processDeposit(MC.WOETH, amount);
 
-            uint256 performanceFeeSharesMinted;
             if (processAfterFirstDeposit) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
-                assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
+                performanceFeeSharesMinted += checkProcessAccountingInvariants(vault);
             }
 
             assertEq(
@@ -1051,17 +1047,11 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         }
 
         uint256 receivedOETH;
-        initialSupply = vault.totalSupply();
         {
             // unwrap woETH
             receivedOETH = _processRedeem(MC.WOETH, amountWOETH);
-            uint256 performanceFeeSharesMinted;
             if (processAfterRedeem) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
-                assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
+                performanceFeeSharesMinted += checkProcessAccountingInvariants(vault);
             }
 
             totalSupplyInvariant(initialSupply + performanceFeeSharesMinted);
@@ -1075,14 +1065,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             _processApprove(MC.OETH, MC.WOETH, receivedOETH);
             amountWOETH = _processDeposit(MC.WOETH, receivedOETH);
 
-            uint256 performanceFeeSharesMinted;
-            initialSupply = vault.totalSupply();
             if (processAfterSecondDeposit) {
-                uint256 totalSupplyBefore = vault.totalSupply();
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
-                assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
+                performanceFeeSharesMinted += checkProcessAccountingInvariants(vault);
             }
 
             assertEq(
@@ -1100,14 +1084,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             uint256 maxWithdraw = IERC4626(MC.WOETH).maxWithdraw(address(vault));
             _processWithdraw(MC.WOETH, maxWithdraw);
 
-            uint256 performanceFeeSharesMinted;
-            uint256 totalSupplyBefore = vault.totalSupply();
-            initialSupply = vault.totalSupply();
             if (processAfterWithdraw) {
-                vault.processAccounting();
-                uint256 totalSupplyAfter = vault.totalSupply();
-                performanceFeeSharesMinted = totalSupplyAfter - totalSupplyBefore;
-                assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
+                performanceFeeSharesMinted += checkProcessAccountingInvariants(vault);
             }
 
             totalSupplyInvariant(initialSupply + performanceFeeSharesMinted);
