@@ -82,29 +82,51 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
         assertEq(finalTotalAssets, expectedTotalAssets, "Total assets should be reduced by withdrawn amount");
     }
 
-    function test_withdrawAsset_wstETH(
+    function test_withdrawAsset_multiAsset(
         uint256 depositAmount,
         uint256 withdrawAmount,
-        bool processAccountingAfterWithdraw
+        bool processAccountingAfterWithdraw,
+        uint256 assetIndex
     ) public {
         depositAmount = bound(depositAmount, 1 ether, 1000 ether);
         withdrawAmount = bound(withdrawAmount, 1e15, depositAmount - 1);
 
+        // Define asset list
+        address[2] memory assets = [MC.WSTETH, MC.WOETH];
+        string[2] memory assetNames = ["wstETH", "WOETH"];
+
+        // Bound asset index to valid range
+        assetIndex = bound(assetIndex, 0, 1);
+        address selectedAsset = assets[assetIndex];
+        string memory selectedAssetName = assetNames[assetIndex];
+
+        _testWithdrawAssetForAsset(
+            selectedAsset, selectedAssetName, depositAmount, withdrawAmount, processAccountingAfterWithdraw
+        );
+    }
+
+    function _testWithdrawAssetForAsset(
+        address asset,
+        string memory assetName,
+        uint256 depositAmount,
+        uint256 withdrawAmount,
+        bool processAccountingAfterWithdraw
+    ) internal {
         {
-            // Enable wstETH deposits
+            // Enable selected asset deposits
             vm.startPrank(ADMIN);
-            vault.updateAsset(vault.getAsset(MC.WSTETH).index, IVault.AssetUpdateFields({active: true}));
+            vault.updateAsset(vault.getAsset(asset).index, IVault.AssetUpdateFields({active: true}));
             vm.stopPrank();
         }
 
         address alice = makeAddr("alice");
-        deal(MC.WSTETH, alice, depositAmount);
+        deal(asset, alice, depositAmount);
 
         uint256 allowance = 100_000 ether;
 
         vm.startPrank(alice);
-        IERC20(MC.WSTETH).approve(address(vault), depositAmount);
-        vault.depositAsset(MC.WSTETH, depositAmount, alice);
+        IERC20(asset).approve(address(vault), depositAmount);
+        vault.depositAsset(asset, depositAmount, alice);
 
         IERC20(address(vault)).approve(withdrawerOperator, allowance);
         vm.stopPrank();
@@ -118,33 +140,42 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
         uint256 initialRate = vault.convertToAssets(1e18); // Rate per share (1 share = X assets)
 
         vm.startPrank(withdrawerOperator);
-        uint256 sharesBurned = vault.withdrawAsset(MC.WSTETH, withdrawAmount, alice, alice);
+        uint256 sharesBurned = vault.withdrawAsset(asset, withdrawAmount, alice, alice);
         vm.stopPrank();
 
         if (processAccountingAfterWithdraw) {
             vault.processAccounting();
         }
 
-        assertEq(IERC20(MC.WSTETH).balanceOf(alice), withdrawAmount, "Alice should have withdrawn wstETH");
+        assertEq(
+            IERC20(asset).balanceOf(alice), withdrawAmount, string.concat("Alice should have withdrawn ", assetName)
+        );
 
-        assertEq(IERC20(MC.WSTETH).balanceOf(withdrawerOperator), 0, "Withdrawer operator should have no wstETH");
+        assertEq(
+            IERC20(asset).balanceOf(withdrawerOperator),
+            0,
+            string.concat("Withdrawer operator should have no ", assetName)
+        );
 
         // Assert that the allowance was properly used
-        uint256 remainingAllowance = IERC20(address(vault)).allowance(alice, withdrawerOperator);
-        assertEq(remainingAllowance, allowance - sharesBurned, "Allowance should be reduced by sharesBurned");
+        assertEq(
+            IERC20(address(vault)).allowance(alice, withdrawerOperator),
+            allowance - sharesBurned,
+            "Allowance should be reduced by sharesBurned"
+        );
 
         // Assert rate does not change
-        uint256 finalRate = vault.convertToAssets(1e18);
-        assertEq(finalRate, initialRate, "Rate should remain unchanged");
+        assertEq(vault.convertToAssets(1e18), initialRate, "Rate should remain unchanged");
 
         // Assert totalSupply stays the same (shares burned but not from total supply)
-        uint256 finalTotalSupply = vault.totalSupply();
-        assertEq(finalTotalSupply, initialTotalSupply - sharesBurned, "Total supply should be reduced by shares burned");
+        assertEq(
+            vault.totalSupply(), initialTotalSupply - sharesBurned, "Total supply should be reduced by shares burned"
+        );
 
         // Assert totalAssets is as expected (reduced by withdrawn amount converted to base)
         uint256 finalTotalAssets = vault.totalAssets();
-        // Convert wstETH to base asset (ETH) for comparison
-        uint256 withdrawAmountInBase = ViewUtils.convertAssetToBase(vault, MC.WSTETH, withdrawAmount);
+        // Convert selected asset to base asset (ETH) for comparison
+        uint256 withdrawAmountInBase = ViewUtils.convertAssetToBase(vault, asset, withdrawAmount);
         uint256 expectedTotalAssets = initialTotalAssets - withdrawAmountInBase;
         assertApproxEqAbs(
             finalTotalAssets, expectedTotalAssets, 1, "Total assets should be reduced by withdrawn amount in base"
