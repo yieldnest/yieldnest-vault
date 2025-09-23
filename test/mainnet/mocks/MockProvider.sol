@@ -28,6 +28,7 @@ contract MockProvider is IProvider {
         if (mockRate != 0) {
             return mockRate;
         }
+        revert("Unsupported asset");
     }
 
     function addERC4626(address asset) external {

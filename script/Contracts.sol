@@ -18,6 +18,8 @@ library MainnetContracts {
     address public constant WUSDC = 0xdA7d2025c7f1f1A1d34AB3F4dF01102d0428E574;
 
     address public constant USDE = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
+
+    address public constant FLEX_STRATEGY_USDC = 0xF6e1443e3F70724cec8C0a779C7C35A8DcDA928B;
 }
 
 contract L1Contracts is IContracts {

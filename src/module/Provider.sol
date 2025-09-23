@@ -33,6 +33,16 @@ contract Provider is IProvider {
             return 1e18;
         }
 
+        if (asset == MC.FLEX_STRATEGY_USDC) {
+            // FLEX_STRATEGY_USDC has asset() = USDC, decimals() = 6
+            // and USDC has decimals() = 6
+            // Therefore to convert to WUSDC the rate conversion needs to be multiplied by 10**12
+            // We do the multiplication first for higher precision, deriving the following:
+            // IERC4626(MC.FLEX_STRATEGY_USDC).convertToAssets(1e6) * 10**12
+            // ~= IERC4626(MC.FLEX_STRATEGY_USDC).convertToAssets(1e18)
+            return IERC4626(MC.FLEX_STRATEGY_USDC).convertToAssets(1e18);
+        }
+
         revert UnsupportedAsset(asset);
     }
 }
