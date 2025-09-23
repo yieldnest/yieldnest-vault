@@ -27,7 +27,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     }
 
     function test_processAccounting_withDonation() public {
-        
         uint256 depositAmount = 100000 ether;
         uint256 donationAmount = depositAmount / 10; // 10% of deposit amount
 
@@ -42,7 +41,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 totalSupplyBefore = vault.totalSupply();
 
-        uint256 performanceFeeSharesBefore = address(vault.hooks()) != address(0) ? ViewUtils.getPerformanceFeeReceiverBalance(vault) : 0;
+        uint256 performanceFeeSharesBefore =
+            address(vault.hooks()) != address(0) ? ViewUtils.getPerformanceFeeReceiverBalance(vault) : 0;
 
         vault.processAccounting();
 
@@ -50,23 +50,38 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 totalSupplyAfter = vault.totalSupply();
 
         // Verify that total assets increased by the donation amount
-        assertEq(totalAssetsAfter, totalAssetsBefore + donationAmount, "Total assets should increase by exactly the donation amount");   
+        assertEq(
+            totalAssetsAfter,
+            totalAssetsBefore + donationAmount,
+            "Total assets should increase by exactly the donation amount"
+        );
 
         if (address(vault.hooks()) == address(0)) {
             // If no hooks are set, total supply should remain unchanged
             assertEq(totalSupplyAfter, totalSupplyBefore, "Total supply should remain unchanged when no hooks are set");
         } else {
             // Calculate expected delta based on donation amount for fee calculations
-            // uint256 expectedDelta = donationAmount.mulDiv(vault.performanceFee(), 1 ether, Math.Rounding.Floor);
+            uint256 expectedDeltaShares = vault.convertToShares(
+                donationAmount.mulDiv(ViewUtils.getPerformanceFee(vault), 1 ether, Math.Rounding.Floor)
+            );
 
             uint256 performanceFeeSharesAfter = ViewUtils.getPerformanceFeeReceiverBalance(vault);
 
-            uint256 expectedDelta = performanceFeeSharesAfter - performanceFeeSharesBefore;
-            
+            uint256 performanceFeeSharesDelta = performanceFeeSharesAfter - performanceFeeSharesBefore;
+            assertApproxEqAbs(
+                performanceFeeSharesDelta,
+                expectedDeltaShares,
+                1,
+                "Performance fee shares should increase by the expected delta"
+            );
+
             // Verify that total supply increased by the expected fee shares
-            assertApproxEqAbs(totalSupplyAfter, totalSupplyBefore + expectedDelta, 1, "Total supply should increase by performance fee shares");
+            assertApproxEqAbs(
+                totalSupplyAfter,
+                totalSupplyBefore + performanceFeeSharesDelta,
+                1,
+                "Total supply should increase by performance fee shares"
+            );
         }
-
-
     }
 }
