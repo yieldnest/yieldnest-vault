@@ -22,7 +22,6 @@ import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 import {WithdrawerProcessorUtils} from "test/utils/WithdrawerProcessorUtils.sol";
 import {IwstETH} from "test/interface/external/lido/IwstETH.sol";
-import {console} from "forge-std/console.sol";
 
 contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
     Withdrawer public withdrawer;
@@ -485,8 +484,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
     }
 
     function test_depositWstETH_requestWithdrawal(uint256 depositAmount) public {
-        vm.assume(depositAmount > 1e9);
-        vm.assume(depositAmount < 10_000 ether);
+        depositAmount = bound(depositAmount, 1e9, 10_000 ether);
 
         uint256 actualAmount;
 
@@ -560,7 +558,13 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
         while (remainingAmount > 0) {
             uint256 chunkAmount = remainingAmount > maxChunkSize ? maxChunkSize : remainingAmount;
-            console.log("chunkAmount", chunkAmount);
+
+            if (chunkAmount < 1e9) {
+                // trim
+                actualAmount -= chunkAmount;
+                remainingAmount -= chunkAmount;
+                break;
+            }
             uint256 tokenId = WithdrawerProcessorUtils.processRequestWithdrawalWstETH(withdrawer, asset, chunkAmount);
 
             // Expand tokenIds array and add new tokenId
@@ -590,7 +594,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         assertApproxEqAbs(
             vault.totalAssets(),
             totalAssetsBefore,
-            tokenIds.length * fixedDelta,
+            tokenIds.length > 0 ? tokenIds.length * fixedDelta : fixedDelta,
             "Total assets should remain the same after withdrawal request"
         );
         uint256 withdrawerETHBefore = address(withdrawer).balance;
@@ -612,7 +616,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         assertApproxEqAbs(
             vault.totalAssets(),
             totalAssetsBefore,
-            tokenIds.length * fixedDelta,
+            tokenIds.length > 0 ? tokenIds.length * fixedDelta : fixedDelta,
             "Total assets should remain the same after withdrawal claim"
         );
     }
