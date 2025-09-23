@@ -30,6 +30,11 @@ library ViewUtils {
         return getHooks(vault, "PerformanceFeeHooks");  
     }
 
+
+    function getPerformanceFee(IVault vault) internal view returns (uint256) {
+        return IFeeHooks(getFeeHooks(vault)).performanceFee();
+    }
+
     function getHooks(IVault vault, string memory name) internal view returns (address) {
         IHooks hooks = IVault(vault).hooks();
 
