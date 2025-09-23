@@ -5,12 +5,16 @@ import {Vm} from "lib/forge-std/src/Vm.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {IProvider} from "src/interface/IProvider.sol";
+import {IERC20Metadata} from "src/Common.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 interface IMetaHooks {
     function getHooks() external view returns (IHooks[] memory);
 }
 
 library ViewUtils {
+    using Math for uint256;
 
     address internal constant CHEATCODE_ADDRESS = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D;
 
@@ -49,5 +53,11 @@ library ViewUtils {
     function getPerformanceFeeReceiverBalance(IVault vault) internal view returns (uint256) {
         address feeHooks = getFeeHooks(vault);
         return vault.balanceOf(IFeeHooks(feeHooks).performanceFeeRecipient());
+    }
+
+    function convertAssetToBase(IVault vault, address asset, uint256 amount) internal view returns (uint256) {
+        uint256 rate = IProvider(vault.provider()).getRate(asset);
+        uint256 baseAssets = amount.mulDiv(rate, 10 ** IERC20Metadata(asset).decimals(), Math.Rounding.Floor);
+        return baseAssets;
     }
 }
