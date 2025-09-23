@@ -123,9 +123,10 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
 
         // Test the getAssets function
         address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 2, "There should be 2 assets in the vault");
+        assertEq(assets.length, 3, "There should be 2 assets in the vault");
         assertEq(assets[0], address(wusdc), "First asset should be WETH");
         assertEq(assets[1], MC.USDC, "Second asset should be USDC");
+        assertEq(assets[2], MC.FLEX_STRATEGY_USDC, "Third asset should be FLEX_STRATEGY_USDC");
     }
 
     function test_Vault_Upgrade_totalAssets_unchanged()

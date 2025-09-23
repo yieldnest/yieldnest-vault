@@ -208,4 +208,47 @@ library BaseRules {
 
         return SafeRules.RuleParams({contractAddress: weth_, funcSig: funcSig, rule: rule});
     }
+
+    /**
+     * @notice Get an approval rule for an asset with a spender appended to the *Existing* allowlist
+     * @param asset The asset to approve
+     * @param spender The spender to append to the allowlist
+     * @param vault The vault to get the current rule from
+     * @return SafeRules.RuleParams The approval rule with the spender appended to the allowlist
+     */
+    function getAppendApprovalRule(address asset, address spender, IVault vault)
+        internal
+        view
+        returns (SafeRules.RuleParams memory)
+    {
+        // Get the current rule for the asset's approve function
+        bytes4 approveSelector = bytes4(keccak256("approve(address,uint256)"));
+        IVault.FunctionRule memory currentRule = vault.getProcessorRule(asset, approveSelector);
+
+        // Create a whitelist array to store the existing addresses plus the new spender
+        address[] memory whitelist;
+
+        if (currentRule.isActive) {
+            // Get the current whitelist from the rule
+            address[] memory currentWhitelist = currentRule.paramRules[0].allowList;
+            // Initialize the new whitelist with size + 1
+            whitelist = new address[](currentWhitelist.length + 1);
+
+            for (uint256 i = 0; i < currentWhitelist.length; i++) {
+                whitelist[i] = currentWhitelist[i];
+            }
+
+            // Add the new spender address
+            whitelist[currentWhitelist.length] = spender;
+        } else {
+            // Create a new whitelist with the spender address
+            whitelist = new address[](1);
+            whitelist[0] = spender;
+        }
+
+        // Create a new approve rule with the spender added to the allowlist
+        SafeRules.RuleParams memory approveRule = BaseRules.getApprovalRule(asset, whitelist);
+
+        return approveRule;
+    }
 }
