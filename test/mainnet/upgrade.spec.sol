@@ -152,12 +152,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         assertEq(assetsAfter[0], MC.WETH, "First asset should be WETH");
     }
 
-    function test_Vault_Upgrade_totalAssets_unchanged()
-        //bool processAccountingBeforeCheck
-        public
-    {
-        bool processAccountingBeforeCheck = true;
-
+    function test_Vault_Upgrade_totalAssets_unchanged(bool processAccountingBeforeCheck) public {
         if (processAccountingBeforeCheck) {
             vault.processAccounting();
         }
