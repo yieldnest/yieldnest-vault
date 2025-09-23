@@ -153,7 +153,6 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     }
 
     function test_Vault_Upgrade_totalAssets_unchanged(bool processAccountingBeforeCheck) public {
-        processAccountingBeforeCheck = true;
         if (processAccountingBeforeCheck) {
             vault.processAccounting();
         }
@@ -169,11 +168,14 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         uint256 performanceFeeSharesMinted;
         if (processAccountingBeforeCheck) {
             totalSupplyBefore = vault.totalSupply();
-
-            uint256 performanceFeeReceiverBalanceBefore = ViewUtils.getPerformanceFeeReceiverBalance(vault);
-            vault.processAccounting();
-            uint256 performanceFeeReceiverBalanceAfter = ViewUtils.getPerformanceFeeReceiverBalance(vault);
-            performanceFeeSharesMinted = performanceFeeReceiverBalanceAfter - performanceFeeReceiverBalanceBefore;
+            if (address(vault.hooks()) != address(0)) {
+                uint256 performanceFeeReceiverBalanceBefore = ViewUtils.getPerformanceFeeReceiverBalance(vault);
+                vault.processAccounting();
+                uint256 performanceFeeReceiverBalanceAfter = ViewUtils.getPerformanceFeeReceiverBalance(vault);
+                performanceFeeSharesMinted = performanceFeeReceiverBalanceAfter - performanceFeeReceiverBalanceBefore;
+            } else {
+                vault.processAccounting();
+            }
         }
 
         // Get totalAssets after upgrade

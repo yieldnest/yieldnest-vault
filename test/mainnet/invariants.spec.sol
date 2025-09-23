@@ -679,26 +679,12 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
             // convert ETH to WETH
             _processDepositWETH(amount);
-            uint256 performanceFee = IFeeHooks(address(vault.hooks())).performanceFee();
-            uint256 performanceFeeAmount = (amount * performanceFee) / 1e18;
-            uint256 vaultBalanceOfFeeRecipientBefore =
-                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-            // process accounting to update for the donation
-            vault.processAccounting();
-            uint256 vaultBalanceOfFeeRecipientAfter =
-                vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
-            uint256 performanceFeeShares = vaultBalanceOfFeeRecipientAfter - vaultBalanceOfFeeRecipientBefore;
 
-            assertApproxEqAbs(
-                vault.convertToAssets(performanceFeeShares),
-                performanceFeeAmount,
-                1e12,
-                "performance fee shares should be equal to performance fee amount"
-            );
+            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
 
             assertEqThreshold(
                 vault.totalSupply(),
-                initialSupply + performanceFeeShares,
+                initialSupply + performanceFeeSharesMinted,
                 5000,
                 "totalSupply should be equal to initialSupply plus performanceFeeShares"
             );
@@ -1194,11 +1180,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         uint256 performanceFeeSharesMinted = 0;
         if (process) {
-            uint256 performanceFeeReceiverBalanceBefore = ViewUtils.getPerformanceFeeReceiverBalance(vault);
             withdrawer.processAccounting();
-            vault.processAccounting();
-            uint256 performanceFeeReceiverBalanceAfter = ViewUtils.getPerformanceFeeReceiverBalance(vault);
-            performanceFeeSharesMinted = performanceFeeReceiverBalanceAfter - performanceFeeReceiverBalanceBefore;
+
+            performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
         }
 
         assertEq(
