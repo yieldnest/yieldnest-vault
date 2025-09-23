@@ -6,6 +6,7 @@ import {IVault} from "src/interface/IVault.sol";
 interface IFeeHooks {
     error InvalidPerformanceFee();
     error InvalidPerformanceFeeRecipient();
+    error AlwaysComputeTotalAssetsIsEnabled();
 
     event PerformanceFeeCharged(
         address indexed recipient,

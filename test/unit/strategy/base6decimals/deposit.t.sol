@@ -50,12 +50,13 @@ contract BaseStrategy6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches
         vm.stopPrank();
     }
 
-    function test_Strategy_initial_deposit_success(uint256 depositAmount) public {
+    function test_Strategy_initial_deposit_success(uint256 depositAmount, bool alwaysComputeTotalAssets) public {
         // Bound deposit amount between 10 and 100k USDC (6 decimals)
         if (depositAmount < 10) return;
         if (depositAmount > 100_000 * 1e6) return;
 
         vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
         {
             // Give Alice USDC
