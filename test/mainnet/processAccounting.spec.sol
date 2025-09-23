@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: BSD Clause-3
+pragma solidity ^0.8.24;
+
+import {MainnetContracts as MC} from "script/Contracts.sol";
+import {MainnetActors} from "script/Actors.sol";
+import {Vault} from "src/Vault.sol";
+import {IVault} from "src/interface/IVault.sol";
+import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {ViewUtils} from "test/utils/ViewUtils.sol";
+
+contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
+    using Math for uint256;
+
+    address public user = makeAddr("user");
+
+    function setUp() public override {
+        super.setUp();
+        _initVault(vault);
+
+        assertEq(vault.baseWithdrawalFee(), 250000, "base withdrawal fee should be correct");
+
+        // Process accounting to ensure vault is in sync
+        vault.processAccounting();
+    }
+
+    function test_processAccounting_withDonation() public {
+        
+        uint256 depositAmount = 100000 ether;
+        uint256 donationAmount = depositAmount / 10; // 10% of deposit amount
+
+        deal(MC.WETH, address(this), depositAmount);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.WETH, depositAmount, address(this));
+
+        // Now donate the additional amount
+        deal(MC.WETH, address(this), donationAmount);
+        IERC20(MC.WETH).transfer(address(vault), donationAmount);
+
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 totalSupplyBefore = vault.totalSupply();
+
+        uint256 performanceFeeSharesBefore = address(vault.hooks()) != address(0) ? ViewUtils.getPerformanceFeeReceiverBalance(vault) : 0;
+
+        vault.processAccounting();
+
+        uint256 totalAssetsAfter = vault.totalAssets();
+        uint256 totalSupplyAfter = vault.totalSupply();
+
+        // Verify that total assets increased by the donation amount
+        assertEq(totalAssetsAfter, totalAssetsBefore + donationAmount, "Total assets should increase by exactly the donation amount");   
+
+        if (address(vault.hooks()) == address(0)) {
+            // If no hooks are set, total supply should remain unchanged
+            assertEq(totalSupplyAfter, totalSupplyBefore, "Total supply should remain unchanged when no hooks are set");
+        } else {
+            // Calculate expected delta based on donation amount for fee calculations
+            // uint256 expectedDelta = donationAmount.mulDiv(vault.performanceFee(), 1 ether, Math.Rounding.Floor);
+
+            uint256 performanceFeeSharesAfter = ViewUtils.getPerformanceFeeReceiverBalance(vault);
+
+            uint256 expectedDelta = performanceFeeSharesAfter - performanceFeeSharesBefore;
+            
+            // Verify that total supply increased by the expected fee shares
+            assertApproxEqAbs(totalSupplyAfter, totalSupplyBefore + expectedDelta, 1, "Total supply should increase by performance fee shares");
+        }
+
+
+    }
+}
