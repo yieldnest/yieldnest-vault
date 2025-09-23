@@ -26,9 +26,12 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         vault.processAccounting();
     }
 
-    function test_processAccounting_withDonation() public {
-        uint256 depositAmount = 100000 ether;
-        uint256 donationAmount = depositAmount / 10; // 10% of deposit amount
+    function test_processAccounting_withDonation(uint256 depositAmount, uint256 donationPercent) public {
+        // Bound inputs to reasonable ranges
+        depositAmount = bound(depositAmount, 1 ether, 1000000 ether);
+        donationPercent = bound(donationPercent, 1, 50); // 1% to 50% donation
+
+        uint256 donationAmount = depositAmount * donationPercent / 100;
 
         deal(MC.WETH, address(this), depositAmount);
         IERC20(MC.WETH).approve(address(vault), depositAmount);
