@@ -268,6 +268,69 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         );
     }
 
+    function test_Vault_convertToAssets_multipleDepositsAndTransfers_withAlwaysComputeTotalAssets(uint256 rand)
+        public
+    {
+        if (rand < 1 || rand > 10_000 ether) return;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(true);
+        // Fee hooks must be disabled when alwaysComputeTotalAssets is enabled
+        vm.prank(HOOKS_MANAGER);
+        vault.setHooks(address(0));
+
+        uint256 depositAmountWETH = rand;
+        uint256 depositAmountSTETH = rand;
+
+        bool success = false;
+        uint256 expectedTotalAssets = 0;
+        uint256 expectedTotalSupply = 0;
+
+        address steth = MC.STETH;
+
+        // Approve and deposit WETH : 1000 ether
+        vm.startPrank(alice);
+        weth.approve(address(vault), depositAmountWETH);
+        uint256 shares = vault.deposit(depositAmountWETH, alice);
+        expectedTotalAssets += depositAmountWETH;
+        expectedTotalSupply += shares;
+        vm.stopPrank();
+
+        // Approve and deposit STETH :
+        vm.startPrank(alice);
+        deal(alice, depositAmountSTETH);
+        (success,) = MC.STETH.call{value: depositAmountSTETH}("");
+        uint256 aliceStEthDepositAmount = IERC20(steth).balanceOf(alice);
+
+        IERC20(steth).approve(address(vault), aliceStEthDepositAmount);
+        shares = vault.depositAsset(steth, aliceStEthDepositAmount, alice);
+        expectedTotalAssets += vault.previewRedeem(shares);
+        expectedTotalSupply += shares;
+
+        // Direct transfer of WETH to the vault
+        deal(MC.WETH, address(alice), depositAmountWETH);
+        IERC20(MC.WETH).transfer(address(vault), depositAmountWETH);
+        expectedTotalAssets += depositAmountWETH;
+
+        // Direct transfer of STETH to the vault
+        deal(alice, depositAmountSTETH);
+        (success,) = MC.STETH.call{value: depositAmountSTETH}("");
+        uint256 aliceStEthDepositAmount2 = IERC20(steth).balanceOf(alice);
+
+        uint256 rate = IProvider(MC.PROVIDER).getRate(MC.STETH);
+        expectedTotalAssets += (aliceStEthDepositAmount2 * rate) / (10 ** 18);
+
+        IERC20(steth).transfer(address(vault), aliceStEthDepositAmount2);
+
+        vault.processAccounting();
+
+        uint256 totalAssets = vault.totalAssets();
+        uint256 totalSupply = vault.totalSupply();
+
+        assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should be expectedAssets");
+        assertEqThreshold(totalSupply, expectedTotalSupply, 5000, "totalSupply should be expectedSupply");
+    }
+
     function test_Vault_convertToAssets_multipleDepositsAndTransfers(uint256 rand) public {
         rand = bound(rand, 100 wei, 10_000 ether);
 

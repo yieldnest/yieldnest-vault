@@ -27,6 +27,7 @@ import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {TestHelpers} from "test/unit/helpers/TestHelpers.sol";
 import {MathUtils} from "test/utils/MathUtils.sol";
+import {HooksLib, HookCallFailed} from "src/library/HooksLib.sol";
 
 contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
@@ -580,6 +581,26 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEq(vault.balanceOf(FEE_MANAGER), 0, "FEE_MANAGER should have no shares");
         assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should match expected");
         assertEqThreshold(totalSupplyBeforeProcessing, expectedTotalSupply, 5000, "totalSupply should match expected");
+    }
+
+    function test_AfterProcessAccounting_RevertsWhenAlwaysComputeIsOn() public {
+        // Enable alwaysComputeTotalAssets
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(true);
+
+        // Initial deposit of WETH
+        vm.startPrank(alice);
+        uint256 wethAmount = 1000 ether;
+        vault.deposit(wethAmount, alice);
+        vm.stopPrank();
+
+        // Expect revert when processAccounting is called with alwaysComputeTotalAssets enabled
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                HookCallFailed.selector, abi.encodeWithSelector(IFeeHooks.AlwaysComputeTotalAssetsIsEnabled.selector)
+            )
+        );
+        vault.processAccounting();
     }
 
     function test_setPerformanceFeeRecipient() public {

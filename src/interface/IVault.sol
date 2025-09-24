@@ -150,6 +150,7 @@ interface IVault is IERC4626 {
     function buffer() external view returns (address);
     function totalBaseAssets() external view returns (uint256);
     function computeTotalAssets() external view returns (uint256);
+    function alwaysComputeTotalAssets() external view returns (bool);
 
     // ADMIN
     function setProvider(address provider) external;

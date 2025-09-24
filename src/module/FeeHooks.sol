@@ -78,6 +78,10 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      */
 
     function afterProcessAccounting(AfterProcessAccountingParams calldata params) external onlyVault {
+        if (VAULT.alwaysComputeTotalAssets()) {
+            revert AlwaysComputeTotalAssetsIsEnabled();
+        }
+
         // if there is increase in total base assets, then there is yield earned
         if (params.totalBaseAssetsAfterAccounting > params.totalBaseAssetsBeforeAccounting) {
             // calculate the yield earned and fees accrued
