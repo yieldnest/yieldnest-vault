@@ -54,11 +54,11 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         UpgradeUtils.timelockUpgrade(
             TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(newImplementation)
         );
-        vm.startPrank(ADMIN);
-        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), ADMIN);
-        vault.setHooks(address(hooks));
-        vm.stopPrank();
-        vault.processAccounting();
+        // vm.startPrank(ADMIN);
+        // vault.grantRole(vault.HOOKS_MANAGER_ROLE(), ADMIN);
+        // vault.setHooks(address(hooks));
+        // vm.stopPrank();
+        // vault.processAccounting();
 
         // TODO: remove this
         vm.startPrank(ADMIN);

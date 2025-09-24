@@ -415,29 +415,37 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
             assertEqThreshold(
                 vaultTotalSupplyAfter,
                 vaultTotalSupplyBefore + performanceFeeShares,
-                1e12,
+                1,
                 "vault total supply should be equal to vault total supply before plus performance fee shares"
             );
             address performanceFeeRecipient = FeeHooks(address(hooks)).performanceFeeRecipient();
             assertEqThreshold(
                 vault.balanceOf(performanceFeeRecipient),
                 performanceFeeShares,
-                1e12,
+                1,
                 "fee manager balance should be equal to performance fee shares"
             );
+
+            // Check that the assets represented by performanceFeeShares are less than or equal to the calculated performanceFeeAmount
+            assertLe(
+                vault.convertToAssets(performanceFeeShares),
+                performanceFeeAmount,
+                "performance fee shares (in assets) should not exceed performance fee amount"
+            );
+
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeShares),
                 performanceFeeAmount,
-                1e6,
+                1e5,
                 "performance fee shares should be equal to performance fee amount"
             );
         }
 
         uint256 totalAssets = vault.totalAssets();
-        assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should match expected");
+        assertEq(totalAssets, expectedTotalAssets, "totalAssets should match expected");
         uint256 totalSupply = vault.totalSupply();
-        assertEqThreshold(
-            totalSupply, expectedTotalSupply + performanceFeeShares, 5000, "totalSupply should match expected"
+        assertEq(
+            totalSupply, expectedTotalSupply + performanceFeeShares, "totalSupply should match expected"
         );
     }
 
