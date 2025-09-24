@@ -209,6 +209,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Withdraws assets and burns equivalent shares from the owner.
+     * @dev Overrides BaseVault.withdrawAsset; ASSET_WITHDRAWER_ROLE withdrawals no longer possible.
      * @param asset_ The address of the asset.
      * @param assets The amount of assets to withdraw.
      * @param receiver The address of the receiver.
@@ -248,13 +249,23 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
         IHooks hooks_ = hooks();
 
-        HooksLib.beforeWithdraw(hooks_, asset_, assets, _msgSender(), receiver, owner, shares);
+        IHooks.WithdrawParams memory params = IHooks.WithdrawParams({
+            asset: asset_,
+            assets: assets,
+            caller: _msgSender(),
+            receiver: receiver,
+            owner: owner,
+            shares: shares
+        });
+
+        HooksLib.beforeWithdraw(hooks_, params);
         _withdrawAsset(asset_, _msgSender(), receiver, owner, assets, shares);
-        HooksLib.afterWithdraw(hooks_, asset_, assets, _msgSender(), receiver, owner, shares);
+        HooksLib.afterWithdraw(hooks_, params);
     }
 
     /**
      * @notice Internal function to handle withdrawals.
+     * @dev Overrides BaseVault._withdraw to eliminate the use of the Buffer.
      * @param caller The address of the caller.
      * @param receiver The address of the receiver.
      * @param owner The address of the owner.
@@ -271,6 +282,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Internal function to handle withdrawals for specific assets.
+     * @dev Overrides BaseVault._withdrawAsset to check for isAssetWithdrawable.
      * @param asset_ The address of the asset.
      * @param caller The address of the caller.
      * @param receiver The address of the receiver.
@@ -350,9 +362,18 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
         IHooks hooks_ = hooks();
 
-        HooksLib.beforeRedeem(hooks_, asset_, shares, _msgSender(), receiver, owner, assets);
+        IHooks.RedeemParams memory params = IHooks.RedeemParams({
+            asset: asset_,
+            shares: shares,
+            caller: _msgSender(),
+            receiver: receiver,
+            owner: owner,
+            assets: assets
+        });
+
+        HooksLib.beforeRedeem(hooks_, params);
         _withdrawAsset(asset_, _msgSender(), receiver, owner, assets, shares);
-        HooksLib.afterRedeem(hooks_, asset_, shares, _msgSender(), receiver, owner, assets);
+        HooksLib.afterRedeem(hooks_, params);
     }
 
     /**
