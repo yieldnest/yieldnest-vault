@@ -12,6 +12,9 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {ViewUtils} from "test/utils/ViewUtils.sol";
 import {MockERC4626, ERC20} from "test/mainnet/mocks/MockERC4626.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {HooksLib, HookCallFailed} from "src/library/HooksLib.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     using Math for uint256;
@@ -157,5 +160,99 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         // With a loss, total supply should remain unchanged (no fee minting)
         assertEq(totalSupplyAfter, totalSupplyBefore, "Total supply should remain unchanged with a loss");
+    }
+
+    function test_processAccounting_alwaysComputeTotalAssetsEnabled() public {
+        // Set alwaysComputeTotalAssets to true
+        vm.prank(MC.TIMELOCK);
+        vault.setAlwaysComputeTotalAssets(true);
+
+        // Make initial deposit
+        uint256 depositAmount = 10 ether;
+        deal(MC.WETH, address(this), depositAmount);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.WETH, depositAmount, address(this));
+
+        // Should revert when alwaysCompute is true
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                HookCallFailed.selector, abi.encodeWithSelector(IFeeHooks.AlwaysComputeTotalAssetsIsEnabled.selector)
+            )
+        );
+        vault.processAccounting();
+    }
+
+    function test_processAccounting_depositAndDonation_Successive_toggles() public {
+        uint256 depositAmount = 100 ether;
+        uint256 donationAmount = 10 ether;
+
+        // Deposit into the vault
+        deal(MC.WETH, address(this), depositAmount);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.depositAsset(MC.WETH, depositAmount, address(this));
+
+        // Donate additional tokens directly to the vault
+        deal(MC.WETH, address(this), donationAmount);
+        IERC20(MC.WETH).transfer(address(vault), donationAmount);
+
+        uint256 totalAssetsBefore = vault.totalAssets();
+
+        vault.processAccounting();
+
+        uint256 totalAssetsAfter = vault.totalAssets();
+
+        // After processAccounting, total assets should increase by exactly the donation amount
+        assertEq(
+            totalAssetsAfter,
+            totalAssetsBefore + donationAmount,
+            "Total assets should increase by the donation amount after processAccounting"
+        );
+
+        // totalAssets should not change after processAccounting when alwaysComputeTotalAssets is true
+        uint256 totalAssetsBeforeAlways = vault.totalAssets();
+
+        // Set alwaysComputeTotalAssets to true
+        vm.prank(MC.TIMELOCK);
+        vault.setAlwaysComputeTotalAssets(true);
+
+        uint256 totalAssetsAfterAlways = vault.totalAssets();
+        assertEq(
+            totalAssetsAfterAlways,
+            totalAssetsBeforeAlways,
+            "totalAssets should remain the same when alwaysComputeTotalAssets is true"
+        );
+
+        // Do another deposit after toggling alwaysComputeTotalAssets
+        uint256 secondDepositAmount = 50 ether;
+        deal(MC.WETH, address(this), secondDepositAmount);
+        IERC20(MC.WETH).approve(address(vault), secondDepositAmount);
+        vault.depositAsset(MC.WETH, secondDepositAmount, address(this));
+
+        // Set alwaysComputeTotalAssets back to false
+        vm.prank(MC.TIMELOCK);
+        vault.setAlwaysComputeTotalAssets(false);
+
+        // Check that totalAssets reflects the new deposit after toggling alwaysComputeTotalAssets back to false
+        assertEq(
+            vault.totalAssets(),
+            totalAssetsAfterAlways + secondDepositAmount,
+            "totalAssets should increase by the second deposit amount after toggling alwaysComputeTotalAssets back to false"
+        );
+
+        // Call processAccounting and assert no shares are minted
+        uint256 sharesBefore = vault.totalSupply();
+        vault.processAccounting();
+        uint256 sharesAfter = vault.totalSupply();
+        assertEq(
+            sharesAfter,
+            sharesBefore,
+            "No new shares should be minted when processAccounting is called with no new donations"
+        );
+
+        assertEq(
+            vault.totalAssets(),
+            totalAssetsAfterAlways + secondDepositAmount,
+            "totalAssets should increase by the second deposit amount after toggling alwaysComputeTotalAssets back to false"
+        );
     }
 }
