@@ -595,7 +595,11 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
 
         // Expect revert when processAccounting is called with alwaysComputeTotalAssets enabled
-        vm.expectRevert(abi.encodeWithSelector(HookCallFailed.selector, abi.encodeWithSelector(IFeeHooks.AlwaysComputeTotalAssetsIsEnabled.selector)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                HookCallFailed.selector, abi.encodeWithSelector(IFeeHooks.AlwaysComputeTotalAssetsIsEnabled.selector)
+            )
+        );
         vault.processAccounting();
     }
 
