@@ -65,6 +65,10 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
         return assets.mulDiv(10 ** 18, rate, Math.Rounding.Floor);
     }
 
+    function test_Withdrawer_Version() public view {
+        assertEq(vault.STRATEGY_VERSION(), "0.3.0", "Withdrawer should have version 0.3.0");
+    }
+
     function test_Vault_views() public {
         assertEq(vault.countNativeAsset(), true, "Native asset should be counted");
         assertEq(vault.alwaysComputeTotalAssets(), false, "Always compute total assets should be true");

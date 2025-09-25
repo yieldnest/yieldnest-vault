@@ -18,12 +18,16 @@ import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transp
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
 
     function setUp() public virtual {
         vault = Vault(payable(MC.YNBNBX));
+
+        upgradeVaults();
 
         mockKernelVaultDepositLimit(MC.WBNB);
         mockKernelVaultDepositLimit(MC.CLISBNB);
@@ -48,8 +52,41 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
                 ITransparentUpgradeableProxy(address(vault)), address(newVault), ""
             );
         }
+        vm.stopPrank();
 
+        vm.startPrank(MC.TIMELOCK);
         vault.setProvider(address(provider));
+        vm.stopPrank();
+
+        FeeHooks feeHooks = new FeeHooks(
+            address(vault),
+            ADMIN,
+            1e17, // 10% performance fee
+            ADMIN,
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: true
+            })
+        );
+
+        vm.startPrank(MC.TIMELOCK);
+        vault.setAlwaysComputeTotalAssets(false);
+        vm.stopPrank();
+
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), MC.TIMELOCK);
+        vm.stopPrank();
+
+        vm.startPrank(MC.TIMELOCK);
+        vault.setHooks(address(feeHooks));
         vm.stopPrank();
 
         // Assert that totalAssets and totalSupply stayed the same after upgrade

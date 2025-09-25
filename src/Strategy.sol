@@ -111,11 +111,11 @@ contract Strategy is BaseVault {
         emit Withdraw(caller, receiver, owner, assets, shares);
     }
 
-    function _feeOnRaw(uint256) public pure override returns (uint256) {
+    function _feeOnRaw(uint256, address) public pure override returns (uint256) {
         return 0;
     }
 
-    function _feeOnTotal(uint256) public pure override returns (uint256) {
+    function _feeOnTotal(uint256, address) public pure override returns (uint256) {
         return 0;
     }
 }

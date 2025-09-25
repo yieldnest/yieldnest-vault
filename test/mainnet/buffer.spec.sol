@@ -14,6 +14,7 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract VaultBufferInvariantsTest is BaseIntegrationTest {
     function setUp() public override {
@@ -112,6 +113,7 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
             uint256 bufferBefore = IERC20(MC.WETH).balanceOf(vault.buffer());
 
             bufferShares = allocateToBuffer(bufferAmount);
+            vault.processAccounting();
 
             uint256 balanceAfter = IERC20(MC.WETH).balanceOf(address(vault));
             uint256 bufferAfter = IERC20(MC.WETH).balanceOf(vault.buffer());
@@ -153,14 +155,16 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
 
-        // Donate directly to buffer
+        // // Donate directly to buffer
         deal(address(this), 1 ether);
         (success,) = MC.WETH.call{value: 1 ether}("");
         assertTrue(success, "Weth deposit failed");
         IERC20(MC.WETH).transfer(vault.buffer(), 1 ether);
 
-        // Allocate to buffer
+        // // Allocate to buffer
         allocateToBuffer(bufferAmount);
+
+        vault.processAccounting();
 
         totalSupplyInvariant(initialSupply + shares);
         // assets go down because of buffer donation  - THIS MUST BE AVOIDED

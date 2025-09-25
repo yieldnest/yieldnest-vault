@@ -41,7 +41,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         assertEq(Provider(vault.provider()).getRate(MC.WBNB), 1e18, "Provider rate for WBNB should be 1e18");
 
         // Test the version function
-        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be '0.3.0'");
+        assertEq(vault.VAULT_VERSION(), "0.4.0", "Vault version should be '0.4.0'");
     }
 
     function test_Vault_Upgrade_ERC4626_view_functions() public view {

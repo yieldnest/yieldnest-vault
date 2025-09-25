@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {IERC20Metadata as IERC20, Math, SafeERC20} from "src/Common.sol";
 import {BaseVault} from "src/BaseVault.sol";
 import {IBaseStrategy} from "src/interface/IBaseStrategy.sol";
+import {HooksLib} from "src/library/HooksLib.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 /**
  * @title BaseStrategy
@@ -12,8 +14,10 @@ import {IBaseStrategy} from "src/interface/IBaseStrategy.sol";
  * vault.
  */
 abstract contract BaseStrategy is BaseVault, IBaseStrategy {
+    using HooksLib for IHooks;
+
     /// @notice The version of the strategy contract.
-    string public constant STRATEGY_VERSION = "0.2.0";
+    string public constant STRATEGY_VERSION = "0.3.0";
     /// @notice Role for allocator permissions
     bytes32 public constant ALLOCATOR_ROLE = keccak256("ALLOCATOR_ROLE");
     /// @notice Role for allocator manager permissions
@@ -172,7 +176,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      */
     function previewRedeemAsset(address asset_, uint256 shares) public view virtual returns (uint256 assets) {
         (assets,) = _convertToAssets(asset_, shares, Math.Rounding.Floor);
-        assets = assets - _feeOnTotal(assets);
+        assets = assets - _feeOnTotal(assets, _msgSender());
     }
 
     /**
@@ -182,7 +186,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      * @return shares The equivalent amount of shares.
      */
     function previewWithdrawAsset(address asset_, uint256 assets) public view virtual returns (uint256 shares) {
-        uint256 fee = _feeOnRaw(assets);
+        uint256 fee = _feeOnRaw(assets, _msgSender());
         (shares,) = _convertToShares(asset_, assets + fee, Math.Rounding.Ceil);
     }
 
@@ -205,6 +209,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Withdraws assets and burns equivalent shares from the owner.
+     * @dev Overrides BaseVault.withdrawAsset; ASSET_WITHDRAWER_ROLE withdrawals no longer possible.
      * @param asset_ The address of the asset.
      * @param assets The amount of assets to withdraw.
      * @param receiver The address of the receiver.
@@ -214,6 +219,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
     function withdrawAsset(address asset_, uint256 assets, address receiver, address owner)
         public
         virtual
+        override(BaseVault, IBaseStrategy)
         nonReentrant
         returns (uint256 shares)
     {
@@ -240,11 +246,26 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
             revert ExceededMaxWithdraw(owner, assets, maxAssets);
         }
         shares = previewWithdrawAsset(asset_, assets);
+
+        IHooks hooks_ = hooks();
+
+        IHooks.WithdrawParams memory params = IHooks.WithdrawParams({
+            asset: asset_,
+            assets: assets,
+            caller: _msgSender(),
+            receiver: receiver,
+            owner: owner,
+            shares: shares
+        });
+
+        HooksLib.beforeWithdraw(hooks_, params);
         _withdrawAsset(asset_, _msgSender(), receiver, owner, assets, shares);
+        HooksLib.afterWithdraw(hooks_, params);
     }
 
     /**
      * @notice Internal function to handle withdrawals.
+     * @dev Overrides BaseVault._withdraw to eliminate the use of the Buffer.
      * @param caller The address of the caller.
      * @param receiver The address of the receiver.
      * @param owner The address of the owner.
@@ -261,6 +282,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Internal function to handle withdrawals for specific assets.
+     * @dev Overrides BaseVault._withdrawAsset to check for isAssetWithdrawable.
      * @param asset_ The address of the asset.
      * @param caller The address of the caller.
      * @param receiver The address of the receiver.
@@ -275,23 +297,12 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
         address owner,
         uint256 assets,
         uint256 shares
-    ) internal virtual onlyAllocator {
+    ) internal virtual override onlyAllocator {
         if (!_getBaseStrategyStorage().isAssetWithdrawable[asset_]) {
             revert AssetNotWithdrawable();
         }
 
-        _subTotalAssets(_convertAssetToBase(asset_, assets));
-
-        if (caller != owner) {
-            _spendAllowance(owner, caller, shares);
-        }
-
-        // NOTE: burn shares before withdrawing the assets
-        _burn(owner, shares);
-
-        SafeERC20.safeTransfer(IERC20(asset_), receiver, assets);
-
-        emit WithdrawAsset(caller, receiver, owner, asset_, assets, shares);
+        super._withdrawAsset(asset_, caller, receiver, owner, assets, shares);
     }
 
     /**
@@ -348,7 +359,21 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
             revert ExceededMaxRedeem(owner, shares, maxShares);
         }
         assets = previewRedeemAsset(asset_, shares);
+
+        IHooks hooks_ = hooks();
+
+        IHooks.RedeemParams memory params = IHooks.RedeemParams({
+            asset: asset_,
+            shares: shares,
+            caller: _msgSender(),
+            receiver: receiver,
+            owner: owner,
+            assets: assets
+        });
+
+        HooksLib.beforeRedeem(hooks_, params);
         _withdrawAsset(asset_, _msgSender(), receiver, owner, assets, shares);
+        HooksLib.afterRedeem(hooks_, params);
     }
 
     /**
@@ -411,6 +436,12 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
     {
         _addAsset(asset_, IERC20(asset_).decimals(), depositable_);
         _setAssetWithdrawable(asset_, withdrawable_);
+    }
+
+    function _deleteAsset(uint256 index) internal virtual override {
+        address asset_ = _getAssetStorage().list[index];
+        super._deleteAsset(index);
+        _setAssetWithdrawable(asset_, false);
     }
 
     /**
