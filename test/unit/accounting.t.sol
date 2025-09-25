@@ -259,12 +259,18 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         uint256 totalAssets = vault.totalAssets();
         uint256 totalSupply = vault.totalSupply();
 
-        assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should be expectedAssets");
+        assertEqThreshold(totalAssets, expectedTotalAssets, 1, "totalAssets should be expectedAssets");
         assertGe(totalSupply, expectedTotalSupply, "totalSupply should be expectedSupply");
 
         uint256 performanceFee = donationAmount * IFeeHooks(address(vault.hooks())).performanceFee() / (10 ** 18);
+
+        assertGe(
+            performanceFee,
+            vault.convertToAssets(sharesMinted),
+            "performanceFee should be greater than or equal to the converted assets"
+        );
         assertApproxEqAbs(
-            performanceFee, vault.convertToAssets(sharesMinted), 5, "performanceFee should be expectedPerformanceFee"
+            performanceFee, vault.convertToAssets(sharesMinted), 3, "performanceFee should be expectedPerformanceFee"
         );
     }
 }
