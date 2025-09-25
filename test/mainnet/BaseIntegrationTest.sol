@@ -56,7 +56,9 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
                 ITransparentUpgradeableProxy(address(vault)), address(newVault), ""
             );
         }
+        vm.stopPrank();
 
+        vm.startPrank(MC.TIMELOCK);
         vault.setProvider(address(provider));
         vm.stopPrank();
 
