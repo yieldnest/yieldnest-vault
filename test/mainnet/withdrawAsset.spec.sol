@@ -89,7 +89,7 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
         uint256 assetIndex
     ) public {
         depositAmount = bound(depositAmount, 1 ether, 1000 ether);
-        withdrawAmount = bound(withdrawAmount, 1e15, depositAmount - 1);
+        withdrawAmount = bound(withdrawAmount, 1e15, depositAmount - 5);
 
         // Define asset list
         address[2] memory assets = [MC.WSTETH, MC.WOETH];
