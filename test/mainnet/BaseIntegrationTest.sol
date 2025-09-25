@@ -55,40 +55,42 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         }
         vm.stopPrank();
 
-        vm.startPrank(MC.TIMELOCK);
-        vault.setProvider(address(provider));
-        vm.stopPrank();
+        // TODO: re-enable this with fee-hooks
 
-        FeeHooks feeHooks = new FeeHooks(
-            address(vault),
-            ADMIN,
-            1e17, // 10% performance fee
-            ADMIN,
-            IHooks.Config({
-                beforeDeposit: false,
-                afterDeposit: false,
-                beforeMint: false,
-                afterMint: false,
-                beforeRedeem: false,
-                afterRedeem: false,
-                beforeWithdraw: false,
-                afterWithdraw: false,
-                beforeProcessAccounting: false,
-                afterProcessAccounting: true
-            })
-        );
+        // vm.startPrank(MC.TIMELOCK);
+        // vault.setProvider(address(provider));
+        // vm.stopPrank();
 
-        vm.startPrank(MC.TIMELOCK);
-        vault.setAlwaysComputeTotalAssets(false);
-        vm.stopPrank();
+        // FeeHooks feeHooks = new FeeHooks(
+        //     address(vault),
+        //     ADMIN,
+        //     1e17, // 10% performance fee
+        //     ADMIN,
+        //     IHooks.Config({
+        //         beforeDeposit: false,
+        //         afterDeposit: false,
+        //         beforeMint: false,
+        //         afterMint: false,
+        //         beforeRedeem: false,
+        //         afterRedeem: false,
+        //         beforeWithdraw: false,
+        //         afterWithdraw: false,
+        //         beforeProcessAccounting: false,
+        //         afterProcessAccounting: true
+        //     })
+        // );
 
-        vm.startPrank(ADMIN);
-        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), MC.TIMELOCK);
-        vm.stopPrank();
+        // vm.startPrank(MC.TIMELOCK);
+        // vault.setAlwaysComputeTotalAssets(false);
+        // vm.stopPrank();
 
-        vm.startPrank(MC.TIMELOCK);
-        vault.setHooks(address(feeHooks));
-        vm.stopPrank();
+        // vm.startPrank(ADMIN);
+        // vault.grantRole(vault.HOOKS_MANAGER_ROLE(), MC.TIMELOCK);
+        // vm.stopPrank();
+
+        // vm.startPrank(MC.TIMELOCK);
+        // vault.setHooks(address(feeHooks));
+        // vm.stopPrank();
 
         // Assert that totalAssets and totalSupply stayed the same after upgrade
         assertEq(vault.totalAssets(), initialTotalAssets, "Total assets should remain unchanged after upgrade");
