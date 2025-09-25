@@ -35,10 +35,6 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     }
 
     function upgradeVaults() public {
-        vm.startPrank(MC.TIMELOCK);
-        vault.setAlwaysComputeTotalAssets(false);
-        vm.stopPrank();
-
         // Get initial values to verify after upgrade
         uint256 initialTotalAssets = vault.totalAssets();
         uint256 initialTotalSupply = vault.totalSupply();
@@ -80,6 +76,10 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
                 afterProcessAccounting: true
             })
         );
+
+        vm.startPrank(MC.TIMELOCK);
+        vault.setAlwaysComputeTotalAssets(false);
+        vm.stopPrank();
 
         vm.startPrank(ADMIN);
         vault.grantRole(vault.HOOKS_MANAGER_ROLE(), MC.TIMELOCK);
