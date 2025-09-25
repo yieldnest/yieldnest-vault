@@ -47,7 +47,8 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
 
         // Execute the Upgrade ATOMICALLY at upgrade time
         {
-            Vault newVault = new Vault();
+            address vaultImplementation = 0xA94F95aC2Da2f94f25339B84bA6EdB80E4f2108B;
+            Vault newVault = Vault(payable(vaultImplementation));
             ProxyAdmin(ProxyUtils.getProxyAdmin(address(vault))).upgradeAndCall(
                 ITransparentUpgradeableProxy(address(vault)), address(newVault), ""
             );
