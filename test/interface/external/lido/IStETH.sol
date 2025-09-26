@@ -7,4 +7,6 @@ interface IStETH {
     function getPooledEthByShares(uint256 _sharesAmount) external view returns (uint256);
 
     function getSharesByPooledEth(uint256 _pooledEthAmount) external view returns (uint256);
+
+    function getCurrentStakeLimit() external view returns (uint256);
 }

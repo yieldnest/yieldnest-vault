@@ -100,6 +100,18 @@ contract TestHelper is Test {
         return amount;
     }
 
+    function assetStakeLimit(address asset) internal view returns (uint256) {
+        if (asset == MC.STETH) {
+            return IStETH(MC.STETH).getCurrentStakeLimit();
+        }
+        if (asset == MC.WSTETH) {
+            // Convert the stETH stake limit to wstETH using the current ratio
+            uint256 stethLimit = IStETH(MC.STETH).getCurrentStakeLimit();
+            return IwstETH(MC.WSTETH).getSharesByPooledEth(stethLimit);
+        }
+        return uint256(type(uint256).max);
+    }
+
     // used only for totalAssets invariance
     function customAssertEq(uint256 a, uint256 b, string memory message) private pure {
         if (a < 1e14) {

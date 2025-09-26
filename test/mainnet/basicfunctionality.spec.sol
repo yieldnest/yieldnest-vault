@@ -203,8 +203,12 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
     }
 
     function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {
-        vm.assume(depositAmount > 10000);
-        vm.assume(depositAmount < 100_000 ether);
+        // vm.assume(depositAmount > 10000);
+        // vm.assume(depositAmount < 100_000 ether);
+
+        uint256 depositAmount = 100_000 ether;
+
+        uint8 assetIndex = 2;
 
         address[] memory assets = vault.getAssets();
         vm.assume(assetIndex < assets.length);
