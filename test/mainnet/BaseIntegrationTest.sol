@@ -20,6 +20,7 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {FeeHooks} from "src/module/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
@@ -91,6 +92,25 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         // vm.startPrank(MC.TIMELOCK);
         // vault.setHooks(address(feeHooks));
         // vm.stopPrank();
+
+        {
+            address[] memory targets = new address[](1);
+            targets[0] = 0xFca05CD06AA2856950Eab7F44731CFF68546271e;
+
+            uint256[] memory values = new uint256[](1);
+            values[0] = 0;
+
+            bytes[] memory payloads = new bytes[](1);
+            payloads[0] =
+                hex"9623609d00000000000000000000000032c830f5c34122c6afb8ae87aba541b7900a2c5f000000000000000000000000a94f95ac2da2f94f25339b84ba6edb80e4f2108b00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000";
+
+            bytes32 predecessor = 0x0000000000000000000000000000000000000000000000000000000000000000;
+            bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
+            vm.startPrank(ADMIN);
+            TimelockController(payable(MC.TIMELOCK)).executeBatch(targets, values, payloads, predecessor, salt);
+            vm.stopPrank();
+        }
 
         // Assert that totalAssets and totalSupply stayed the same after upgrade
         assertEq(vault.totalAssets(), initialTotalAssets, "Total assets should remain unchanged after upgrade");
