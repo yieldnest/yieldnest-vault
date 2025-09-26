@@ -43,17 +43,17 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         Provider provider = new Provider();
 
         // Set the provider in the vault
-        vm.startPrank(MC.TIMELOCK);
+        // vm.startPrank(MC.TIMELOCK);
 
-        // Execute the Upgrade ATOMICALLY at upgrade time
-        {
-            address vaultImplementation = 0xA94F95aC2Da2f94f25339B84bA6EdB80E4f2108B;
-            Vault newVault = Vault(payable(vaultImplementation));
-            ProxyAdmin(ProxyUtils.getProxyAdmin(address(vault))).upgradeAndCall(
-                ITransparentUpgradeableProxy(address(vault)), address(newVault), ""
-            );
-        }
-        vm.stopPrank();
+        // // Execute the Upgrade ATOMICALLY at upgrade time
+        // {
+        //     address vaultImplementation = 0xA94F95aC2Da2f94f25339B84bA6EdB80E4f2108B;
+        //     Vault newVault = Vault(payable(vaultImplementation));
+        //     ProxyAdmin(ProxyUtils.getProxyAdmin(address(vault))).upgradeAndCall(
+        //         ITransparentUpgradeableProxy(address(vault)), address(newVault), ""
+        //     );
+        // }
+        // vm.stopPrank();
 
         // TODO: re-enable this with fee-hooks
 
