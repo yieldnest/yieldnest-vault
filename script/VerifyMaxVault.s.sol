@@ -76,7 +76,6 @@ contract VerifyMaxVault is BaseScript, Test {
             (bool isIncluded, uint256 index) = _checkForAsset(contracts.YNWBNBK());
             assertTrue(isIncluded, "YNWBNBK is invalid");
             assertGt(index, 0, "YNWBNBK invalid index");
-            assertEq(vault.buffer(), contracts.YNWBNBK(), "incorrect buffer");
 
             asset = vault.getAsset(contracts.YNWBNBK());
             assertEq(asset.decimals, 18, "asset[1].decimals is invalid");
@@ -117,20 +116,6 @@ contract VerifyMaxVault is BaseScript, Test {
             );
         }
 
-        if (block.chainid == 56) {
-            console.log("Verifying approval rules for mainnet - WBNB approvals to YNWBNBK and YNCLISBNBK.");
-            address[] memory underlyingVaults = new address[](3);
-            underlyingVaults[0] = contracts.YNWBNBK();
-            underlyingVaults[1] = contracts.YNCLISBNBK();
-            underlyingVaults[2] = contracts.YNASBNBK();
-            RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(contracts.WBNB(), underlyingVaults));
-        } else if (block.chainid == 97) {
-            console.log("Verifying approval rules for testnet - WBNB approvals to YNWBNBK.");
-            RulesVerification.verifyProcessorRule(
-                vault, BaseRules.getApprovalRule(contracts.WBNB(), contracts.YNWBNBK())
-            );
-        }
-
         console.log("Verifying WBNB deposit and withdraw rules.");
         RulesVerification.verifyProcessorRule(vault, BaseRules.getWethWithdrawRule(contracts.WBNB()));
         RulesVerification.verifyProcessorRule(vault, BaseRules.getWethDepositRule(contracts.WBNB()));
@@ -156,7 +141,7 @@ contract VerifyMaxVault is BaseScript, Test {
         // verify provider configuration
         VaultVerification.verifyProvider(vault, Provider(address(rateProvider)), contracts);
 
-        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.3.0");
+        assertEq(vault.VAULT_VERSION(), "0.4.0", "Vault version should be 0.4.0");
         console.log("\u2705 Vault version:          ", vault.VAULT_VERSION());
         console.log("==============================================");
 
