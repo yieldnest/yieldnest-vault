@@ -148,8 +148,7 @@ contract VerifyMaxVault is BaseScript, Test {
             "\u2705 Configurer ROLE CHECK - should not have DEFAULT_ADMIN_ROLE: OK for 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B"
         );
 
-        // TODO: bring back
-        // assertFalse(withdrawer.paused(), "Withdrawer should not be paused");
+        assertFalse(withdrawer.paused(), "Withdrawer should not be paused");
         assertFalse(vault.paused(), "Vault should not be paused");
 
         console.log("==============================================");

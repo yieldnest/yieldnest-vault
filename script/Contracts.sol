@@ -37,8 +37,8 @@ library MainnetContracts {
     address public constant FACTORY = 0x1756987c66eC529be59D3Ec1edFB005a2F9728E1;
     address public constant PROXY_ADMIN = 0xA02A8DC24171aC161cCb74Ef02C28e3cA2204783;
 
-    address public constant PROVIDER = address(123456789); // TODO: Update with deployed Provider
-    address public constant BUFFER = address(987654321); // TODO: Update with deployed buffer
+    address public constant PROVIDER = address(123456789);
+    address public constant BUFFER = address(987654321);
 
     address public constant YNETHX_VIEWER = 0x514d0aC9BFAf631AC7b303564bA1C822bC52F365;
 
