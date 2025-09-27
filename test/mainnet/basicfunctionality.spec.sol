@@ -22,6 +22,7 @@ import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 import {WithdrawerProcessorUtils} from "test/utils/WithdrawerProcessorUtils.sol";
 import {IwstETH} from "test/interface/external/lido/IwstETH.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
     Withdrawer public withdrawer;
@@ -203,16 +204,12 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
     }
 
     function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {
-        // vm.assume(depositAmount > 10000);
-        // vm.assume(depositAmount < 100_000 ether);
-
-        uint256 depositAmount = 100_000 ether;
-
-        uint8 assetIndex = 2;
-
         address[] memory assets = vault.getAssets();
         vm.assume(assetIndex < assets.length);
         address asset = assets[assetIndex];
+
+        vm.assume(depositAmount > 10000);
+        vm.assume(depositAmount < Math.min(100_000 ether, assetStakeLimit(asset)));
 
         address alice = address(0xa11ce);
         dealAsset(asset, alice, depositAmount);

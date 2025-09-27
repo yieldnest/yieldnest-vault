@@ -107,7 +107,7 @@ contract TestHelper is Test {
         if (asset == MC.WSTETH) {
             // Convert the stETH stake limit to wstETH using the current ratio
             uint256 stethLimit = IStETH(MC.STETH).getCurrentStakeLimit();
-            return IwstETH(MC.WSTETH).getSharesByPooledEth(stethLimit);
+            return IwstETH(MC.WSTETH).getWstETHByStETH(stethLimit);
         }
         return uint256(type(uint256).max);
     }
