@@ -68,4 +68,8 @@ contract MockSTETH is IStETH, ERC20 {
         // Increase total pooled ether without minting new shares
         totalPooledEther += msg.value;
     }
+
+    function getCurrentStakeLimit() external pure override returns (uint256) {
+        return uint256(type(uint256).max);
+    }
 }
