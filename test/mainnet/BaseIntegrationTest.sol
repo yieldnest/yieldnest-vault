@@ -26,6 +26,7 @@ import {IHooks} from "src/interface/IHooks.sol";
 import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
@@ -49,17 +50,6 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         });
 
         hooks = new FeeHooks(address(vault), ADMIN, 1e17, ADMIN, config);
-
-        // address implAddress = 0x9C1713BC42dCF621038F4016664fFAB096A05410;
-        // Vault newImplementation = Vault(payable(implAddress));
-        // UpgradeUtils.timelockUpgrade(
-        //     TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(newImplementation)
-        // );
-        // vm.startPrank(ADMIN);
-        // vault.grantRole(vault.HOOKS_MANAGER_ROLE(), ADMIN);
-        // vault.setHooks(address(hooks));
-        // vm.stopPrank();
-        // vault.processAccounting();
 
         // TODO: remove this
         vm.startPrank(ADMIN);
