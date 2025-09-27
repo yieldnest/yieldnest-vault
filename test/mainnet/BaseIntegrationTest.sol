@@ -68,7 +68,7 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         uint256 initialTotalSupply = vault.totalSupply();
 
         // Deploy a new Provider
-        Provider provider = new Provider();
+        // Provider provider = new Provider();
 
         // Set the provider in the vault
         // vm.startPrank(MC.TIMELOCK);
