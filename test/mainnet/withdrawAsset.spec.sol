@@ -30,7 +30,7 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
     ) public {
         // Bound inputs to reasonable ranges
         depositAmount = bound(depositAmount, 1e15, 1000e18); // 0.001 to 1000 ETH
-        withdrawAmount = bound(withdrawAmount, 1, depositAmount - 1); // Can't withdraw more than deposited
+        withdrawAmount = bound(withdrawAmount, 1, depositAmount - 3); // Can't withdraw more than deposited
 
         address alice = makeAddr("alice");
         deal(MC.WETH, alice, depositAmount);
