@@ -27,7 +27,7 @@ import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {TestHelpers} from "test/unit/helpers/TestHelpers.sol";
 import {MathUtils} from "test/utils/MathUtils.sol";
-import {HooksLib, HookCallFailed} from "src/library/HooksLib.sol";
+import {HooksLib} from "src/library/HooksLib.sol";
 
 contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
@@ -597,7 +597,8 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // Expect revert when processAccounting is called with alwaysComputeTotalAssets enabled
         vm.expectRevert(
             abi.encodeWithSelector(
-                HookCallFailed.selector, abi.encodeWithSelector(IFeeHooks.AlwaysComputeTotalAssetsIsEnabled.selector)
+                HooksLib.HookCallFailed.selector,
+                abi.encodeWithSelector(IFeeHooks.AlwaysComputeTotalAssetsIsEnabled.selector)
             )
         );
         vault.processAccounting();
