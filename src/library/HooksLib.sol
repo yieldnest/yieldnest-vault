@@ -3,10 +3,10 @@ pragma solidity ^0.8.24;
 
 import {IHooks} from "src/interface/IHooks.sol";
 
-error HookCallFailed(bytes result);
-error InvalidPermission();
-
 library HooksLib {
+    error HookCallFailed(bytes result);
+    error InvalidPermission();
+
     /// @notice Flags for the hooks
     enum HookType {
         BEFORE_DEPOSIT,
