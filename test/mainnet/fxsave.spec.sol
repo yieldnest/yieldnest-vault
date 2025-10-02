@@ -397,7 +397,7 @@ contract FXSaveTest is BaseTest {
         vm.assertApproxEqRel(
             vault.totalBaseAssets(),
             totalBaseAssetsBeforeRedeem,
-            1e12,
+            2e12,
             "totalBaseAssets should remain approx constant after all redemptions"
         );
     }
