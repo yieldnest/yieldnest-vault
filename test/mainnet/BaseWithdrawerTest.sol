@@ -19,6 +19,7 @@ import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {WithdrawerProcessorUtils} from "test/utils/WithdrawerProcessorUtils.sol";
+import {IAccessControl} from "src/Common.sol";
 
 /**
  * @notice Tests for the Withdrawer contract
@@ -195,6 +196,22 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         uint256 tokenId = _requestWithdrawalOETH(amount);
 
         _claimWithdrawalWOETH(tokenId);
+    }
+
+    function test_withdrawer_arbitrary_address_deposit_reverts() public {
+        address arbitraryUser = makeAddr("arbitraryUser");
+        deal(MC.WETH, arbitraryUser, 1e18);
+        vm.startPrank(arbitraryUser);
+        IERC20(MC.WETH).approve(address(withdrawer), 1e18);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(arbitraryUser),
+                withdrawer.ALLOCATOR_ROLE()
+            )
+        );
+        withdrawer.depositAsset(MC.WETH, 1e18, arbitraryUser);
+        vm.stopPrank();
     }
 
     function _mintOETH(IVault vault_, uint256 amount) internal {

@@ -36,6 +36,14 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      * @param hasAllocators_ The new value for the hasAllocator flag.
      */
     function setHasAllocator(bool hasAllocators_) external onlyRole(ALLOCATOR_MANAGER_ROLE) {
+        _setHasAllocator(hasAllocators_);
+    }
+
+    /**
+     * @notice Internal function to set whether the strategy has allocators.
+     * @param hasAllocators_ The new value for the hasAllocator flag.
+     */
+    function _setHasAllocator(bool hasAllocators_) internal {
         BaseStrategyStorage storage strategyStorage = _getBaseStrategyStorage();
         strategyStorage.hasAllocators = hasAllocators_;
 
