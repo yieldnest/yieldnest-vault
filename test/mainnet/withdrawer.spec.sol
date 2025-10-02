@@ -12,6 +12,7 @@ import {IVault} from "src/interface/IVault.sol";
 import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {console} from "lib/forge-std/src/console.sol";
+import {IAccessControl} from "src/Common.sol";
 
 contract WithdrawerTest is BaseTest {
     using SafeERC20 for IERC20;
@@ -20,6 +21,16 @@ contract WithdrawerTest is BaseTest {
 
     function setUp() public {
         (vault,) = BaseTest.deploy();
+    }
+
+    function test_Withdrawer_views() public view {
+        assertTrue(withdrawer.getHasAllocator(), "Withdrawer should have allocators");
+        assertTrue(withdrawer.getAssetWithdrawable(MC.USDC), "Withdrawer should have WETH withdrawable");
+        assertEq(withdrawer.asset(), MC.USDC, "Withdrawer should have WETH as the main asset");
+        assertFalse(withdrawer.alwaysComputeTotalAssets(), "Withdrawer should not always compute total assets");
+        assertFalse(withdrawer.countNativeAsset(), "Withdrawer should not count native asset");
+        assertEq(withdrawer.defaultAssetIndex(), 1, "Withdrawer should have WETH as the default asset");
+        assertEq(withdrawer.decimals(), 18, "Withdrawer should have 18 decimals");
     }
 
     function test_Withdrawer_deposit_and_withdraw_usdc(uint256 depositAmount, uint256 withdrawAmount) public {
@@ -108,5 +119,21 @@ contract WithdrawerTest is BaseTest {
             1,
             "Vault totalBaseAssets should remain approx constant after allocating fxBASE to withdrawer"
         );
+    }
+
+    function test_withdrawer_arbitrary_address_deposit_reverts() public {
+        address arbitraryUser = makeAddr("arbitraryUser");
+        deal(MC.USDC, arbitraryUser, 1e18);
+        vm.startPrank(arbitraryUser);
+        IERC20(MC.USDC).approve(address(withdrawer), 1e18);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(arbitraryUser),
+                withdrawer.ALLOCATOR_ROLE()
+            )
+        );
+        withdrawer.depositAsset(MC.USDC, 1e18, arbitraryUser);
+        vm.stopPrank();
     }
 }
