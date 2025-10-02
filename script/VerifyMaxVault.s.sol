@@ -170,6 +170,8 @@ contract VerifyMaxVault is BaseScript, Test {
             );
 
             assertGt(withdrawer.totalAssets(), 500e6, "Withdrawer totalAssets should exceed 500e6");
+
+            assertTrue(withdrawer.getHasAllocator(), "Withdrawer should have allocators");
         }
 
         console.log("==============================================");
