@@ -144,6 +144,16 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         _requestWithdrawalWstETH(amount);
     }
 
+    function test_Withdrawer_views() public view {
+        assertTrue(withdrawer.getHasAllocator(), "Withdrawer should have allocators");
+        assertTrue(withdrawer.getAssetWithdrawable(MC.WETH), "Withdrawer should have WETH withdrawable");
+        assertEq(withdrawer.asset(), MC.WETH, "Withdrawer should have WETH as the main asset");
+        assertFalse(withdrawer.alwaysComputeTotalAssets(), "Withdrawer should not always compute total assets");
+        assertTrue(withdrawer.countNativeAsset(), "Withdrawer should not count native asset");
+        assertEq(withdrawer.defaultAssetIndex(), 0, "Withdrawer should have WETH as the default asset");
+        assertEq(withdrawer.decimals(), 18, "Withdrawer should have 18 decimals");
+    }
+
     function test_Vault_ClaimWithdrawal_WSTETH(uint256 amount) public {
         vm.assume(amount > 1e6);
         vm.assume(amount < 1e3 ether);
