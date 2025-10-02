@@ -68,6 +68,12 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         vm.stopPrank();
 
         vault.processAccounting();
+
+        if (withdrawer.paused()) {
+            vm.startPrank(ADMIN);
+            withdrawer.unpause();
+            vm.stopPrank();
+        }
     }
 
     function configureVaultRules(Vault vault) internal {
