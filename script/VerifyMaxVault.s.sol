@@ -111,6 +111,8 @@ contract VerifyMaxVault is BaseScript, Test {
         // Verify withdrawer configuration
         VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
 
+        assertTrue(withdrawer.getHasAllocator(), "Withdrawer should have allocators");
+
         // verify actors & timelock roles on withdrawer
         RolesVerification.verifyDefaultRoles(withdrawer, timelock, actors);
         RolesVerification.verifyRole(
@@ -148,7 +150,6 @@ contract VerifyMaxVault is BaseScript, Test {
             "\u2705 Configurer ROLE CHECK - should not have DEFAULT_ADMIN_ROLE: OK for 0x3794d53a890ee7e6B1515d7E053B2E51934ffB7B"
         );
 
-        assertFalse(withdrawer.paused(), "Withdrawer should not be paused");
         assertFalse(vault.paused(), "Vault should not be paused");
 
         console.log("==============================================");
