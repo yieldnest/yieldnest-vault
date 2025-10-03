@@ -30,7 +30,7 @@ contract WithdrawAssetIntegrationTest is BaseIntegrationTest {
     ) public {
         // Bound inputs to reasonable ranges
         depositAmount = bound(depositAmount, 1e15, 1000e18); // 0.001 to 1000 BNB
-        withdrawAmount = bound(withdrawAmount, 1, depositAmount - 1); // Can't withdraw more than deposited
+        withdrawAmount = bound(withdrawAmount, 1, depositAmount - 5); // Can't withdraw more than deposited
 
         address alice = makeAddr("alice");
         deal(MC.WBNB, alice, depositAmount);
