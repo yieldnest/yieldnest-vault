@@ -28,6 +28,8 @@ abstract contract BaseWithdrawer is BaseStrategy {
         _initialize(
             admin, name, symbol, decimals_, true, countNativeAsset_, alwaysComputeTotalAssets_, defaultAssetIndex_
         );
+        // Withdrawer is always a permissioned vault
+        _setHasAllocator(true);
     }
 
     /**
