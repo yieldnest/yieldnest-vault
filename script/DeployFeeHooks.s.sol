@@ -8,7 +8,7 @@ import {MainnetActors, IActors} from "script/Actors.sol";
 
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {Vault} from "src/Vault.sol";
-import {FeeHooks} from "src/module/FeeHooks.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
 contract DeployFeeHooks is Script, MainnetActors {

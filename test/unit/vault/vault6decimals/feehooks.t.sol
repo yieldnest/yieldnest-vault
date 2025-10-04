@@ -24,7 +24,7 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {FeeHooks} from "src/module/FeeHooks.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {MathUtils} from "test/utils/MathUtils.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";

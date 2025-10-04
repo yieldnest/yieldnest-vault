@@ -12,7 +12,7 @@ import {IValidator} from "src/interface/IValidator.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
-import {FeeHooks} from "src/module/FeeHooks.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
 contract SetupStrategy is Test, Etches, MainnetActors {
