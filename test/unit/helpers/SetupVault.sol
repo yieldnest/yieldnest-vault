@@ -12,7 +12,7 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
-import {FeeHooks} from "src/module/FeeHooks.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
