@@ -79,6 +79,12 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      */
     function afterProcessAccounting(AfterProcessAccountingParams calldata params) external virtual onlyVault {
         if (VAULT.alwaysComputeTotalAssets()) {
+            /**
+             * FeeHooks MUST NOT be called when alwaysComputeTotalAssets is enabled.
+             * alwaysComputeTotalAssets = true => _getVaultStorage().totalAssets has a lagging *Undefined* value.
+             * Therefore, params.totalBaseAssetsAfterAccounting - params.totalBaseAssetsBeforeAccounting is *Undefined*.
+             * In effect, this delta includes principal and would cause charging fees on principal.
+             */
             revert AlwaysComputeTotalAssetsIsEnabled();
         }
 
@@ -91,13 +97,18 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
 
             if (feesAccruedInBaseAsset > 0) {
                 // totalBaseAssetsAfterAccounting already includes the fees accrued
+                // Shares need to be calculated for the rate after fees are substracted.
+                // Therefore, we apply the formula:
+                // sharesToMint = (fees * currentShareSupply) / (currentTotalBaseAssets - fees)
                 uint256 sharesToMint = feesAccruedInBaseAsset.mulDiv(
                     params.totalSupplyBeforeAccounting,
                     params.totalBaseAssetsAfterAccounting - feesAccruedInBaseAsset,
                     Math.Rounding.Floor
                 );
+
                 if (sharesToMint > 0) {
                     VAULT.mintShares(performanceFeeRecipient, sharesToMint);
+
                     emit PerformanceFeeCharged(
                         performanceFeeRecipient,
                         sharesToMint,
