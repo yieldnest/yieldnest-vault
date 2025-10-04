@@ -19,7 +19,7 @@ import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
-import {FeeHooks} from "src/module/FeeHooks.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
 contract SetupBase6DecimalsBaseStrategy is Test, Etches, MainnetActors, SetupStrategy {

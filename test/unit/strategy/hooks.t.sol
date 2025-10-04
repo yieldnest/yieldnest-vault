@@ -12,7 +12,7 @@ import {SetupStrategy} from "test/unit/helpers/SetupStrategy.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
-import {FeeHooks} from "src/module/FeeHooks.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {MockNoOpHooks} from "test/unit/mocks/MockNoOpHooks.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
