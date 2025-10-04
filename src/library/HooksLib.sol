@@ -7,7 +7,7 @@ library HooksLib {
     error HookCallFailed(bytes result);
     error InvalidPermission();
 
-    /// @notice Flags for the hooks
+    /// @notice Hook types
     enum HookType {
         BEFORE_DEPOSIT,
         AFTER_DEPOSIT,
@@ -40,6 +40,7 @@ library HooksLib {
         if (hookType == HookType.AFTER_WITHDRAW) return config.afterWithdraw;
         if (hookType == HookType.BEFORE_PROCESS_ACCOUNTING) return config.beforeProcessAccounting;
         if (hookType == HookType.AFTER_PROCESS_ACCOUNTING) return config.afterProcessAccounting;
+
         revert InvalidPermission();
     }
 
