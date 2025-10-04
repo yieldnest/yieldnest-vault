@@ -7,6 +7,7 @@ interface IFeeHooks {
     error InvalidPerformanceFee();
     error InvalidPerformanceFeeRecipient();
     error AlwaysComputeTotalAssetsIsEnabled();
+    error FeesGreaterOrEqualToTotalBaseAssets();
 
     event PerformanceFeeCharged(
         address indexed recipient,
