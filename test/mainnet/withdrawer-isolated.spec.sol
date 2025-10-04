@@ -16,7 +16,7 @@ import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessC
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
-import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
+import {OriginWithdrawalLib} from "src/withdraws/library/OriginWithdrawalLib.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {BaseWithdrawerMainnetTest} from "test/mainnet/BaseWithdrawerTest.sol";
 
