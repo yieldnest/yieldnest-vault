@@ -81,9 +81,11 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
         if (VAULT.alwaysComputeTotalAssets()) {
             /**
              * FeeHooks MUST NOT be called when alwaysComputeTotalAssets is enabled.
-             * alwaysComputeTotalAssets = true => _getVaultStorage().totalAssets has a lagging *Undefined* value.
-             * Therefore, params.totalBaseAssetsAfterAccounting - params.totalBaseAssetsBeforeAccounting is *Undefined*.
-             * In effect, this delta includes principal and would cause charging fees on principal.
+             *
+             * alwaysComputeTotalAssets = true
+             *   => _getVaultStorage().totalAssets has a lagging *undefined* value.
+             *   => params.totalBaseAssetsAfterAccounting - params.totalBaseAssetsBeforeAccounting is *undefined*.
+             *   => This delta includes principal and would cause charging fees on principal.
              */
             revert AlwaysComputeTotalAssetsIsEnabled();
         }
@@ -96,6 +98,10 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
             uint256 feesAccruedInBaseAsset = (yieldEarnedInBaseAsset * performanceFee) / FEE_DENOMINATOR;
 
             if (feesAccruedInBaseAsset > 0) {
+                if (params.totalBaseAssetsAfterAccounting <= feesAccruedInBaseAsset) {
+                    revert FeesGreaterOrEqualToTotalBaseAssets();
+                }
+
                 // totalBaseAssetsAfterAccounting already includes the fees accrued
                 // Shares need to be calculated for the rate after fees are substracted.
                 // Therefore, we apply the formula:

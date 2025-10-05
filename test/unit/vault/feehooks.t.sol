@@ -19,7 +19,6 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {FeeHooks} from "src/hooks/FeeHooks.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Math} from "src/Common.sol";
-import {console} from "lib/forge-std/src/console.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -645,5 +644,60 @@ contract FeeHooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(ADMIN);
         vm.expectRevert(abi.encodeWithSelector(IFeeHooks.InvalidPerformanceFee.selector));
         hooks.setPerformanceFee(newPerformanceFee);
+    }
+
+    function test_afterProcessAccounting_when_totalAssetsZero_totalSupplyZero_success(uint256 fee) public {
+        // Fuzz the fee from 0 to 1 ether - 1 (not 100% fee)
+        fee = bound(fee, 0, 1 ether - 1);
+
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFee(fee);
+        vm.stopPrank();
+
+        // Ensure vault has zero assets and zero shares
+        assertEq(vault.totalAssets(), 0, "Vault should start with zero assets");
+        assertEq(vault.totalSupply(), 0, "Vault should start with zero shares");
+
+        // Simulate yield: send some WETH to the vault (simulate yield accrual)
+        uint256 yieldAmount = 1 ether;
+        deal(address(weth), address(this), yieldAmount);
+        weth.transfer(address(vault), yieldAmount);
+
+        assertEq(vault.convertToAssets(1e18), 1e18, "Vault should have yield amount");
+
+        vault.processAccounting();
+        assertEq(vault.totalAssets(), yieldAmount, "Vault should have yield amount");
+        assertEq(vault.totalSupply(), 0, "Vault should have zero shares");
+
+        // baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding)
+        // baseAssets = 1e18.mulDiv(1e18 + 1, 0 + 1e18, Math.Rounding.Floor)
+        // baseAssets = 1e36 + 1e18
+        assertEq(vault.convertToAssets(1e18), 1e36 + 1e18, "Vault should have a 1e36 + 1e18 rate");
+    }
+
+    function test_afterProcessAccounting_revert_when_totalAssetsZero_and_fee100Percent() public {
+        // Set performance fee to 100%
+        uint256 maxFee = 1e18; // 100% in basis points scale (1e18)
+        vm.startPrank(ADMIN);
+        hooks.setPerformanceFee(maxFee);
+        vm.stopPrank();
+
+        // Ensure vault has zero assets and zero shares
+        assertEq(vault.totalAssets(), 0, "Vault should start with zero assets");
+        assertEq(vault.totalSupply(), 0, "Vault should start with zero shares");
+
+        // Simulate yield: send some WETH to the vault (simulate yield accrual)
+        uint256 yieldAmount = 1 ether;
+        deal(address(weth), address(this), yieldAmount);
+        weth.transfer(address(vault), yieldAmount);
+
+        // Now, process accounting should revert due to 100% fee on nonzero yield with zero initial assets
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                HooksLib.HookCallFailed.selector,
+                abi.encodeWithSelector(IFeeHooks.FeesGreaterOrEqualToTotalBaseAssets.selector)
+            )
+        );
+        vault.processAccounting();
     }
 }
