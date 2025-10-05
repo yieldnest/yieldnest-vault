@@ -11,7 +11,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {ViewUtils} from "test/utils/ViewUtils.sol";
 import {MockERC4626, ERC20} from "test/mainnet/mocks/MockERC4626.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
-import {HooksLib, HookCallFailed} from "src/library/HooksLib.sol";
+import {HooksLib} from "src/library/HooksLib.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
@@ -183,7 +183,8 @@ contract ProcessAccountingTest is BaseIntegrationTest {
         // Should revert when alwaysCompute is true
         vm.expectRevert(
             abi.encodeWithSelector(
-                HookCallFailed.selector, abi.encodeWithSelector(IFeeHooks.AlwaysComputeTotalAssetsIsEnabled.selector)
+                HooksLib.HookCallFailed.selector,
+                abi.encodeWithSelector(IFeeHooks.AlwaysComputeTotalAssetsIsEnabled.selector)
             )
         );
         vault.processAccounting();
