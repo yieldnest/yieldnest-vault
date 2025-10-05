@@ -3,11 +3,11 @@ pragma solidity ^0.8.24;
 
 import {IHooks} from "src/interface/IHooks.sol";
 
-error HookCallFailed(bytes result);
-error InvalidPermission();
-
 library HooksLib {
-    /// @notice Flags for the hooks
+    error HookCallFailed(bytes result);
+    error InvalidPermission();
+
+    /// @notice Hook types
     enum HookType {
         BEFORE_DEPOSIT,
         AFTER_DEPOSIT,
@@ -40,6 +40,7 @@ library HooksLib {
         if (hookType == HookType.AFTER_WITHDRAW) return config.afterWithdraw;
         if (hookType == HookType.BEFORE_PROCESS_ACCOUNTING) return config.beforeProcessAccounting;
         if (hookType == HookType.AFTER_PROCESS_ACCOUNTING) return config.afterProcessAccounting;
+
         revert InvalidPermission();
     }
 
