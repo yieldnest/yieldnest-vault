@@ -58,7 +58,7 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @notice Returns the name of the hooks module
      * @return The name of the hooks module
      */
-    function name() external pure returns (string memory) {
+    function name() external pure virtual returns (string memory) {
         return "PerformanceFeeHooks";
     }
 
@@ -69,6 +69,7 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
         if (msg.sender != address(VAULT)) revert CallerNotVault();
         _;
     }
+
     /**
      * @notice After process accounting hook function
      * @dev This hook is called after the totalBaseAssets is updated
@@ -76,9 +77,16 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @dev Computations are done in the base asset for maximum precision
      * @param params The after process accounting parameters
      */
-
-    function afterProcessAccounting(AfterProcessAccountingParams calldata params) external onlyVault {
+    function afterProcessAccounting(AfterProcessAccountingParams calldata params) external virtual onlyVault {
         if (VAULT.alwaysComputeTotalAssets()) {
+            /**
+             * FeeHooks MUST NOT be called when alwaysComputeTotalAssets is enabled.
+             *
+             * alwaysComputeTotalAssets = true
+             *   => _getVaultStorage().totalAssets has a lagging *undefined* value.
+             *   => params.totalBaseAssetsAfterAccounting - params.totalBaseAssetsBeforeAccounting is *undefined*.
+             *   => This delta includes principal and would cause charging fees on principal.
+             */
             revert AlwaysComputeTotalAssetsIsEnabled();
         }
 
@@ -90,14 +98,23 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
             uint256 feesAccruedInBaseAsset = (yieldEarnedInBaseAsset * performanceFee) / FEE_DENOMINATOR;
 
             if (feesAccruedInBaseAsset > 0) {
+                if (params.totalBaseAssetsAfterAccounting <= feesAccruedInBaseAsset) {
+                    revert FeesGreaterOrEqualToTotalBaseAssets();
+                }
+
                 // totalBaseAssetsAfterAccounting already includes the fees accrued
+                // Shares need to be calculated for the rate after fees are substracted.
+                // Therefore, we apply the formula:
+                // sharesToMint = (fees * currentShareSupply) / (currentTotalBaseAssets - fees)
                 uint256 sharesToMint = feesAccruedInBaseAsset.mulDiv(
                     params.totalSupplyBeforeAccounting,
                     params.totalBaseAssetsAfterAccounting - feesAccruedInBaseAsset,
                     Math.Rounding.Floor
                 );
+
                 if (sharesToMint > 0) {
                     VAULT.mintShares(performanceFeeRecipient, sharesToMint);
+
                     emit PerformanceFeeCharged(
                         performanceFeeRecipient,
                         sharesToMint,
@@ -117,69 +134,69 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @dev This hook is called before the shares and assets are updated in the vault
      * @param params The withdraw parameters
      */
-    function beforeWithdraw(WithdrawParams calldata params) external onlyVault {}
+    function beforeWithdraw(WithdrawParams calldata params) external virtual onlyVault {}
 
     /**
      * @notice After redeem hook function
      * @dev This hook is called after the redeem is processed
      * @param params The redeem parameters
      */
-    function afterRedeem(RedeemParams calldata params) external onlyVault {}
+    function afterRedeem(RedeemParams calldata params) external virtual onlyVault {}
 
     /**
      * @notice Before deposit hook function
      * @dev This hook is called before the deposit is processed
      * @param params The deposit parameters
      */
-    function beforeDeposit(DepositParams calldata params) external onlyVault {}
+    function beforeDeposit(DepositParams calldata params) external virtual onlyVault {}
 
     /**
      * @notice After deposit hook function
      * @dev This hook is called after the deposit is processed
      * @param params The deposit parameters
      */
-    function afterDeposit(DepositParams calldata params) external onlyVault {}
+    function afterDeposit(DepositParams calldata params) external virtual onlyVault {}
 
     /**
      * @notice Before mint hook function
      * @dev This hook is called before the mint is processed
      * @param params The mint parameters
      */
-    function beforeMint(MintParams calldata params) external onlyVault {}
+    function beforeMint(MintParams calldata params) external virtual onlyVault {}
 
     /**
      * @notice After mint hook function
      * @dev This hook is called after the mint is processed
      * @param params The mint parameters
      */
-    function afterMint(MintParams calldata params) external onlyVault {}
+    function afterMint(MintParams calldata params) external virtual onlyVault {}
 
     /**
      * @notice Before redeem hook function
      * @dev This hook is called before the redeem is processed
      * @param params The redeem parameters
      */
-    function beforeRedeem(RedeemParams calldata params) external onlyVault {}
+    function beforeRedeem(RedeemParams calldata params) external virtual onlyVault {}
 
     /**
      * @notice After withdraw hook function
      * @dev This hook is called after the withdraw is processed
      * @param params The withdraw parameters
      */
-    function afterWithdraw(WithdrawParams calldata params) external onlyVault {}
+    function afterWithdraw(WithdrawParams calldata params) external virtual onlyVault {}
 
     /**
      * @notice Before process accounting hook function
      * @dev This hook is called before the accounting is processed
      * @param params The before process accounting parameters
      */
-    function beforeProcessAccounting(BeforeProcessAccountingParams calldata params) external onlyVault {}
+    function beforeProcessAccounting(BeforeProcessAccountingParams calldata params) external virtual onlyVault {}
 
     /**
      * @notice Set the performance fee for the vault gains
      * @param performanceFee_ The performance fee to be charged(denominated in 1e18)
      */
-    function setPerformanceFee(uint256 performanceFee_) external onlyOwner {
+    function setPerformanceFee(uint256 performanceFee_) external virtual onlyOwner {
         if (performanceFee_ > FEE_DENOMINATOR) revert InvalidPerformanceFee();
         emit SetPerformanceFee(performanceFee, performanceFee_);
         performanceFee = performanceFee_;
@@ -189,7 +206,7 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @notice Set the performance fee recipient for the vault gains
      * @param performanceFeeRecipient_ The address of the performance fee recipient
      */
-    function setPerformanceFeeRecipient(address performanceFeeRecipient_) external onlyOwner {
+    function setPerformanceFeeRecipient(address performanceFeeRecipient_) external virtual onlyOwner {
         if (performanceFeeRecipient_ == address(0)) revert InvalidPerformanceFeeRecipient();
         emit SetPerformanceFeeRecipient(performanceFeeRecipient, performanceFeeRecipient_);
         performanceFeeRecipient = performanceFeeRecipient_;
@@ -199,7 +216,7 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @notice Set the config
      * @param config_ The config struct
      */
-    function setConfig(Config memory config_) external onlyOwner {
+    function setConfig(Config memory config_) external virtual onlyOwner {
         config = config_;
     }
 
@@ -207,7 +224,7 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @notice Get the hooks config
      * @return The hooks config struct
      */
-    function getConfig() external view returns (Config memory) {
+    function getConfig() external view virtual returns (Config memory) {
         return config;
     }
 }
