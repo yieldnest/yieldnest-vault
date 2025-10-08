@@ -30,26 +30,19 @@ import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
-    FeeHooks public hooks;
+    IHooks public hooks;
 
     function setUp() public virtual {
         vault = Vault(payable(MC.YNETHX));
         vault.processAccounting();
 
-        IHooks.Config memory config = IHooks.Config({
-            beforeDeposit: false,
-            afterDeposit: false,
-            beforeMint: false,
-            afterMint: false,
-            beforeRedeem: false,
-            afterRedeem: false,
-            beforeWithdraw: false,
-            afterWithdraw: false,
-            beforeProcessAccounting: false,
-            afterProcessAccounting: true
-        });
+        hooks = IHooks(0x0cD8c4d1C47ADDDB9538527456a1c67962485610);
 
-        hooks = new FeeHooks(address(vault), ADMIN, 1e17, ADMIN, config);
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), ADMIN);
+
+        vault.setHooks(address(hooks));
+        vm.stopPrank();
 
         // TODO: remove this
         vm.startPrank(ADMIN);
