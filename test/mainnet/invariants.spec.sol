@@ -21,6 +21,7 @@ import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {ViewUtils} from "test/utils/ViewUtils.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     using Math for uint256;
@@ -760,6 +761,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     function test_Vault_4626Invariants_Buffer(uint256 amount, bool processAfterWETH, bool processAfterBuffer) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
+
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 100e18); // to give enough leeway
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 100e18); // to give enough leeway
 
         deal(address(vault), amount);
 
