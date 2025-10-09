@@ -10,6 +10,7 @@ import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 
 contract VaultMainnetInvariantsTest is BaseIntegrationTest {
     function setUp() public virtual override {
@@ -40,23 +41,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         );
     }
 
+    // Use ProcessorUtils for buffer allocation
     function allocateToBuffer(uint256 amount) public {
-        address[] memory targets = new address[](2);
-        targets[0] = MC.WBNB;
-        targets[1] = vault.buffer();
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
-        data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
-
-        vm.prank(PROCESSOR);
-        vault.processor(targets, values, data);
-
-        vault.processAccounting();
+        ProcessorUtils.allocateToBuffer(vault, amount, PROCESSOR);
     }
 
     function test_Vault_4626Invariants_depositBase(uint256 assets) public {
@@ -195,7 +182,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         assertEq(mintedAssets, assets, "Minted assets should equal the converted assets");
         vm.stopPrank();
 
-        allocateToBuffer(assets);
+        // Use ProcessorUtils for buffer allocation
+        ProcessorUtils.allocateToBuffer(vault, assets, PROCESSOR);
 
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariantRel(initialAssets + assets, 1e18);
@@ -229,8 +217,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
             vm.stopPrank();
         }
 
-        // hypothetically allocated 100% to the buffer
-        allocateToBuffer(assets);
+        // hypothetically allocated 100% to the buffer using ProcessorUtils
+        ProcessorUtils.allocateToBuffer(vault, assets, PROCESSOR);
 
         uint256 previewedAssets = vault.previewRedeem(shares);
         uint256 expectedAssets = assets * (1e8 - vault.baseWithdrawalFee()) / 1e8;
@@ -296,8 +284,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
         vm.stopPrank();
 
-        // hypothetically allocated 100% to the buffer
-        allocateToBuffer(IERC20(baseAsset).balanceOf(address(vault)));
+        // hypothetically allocated 100% to the buffer using ProcessorUtils
+        ProcessorUtils.allocateToBuffer(vault, IERC20(baseAsset).balanceOf(address(vault)), PROCESSOR);
 
         // Test the previewWithdraw function
         uint256 previewedWithdrawShares = vault.previewWithdraw(assets);
