@@ -71,8 +71,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
             ViewUtils.getPerformanceFeeReceiverBalance(vault) - performanceFeeReceiverBalanceBefore;
         if (performanceFeeSharesMinted > 0) {
             uint256 valueOfPerformanceFeeSharesMinted = vault.convertToAssets(performanceFeeSharesMinted);
-            uint256 valueOfPerformanceFee =
-                (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18;
+
+            IFeeHooks feeHooks = IFeeHooks(ViewUtils.getFeeHooks(vault));
+            uint256 valueOfPerformanceFee = (totalAssetsAfter - totalAssetsBefore) * feeHooks.performanceFee() / 1e18;
 
             // TODO: figure out why this imprecision exists
             assertApproxEqAbs(
@@ -672,6 +673,10 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
+        // to handle large donations
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 100 ether);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 100 ether);
+
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
 
@@ -762,10 +767,16 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
-        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 100e18); // to give enough leeway
-        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 100e18); // to give enough leeway
+        {
+            // Deposit WETH into the vault
+            address alice = address(10);
+            deal(MC.WETH, alice, amount);
 
-        deal(address(vault), amount);
+            vm.startPrank(alice);
+            IERC20(MC.WETH).approve(address(vault), amount);
+            vault.deposit(amount, alice);
+            vm.stopPrank();
+        }
 
         vault.processAccounting();
 
@@ -773,9 +784,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 initialSupply = vault.totalSupply();
 
         {
-            // convert ETH to WETH
-            _processDepositWETH(amount);
-
             if (processAfterWETH) {
                 vault.processAccounting();
             }
@@ -805,7 +813,15 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
-        deal(address(vault), amount);
+        {
+            address alice = address(10);
+            deal(MC.WETH, alice, amount);
+
+            vm.startPrank(alice);
+            IERC20(MC.WETH).approve(address(vault), amount);
+            vault.deposit(amount, alice);
+            vm.stopPrank();
+        }
 
         vault.processAccounting();
 
@@ -813,9 +829,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 initialSupply = vault.totalSupply();
 
         {
-            // convert ETH to YNETH
-            _processYnETHDepositETH(amount);
-
             if (process) {
                 vault.processAccounting();
             }
@@ -974,7 +987,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     ) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
-
         {
             // deposit some WETH into the vault
             address alice = address(10);
@@ -1166,12 +1178,18 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         dealAsset(assets[i], alice, amount);
 
-        // dealt asset is not equal to shares obtained for stETH, ynETH, ynLSDe
-        uint256 donatedAmount = IERC20(assets[i]).balanceOf(alice);
+        uint256 depositAmount = IERC20(assets[i]).balanceOf(alice);
+        {
+            // Make sure the asset is active in the vault before deposit
+            vm.startPrank(TIMELOCK);
+            vault.updateAsset(vault.getAsset(assets[i]).index, IVault.AssetUpdateFields({active: true}));
+            vm.stopPrank();
 
-        vm.startPrank(alice);
-        IERC20(assets[i]).transfer(address(vault), donatedAmount);
-        vm.stopPrank();
+            vm.startPrank(alice);
+            IERC20(assets[i]).approve(address(vault), depositAmount);
+            vault.depositAsset(assets[i], depositAmount, alice);
+            vm.stopPrank();
+        }
 
         withdrawer.processAccounting();
         vault.processAccounting();
@@ -1179,8 +1197,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 initialAssets = vault.totalAssets();
         uint256 initialSupply = vault.totalSupply();
 
-        _processApprove(assets[i], address(withdrawer), donatedAmount);
-        _processDepositAsset(address(withdrawer), assets[i], donatedAmount);
+        _processApprove(assets[i], address(withdrawer), depositAmount);
+        _processDepositAsset(address(withdrawer), assets[i], depositAmount);
 
         uint256 performanceFeeSharesMinted = 0;
         if (process) {

@@ -20,6 +20,7 @@ import {OriginWithdrawalLib} from "src/withdraws/library/OriginWithdrawalLib.sol
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {WithdrawerProcessorUtils} from "test/utils/WithdrawerProcessorUtils.sol";
 import {IAccessControl} from "src/Common.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 /**
  * @notice Tests for the Withdrawer contract
@@ -157,6 +158,10 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
     function test_Vault_ClaimWithdrawal_WSTETH(uint256 amount) public {
         vm.assume(amount > 1e6);
         vm.assume(amount < 1e3 ether);
+
+        // vault rate increases a lot due to the donation done in the setup to allow for withdrawals.
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 10000e18);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 10000e18);
 
         withdrawer.processAccounting();
         vault.processAccounting();

@@ -18,6 +18,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {Provider} from "src/module/Provider.sol";
 import {ViewUtils} from "test/utils/ViewUtils.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     // Implementation addresses
@@ -182,9 +183,10 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         uint256 totalAssetsAfter = vault.totalAssets();
 
         if (performanceFeeSharesMinted > 0) {
+            IFeeHooks feeHooks = IFeeHooks(ViewUtils.getFeeHooks(vault));
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeSharesMinted),
-                (totalAssetsAfter - totalAssetsBefore) * IFeeHooks(address(vault.hooks())).performanceFee() / 1e18,
+                (totalAssetsAfter - totalAssetsBefore) * feeHooks.performanceFee() / 1e18,
                 100,
                 "performance fee shares should be equal to performance fee amount"
             );

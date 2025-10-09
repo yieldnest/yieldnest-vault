@@ -15,6 +15,7 @@ import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {HooksLib} from "src/library/HooksLib.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     using Math for uint256;
@@ -39,6 +40,10 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         // Bound inputs to reasonable ranges
         depositAmount = bound(depositAmount, 1 ether, 1000000 ether);
         donationPercent = bound(donationPercent, 1, 50); // 1% to 50% donation
+
+        // Increase thresholds to accommodate large donations
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 0.5 ether);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 0.5 ether);
 
         uint256 donationAmount = depositAmount * donationPercent / 100;
 
@@ -117,6 +122,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     }
 
     function test_processAccounting_with_a_loss() public {
+        // Increase thresholds to accommodate losses
+        HooksUtils.setMaxTotalAssetsDecreaseRatio(vault, 0.01 ether);
+
         // Deploy MockProvider and add mockAsset to it
         MockProvider mockProvider = new MockProvider();
         mockProvider.addERC4626(address(mockAsset));
@@ -190,6 +198,10 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     function test_processAccounting_depositAndDonation_Successive_toggles() public {
         uint256 depositAmount = 100 ether;
         uint256 donationAmount = 10 ether;
+
+        // Increase thresholds to accommodate donations
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 0.01 ether);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 0.01 ether);
 
         // Deposit into the vault
         deal(MC.WETH, address(this), depositAmount);
