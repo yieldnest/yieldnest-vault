@@ -26,6 +26,8 @@ interface IActors {
     function UPDATER() external view returns (address);
     /// @dev multisig
     function FEE_MANAGER() external view returns (address);
+    /// @dev multisig
+    function HOOKS_MANAGER() external view returns (address);
 
     /// @dev multisig
     function BOOTSTRAPPER() external view returns (address);
@@ -51,6 +53,7 @@ contract TestnetActors is IActors {
     address public constant UNPAUSER = YnSecurityCouncil;
     address public constant UPDATER = YnSecurityCouncil;
     address public constant BOOTSTRAPPER = YnSecurityCouncil;
+    address public constant HOOKS_MANAGER = YnSecurityCouncil;
 }
 
 contract MainnetActors is IActors {
