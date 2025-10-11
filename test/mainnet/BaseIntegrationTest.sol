@@ -27,6 +27,8 @@ import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
+import {ViewUtils} from "test/utils/ViewUtils.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
@@ -36,7 +38,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         vault = Vault(payable(MC.YNETHX));
         vault.processAccounting();
 
-        hooks = IHooks(0x0cD8c4d1C47ADDDB9538527456a1c67962485610);
+        hooks = IHooks(0xc33C5B232053C516a8271f5Fefb4a8AEc65e6bA8);
 
         vm.startPrank(ADMIN);
         vault.grantRole(vault.HOOKS_MANAGER_ROLE(), ADMIN);
