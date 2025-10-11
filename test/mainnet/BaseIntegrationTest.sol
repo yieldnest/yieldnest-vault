@@ -38,14 +38,6 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         vault = Vault(payable(MC.YNETHX));
         vault.processAccounting();
 
-        hooks = IHooks(0xc33C5B232053C516a8271f5Fefb4a8AEc65e6bA8);
-
-        vm.startPrank(ADMIN);
-        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), ADMIN);
-
-        vault.setHooks(address(hooks));
-        vm.stopPrank();
-
         // TODO: remove this
         vm.startPrank(ADMIN);
         VaultVerification.getWithdrawer(vault).unpause();
