@@ -174,6 +174,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         vm.assume(donationAmount < 1_000 ether);
 
         HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 1e19); // 1000% to give enough leeway
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 1e19); // 1000% to give enough leeway
 
         address[] memory assets = vault.getAssets();
 
