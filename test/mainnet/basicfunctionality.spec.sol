@@ -23,6 +23,7 @@ import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 import {WithdrawerProcessorUtils} from "test/utils/WithdrawerProcessorUtils.sol";
 import {IwstETH} from "test/interface/external/lido/IwstETH.sol";
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
     Withdrawer public withdrawer;
@@ -171,6 +172,9 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
     function test_donate_assets(uint256 donationAmount) public {
         vm.assume(donationAmount > 1e8);
         vm.assume(donationAmount < 1_000 ether);
+
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 1e19); // 1000% to give enough leeway
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 1e19); // 1000% to give enough leeway
 
         address[] memory assets = vault.getAssets();
 

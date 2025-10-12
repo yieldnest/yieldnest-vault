@@ -27,29 +27,16 @@ import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
+import {ViewUtils} from "test/utils/ViewUtils.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
-    FeeHooks public hooks;
+    IHooks public hooks;
 
     function setUp() public virtual {
         vault = Vault(payable(MC.YNETHX));
         vault.processAccounting();
-
-        IHooks.Config memory config = IHooks.Config({
-            beforeDeposit: false,
-            afterDeposit: false,
-            beforeMint: false,
-            afterMint: false,
-            beforeRedeem: false,
-            afterRedeem: false,
-            beforeWithdraw: false,
-            afterWithdraw: false,
-            beforeProcessAccounting: false,
-            afterProcessAccounting: true
-        });
-
-        hooks = new FeeHooks(address(vault), ADMIN, 1e17, ADMIN, config);
 
         // TODO: remove this
         vm.startPrank(ADMIN);

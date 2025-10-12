@@ -23,6 +23,7 @@ import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {IynEigen} from "test/interface/external/yieldnest/IynEigen.sol";
 import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
 import {console} from "forge-std/console.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 /**
  * @notice Tests for the Withdrawer contract deployed with ynETHx
@@ -52,6 +53,11 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
     function test_withdraw_ynLSDE(uint256 depositAmount) public {
         vm.assume(depositAmount > 1e9);
         vm.assume(depositAmount < 100_000 ether);
+
+        // ynLSDe rate increases a lot due to the donation done in the setup to allow for withdrawals.
+        // Increase thresholds to accommodate ynLSDE operations
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 10000e18);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 10000e18);
 
         {
             vm.startPrank(ADMIN);
