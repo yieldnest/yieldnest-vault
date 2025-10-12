@@ -14,6 +14,7 @@ import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {HooksLib} from "src/library/HooksLib.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract ProcessAccountingTest is BaseIntegrationTest {
     using Math for uint256;
@@ -42,6 +43,9 @@ contract ProcessAccountingTest is BaseIntegrationTest {
         // Bound inputs to reasonable ranges
         depositAmount = bound(depositAmount, 1 ether, 1000000 ether);
         donationPercent = bound(donationPercent, 1, 50); // 1% to 50% donation
+
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 1 ether);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 1 ether);
 
         uint256 donationAmount = depositAmount * donationPercent / 100;
 
@@ -120,6 +124,8 @@ contract ProcessAccountingTest is BaseIntegrationTest {
     }
 
     function test_processAccounting_with_a_loss() public {
+        HooksUtils.setMaxTotalAssetsDecreaseRatio(vault, 0.01 ether); // 1% limit
+
         // Deploy MockProvider and add mockAsset to it
         MockProvider mockProvider = new MockProvider();
         mockProvider.addERC4626(address(mockAsset));
