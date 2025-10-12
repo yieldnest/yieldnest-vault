@@ -28,13 +28,6 @@ contract ProcessAccountingTest is BaseIntegrationTest {
         // Create and initialize mock ERC4626 asset using WBNB as underlying
         mockAsset = new MockERC4626(ERC20(MC.WBNB), "MOCK ERC4626 WBNB", "MOCKBNB");
 
-        {
-            // TODO: remove later
-            vm.startPrank(MC.TIMELOCK);
-            vault.setAlwaysComputeTotalAssets(false);
-            vm.stopPrank();
-        }
-
         // Process accounting to ensure vault is in sync
         vault.processAccounting();
     }

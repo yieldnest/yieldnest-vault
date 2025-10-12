@@ -24,9 +24,6 @@ contract YnBNBxForkTest is BaseIntegrationTest {
     function setUp() public virtual override {
         super.setUp();
         wbnb = IERC20(MainnetContracts.WBNB);
-
-        // verify alwaysComputeTotalAssets is false
-        // assertFalse(vault.alwaysComputeTotalAssets(), "alwaysComputeTotalAssets should be false");
     }
 
     function testDepositAndStake() public {
@@ -393,7 +390,7 @@ contract YnBNBxForkTest is BaseIntegrationTest {
             uint256 performanceFeeReceiverBalanceAfter = ViewUtils.getPerformanceFeeReceiverBalance(vault);
 
             performanceFeeSharesMinted = performanceFeeReceiverBalanceAfter - performanceFeeReceiverBalanceBefore;
-            uint256 performanceFee = IFeeHooks(address(vault.hooks())).performanceFee() * donationAmount / 1e18;
+            uint256 performanceFee = ViewUtils.getPerformanceFee(vault) * donationAmount / 1e18;
 
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeSharesMinted),
