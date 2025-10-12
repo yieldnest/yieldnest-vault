@@ -27,6 +27,8 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {SetupBase6DecimalsBaseStrategy} from "test/unit/strategy/base6decimals/SetupBase6DecimalsBaseStrategy.sol";
 import {MockStrategy} from "test/unit/mocks/MockStrategy.sol";
+import {FeeMath} from "src/module/FeeMath.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract BaseStrategy6DecimalsBaseWithdrawalUnitTest is Test, MainnetActors, Etches {
     MockStrategy public vault;
@@ -39,6 +41,9 @@ contract BaseStrategy6DecimalsBaseWithdrawalUnitTest is Test, MainnetActors, Etc
         SetupBase6DecimalsBaseStrategy setupVault = new SetupBase6DecimalsBaseStrategy();
 
         (vault,) = setupVault.setup();
+
+        vm.prank(ADMIN);
+        vault.setAlwaysComputeTotalAssets(false);
 
         wusdc = setupVault.wusdc();
 
@@ -94,7 +99,7 @@ contract BaseStrategy6DecimalsBaseWithdrawalUnitTest is Test, MainnetActors, Etc
 
         // Withdraw USDE using withdrawAsset
         vm.startPrank(alice);
-        uint256 assetsWithdrawn = vault.withdrawAsset(MC.USDE, sharesMintedFromUSDE, alice, alice);
+        vault.withdrawAsset(MC.USDE, sharesMintedFromUSDE, alice, alice);
         vm.stopPrank();
 
         // Check that the vault sent back the USDE
@@ -102,6 +107,63 @@ contract BaseStrategy6DecimalsBaseWithdrawalUnitTest is Test, MainnetActors, Etc
 
         // Check that Alice's USDE balance increased
         assertEq(IERC20(MC.USDE).balanceOf(alice), usdeDepositAmount, "Alice's USDE balance did not increase correctly");
+
+        // Check that all shares from USDE deposit were burned
+        assertEq(vault.balanceOf(alice), sharesMintedFromUSDC, "Alice's shares from USDE were not burned correctly");
+
+        // Check that total assets decreased by the USD value of USDE (usdeDepositAmount / 1e12)
+        assertEq(vault.totalAssets(), usdcDepositAmount, "Total assets did not decrease correctly");
+
+        // Check that the total base assets in the vault match the expected value
+        assertEq(
+            vault.totalBaseAssets(),
+            usdcDepositAmount * 1e12,
+            "Total base assets did not match expected value after withdrawal"
+        );
+    }
+
+    function test_Vault_redeemUSDE_afterUSDCDeposit(uint256 usdcDepositAmount, uint256 usdeDepositAmount) public {
+        vm.assume(usdcDepositAmount >= 1 && usdcDepositAmount <= 1_000_000e6); // Reasonable USDC amount (6 decimals)
+        vm.assume(usdeDepositAmount >= 1 && usdeDepositAmount <= 1_000_000e18); // Reasonable USDE amount (18 decimals)
+
+        // Give Alice USDC
+        deal(MC.USDC, alice, usdcDepositAmount);
+
+        // Approve vault to spend Alice's USDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
+
+        // Deposit USDC using depositAsset
+        uint256 sharesMintedFromUSDC = vault.depositAsset(MC.USDC, usdcDepositAmount, alice);
+        vm.stopPrank();
+
+        // Check that the vault received the USDC
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), usdcDepositAmount, "Vault did not receive USDC");
+
+        // Give Alice USDE
+        deal(MC.USDE, alice, usdeDepositAmount);
+
+        // Approve vault to spend Alice's USDE
+        vm.startPrank(alice);
+        IERC20(MC.USDE).approve(address(vault), type(uint256).max);
+
+        // Deposit USDE using depositAsset
+        uint256 sharesMintedFromUSDE = vault.depositAsset(MC.USDE, usdeDepositAmount, alice);
+        vm.stopPrank();
+
+        // Check that the vault received the USDE
+        assertEq(IERC20(MC.USDE).balanceOf(address(vault)), usdeDepositAmount, "Vault did not receive USDE");
+
+        // Redeem USDE using redeemAsset
+        vm.startPrank(alice);
+        uint256 usdeReceived = vault.redeemAsset(MC.USDE, sharesMintedFromUSDE, alice, alice);
+        vm.stopPrank();
+
+        // Check that the vault sent back the USDE
+        assertEq(IERC20(MC.USDE).balanceOf(address(vault)), 0, "Vault did not send back USDE");
+
+        // Check that Alice's USDE balance increased
+        assertEq(IERC20(MC.USDE).balanceOf(alice), usdeReceived, "Alice's USDE balance did not increase correctly");
 
         // Check that all shares from USDE deposit were burned
         assertEq(vault.balanceOf(alice), sharesMintedFromUSDC, "Alice's shares from USDE were not burned correctly");
@@ -159,6 +221,64 @@ contract BaseStrategy6DecimalsBaseWithdrawalUnitTest is Test, MainnetActors, Etc
 
         // Check that Alice's USDC balance increased
         assertEq(IERC20(MC.USDC).balanceOf(alice), usdcDepositAmount, "Alice's USDC balance did not increase correctly");
+
+        // Check that all shares from USDC deposit were burned
+        assertEq(vault.balanceOf(alice), sharesMintedFromUSDE, "Alice's shares from USDC were not burned correctly");
+
+        // Check that total assets decreased by the USD value of USDC
+        assertEq(vault.totalAssets(), usdeDepositAmount / 1e12, "Total assets did not decrease correctly");
+        // Check that the total base assets in the vault match the expected value
+        assertEq(
+            vault.totalBaseAssets(),
+            usdeDepositAmount,
+            "Total base assets did not match expected value after withdrawal"
+        );
+    }
+
+    function test_Vault_redeemUSDC_afterUSDEDeposit(uint256 usdcDepositAmount, uint256 usdeDepositAmount) public {
+        usdcDepositAmount = bound(usdcDepositAmount, 1, 1_000_000e6);
+        usdeDepositAmount = bound(usdeDepositAmount, 1, 1_000_000e18);
+
+        // Give Alice USDC
+        deal(MC.USDC, alice, usdcDepositAmount);
+
+        // Approve vault to spend Alice's USDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
+
+        // Deposit USDC using depositAsset
+        uint256 sharesMintedFromUSDC = vault.depositAsset(MC.USDC, usdcDepositAmount, alice);
+        vm.stopPrank();
+
+        // Check that the vault received the USDC
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), usdcDepositAmount, "Vault did not receive USDC");
+
+        // Give Alice USDE
+        deal(MC.USDE, alice, usdeDepositAmount);
+
+        // Approve vault to spend Alice's USDE
+        vm.startPrank(alice);
+        IERC20(MC.USDE).approve(address(vault), type(uint256).max);
+
+        // Deposit USDE using depositAsset
+        uint256 sharesMintedFromUSDE = vault.depositAsset(MC.USDE, usdeDepositAmount, alice);
+        vm.stopPrank();
+
+        // Check that the vault received the USDE
+        assertEq(IERC20(MC.USDE).balanceOf(address(vault)), usdeDepositAmount, "Vault did not receive USDE");
+
+        // Withdraw USDC using withdrawAsset
+        vm.startPrank(alice);
+        uint256 usdcReceived = vault.redeemAsset(MC.USDC, sharesMintedFromUSDC, alice, alice);
+        vm.stopPrank();
+
+        // Check that the vault sent back the USDC
+        assertEq(
+            IERC20(MC.USDC).balanceOf(address(vault)), usdcDepositAmount - usdcReceived, "Vault did not send back USDC"
+        );
+
+        // Check that Alice's USDC balance increased
+        assertEq(IERC20(MC.USDC).balanceOf(alice), usdcReceived, "Alice's USDC balance did not increase correctly");
 
         // Check that all shares from USDC deposit were burned
         assertEq(vault.balanceOf(alice), sharesMintedFromUSDE, "Alice's shares from USDC were not burned correctly");

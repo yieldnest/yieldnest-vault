@@ -18,6 +18,8 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {IERC4626} from "src/Common.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 contract SetupBase6DecimalsVault is SetupVault {
     MockSwapper public swapper;
@@ -41,6 +43,21 @@ contract SetupBase6DecimalsVault is SetupVault {
 
         vault = Vault(payable(address(vaultProxy)));
 
+        IHooks.Config memory config = IHooks.Config({
+            beforeDeposit: false,
+            afterDeposit: false,
+            beforeMint: false,
+            afterMint: false,
+            beforeRedeem: false,
+            afterRedeem: false,
+            beforeWithdraw: false,
+            afterWithdraw: false,
+            beforeProcessAccounting: false,
+            afterProcessAccounting: true
+        });
+
+        FeeHooks hooks = new FeeHooks(address(vaultProxy), ADMIN, 1e17, FEE_MANAGER, config);
+
         // Initialize the vault with the following parameters:
         // ADMIN: The address that will have admin privileges
         // name: The name of the vault token ("YieldNest MAX")
@@ -58,7 +75,7 @@ contract SetupBase6DecimalsVault is SetupVault {
         wusdc.initialize(IERC20(MC.USDC), "Wrapped USDC", "wUSDC", 18, 12);
 
         if (block.chainid == 31337) {
-            configureLocal(vault);
+            configureLocal(vault, hooks);
         }
 
         if (block.chainid == 1) {
@@ -66,7 +83,7 @@ contract SetupBase6DecimalsVault is SetupVault {
         }
     }
 
-    function configureLocal(Vault vault) internal override {
+    function configureLocal(Vault vault, FeeHooks hooks) internal override {
         mockAll();
 
         vm.startPrank(ADMIN);
@@ -80,6 +97,7 @@ contract SetupBase6DecimalsVault is SetupVault {
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
         vault.grantRole(vault.FEE_MANAGER_ROLE(), FEE_MANAGER);
+        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), HOOKS_MANAGER);
 
         // Deploy Mock6DecimalsProvider
         Mock6DecimalsProvider mock6DecimalsProvider = new Mock6DecimalsProvider();
@@ -103,8 +121,13 @@ contract SetupBase6DecimalsVault is SetupVault {
         mock6DecimalsProvider.setRate(MC.WBTC, 100_000e18); // 100k USD bitcoin
         mock6DecimalsProvider.setRate(MC.STETH, 10_000e18); // 10k USD steth
         mock6DecimalsProvider.addERC4626(MC.SUSDE);
+        mock6DecimalsProvider.addERC4626(MC.BUFFER);
 
         vault.unpause();
+        vm.stopPrank();
+
+        vm.startPrank(HOOKS_MANAGER);
+        vault.setHooks(address(hooks));
         vm.stopPrank();
 
         {

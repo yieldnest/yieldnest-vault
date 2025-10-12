@@ -11,8 +11,16 @@ import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IProvider} from "src/interface/IProvider.sol";
+import {console} from "lib/forge-std/src/console.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
+import {IVault} from "src/interface/IVault.sol";
+import {Math} from "src/Common.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
+    using Math for uint256;
+
     Vault public vaultImplementation;
 
     Vault public vault;
@@ -260,13 +268,16 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         );
     }
 
-    function test_Vault_convertToAssets_multipleDepositsAndTransfers(uint256 rand, bool alwaysComputeTotalAssets)
+    function test_Vault_convertToAssets_multipleDepositsAndTransfers_withAlwaysComputeTotalAssets(uint256 rand)
         public
     {
         if (rand < 1 || rand > 10_000 ether) return;
 
         vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+        vault.setAlwaysComputeTotalAssets(true);
+        // Fee hooks must be disabled when alwaysComputeTotalAssets is enabled
+        vm.prank(HOOKS_MANAGER);
+        vault.setHooks(address(0));
 
         uint256 depositAmountWETH = rand;
         uint256 depositAmountSTETH = rand;
@@ -320,6 +331,107 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         assertEqThreshold(totalSupply, expectedTotalSupply, 5000, "totalSupply should be expectedSupply");
     }
 
+    function test_Vault_convertToAssets_multipleDepositsAndTransfers(uint256 rand) public {
+        rand = bound(rand, 100 wei, 10_000 ether);
+
+        uint256 depositAmountWETH = rand;
+        uint256 depositAmountSTETH = rand;
+
+        bool success = false;
+        uint256 expectedTotalAssets = 0;
+        uint256 expectedTotalSupply = 0;
+        uint256 yieldEarned = 0;
+
+        address steth = MC.STETH;
+
+        // Approve and deposit WETH : 1000 ether
+        vm.startPrank(alice);
+        weth.approve(address(vault), depositAmountWETH);
+        uint256 shares = vault.deposit(depositAmountWETH, alice);
+        expectedTotalAssets += depositAmountWETH;
+        expectedTotalSupply += shares;
+        vm.stopPrank();
+
+        // Approve and deposit STETH :
+        vm.startPrank(alice);
+        deal(alice, depositAmountSTETH);
+        (success,) = MC.STETH.call{value: depositAmountSTETH}("");
+        uint256 aliceStEthDepositAmount = IERC20(steth).balanceOf(alice);
+
+        IERC20(steth).approve(address(vault), aliceStEthDepositAmount);
+        shares = vault.depositAsset(steth, aliceStEthDepositAmount, alice);
+        expectedTotalAssets += vault.previewRedeem(shares);
+        expectedTotalSupply += shares;
+
+        // Direct transfer of WETH to the vault
+        deal(MC.WETH, address(alice), depositAmountWETH);
+        IERC20(MC.WETH).transfer(address(vault), depositAmountWETH);
+        expectedTotalAssets += depositAmountWETH;
+        yieldEarned += depositAmountWETH;
+        // Direct transfer of STETH to the vault
+        deal(alice, depositAmountSTETH);
+        (success,) = MC.STETH.call{value: depositAmountSTETH}("");
+        uint256 aliceStEthDepositAmount2 = IERC20(steth).balanceOf(alice);
+
+        uint256 rate = IProvider(MC.PROVIDER).getRate(MC.STETH);
+        expectedTotalAssets += (aliceStEthDepositAmount2 * rate) / (10 ** 18);
+        yieldEarned += (aliceStEthDepositAmount2 * rate) / (10 ** 18);
+
+        IERC20(steth).transfer(address(vault), aliceStEthDepositAmount2);
+        uint256 performanceFeeShares;
+        uint256 performanceFeeAmount;
+        {
+            address hooks = address(vault.hooks());
+            uint256 performanceFee = FeeHooks(hooks).performanceFee();
+            performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
+        }
+        uint256 vaultTotalSupplyBefore = vault.totalSupply();
+        vault.processAccounting();
+        {
+            uint256 vaultTotalSupplyAfter = vault.totalSupply();
+            performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
+            assertApproxEqAbs(
+                vaultTotalSupplyAfter,
+                vaultTotalSupplyBefore + performanceFeeShares,
+                1,
+                "vault total supply should be equal to vault total supply before plus performance fee shares"
+            );
+
+            assertLe(
+                vault.convertToAssets(performanceFeeShares),
+                performanceFeeAmount,
+                "performance fee shares should be less than or equal to performance fee amount"
+            );
+
+            // The error is proportionate to the multiplication factor of the exchange rate
+            // The reason for this is that the shares minted are inversely proportionate
+            // to to the exchange rate
+            // Therefore if exchange rate increases a lot the amount of shares minted will be less
+            // higher rate increase means higher error
+            assertApproxEqAbs(
+                vault.convertToAssets(performanceFeeShares),
+                performanceFeeAmount,
+                1e5,
+                "performance fee shares should be equal to performance fee amount"
+            );
+        }
+        address performanceFeeRecipient = IFeeHooks(address(vault.hooks())).performanceFeeRecipient();
+        assertApproxEqAbs(
+            vault.balanceOf(performanceFeeRecipient),
+            performanceFeeShares,
+            1,
+            "fee manager balance should be equal to performance fee shares"
+        );
+
+        uint256 totalAssets = vault.totalAssets();
+        uint256 totalSupply = vault.totalSupply();
+
+        assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should be expectedAssets");
+        assertEqThreshold(
+            totalSupply, expectedTotalSupply + performanceFeeShares, 5000, "totalSupply should be expectedSupply"
+        );
+    }
+
     function test_Vault_Accounting_processAccounting_multipleAssets(
         uint256 wethAmount,
         uint256 wbtcAmount,
@@ -333,6 +445,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         uint256 expectedTotalAssets;
         uint256 expectedTotalSupply;
         bool success;
+        uint256 yieldEarned;
 
         // Initial deposit of WETH through deposit function
         vm.startPrank(alice);
@@ -348,13 +461,14 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         vm.prank(alice);
         IERC20(MC.WETH).transfer(address(vault), wethAmount);
         expectedTotalAssets += wethAmount;
-
+        yieldEarned += wethAmount;
         // Direct transfer of WBTC
         deal(MC.WBTC, alice, wbtcAmount);
         vm.prank(alice);
         IERC20(MC.WBTC).transfer(address(vault), wbtcAmount);
         uint256 wbtcRate = IProvider(MC.PROVIDER).getRate(MC.WBTC);
         expectedTotalAssets += (wbtcAmount * wbtcRate) / (10 ** 8); // WBTC has 8 decimals
+        yieldEarned += (wbtcAmount * wbtcRate) / (10 ** 8);
 
         // Direct transfer of METH
         deal(MC.METH, alice, methAmount);
@@ -362,13 +476,68 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         IERC20(MC.METH).transfer(address(vault), methAmount);
         uint256 methRate = IProvider(MC.PROVIDER).getRate(MC.METH);
         expectedTotalAssets += (methAmount * methRate) / (10 ** 18);
+        yieldEarned += (methAmount * methRate) / (10 ** 18);
 
-        vault.processAccounting();
+        address hooks = address(vault.hooks());
+        uint256 performanceFee = FeeHooks(hooks).performanceFee();
+        uint256 performanceFeeAmount = (yieldEarned * performanceFee) / 1e18;
+        uint256 performanceFeeShares;
+        {
+            uint256 vaultTotalSupplyBefore = vault.totalSupply();
+            vault.processAccounting();
+            uint256 vaultTotalSupplyAfter = vault.totalSupply();
+            performanceFeeShares = vaultTotalSupplyAfter - vaultTotalSupplyBefore;
+            assertApproxEqAbs(
+                vaultTotalSupplyAfter,
+                vaultTotalSupplyBefore + performanceFeeShares,
+                1,
+                "vault total supply should be equal to vault total supply before plus performance fee shares"
+            );
+            address performanceFeeRecipient = FeeHooks(address(hooks)).performanceFeeRecipient();
+            assertApproxEqAbs(
+                vault.balanceOf(performanceFeeRecipient),
+                performanceFeeShares,
+                1,
+                "fee manager balance should be equal to performance fee shares"
+            );
+
+            // Check that the assets represented by performanceFeeShares are less than or equal to the calculated performanceFeeAmount
+            assertLe(
+                vault.convertToAssets(performanceFeeShares),
+                performanceFeeAmount,
+                "performance fee shares (in assets) should not exceed performance fee amount"
+            );
+
+            // The error is proportionate to the multiplication factor of the exchange rate
+            // The reason for this is that the shares minted are inversely proportionate
+            // to to the exchange rate
+            // Therefore if exchange rate increases a lot the amount of shares minted will be less
+            // higher rate increase means higher error
+            assertApproxEqAbs(
+                vault.convertToAssets(performanceFeeShares),
+                performanceFeeAmount,
+                1e5,
+                "performance fee shares should be equal to performance fee amount"
+            );
+        }
 
         uint256 totalAssets = vault.totalAssets();
+        assertEq(totalAssets, expectedTotalAssets, "totalAssets should match expected");
         uint256 totalSupply = vault.totalSupply();
+        assertEq(totalSupply, expectedTotalSupply + performanceFeeShares, "totalSupply should match expected");
+    }
 
-        assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should match expected");
-        assertEqThreshold(totalSupply, expectedTotalSupply, 5000, "totalSupply should match expected");
+    function test_mintPerformanceFee_OnlyCallableByHooks() public {
+        address hooks = address(vault.hooks());
+        vm.startPrank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVault.CallerNotHooks.selector));
+        vault.mintShares(alice, 1);
+        vm.stopPrank();
+
+        vm.startPrank(hooks);
+        vault.mintShares(alice, 1);
+        vm.stopPrank();
+
+        assertEq(vault.balanceOf(alice), 1);
     }
 }

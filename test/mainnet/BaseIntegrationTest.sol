@@ -16,13 +16,31 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {Provider} from "src/module/Provider.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {
+    ITransparentUpgradeableProxy,
+    TransparentUpgradeableProxy
+} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
+import {ViewUtils} from "test/utils/ViewUtils.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
+    IHooks public hooks;
 
     function setUp() public virtual {
         vault = Vault(payable(MC.YNETHX));
+        vault.processAccounting();
+
+        // TODO: remove this
+        vm.startPrank(ADMIN);
+        VaultVerification.getWithdrawer(vault).unpause();
+        vm.stopPrank();
     }
 }

@@ -15,6 +15,10 @@ import {ProxyUtils} from "script/ProxyUtils.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {IProvider} from "src/interface/IProvider.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {Provider} from "src/module/Provider.sol";
+import {ViewUtils} from "test/utils/ViewUtils.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     // Implementation addresses
@@ -27,7 +31,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
 
     function upgradeVaultAndWithdrawer() internal {
         {
-            vaultImplementation = new Vault();
+            vaultImplementation = Vault(payable(new Vault()));
             UpgradeUtils.timelockUpgrade(
                 TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(vaultImplementation)
             );
@@ -40,6 +44,10 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
                 TimelockController(payable(TIMELOCK)), ADMIN, address(withdrawer), address(withdrawerImplementation)
             );
         }
+
+        Provider provider = new Provider();
+        vm.prank(TIMELOCK);
+        vault.setProvider(address(provider));
     }
 
     function test_Vault_Upgrade_Implementation_Set_Correctly() public {
@@ -77,7 +85,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         assertEq(defaultAssetIndex, 0, "Default asset index should be 0 (WETH)");
 
         // Test the version function
-        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.2.0");
+        assertEq(vault.VAULT_VERSION(), "0.4.0", "Vault version should be 0.4.0");
 
         // Test the buffer function
         address buffer = vault.buffer();
@@ -97,7 +105,11 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
     }
 
     function test_Vault_Upgrade_ERC4626_view_functions() public {
+        // Get assets before upgrade
+        address[] memory assetsBefore = vault.getAssets();
+
         upgradeVaultAndWithdrawer();
+
         // Test the asset function
         assertEq(address(vault.asset()), MC.WETH, "Vault asset should be WETH");
 
@@ -132,9 +144,13 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         assertEq(maxRedeem, 0, "Max redeem should be zero");
 
         // Test the getAssets function
-        address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 12, "There should be 12 assets in the vault");
-        assertEq(assets[0], MC.WETH, "First asset should be WETH");
+        address[] memory assetsAfter = vault.getAssets();
+        // Assert assets are the same before and after
+        assertEq(assetsAfter.length, assetsBefore.length, "Assets length should be the same before and after upgrade");
+        for (uint256 i = 0; i < assetsBefore.length; i++) {
+            assertEq(assetsAfter[i], assetsBefore[i], "Asset at index should be the same before and after upgrade");
+        }
+        assertEq(assetsAfter[0], MC.WETH, "First asset should be WETH");
     }
 
     function test_Vault_Upgrade_totalAssets_unchanged(bool processAccountingBeforeCheck) public {
@@ -145,17 +161,36 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         // Get totalAssets before upgrade
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 totalSupplyBefore = vault.totalSupply();
+        uint256 totalSupplyAfter;
 
         // Perform the upgrade
         upgradeVaultAndWithdrawer();
 
+        uint256 performanceFeeSharesMinted;
         if (processAccountingBeforeCheck) {
-            vault.processAccounting();
+            totalSupplyBefore = vault.totalSupply();
+            if (address(vault.hooks()) != address(0)) {
+                uint256 performanceFeeReceiverBalanceBefore = ViewUtils.getPerformanceFeeReceiverBalance(vault);
+                vault.processAccounting();
+                uint256 performanceFeeReceiverBalanceAfter = ViewUtils.getPerformanceFeeReceiverBalance(vault);
+                performanceFeeSharesMinted = performanceFeeReceiverBalanceAfter - performanceFeeReceiverBalanceBefore;
+            } else {
+                vault.processAccounting();
+            }
         }
 
         // Get totalAssets after upgrade
         uint256 totalAssetsAfter = vault.totalAssets();
-        uint256 totalSupplyAfter = vault.totalSupply();
+
+        if (performanceFeeSharesMinted > 0) {
+            IFeeHooks feeHooks = IFeeHooks(ViewUtils.getFeeHooks(vault));
+            assertApproxEqAbs(
+                vault.convertToAssets(performanceFeeSharesMinted),
+                (totalAssetsAfter - totalAssetsBefore) * feeHooks.performanceFee() / 1e18,
+                100,
+                "performance fee shares should be equal to performance fee amount"
+            );
+        }
 
         // Assert that totalAssets after upgrade is greater than or equal to totalAssets before upgrade
         assertGe(
@@ -169,7 +204,13 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
             totalAssetsAfter, totalAssetsBefore, 1e16, "Total assets should be equal within 1e16 (1%) relative error"
         );
 
+        totalSupplyAfter = vault.totalSupply();
+
         // Assert that totalSupply remains unchanged after the upgrade
-        assertEq(totalSupplyAfter, totalSupplyBefore, "Total supply should remain unchanged after upgrade");
+        assertEq(
+            totalSupplyAfter,
+            totalSupplyBefore + performanceFeeSharesMinted,
+            "Total supply should increase by performanceFeeSharesMinted"
+        );
     }
 }

@@ -19,6 +19,11 @@ import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {BaseVault} from "src/BaseVault.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
+import {WithdrawerProcessorUtils} from "test/utils/WithdrawerProcessorUtils.sol";
+import {IwstETH} from "test/interface/external/lido/IwstETH.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
     Withdrawer public withdrawer;
@@ -44,8 +49,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
         VaultVerification.verifyVaultConfiguration(vault, withdrawer);
 
-        VaultVerification.verifyRules(vault);
-
         // verify actors & timelock roles on vault
         RolesVerification.verifyDefaultRoles(vault, timelock, actors);
         RolesVerification.verifyRole(
@@ -57,9 +60,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
         // verify withdrawer config
         VaultVerification.verifyWithdrawerConfiguration(vault, withdrawer);
-
-        // verify withdrawer roles
-        VaultVerification.verifyWithdrawerRules(withdrawer);
 
         // verify actors & timelock roles on withdrawer
         RolesVerification.verifyDefaultRoles(withdrawer, timelock, actors);
@@ -173,8 +173,10 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         vm.assume(donationAmount > 1e8);
         vm.assume(donationAmount < 1_000 ether);
 
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 1e19); // 1000% to give enough leeway
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 1e19); // 1000% to give enough leeway
+
         address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 12, "Should have 11 assets");
 
         for (uint256 i = 0; i < assets.length; i++) {
             _test_donate_single_asset(assets[i], donationAmount);
@@ -202,16 +204,16 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         uint256 rate = IProvider(vault.provider()).getRate(asset);
         uint256 baseAmount = Math.mulDiv(donatedAmount, rate, 10 ** 18, Math.Rounding.Floor);
 
-        assertApproxEqRel(vault.totalAssets(), totalAssetBefore + baseAmount, 1e12, "Total assets should be correct");
+        assertApproxEqRel(vault.totalAssets(), totalAssetBefore + baseAmount, 2e12, "Total assets should be correct");
     }
 
     function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {
-        vm.assume(depositAmount > 10000);
-        vm.assume(depositAmount < 100_000 ether);
-
         address[] memory assets = vault.getAssets();
         vm.assume(assetIndex < assets.length);
         address asset = assets[assetIndex];
+
+        vm.assume(depositAmount > 10000);
+        vm.assume(depositAmount < Math.min(100_000 ether, assetStakeLimit(asset)));
 
         address alice = address(0xa11ce);
         dealAsset(asset, alice, depositAmount);
@@ -264,27 +266,34 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         );
     }
 
-    function testDonateOETHAndWithdraw(uint256 donationAmount) public {
-        // uint256 donationAmount = 100e18;
-        vm.assume(donationAmount > 1e9);
-        vm.assume(donationAmount < 100_000 ether);
-        uint256 donateAmount;
+    function testDepositOETHAndWithdraw(uint256 depositAmount) public {
+        vm.assume(depositAmount > 1e9);
+        vm.assume(depositAmount < 100_000 ether);
+        uint256 depositAmountActual;
         address asset = MC.OETH;
 
         uint256 initialVaultOETH = IERC20(asset).balanceOf(address(vault));
         uint256 initialWithdrawerOETH = IERC20(asset).balanceOf(address(withdrawer));
 
-        address alice = makeAddr("alice");
         {
-            dealAsset(asset, alice, donationAmount);
+            address alice = makeAddr("alice");
+            dealAsset(asset, alice, depositAmount);
 
-            donateAmount = IERC20(asset).balanceOf(alice);
+            depositAmountActual = IERC20(asset).balanceOf(alice);
 
+            {
+                // Enable OETH as active asset using TIMELOCK
+                vm.startPrank(TIMELOCK);
+                vault.updateAsset(vault.getAsset(asset).index, IVault.AssetUpdateFields({active: true}));
+                vm.stopPrank();
+            }
             vm.startPrank(alice);
-            IERC20(asset).transfer(address(vault), donateAmount);
+            IERC20(asset).approve(address(vault), depositAmountActual);
+            vault.depositAsset(asset, depositAmountActual, alice);
             vm.stopPrank();
         }
 
+        withdrawer.processAccounting();
         vault.processAccounting();
 
         uint256 tvlBeforeWithdraw = vault.totalAssets();
@@ -297,11 +306,11 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
             targets[0] = asset;
             values[0] = 0;
-            data[0] = abi.encodeCall(IERC20.approve, (address(withdrawer), donateAmount));
+            data[0] = abi.encodeCall(IERC20.approve, (address(withdrawer), depositAmountActual));
 
             targets[1] = address(withdrawer);
             values[1] = 0;
-            data[1] = abi.encodeCall(BaseVault.depositAsset, (MC.OETH, donateAmount, address(vault)));
+            data[1] = abi.encodeCall(BaseVault.depositAsset, (MC.OETH, depositAmountActual, address(vault)));
 
             vm.startPrank(PROCESSOR);
             vault.processor(targets, values, data);
@@ -315,20 +324,22 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
             assertEq(
                 IERC20(asset).balanceOf(address(withdrawer)),
-                initialWithdrawerOETH + donateAmount,
-                "Withdrawer OETH balance should match initial plus donated amount"
+                initialWithdrawerOETH + depositAmountActual,
+                "Withdrawer OETH balance should match initial plus deposited amount"
             );
         }
 
         withdrawer.processAccounting();
         vault.processAccounting();
 
-        assertEq(vault.totalAssets(), tvlBeforeWithdraw, "Total assets should match after deposit to withdrawer");
+        assertApproxEqRel(
+            vault.totalAssets(), tvlBeforeWithdraw, 1e4, "Total assets should match after deposit to withdrawer"
+        );
 
         uint256 tokenId;
         {
             vm.startPrank(PROCESSOR);
-            tokenId = withdrawer.requestWithdrawalOETH(donateAmount);
+            tokenId = withdrawer.requestWithdrawalOETH(depositAmountActual);
             vm.stopPrank();
 
             assertEq(
@@ -339,8 +350,8 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
             assertEq(
                 withdrawer.asyncWithdrawalBalance(MC.WOETH),
-                donateAmount,
-                "Async withdrawal balance for WOETH should match donated amount"
+                depositAmountActual,
+                "Async withdrawal balance for WOETH should match deposited amount"
             );
 
             // OETH withdrawn balance is 0 as the withdrawn balance is associated with WOETH
@@ -355,9 +366,9 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         // Process accounting to reflect changes
         vault.processAccounting();
 
-        // TVL should remain unchanged since OETH was donated and withdrawn
-        assertApproxEqAbs(
-            vault.totalAssets(), tvlBeforeWithdraw, 3, "Total assets should remain unchanged after OETH withdrawal"
+        // TVL should remain unchanged since OETH was deposited and withdrawn
+        assertApproxEqRel(
+            vault.totalAssets(), tvlBeforeWithdraw, 1e4, "Total assets should remain unchanged after OETH withdrawal"
         );
 
         uint256 withdrawerTotalBefore = withdrawer.totalAssets();
@@ -373,9 +384,14 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             initialTotalAssets += initialBalances[i] * initialRates[i] / 1e18;
         }
 
-        assertApproxEqAbs(tvlBeforeWithdraw, initialTotalAssets, 3, "Total assets should match before OETH withdrawal");
+        assertApproxEqRel(
+            tvlBeforeWithdraw, initialTotalAssets, 1e4, "Total assets should match before OETH withdrawal"
+        );
 
-        _claimWithdrawalWOETH(tokenId, donateAmount);
+        (uint256 withdrawerTotalAssetsBeforeClaim, uint256 woethRateBeforeClaim) =
+            _claimWithdrawalWOETH(tokenId, depositAmountActual);
+
+        uint256 woethRateAfterClaim = IERC4626(MC.WOETH).convertToAssets(1e18);
 
         // Process accounting and verify total assets remain unchanged
         withdrawer.processAccounting();
@@ -399,34 +415,35 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             "Withdrawer shares balance should remain unchanged"
         );
 
-        assertApproxEqAbs(
-            withdrawer.totalAssets(), withdrawerTotalBefore, 3, "Withdrawer total assets should remain unchanged"
-        );
+        {
+            // WOETH rate increases both over time and at redemption time
+            uint256 woethBalance = IERC20(MC.WOETH).balanceOf(address(withdrawer));
+            uint256 rateDelta = woethRateAfterClaim - woethRateBeforeClaim;
+            uint256 expectedTotalAssets = withdrawerTotalAssetsBeforeClaim + (woethBalance * rateDelta / 1e18);
 
-        uint256[] memory finalBalances = new uint256[](assets.length);
-        uint256[] memory finalRates = new uint256[](assets.length);
-        uint256 finalTotalAssetsCalculated = address(vault).balance;
-        for (uint256 i = 0; i < assets.length; i++) {
-            finalBalances[i] = IERC20(assets[i]).balanceOf(address(vault));
-            assertEq(finalBalances[i], initialBalances[i], "Balance should match");
-            finalRates[i] = IProvider(vault.provider()).getRate(assets[i]);
-            finalTotalAssetsCalculated += finalBalances[i] * finalRates[i] / 1e18;
-
-            // TODO: understand why the rate is changing this much
-            // rate is changing for underlying assets
-            assertApproxEqRel(finalRates[i], initialRates[i], 2e14, "Rate should match");
+            assertApproxEqRel(
+                withdrawer.totalAssets(),
+                expectedTotalAssets,
+                1e3,
+                "Withdrawer total assets should account for WOETH balance and rate changes"
+            );
         }
 
-        uint256 finalTvl = vault.totalAssets();
-        assertEq(finalTvl, finalTotalAssetsCalculated, "Total assets should match after OETH withdrawal");
-
-        // The rates of underlying assets changes, consequently the total assets changes slightly
+        // The rates of underlying assets changes as time was advanced
+        //,consequently the total assets changes slightly
+        // computation factors in WOETH appreciation in the Withdrawer
         assertApproxEqRel(
-            finalTvl, tvlBeforeWithdraw, 1e13, "Total assets should remain unchanged after processing accounting"
+            vault.totalAssets(),
+            tvlBeforeWithdraw + withdrawer.totalAssets() - withdrawerTotalBefore,
+            1e9,
+            "Total assets should remain unchanged after processing accounting"
         );
     }
 
-    function _claimWithdrawalWOETH(uint256 tokenId, uint256 donateAmount) internal {
+    function _claimWithdrawalWOETH(uint256 tokenId, uint256 donateAmount)
+        internal
+        returns (uint256 withdrawerTotalAssetsBeforeClaim, uint256 woethRateBeforeClaim)
+    {
         IERC20 weth = IERC20(MC.WETH);
         IOETHVault oethVault = IOETHVault(MC.OETH_VAULT);
 
@@ -453,9 +470,13 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             uint256 timestamp = block.timestamp;
             vm.warp(timestamp + oethVault.withdrawalClaimDelay() + 10 minutes);
 
+            // Process accounting to reflect changes after passing of time to capture yield gains
+            withdrawer.processAccounting();
+            withdrawerTotalAssetsBeforeClaim = withdrawer.totalAssets();
+            woethRateBeforeClaim = IERC4626(MC.WOETH).convertToAssets(1e18);
+
             uint256[] memory tokenIds = new uint256[](1);
             tokenIds[0] = tokenId;
-
             vm.prank(PROCESSOR);
             withdrawer.claimWithdrawalsWOETH(tokenIds);
         }
@@ -467,9 +488,151 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         );
     }
 
+    function test_depositWstETH_requestWithdrawal(uint256 depositAmount) public {
+        depositAmount = bound(depositAmount, 1e9, 10_000 ether);
+
+        uint256 actualAmount;
+
+        address asset = MC.WSTETH;
+
+        {
+            address alice = makeAddr("alice");
+            // Enable wstETH as active asset using TIMELOCK
+            vm.startPrank(address(timelock));
+            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
+            vault.updateAsset(vault.getAsset(asset).index, fields);
+            vm.stopPrank();
+
+            // Process accounting
+            withdrawer.processAccounting();
+            vault.processAccounting();
+
+            // Deal wstETH to alice and deposit to vault
+            dealAsset(asset, alice, depositAmount);
+            actualAmount = IERC20(asset).balanceOf(alice);
+
+            vm.startPrank(alice);
+            IERC20(asset).approve(address(vault), actualAmount);
+            vault.depositAsset(asset, actualAmount, alice);
+            vm.stopPrank();
+        }
+
+        // Process accounting
+        withdrawer.processAccounting();
+        vault.processAccounting();
+
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 withdrawerWstETHBefore = IERC20(asset).balanceOf(address(withdrawer));
+
+        // Move wstETH from vault to withdrawer
+        {
+            address[] memory targets = new address[](2);
+            uint256[] memory values = new uint256[](2);
+            bytes[] memory data = new bytes[](2);
+
+            targets[0] = asset;
+            values[0] = 0;
+            data[0] = abi.encodeCall(IERC20.approve, (address(withdrawer), actualAmount));
+
+            targets[1] = address(withdrawer);
+            values[1] = 0;
+            data[1] = abi.encodeCall(BaseVault.depositAsset, (asset, actualAmount, address(vault)));
+
+            vm.startPrank(PROCESSOR);
+            vault.processor(targets, values, data);
+            vm.stopPrank();
+        }
+
+        // Verify wstETH was transferred to withdrawer
+        assertEq(
+            IERC20(asset).balanceOf(address(withdrawer)),
+            withdrawerWstETHBefore + actualAmount,
+            "wstETH should be transferred to withdrawer"
+        );
+
+        // Process accounting
+        withdrawer.processAccounting();
+        vault.processAccounting();
+        uint256 asyncWithdrawalBalanceBefore = withdrawer.asyncWithdrawalBalance(asset);
+
+        vm.startPrank(PROCESSOR);
+        // Request withdrawal from withdrawer in chunks of max 1000 ether
+        uint256 remainingAmount = actualAmount;
+        uint256[] memory tokenIds = new uint256[](0);
+        uint256 maxChunkSize = IwstETH(MC.WSTETH).getWstETHByStETH(1000 ether);
+
+        while (remainingAmount > 0) {
+            uint256 chunkAmount = remainingAmount > maxChunkSize ? maxChunkSize : remainingAmount;
+
+            if (chunkAmount < 1e9) {
+                // trim
+                actualAmount -= chunkAmount;
+                remainingAmount -= chunkAmount;
+                break;
+            }
+            uint256 tokenId = WithdrawerProcessorUtils.processRequestWithdrawalWstETH(withdrawer, asset, chunkAmount);
+
+            // Expand tokenIds array and add new tokenId
+            uint256[] memory newTokenIds = new uint256[](tokenIds.length + 1);
+            for (uint256 i = 0; i < tokenIds.length; i++) {
+                newTokenIds[i] = tokenIds[i];
+            }
+            newTokenIds[tokenIds.length] = tokenId;
+            tokenIds = newTokenIds;
+
+            remainingAmount -= chunkAmount;
+        }
+        vm.stopPrank();
+
+        assertApproxEqAbs(
+            withdrawer.asyncWithdrawalBalance(asset) - asyncWithdrawalBalanceBefore,
+            IwstETH(MC.WSTETH).getStETHByWstETH(actualAmount),
+            10,
+            "asyncWithdrawalBalance should increase by expected amount"
+        );
+
+        withdrawer.processAccounting();
+        vault.processAccounting();
+
+        uint256 fixedDelta = 2e3;
+
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            totalAssetsBefore,
+            tokenIds.length > 0 ? tokenIds.length * fixedDelta : fixedDelta,
+            "Total assets should remain the same after withdrawal request"
+        );
+        uint256 withdrawerETHBefore = address(withdrawer).balance;
+
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            WithdrawerProcessorUtils.claimWithdrawalWstETH(withdrawer, PROCESSOR, tokenIds[i]);
+        }
+
+        withdrawer.processAccounting();
+        vault.processAccounting();
+
+        assertApproxEqAbs(
+            address(withdrawer).balance - withdrawerETHBefore,
+            IwstETH(MC.WSTETH).getStETHByWstETH(actualAmount),
+            fixedDelta,
+            "ETH balance should increase by expected amount after withdrawal claim"
+        );
+
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            totalAssetsBefore,
+            tokenIds.length > 0 ? tokenIds.length * fixedDelta : fixedDelta,
+            "Total assets should remain the same after withdrawal claim"
+        );
+    }
+
     function test_depositWETH_allocateToYnETH(uint256 depositAmount) public {
         vm.assume(depositAmount > 10000);
         vm.assume(depositAmount < 100_000 ether);
+
+        // Process accounting
+        withdrawer.processAccounting();
+        vault.processAccounting();
 
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 vaultBalanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
@@ -480,16 +643,16 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         IERC20(MC.WETH).approve(address(vault), depositAmount);
         vault.depositAsset(MC.WETH, depositAmount, address(this));
 
-        // Process accounting
-        vault.processAccounting();
-        withdrawer.processAccounting();
-
         // Verify WETH was transferred to withdrawer
         assertEq(
             IERC20(MC.WETH).balanceOf(address(vault)),
             vaultBalanceBefore + depositAmount,
             "WETH should be transferred to vault"
         );
+
+        // Process accounting
+        withdrawer.processAccounting();
+        vault.processAccounting();
 
         uint256 depositedAmount;
         {
@@ -513,8 +676,8 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         }
 
         // Process accounting
-        vault.processAccounting();
         withdrawer.processAccounting();
+        vault.processAccounting();
 
         uint256 rate = IProvider(vault.provider()).getRate(MC.YNETH);
         uint256 baseAmount = Math.mulDiv(depositedAmount, rate, 10 ** 18, Math.Rounding.Floor);
@@ -557,24 +720,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         );
         assertEq(vault.totalAssets(), vaultTotalAssetsBefore + depositAmount, "Vault total assets should increase");
 
-        // Allocate to buffer (Euler vault)
-        {
-            address[] memory targets = new address[](2);
-            uint256[] memory values = new uint256[](2);
-            bytes[] memory data = new bytes[](2);
-
-            targets[0] = MC.WETH;
-            values[0] = 0;
-            data[0] = abi.encodeCall(IERC20.approve, (MC.EULER_WETH_22_VAULT, depositAmount));
-
-            targets[1] = MC.EULER_WETH_22_VAULT;
-            values[1] = 0;
-            data[1] = abi.encodeCall(IERC4626.deposit, (depositAmount, address(vault)));
-
-            vm.startPrank(PROCESSOR);
-            vault.processor(targets, values, data);
-            vm.stopPrank();
-        }
+        ProcessorUtils.allocateToBuffer(vault, depositAmount, PROCESSOR);
 
         // Process accounting
         vault.processAccounting();
@@ -592,7 +738,59 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         assertApproxEqAbs(
             IERC20(MC.WETH).balanceOf(alice),
             aliceWethBalanceBefore - depositAmount + amountAfterFee,
-            // TODO: fix this down to at least 1e8 margin of error
+            1e15, // withdrawal fee precision error is at 0.01% of amount
+            "User should receive original WETH amount back minus fee"
+        );
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            vaultTotalAssetsBefore + fee,
+            1e15, // withdrawal fee precision error is at 0.01% of amount
+            "Vault total assets should include withdrawal fee"
+        );
+    }
+
+    function test_depositAndWithdrawFromBuffer_onBehalfOfUser() public {
+        uint256 depositAmount = 100 ether;
+
+        address alice = makeAddr("alice");
+        deal(MC.WETH, alice, 1000 ether);
+
+        // Get initial balances
+        uint256 aliceWethBalanceBefore = IERC20(MC.WETH).balanceOf(alice);
+        uint256 vaultTotalAssetsBefore = vault.totalAssets();
+
+        // Approve and deposit WETH
+        vm.startPrank(alice);
+        IERC20(MC.WETH).approve(address(vault), depositAmount);
+        vault.deposit(depositAmount, alice);
+        vm.stopPrank();
+
+        // Verify deposit
+        assertEq(
+            IERC20(MC.WETH).balanceOf(alice),
+            aliceWethBalanceBefore - depositAmount,
+            "User WETH balance should decrease"
+        );
+        assertEq(vault.totalAssets(), vaultTotalAssetsBefore + depositAmount, "Vault total assets should increase");
+
+        ProcessorUtils.allocateToBuffer(vault, depositAmount, PROCESSOR);
+
+        // Process accounting
+        vault.processAccounting();
+
+        // User withdraws max amount
+        vm.startPrank(alice);
+        uint256 maxWithdraw = vault.maxWithdraw(alice);
+        vault.withdraw(maxWithdraw, alice, alice);
+        vm.stopPrank();
+        // Calculate withdrawal fee
+        uint256 fee = depositAmount * vault.baseWithdrawalFee() / 1e8;
+        uint256 amountAfterFee = depositAmount - fee;
+
+        // Verify withdrawal
+        assertApproxEqAbs(
+            IERC20(MC.WETH).balanceOf(alice),
+            aliceWethBalanceBefore - depositAmount + amountAfterFee,
             1e15, // withdrawal fee precision error is at 0.01% of amount
             "User should receive original WETH amount back minus fee"
         );

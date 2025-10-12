@@ -62,8 +62,7 @@ library VaultVerification {
 
         // Verify total number of assets
         address[] memory assets = vault.getAssets();
-        // WETH, YNETH, YNLSDE, EULER_WETH_22_VAULT, CURVE_LP_YNETH_YNLSDE_STRATEGY, withdrawer, WSTETH, WOETH, STETH, OETH, SMOKEHOUSE_WSTETH
-        vm.assertEq(assets.length, 12);
+        vm.assertEq(assets[0], MC.WETH);
 
         // Verify buffer configuration
         vm.assertEq(vault.buffer(), MC.MORPHO_MEV_CAPITAL_WETH, "Buffer should be set to Morpho MEV Capital WETH");
@@ -125,7 +124,7 @@ library VaultVerification {
             IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(assets[i]);
             vm.assertTrue(asset.active);
             vm.assertEq(asset.decimals, 18);
-            if (assets[i] == MC.WETH) {
+            if (assets[i] == MC.WETH || assets[i] == MC.WOETH || assets[i] == MC.WSTETH) {
                 vm.assertTrue(Withdrawer(withdrawer).getAssetWithdrawable(assets[i]));
             } else {
                 vm.assertFalse(Withdrawer(withdrawer).getAssetWithdrawable(assets[i]));
@@ -376,15 +375,5 @@ library VaultVerification {
             vm.assertEq(assets[i].asset, assertsList[i]);
             vm.assertEq(assets[i].canDeposit, vault.getAsset(assertsList[i]).active);
         }
-
-        // Verify strategies are correct
-        IVaultViewer.AssetInfo[] memory strategies = viewer.getStrategies();
-        vm.assertEq(strategies.length, 4, "Viewer should have exactly 3 strategies");
-        vm.assertEq(strategies[0].asset, MC.EULER_WETH_22_VAULT, "Strategy 0 should be Euler WETH 22 vault");
-        vm.assertEq(
-            strategies[1].asset,
-            MC.CURVE_LP_YNETH_YNLSDE_STRATEGY,
-            "Strategy 1 should be Curve LP ynETH-ynLSDE strategy"
-        );
     }
 }

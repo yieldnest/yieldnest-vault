@@ -25,6 +25,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {MockSwapper} from "test/unit/mocks/MockSwapper.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
+import {FeeMath} from "src/module/FeeMath.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
@@ -135,7 +137,10 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         assertEq(IERC20(MC.BUFFER).balanceOf(address(vault)), amount, "Vault should have received buffer shares");
     }
 
-    function test_Vault_deposit_usde_and_withdraw_usdc_success(uint256 depositAmount, uint256 withdrawAmount) public {
+    function test_Vault_deposit_usde_and_withdraw_usdc_success_without_fees(
+        uint256 depositAmount,
+        uint256 withdrawAmount
+    ) public {
         vm.assume(depositAmount >= 1e12); // enough decimal points to be non-zero in USDC
         vm.assume(depositAmount <= 100_000 * 1e18);
 
@@ -213,7 +218,104 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         assertEq(IERC20(MC.USDC).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
     }
 
-    function test_Vault_deposit_usde_and_redeem_usdc_success(uint256 depositAmount, uint256 withdrawAmount) public {
+    function test_Vault_deposit_usde_and_withdraw_usdc_success_with_fees(
+        uint256 depositAmount,
+        uint256 withdrawAmount,
+        uint64 withdrawalFee
+    ) public {
+        depositAmount = bound(depositAmount, 1e12, 100_000 * 1e18);
+        withdrawAmount = bound(withdrawAmount, 1, depositAmount);
+        withdrawAmount = withdrawAmount / 1e12; // USDC amount
+        withdrawalFee = uint64(bound(withdrawalFee, 1, FeeMath.BASIS_POINT_SCALE / 2));
+
+        vm.prank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(withdrawalFee);
+
+        vm.prank(alice);
+        MockERC20(MC.USDE).mint(depositAmount);
+
+        vm.startPrank(alice);
+        IERC20(MC.USDE).approve(address(vault), depositAmount);
+        uint256 sharesReceived = vault.depositAsset(MC.USDE, depositAmount, alice);
+        vm.stopPrank();
+
+        {
+            uint256 maxWithdraw = vault.maxWithdraw(alice);
+            if (withdrawAmount > maxWithdraw) {
+                withdrawAmount = maxWithdraw;
+            }
+        }
+
+        uint256 expectedTotalAssets = depositAmount;
+        // total assets are in USDC
+        assertEq(vault.totalBaseAssets(), expectedTotalAssets, "Total base assets should match deposit amount");
+        assertEq(vault.totalAssets(), expectedTotalAssets / 1e12, "Total assets should match deposit amount");
+
+        swapAndAllocateToBuffer(depositAmount);
+
+        uint256 expectedFee = (withdrawAmount * withdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        // Calculate expected shares to burn
+        uint256 expectedSharesToBurn = vault.previewWithdraw(withdrawAmount + expectedFee);
+        // Check convertToAssets before withdrawal
+        uint256 assetsPerShareBefore = vault.convertToAssets(1e18);
+
+        // Withdraw assets from the vault
+        vm.startPrank(alice);
+        uint256 totalSharesOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 sharesBurned = vault.withdraw(withdrawAmount, alice, alice);
+        uint256 totalSharesOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        vm.stopPrank();
+
+        uint256 sharesMintedToPerformanceFeeRecipient =
+            totalSharesOfPerformanceFeeRecipientAfter - totalSharesOfPerformanceFeeRecipientBefore;
+        assertApproxEqAbs(sharesBurned, expectedSharesToBurn, 5, "correct shares should be burned");
+        assertApproxEqAbs(
+            vault.convertToAssets(sharesMintedToPerformanceFeeRecipient), expectedFee, 5, "correct fee should be minted"
+        );
+        // Check convertToAssets after withdrawal
+        uint256 assetsPerShareAfter = vault.convertToAssets(1e18);
+
+        // Assert that the conversion rate remains approximately the same
+        if (depositAmount >= 1e18) {
+            assertApproxEqAbs(
+                assetsPerShareBefore, assetsPerShareAfter, 1, "Asset per share ratio should remain constant"
+            );
+        } else {
+            assertApproxEqAbs(
+                assetsPerShareBefore, assetsPerShareAfter, 100, "Asset per share ratio should remain constant"
+            );
+        }
+
+        // Verify withdraw was successful
+        assertEq(
+            vault.balanceOf(alice), sharesReceived - sharesBurned, "Alice's shares should be reduced by burned amount"
+        );
+        assertEq(
+            vault.totalSupply(),
+            sharesReceived - sharesBurned + sharesMintedToPerformanceFeeRecipient,
+            "Total supply should be reduced by burned amount"
+        );
+
+        // Verify totalBaseAssets is reduced by the withdraw amount * 1e12 (to account for decimal conversion)
+        assertApproxEqAbs(
+            vault.totalBaseAssets(),
+            expectedTotalAssets - withdrawAmount * 1e12,
+            2,
+            "Total base assets should be reduced by withdraw amount (in base units)"
+        );
+        assertEq(
+            vault.totalAssets(),
+            expectedTotalAssets / 1e12 - withdrawAmount,
+            "Total assets should be reduced by withdraw amount"
+        );
+        assertEq(IERC20(MC.USDC).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
+    }
+
+    function test_Vault_deposit_usde_and_redeem_usdc_success_without_fees(uint256 depositAmount, uint256 withdrawAmount)
+        public
+    {
         vm.assume(depositAmount >= 1e12); // enough decimal points to be non-zero in USDC
         vm.assume(depositAmount <= 100_000 * 1e18);
 
@@ -336,7 +438,7 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         assertEq(IERC20(MC.USDC).balanceOf(alice), withdrawAmount, "Alice should have received the withdrawn assets");
     }
 
-    function test_depositAndWithdrawWUSDC(uint256 depositAmount, uint256 withdrawAmount) public {
+    function test_depositAndWithdrawWUSDC_without_fees(uint256 depositAmount, uint256 withdrawAmount) public {
         // Bound deposit amount to reasonable values
         vm.assume(depositAmount >= 1); // At least 1 USDC
         vm.assume(depositAmount <= 1_000_000 * 1e6); // Up to 1 million USDC (6 decimals)
@@ -402,7 +504,9 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), expectedTotalAssetsAfter, "Total assets should be reduced by withdraw amount");
     }
 
-    function test_Vault_deposit_usdc_and_redeem_usdc_success(uint256 depositAmount, uint256 redeemShares) public {
+    function test_Vault_deposit_usdc_and_redeem_usdc_success_without_fees(uint256 depositAmount, uint256 redeemShares)
+        public
+    {
         vm.assume(depositAmount >= 1); // At least 1 USDC
         vm.assume(depositAmount <= 1_000_000 * 1e6); // Up to 1 million USDC (6 decimals)
 
@@ -468,6 +572,185 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
 
         // Check total assets
         uint256 expectedTotalAssetsAfter = totalAssetsBefore - expectedAssets;
+        assertEq(vault.totalAssets(), expectedTotalAssetsAfter, "Total assets should be reduced by redeemed amount");
+    }
+
+    function test_Vault_deposit_usdc_and_redeem_usdc_success_with_fees(
+        uint256 depositAmount,
+        uint256 redeemShares,
+        uint64 withdrawalFee
+    ) public {
+        withdrawalFee = uint64(bound(withdrawalFee, 1, FeeMath.BASIS_POINT_SCALE / 2));
+
+        depositAmount = bound(depositAmount, 1e6, 100_000 * 1e6);
+        redeemShares = bound(redeemShares, 1, depositAmount);
+
+        vm.prank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(withdrawalFee);
+
+        // Give Alice USDC
+        deal(MC.USDC, alice, depositAmount);
+
+        // Approve vault to spend Alice's USDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), depositAmount);
+
+        // Deposit USDC into the vault
+        uint256 sharesReceived = vault.depositAsset(MC.USDC, depositAmount, alice);
+        vm.stopPrank();
+
+        // Bound redeem shares to be less than or equal to shares received
+        redeemShares = bound(redeemShares, 1, sharesReceived);
+
+        // Verify deposit was successful
+        assertEq(vault.balanceOf(alice), sharesReceived, "Alice should have received shares");
+        assertEq(vault.totalSupply(), sharesReceived, "Total supply should match shares received");
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "Alice's USDC balance should be 0 after deposit");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), depositAmount, "Vault should have received the USDC");
+
+        // Record state before redemption
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 assetsPerShareBefore = vault.convertToAssets(1e18);
+
+        allocateToBuffer(depositAmount);
+
+        // Record buffer's USDC balance before redemption
+        uint256 bufferUSDCBalanceBefore = IERC20(MC.USDC).balanceOf(address(MC.BUFFER));
+
+        // Calculate expected assets to receive
+        uint256 expectedAssets = vault.previewRedeem(redeemShares);
+
+        // Redeem shares from the vault
+        vm.startPrank(alice);
+        uint256 totalSharesOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 assetsReceived = vault.redeem(redeemShares, alice, alice);
+        uint256 totalSharesOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 expectedFee = (assetsReceived * withdrawalFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 sharesMintedToPerformanceFeeRecipient =
+            totalSharesOfPerformanceFeeRecipientAfter - totalSharesOfPerformanceFeeRecipientBefore;
+        assertApproxEqAbs(
+            vault.convertToAssets(sharesMintedToPerformanceFeeRecipient), expectedFee, 5, "correct fee should be minted"
+        );
+        vm.stopPrank();
+
+        // Verify redemption was successful
+        assertEq(assetsReceived, expectedAssets, "Assets received should match preview");
+        assertEq(
+            vault.balanceOf(alice), sharesReceived - redeemShares, "Alice's shares should be reduced by redeemed amount"
+        );
+        assertEq(
+            vault.totalSupply(),
+            sharesReceived - redeemShares + sharesMintedToPerformanceFeeRecipient,
+            "Total supply should be reduced by redeemed amount"
+        );
+        assertEq(IERC20(MC.USDC).balanceOf(alice), expectedAssets, "Alice should have received the expected assets");
+        assertEq(
+            IERC20(MC.USDC).balanceOf(address(MC.BUFFER)),
+            bufferUSDCBalanceBefore - expectedAssets,
+            "Buffer's USDC balance should be reduced by redeemed amount"
+        );
+
+        // Check asset per share ratio
+        uint256 assetsPerShareAfter = vault.convertToAssets(1e18);
+        assertGe(
+            assetsPerShareAfter, assetsPerShareBefore, "Asset per share ratio should not decrease after redemption"
+        );
+
+        // Check total assets
+        uint256 expectedTotalAssetsAfter = totalAssetsBefore - expectedAssets;
+        assertEq(vault.totalAssets(), expectedTotalAssetsAfter, "Total assets should be reduced by redeemed amount");
+    }
+
+    function test_Vault_deposit_usdc_and_redeem_usdc_success_with_full_fees(uint256 depositAmount, uint256 redeemShares)
+        public
+    {
+        uint64 withdrawalFee = uint64(FeeMath.BASIS_POINT_SCALE);
+
+        depositAmount = bound(depositAmount, 1e6, 1_000_000 * 1e6);
+
+        vm.prank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(withdrawalFee);
+
+        // Give Alice USDC
+        deal(MC.USDC, alice, depositAmount);
+
+        // Approve vault to spend Alice's USDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), depositAmount);
+
+        // Deposit USDC into the vault
+        uint256 sharesReceived = vault.depositAsset(MC.USDC, depositAmount, alice);
+        vm.stopPrank();
+
+        // Bound redeem shares to be less than or equal to shares received
+        redeemShares = bound(redeemShares, 1, sharesReceived);
+
+        if (redeemShares > vault.maxRedeem(alice)) {
+            redeemShares = vault.maxRedeem(alice);
+        }
+
+        // Verify deposit was successful
+        assertEq(vault.balanceOf(alice), sharesReceived, "Alice should have received shares");
+        assertEq(vault.totalSupply(), sharesReceived, "Total supply should match shares received");
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "Alice's USDC balance should be 0 after deposit");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), depositAmount, "Vault should have received the USDC");
+
+        // Record state before redemption
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 assetsPerShareBefore = vault.convertToAssets(1e18);
+
+        allocateToBuffer(depositAmount);
+
+        // Record buffer's USDC balance before redemption
+        uint256 bufferUSDCBalanceBefore = IERC20(MC.USDC).balanceOf(address(MC.BUFFER));
+
+        // Calculate expected assets to receive
+        uint256 expectedAssets = vault.previewRedeem(redeemShares);
+        assertEq(expectedAssets, 0, "incorrect expected assets");
+
+        // Redeem shares from the vault
+        vm.startPrank(alice);
+        uint256 totalSharesOfPerformanceFeeRecipientBefore =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 assetsReceived = vault.redeem(redeemShares, alice, alice);
+        uint256 totalSharesOfPerformanceFeeRecipientAfter =
+            vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient());
+        uint256 sharesMintedToPerformanceFeeRecipient =
+            totalSharesOfPerformanceFeeRecipientAfter - totalSharesOfPerformanceFeeRecipientBefore;
+        assertApproxEqAbs(
+            vault.convertToAssets(sharesMintedToPerformanceFeeRecipient),
+            assetsReceived,
+            5,
+            "correct fee should be minted"
+        );
+        assertApproxEqAbs(sharesMintedToPerformanceFeeRecipient, redeemShares, 5, "incorrect shares received");
+        vm.stopPrank();
+
+        // Verify redemption was successful
+        assertEq(assetsReceived, 0, "Assets received should match preview");
+        assertEq(
+            vault.balanceOf(alice), sharesReceived - redeemShares, "Alice's shares should be reduced by redeemed amount"
+        );
+        assertEq(
+            vault.totalSupply(),
+            sharesReceived - redeemShares + sharesMintedToPerformanceFeeRecipient,
+            "Total supply should be reduced by redeemed amount"
+        );
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "Alice should have received the expected assets");
+        assertEq(
+            IERC20(MC.USDC).balanceOf(address(MC.BUFFER)),
+            bufferUSDCBalanceBefore,
+            "Buffer's USDC balance should be reduced by redeemed amount"
+        );
+
+        // Check asset per share ratio
+        uint256 assetsPerShareAfter = vault.convertToAssets(1e18);
+        assertApproxEqAbs(assetsPerShareAfter, assetsPerShareBefore, 5, "Asset per share ratio should remain same");
+
+        // Check total assets
+        uint256 expectedTotalAssetsAfter = totalAssetsBefore;
         assertEq(vault.totalAssets(), expectedTotalAssetsAfter, "Total assets should be reduced by redeemed amount");
     }
 }

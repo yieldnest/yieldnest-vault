@@ -12,6 +12,8 @@ import {IValidator} from "src/interface/IValidator.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 contract SetupStrategy is Test, Etches, MainnetActors {
     function setup() public virtual returns (MockStrategy strategy, WETH9 weth) {
@@ -27,11 +29,27 @@ contract SetupStrategy is Test, Etches, MainnetActors {
         // Set the default asset index to 0 (WETH)
         strategy.initialize("Mock Strategy", "MS", ADMIN, true, 0);
 
+        IHooks.Config memory config = IHooks.Config({
+            beforeDeposit: false,
+            afterDeposit: false,
+            beforeMint: false,
+            afterMint: false,
+            beforeRedeem: false,
+            afterRedeem: false,
+            beforeWithdraw: false,
+            afterWithdraw: false,
+            beforeProcessAccounting: false,
+            afterProcessAccounting: true
+        });
+
+        // fee module implementation
+        FeeHooks hooks = new FeeHooks(address(strategy), ADMIN, 1e17, FEE_MANAGER, config);
+
         // Add WETH as an asset to the strategy
-        configureLocal(strategy);
+        configureLocal(strategy, hooks);
     }
 
-    function configureLocal(MockStrategy strategy) internal virtual {
+    function configureLocal(MockStrategy strategy, FeeHooks hooks) internal virtual {
         // etch to mock the mainnet contracts
         mockAll();
 
@@ -45,7 +63,8 @@ contract SetupStrategy is Test, Etches, MainnetActors {
         strategy.grantRole(strategy.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
         strategy.grantRole(strategy.PAUSER_ROLE(), PAUSER);
         strategy.grantRole(strategy.UNPAUSER_ROLE(), UNPAUSER);
-
+        strategy.grantRole(strategy.HOOKS_MANAGER_ROLE(), HOOKS_MANAGER);
+        strategy.grantRole(strategy.FEE_MANAGER_ROLE(), FEE_MANAGER);
         // set the rate provider contract
         strategy.setProvider(MC.PROVIDER);
 
@@ -58,10 +77,13 @@ contract SetupStrategy is Test, Etches, MainnetActors {
         strategy.setAssetWithdrawable(MC.STETH, true);
         strategy.setAssetWithdrawable(MC.WBTC, true);
 
+        strategy.setHooks(address(hooks));
+
         // Set WBTC rate to 20 ETH
         MockProvider(MC.PROVIDER).setRate(MC.WBTC, 20e18);
         // Set METH rate to 1.2 ETH
         MockProvider(MC.PROVIDER).setRate(MC.METH, 1.2e18);
+        MockProvider(MC.PROVIDER).setRate(MC.STETH, 1e18);
 
         vm.stopPrank();
     }

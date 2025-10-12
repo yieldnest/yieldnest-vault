@@ -12,15 +12,6 @@ interface IBaseStrategy {
         bool syncWithdraw;
     }
 
-    event WithdrawAsset(
-        address indexed sender,
-        address indexed receiver,
-        address indexed owner,
-        address asset,
-        uint256 assets,
-        uint256 shares
-    );
-
     event SetHasAllocator(bool hasAllocator);
     event SetAssetWithdrawable(address asset, bool isWithdrawable);
 

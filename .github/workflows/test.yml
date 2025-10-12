@@ -27,7 +27,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: v1.2.3
 
       - name: Show Forge version
         run: |
@@ -49,7 +49,7 @@ jobs:
 
       - name: Run Forge build
         run: |
-          forge build --sizes
+          forge build --sizes src
         id: build
 
       - name: Run Forge unit tests

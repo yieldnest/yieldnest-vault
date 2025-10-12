@@ -10,6 +10,8 @@ import {WETH9} from "test/unit/mocks/MockWETH.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -23,7 +25,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
     address public chad = address(0x3);
     address public feeExemptedUser = makeAddr("feeExemptedUser");
 
-    uint256 public constant INITIAL_BALANCE = 100_000 ether;
+    uint256 public constant INITIAL_BALANCE = 500_000 ether;
     uint256 public bufferRatio = 10_000_000;
 
     function setUp() public {
@@ -46,7 +48,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vault.setBaseWithdrawalFee(100_000);
 
         vm.prank(FEE_MANAGER);
-        vault.setWithdrawalFeeExempted(feeExemptedUser, true);
+        vault.overrideBaseWithdrawalFee(feeExemptedUser, 0, true);
     }
 
     function allocateToBuffer(uint256 amount) public {
@@ -88,6 +90,37 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         );
     }
 
+    function test_Vault_previewRedeemWithOverriddenFee(uint256 assets, uint256 amountToRedeem, uint64 overriddenFee)
+        external
+    {
+        // Bound inputs to valid ranges
+        assets = bound(assets, 100000, 100_000 ether);
+        overriddenFee = uint64(bound(overriddenFee, 2500, FeeMath.BASIS_POINT_SCALE));
+
+        vm.prank(FEE_MANAGER);
+        vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
+
+        vm.prank(alice);
+        vault.deposit(assets, alice);
+
+        amountToRedeem = bound(amountToRedeem, 100000, vault.balanceOf(alice));
+
+        uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
+        vm.prank(ADMIN);
+        allocateToBuffer(maxBufferAssets);
+
+        vm.startPrank(alice);
+
+        if (amountToRedeem > vault.maxRedeem(alice)) {
+            amountToRedeem = vault.maxRedeem(alice);
+        }
+        uint256 amountWithoutFee = vault.convertToAssets(amountToRedeem);
+        uint256 assetsReceived = vault.previewRedeem(amountToRedeem);
+        uint256 expectedFee = (assetsReceived * overriddenFee) / FeeMath.BASIS_POINT_SCALE;
+        assertApproxEqAbs(assetsReceived, amountWithoutFee - expectedFee, 5, "Withdrawal fee should be overridden fee");
+        vm.stopPrank();
+    }
+
     function test_Vault_previewRedeemWithExemptedFees(uint256 assets, uint256 withdrawnAssets) external {
         // Bound inputs to valid ranges
         vm.assume(assets >= 100000 && assets <= 100_000 ether);
@@ -127,6 +160,35 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
         uint256 expectedShares = vault.convertToShares(withdrawnAssets + expectedFee);
         assertApproxEqAbs(withdrawPreview, expectedShares, 1, "Preview withdraw shares should match expected");
+    }
+
+    function test_Vault_previewWithdrawWithOverriddenFee(uint256 assets, uint256 withdrawnAssets, uint64 overriddenFee)
+        external
+    {
+        assets = bound(assets, 100000, 100_000 ether);
+        withdrawnAssets = bound(withdrawnAssets, 0, assets);
+        overriddenFee = uint64(bound(overriddenFee, 2500, FeeMath.BASIS_POINT_SCALE));
+
+        vm.startPrank(FEE_MANAGER);
+        vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
+        vm.stopPrank();
+
+        vm.prank(alice);
+        vault.deposit(assets, alice);
+
+        uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
+        vm.prank(ADMIN);
+        allocateToBuffer(maxBufferAssets);
+
+        if (withdrawnAssets > vault.maxWithdraw(alice)) {
+            withdrawnAssets = vault.maxWithdraw(alice);
+        }
+
+        vm.startPrank(alice);
+        uint256 withdrawPreview = vault.previewWithdraw(withdrawnAssets);
+        uint256 expectedFee = (withdrawnAssets * overriddenFee) / FeeMath.BASIS_POINT_SCALE;
+        uint256 expectedShares = vault.convertToShares(withdrawnAssets + expectedFee);
+        assertApproxEqAbs(withdrawPreview, expectedShares, 5, "Preview withdraw shares should match expected");
     }
 
     function test_Vault_previewWithdrawWithFeesExempted(uint256 assets, uint256 withdrawnAssets) external {
@@ -188,11 +250,23 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         vm.startPrank(feeExemptedUser);
         uint256 maxShares = vault.maxRedeem(feeExemptedUser);
+        uint256 totalSupplyBefore = vault.totalSupply();
         uint256 expectedAssets = vault.previewRedeem(maxShares);
+        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
 
         uint256 convertedAssets = vault.convertToAssets(maxShares);
         uint256 redeemedAmount = vault.redeem(maxShares, feeExemptedUser, feeExemptedUser);
+        uint256 totalSupplyAfter = vault.totalSupply();
+        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
+        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
+
+        assertApproxEqAbs(
+            totalSupplyAfter,
+            totalSupplyBefore - maxShares,
+            1,
+            "Vault total supply should not change after redeem for fee exempted user"
+        );
         assertApproxEqAbs(redeemedAmount, expectedAssets, 1, "Redeemed amount should match preview");
 
         assertApproxEqAbs(redeemedAmount, convertedAssets, 1, "Redeemed amount should be total assets minus fee");
@@ -253,10 +327,18 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         );
 
         uint256 expectedShares = vault.convertToShares(maxWithdraw);
-
+        uint256 totalSupplyBefore = vault.totalSupply();
+        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
         // Verify we can actually withdraw the max amount
         uint256 withdrawnShares = vault.withdraw(maxWithdraw, feeExemptedUser, feeExemptedUser);
 
+        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
+
+        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
+
+        assertApproxEqAbs(
+            vault.totalSupply(), totalSupplyBefore - maxWithdraw, 1, "Vault total supply should decrease after withdraw"
+        );
         assertApproxEqAbs(withdrawnShares, expectedShares, 1, "Withdrawn shares should match expected with fee");
         assertApproxEqAbs(vault.balanceOf(feeExemptedUser), 0, 2, "feeExemptedUser should have no shares remaining");
     }
@@ -297,8 +379,20 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         vm.startPrank(feeExemptedUser);
         uint256 withdrawnShares = vault.convertToShares(withdrawnAssets);
-
+        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
+        uint256 vaultTotalSupplyBefore = vault.totalSupply();
         uint256 redeemedAmount = vault.redeem(withdrawnShares, feeExemptedUser, feeExemptedUser);
+        uint256 vaultTotalSupplyAfter = vault.totalSupply();
+        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
+
+        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
+
+        assertApproxEqAbs(
+            vaultTotalSupplyAfter,
+            vaultTotalSupplyBefore - withdrawnShares,
+            1,
+            "Vault total supply should decrease after redeem"
+        );
         assertEq(redeemedAmount, withdrawnAssets, "Withdrawal fee should be 0 for users exempted from fees");
     }
 
@@ -344,11 +438,19 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
             withdrawnAssets = maxWithdraw;
         }
 
-        uint256 expectedShares = vault.convertToShares(withdrawnAssets);
-
+        uint256 expectedSharesToBurn = vault.convertToShares(withdrawnAssets);
+        uint256 totalSupplyBefore = vault.totalSupply();
+        uint256 exchangeRateBefore = vault.convertToAssets(10 ** vault.decimals());
         uint256 withdrawAmount = vault.withdraw(withdrawnAssets, feeExemptedUser, feeExemptedUser);
+        uint256 totalSupplyAfter = vault.totalSupply();
+        uint256 exchangeRateAfter = vault.convertToAssets(10 ** vault.decimals());
 
-        assertApproxEqAbs(withdrawAmount, expectedShares, 2, "Preview withdraw shares should match expected");
+        assertApproxEqAbs(exchangeRateAfter, exchangeRateBefore, 5, "exchange rate should not change");
+
+        assertApproxEqAbs(
+            totalSupplyAfter, totalSupplyBefore - withdrawAmount, 1, "Vault total supply should decrease after withdraw"
+        );
+        assertApproxEqAbs(withdrawAmount, expectedSharesToBurn, 2, "Preview withdraw shares should match expected");
     }
 
     function test_Vault_feeOnRaw_FlatFee(uint256 assets) external {
@@ -364,13 +466,47 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 withdrawnAssets = maxBufferAssets / 2;
 
-        uint256 fee = vault._feeOnRaw(withdrawnAssets);
+        uint256 fee = vault._feeOnRaw(withdrawnAssets, alice);
 
         // Base withdrawal fee is 0.1% (100_000)
         // Buffer flat fee ratio is 80% (80_000_000)
         // Vault buffer fraction is 10% (10_000_000)
         uint256 expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
         assertApproxEqAbs(fee, expectedFee, 1, "Fee should be 0.1% of assets");
+    }
+
+    function test_Vault_feeOnRaw_OverridenFees(uint256 assets, uint64 overriddenFee) external {
+        assets = bound(assets, 100000, 100_000 ether);
+        overriddenFee = uint64(bound(overriddenFee, 2500, FeeMath.BASIS_POINT_SCALE));
+
+        vm.startPrank(FEE_MANAGER);
+        vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
+        vm.stopPrank();
+
+        vm.prank(alice);
+        vault.deposit(assets, alice);
+
+        uint256 maxBufferAssets = (assets * bufferRatio) / 1e8;
+        vm.prank(ADMIN);
+        allocateToBuffer(maxBufferAssets);
+
+        uint256 withdrawnAssets = maxBufferAssets / 2;
+
+        uint256 fee = vault._feeOnRaw(withdrawnAssets, alice);
+
+        // Base withdrawal fee is 0.1% (100_000)
+        // Buffer flat fee ratio is 80% (80_000_000)
+        // Vault buffer fraction is 10% (10_000_000)
+        uint256 expectedFee = (withdrawnAssets * overriddenFee) / FeeMath.BASIS_POINT_SCALE;
+        assertApproxEqAbs(fee, expectedFee, 1, "Fee should be same as expected fees");
+
+        vm.startPrank(FEE_MANAGER);
+        vault.overrideBaseWithdrawalFee(alice, 0, false);
+        vm.stopPrank();
+
+        fee = vault._feeOnRaw(withdrawnAssets, alice);
+        expectedFee = (withdrawnAssets * vault.baseWithdrawalFee()) / FeeMath.BASIS_POINT_SCALE;
+        assertApproxEqAbs(fee, expectedFee, 1, "Fee should be same as expected fees");
     }
 
     function test_Vault_feeOnRaw_ExemptedFee(uint256 assets) external {
@@ -387,7 +523,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.startPrank(feeExemptedUser);
         uint256 withdrawnAssets = maxBufferAssets / 2;
 
-        uint256 fee = vault._feeOnRaw(withdrawnAssets);
+        uint256 fee = vault._feeOnRaw(withdrawnAssets, feeExemptedUser);
 
         // Base withdrawal fee is 0.1% (100_000)
         // since feeExemptedUser is exempted from fees, fee should be 0
@@ -409,7 +545,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.startPrank(feeExemptedUser);
         uint256 withdrawnAssets = maxBufferAssets / 2;
 
-        uint256 fee = vault._feeOnTotal(withdrawnAssets);
+        uint256 fee = vault._feeOnTotal(withdrawnAssets, feeExemptedUser);
 
         // Base withdrawal fee is 0.1% (100_000)
         // since feeExemptedUser is exempted from fees, fee should be 0

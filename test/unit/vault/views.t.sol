@@ -12,8 +12,10 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "src/Common.sol";
 import {IERC20, IERC20Metadata} from "src/Common.sol";
 import {console} from "lib/forge-std/src/console.sol";
+import {MainnetActors} from "script/Actors.sol";
+import {MockERC20} from "test/unit/mocks/MockERC20.sol";
 
-contract VaultViewsUnitTest is Test, Etches {
+contract VaultViewsUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
 
     Vault public vaultImplementation;
@@ -68,7 +70,7 @@ contract VaultViewsUnitTest is Test, Etches {
     }
 
     function test_Vault_feeOnTotal() public view {
-        uint256 fee = vault._feeOnTotal(1e18);
+        uint256 fee = vault._feeOnTotal(1e18, alice);
         assertEq(fee, 0, "Fee on total should be zero");
     }
 
@@ -79,6 +81,77 @@ contract VaultViewsUnitTest is Test, Etches {
             address asset = assets[i];
             assertEq(vault.getAsset(asset).index, i, "Bad Index");
             assertEq(vault.getAsset(asset).decimals >= 6 || vault.getAsset(asset).decimals <= 18, true, "Bad decimals");
+        }
+    }
+
+    function test_Vault_hasAsset() public view {
+        // Test that WETH (the main asset) is recognized
+        assertTrue(vault.hasAsset(MC.WETH), "WETH should be a valid asset");
+
+        // Test that STETH is recognized (if it's in the asset list)
+        assertTrue(vault.hasAsset(MC.STETH), "STETH should be a valid asset");
+
+        // Test that WBTC is recognized (if it's in the asset list)
+        assertTrue(vault.hasAsset(MC.WBTC), "WBTC should be a valid asset");
+
+        // Test that METH is recognized (if it's in the asset list)
+        assertTrue(vault.hasAsset(MC.METH), "METH should be a valid asset");
+
+        // Test that a random address is not recognized as an asset
+        address randomAddress = address(0x1234567890123456789012345678901234567890);
+        assertFalse(vault.hasAsset(randomAddress), "Random address should not be a valid asset");
+
+        // Test that zero address is not recognized as an asset
+        assertFalse(vault.hasAsset(address(0)), "Zero address should not be a valid asset");
+    }
+
+    function test_Vault_hasAsset_afterDeletion(uint256 indexToDelete) public {
+        address[] memory assets = vault.getAssets();
+        indexToDelete = bound(indexToDelete, 1, assets.length - 1);
+
+        address assetToDelete = assets[indexToDelete];
+
+        // First verify that the asset is initially valid
+        assertTrue(vault.hasAsset(assetToDelete), "Asset should initially be valid");
+
+        // Delete the asset (requires ASSET_MANAGER_ROLE)
+        vm.startPrank(ASSET_MANAGER);
+        vault.deleteAsset(indexToDelete);
+        vm.stopPrank();
+
+        // Test that the asset is no longer recognized as valid after deletion
+        assertFalse(vault.hasAsset(assetToDelete), "Asset should not be valid after deletion");
+
+        // Verify that all other assets (not the deleted one) are still valid
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (assets[i] != assetToDelete) {
+                assertTrue(vault.hasAsset(assets[i]), "Other assets should still be valid after deletion");
+            }
+        }
+    }
+
+    function test_Vault_hasAsset_afterAddition() public {
+        // Create a mock ERC20 token to add as a new asset
+        MockERC20 newToken = new MockERC20("New Token", "NEW");
+        address newAsset = address(newToken);
+
+        // First verify that the new asset is not initially valid
+        assertFalse(vault.hasAsset(newAsset), "New asset should not initially be valid");
+
+        // Add the new asset (requires ASSET_MANAGER_ROLE)
+        vm.startPrank(ASSET_MANAGER);
+        vault.addAsset(newAsset, false);
+        vm.stopPrank();
+
+        // Test that the asset is now recognized as valid after addition
+        assertTrue(vault.hasAsset(newAsset), "Asset should be valid after addition");
+
+        // Verify that all existing assets are still valid
+        address[] memory existingAssets = vault.getAssets();
+        for (uint256 i = 0; i < existingAssets.length; i++) {
+            if (existingAssets[i] != newAsset) {
+                assertTrue(vault.hasAsset(existingAssets[i]), "Existing assets should still be valid after addition");
+            }
         }
     }
 

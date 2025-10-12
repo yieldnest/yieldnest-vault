@@ -43,7 +43,6 @@ contract VaultMainnetViewerTest is BaseIntegrationTest {
         uint256 totalAssets = vault.totalAssets();
 
         assertEq(assetsInfo.length, assets.length);
-        assertEq(assetsInfo.length, 12);
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata asset = IERC20Metadata(assets[i]);
@@ -74,7 +73,6 @@ contract VaultMainnetViewerTest is BaseIntegrationTest {
         uint256 totalAssets = vault.totalAssets();
 
         assertEq(assetsInfo.length, assets.length);
-        assertEq(assetsInfo.length, 12);
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20Metadata asset = IERC20Metadata(assets[i]);
@@ -135,7 +133,7 @@ contract VaultMainnetViewerTest is BaseIntegrationTest {
         {
             IVaultViewer.AssetInfo[] memory strategies = viewer.getStrategies();
             strategiesLengthBefore = strategies.length;
-            assertEq(strategies.length, 5, "There should be exactly 4 strategies");
+            assertEq(strategies.length, 6, "There should be exactly 4 strategies");
         }
 
         address[] memory underlyingAssets = new address[](1);

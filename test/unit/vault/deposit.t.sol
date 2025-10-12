@@ -211,6 +211,11 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
         vm.prank(ASSET_MANAGER);
         vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+        if (alwaysComputeTotalAssets) {
+            // if alwaysComputeTotalAssets is enabled, set the hooks to 0.
+            vm.prank(HOOKS_MANAGER);
+            vault.setHooks(address(0));
+        }
 
         // Get initial rates
         uint256 wbtcRate = IProvider(MC.PROVIDER).getRate(MC.WBTC);

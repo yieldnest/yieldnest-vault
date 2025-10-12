@@ -16,8 +16,11 @@ import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessC
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
-import {OriginWithdrawalLib} from "src/library/OriginWithdrawalLib.sol";
+import {OriginWithdrawalLib} from "src/withdraws/library/OriginWithdrawalLib.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {WithdrawerProcessorUtils} from "test/utils/WithdrawerProcessorUtils.sol";
+import {IAccessControl} from "src/Common.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 /**
  * @notice Tests for the Withdrawer contract
@@ -142,13 +145,40 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         _requestWithdrawalWstETH(amount);
     }
 
+    function test_Withdrawer_views() public view {
+        assertTrue(withdrawer.getHasAllocator(), "Withdrawer should have allocators");
+        assertTrue(withdrawer.getAssetWithdrawable(MC.WETH), "Withdrawer should have WETH withdrawable");
+        assertEq(withdrawer.asset(), MC.WETH, "Withdrawer should have WETH as the main asset");
+        assertFalse(withdrawer.alwaysComputeTotalAssets(), "Withdrawer should not always compute total assets");
+        assertTrue(withdrawer.countNativeAsset(), "Withdrawer should not count native asset");
+        assertEq(withdrawer.defaultAssetIndex(), 0, "Withdrawer should have WETH as the default asset");
+        assertEq(withdrawer.decimals(), 18, "Withdrawer should have 18 decimals");
+    }
+
     function test_Vault_ClaimWithdrawal_WSTETH(uint256 amount) public {
         vm.assume(amount > 1e6);
         vm.assume(amount < 1e3 ether);
 
+        // vault rate increases a lot due to the donation done in the setup to allow for withdrawals.
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 10000e18);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 10000e18);
+
+        withdrawer.processAccounting();
+        vault.processAccounting();
+        uint256 initialAsyncBalance = withdrawer.asyncWithdrawalBalance(MC.WSTETH);
+
         uint256 tokenId = _requestWithdrawalWstETH(amount);
 
-        _claimWithdrawalWstETH(tokenId);
+        uint256 totalAssets = withdrawer.totalAssets();
+        WithdrawerProcessorUtils.claimWithdrawalWstETH(withdrawer, PROCESSOR, tokenId);
+
+        withdrawer.processAccounting();
+        vault.processAccounting();
+
+        totalAssetsInvariant(totalAssets);
+
+        uint256 assets = withdrawer.asyncWithdrawalBalance(MC.WSTETH);
+        assertEq(assets, initialAsyncBalance, "Async withdrawal balance should be back to initial value after claim");
     }
 
     function test_Vault_RequestWithdrawal_WOETH(uint256 amount) public {
@@ -181,6 +211,22 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         uint256 tokenId = _requestWithdrawalOETH(amount);
 
         _claimWithdrawalWOETH(tokenId);
+    }
+
+    function test_withdrawer_arbitrary_address_deposit_reverts() public {
+        address arbitraryUser = makeAddr("arbitraryUser");
+        deal(MC.WETH, arbitraryUser, 1e18);
+        vm.startPrank(arbitraryUser);
+        IERC20(MC.WETH).approve(address(withdrawer), 1e18);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(arbitraryUser),
+                withdrawer.ALLOCATOR_ROLE()
+            )
+        );
+        withdrawer.depositAsset(MC.WETH, 1e18, arbitraryUser);
+        vm.stopPrank();
     }
 
     function _mintOETH(IVault vault_, uint256 amount) internal {
@@ -253,8 +299,11 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
     }
 
     function _requestWithdrawalWOETH(uint256 amount) internal returns (uint256 tokenId) {
-        vm.expectRevert(OriginWithdrawalLib.NotEnoughBalance.selector);
-        withdrawer.requestWithdrawalWOETH(amount);
+        if (IERC20(MC.WOETH).balanceOf(address(withdrawer)) == 0) {
+            vm.expectRevert(OriginWithdrawalLib.NotEnoughBalance.selector);
+            withdrawer.requestWithdrawalWOETH(amount);
+        }
+
         uint256 donatedAmount = _donate_single_asset(MC.WOETH, amount);
 
         address asset_ = MC.WOETH;
@@ -264,20 +313,22 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         assertEq(assets, 0, "Queued assets should be zero");
         uint256 totalAssets = withdrawer.totalAssets();
 
+        uint256[] memory requestIdsBefore = withdrawer.getWOETHRequestIds();
+
         tokenId = withdrawer.requestWithdrawalWOETH(donatedAmount);
 
         IOETHVault.WithdrawalRequest memory request = oethVault.withdrawalRequests(tokenId);
 
         uint256 amountInBase = amount;
-        assertApproxEqAbs(request.amount, amountInBase, 3, "Amount should match");
+        assertApproxEqAbs(request.amount, amountInBase + assets, 3, "Amount should match");
 
         assets = withdrawer.asyncWithdrawalBalance(asset_);
         assertApproxEqAbs(assets, amountInBase, 3, "Queued assets should match");
         totalAssetsInvariant(totalAssets);
 
         uint256[] memory requestIds = withdrawer.getWOETHRequestIds();
-        assertEq(requestIds.length, 1, "Request ids should match");
-        assertEq(requestIds[0], tokenId, "Request ids should match");
+        assertEq(requestIds.length, requestIdsBefore.length + 1, "Request ids should increase by 1");
+        assertEq(requestIds[requestIds.length - 1], tokenId, "Request ids should match for the new request");
     }
 
     function _claimWithdrawalWOETH(uint256 tokenId) internal {
@@ -319,20 +370,22 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         uint256 donatedAmount = _donate_single_asset(MC.WSTETH, amount);
 
         address asset_ = MC.WSTETH;
-        uint256 assets = withdrawer.asyncWithdrawalBalance(asset_);
-        assertEq(assets, 0, "Queued assets should be zero");
+        uint256 initialAsyncBalance = withdrawer.asyncWithdrawalBalance(asset_);
         uint256 totalAssets = withdrawer.totalAssets();
 
-        tokenId = _processRequestWithdrawalWstETH(withdrawer, MC.WSTETH_WITHDRAWAL_QUEUE, asset_, donatedAmount);
+        tokenId = WithdrawerProcessorUtils.processRequestWithdrawalWstETH(withdrawer, asset_, donatedAmount);
 
-        IWithdrawalQueue.WithdrawalRequestStatus memory status = _getWithdrawalRequestStatusFromQueue(tokenId);
+        IWithdrawalQueue.WithdrawalRequestStatus memory status =
+            WithdrawerProcessorUtils.getWithdrawalRequestStatusFromQueue(tokenId);
 
         assertApproxEqAbs(status.amountOfShares, donatedAmount, 3, "Amount should match");
 
-        assets = withdrawer.asyncWithdrawalBalance(asset_);
+        uint256 asyncWithdrawalBalanceAfter = withdrawer.asyncWithdrawalBalance(asset_);
         uint256 amountInBase = amount;
 
-        assertApproxEqAbs(assets, amountInBase, 3, "Queued assets should match");
+        assertApproxEqAbs(
+            asyncWithdrawalBalanceAfter - initialAsyncBalance, amountInBase, 3, "Queued assets should match"
+        );
         totalAssetsInvariant(totalAssets);
     }
 
@@ -350,36 +403,6 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         return statuses[0];
     }
 
-    function _claimWithdrawalWstETH(uint256 tokenId) internal {
-        address asset_ = MC.WSTETH;
-        IWithdrawalQueue queue = IWithdrawalQueue(MC.WSTETH_WITHDRAWAL_QUEUE);
-        uint256 totalAssets = withdrawer.totalAssets();
-
-        uint256[] memory tokenIds = new uint256[](1);
-        tokenIds[0] = tokenId;
-
-        IWithdrawalQueue.WithdrawalRequestStatus memory status = _getWithdrawalRequestStatusFromQueue(tokenId);
-        uint256 shareRate = status.amountOfStETH * 1e27 / status.amountOfShares;
-
-        uint256 lastFinalizedIndex = queue.getLastFinalizedRequestId();
-        IWithdrawalQueue.WithdrawalRequest memory request = _getWithdrawalRequestFromQueue(tokenId);
-        IWithdrawalQueue.WithdrawalRequest memory lastFinalizedRequest =
-            _getWithdrawalRequestFromQueue(lastFinalizedIndex);
-        uint256 amountOfEth = request.cumulativeStETH - lastFinalizedRequest.cumulativeStETH;
-
-        deal(address(MC.STETH), amountOfEth);
-        vm.startPrank(MC.STETH);
-        queue.finalize{value: amountOfEth}(tokenId, shareRate);
-        vm.stopPrank();
-
-        _processClaimWithdrawalWstETH(withdrawer, MC.WSTETH_WITHDRAWAL_QUEUE, tokenId);
-
-        totalAssetsInvariant(totalAssets);
-
-        uint256 assets = withdrawer.asyncWithdrawalBalance(asset_);
-        assertEq(assets, 0, "Queued assets should match");
-    }
-
     function _requestWithdrawal(address asset_, address queueManager_, uint256 amount)
         internal
         returns (uint256 tokenId)
@@ -388,8 +411,7 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
 
         IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
 
-        uint256 assets = withdrawer.asyncWithdrawalBalance(asset_);
-        assertEq(assets, 0, "Queued assets should be zero");
+        uint256 assetsBefore = withdrawer.asyncWithdrawalBalance(asset_);
         withdrawer.processAccounting();
         uint256 totalAssets = withdrawer.totalAssets();
 
@@ -399,12 +421,15 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
 
         assertEq(request.amount, donatedAmount, "Amount should match");
 
-        assets = withdrawer.asyncWithdrawalBalance(asset_);
+        uint256 assetsAfter = withdrawer.asyncWithdrawalBalance(asset_);
         uint256 baseAmount = request.amount * request.redemptionRateAtRequestTime / 1e18;
         uint256 fee = baseAmount * request.feeAtRequestTime / 1000000;
         uint256 amountInBase = baseAmount - fee;
 
-        assertApproxEqAbs(assets, amountInBase, 3, "Queued assets should match");
+        // Assert that asyncWithdrawalBalance increased by the right amount
+        assertApproxEqAbs(
+            assetsAfter - assetsBefore, amountInBase, 3, "asyncWithdrawalBalance should increase by the correct amount"
+        );
         totalAssetsInvariant(totalAssets);
     }
 
@@ -417,12 +442,24 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         queueManager.finalizeRequestsUpToIndex(tokenId + 1);
         vm.stopPrank();
 
+        // Get the request amount in base before claiming
+        IWithdrawalQueueManager.WithdrawalRequest memory request =
+            IWithdrawalQueueManager(queueManager_).withdrawalRequest(tokenId);
+        uint256 baseAmount = request.amount * request.redemptionRateAtRequestTime / 1e18;
+        uint256 fee = baseAmount * request.feeAtRequestTime / 1000000;
+        uint256 amountInBase = baseAmount - fee;
+
+        uint256 assetsBefore = withdrawer.asyncWithdrawalBalance(asset_);
+
         _processClaimWithdrawal(withdrawer, queueManager_, tokenId);
 
         totalAssetsInvariant(totalAssets);
 
-        uint256 assets = withdrawer.asyncWithdrawalBalance(asset_);
-        assertEq(assets, 0, "Queued assets should match");
+        uint256 assetsAfter = withdrawer.asyncWithdrawalBalance(asset_);
+        // asyncWithdrawalBalance should decrease by the amount of the request
+        assertApproxEqAbs(
+            assetsBefore - assetsAfter, amountInBase, 3, "asyncWithdrawalBalance should decrease by the correct amount"
+        );
     }
 
     function _getWithdrawalRequestFromQueue(uint256 requestId)
@@ -474,44 +511,6 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
 
         bytes[] memory data = new bytes[](1);
         data[0] = abi.encodeWithSignature("claimWithdrawal(uint256,address)", tokenId, address(vault_));
-
-        vault_.processor(targets, values, data);
-    }
-
-    function _processRequestWithdrawalWstETH(IVault vault_, address contractAddress, address asset_, uint256 amount)
-        internal
-        returns (uint256 tokenId)
-    {
-        address[] memory targets = new address[](2);
-        targets[0] = asset_;
-        targets[1] = contractAddress;
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
-
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = amount;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", contractAddress, amount);
-        data[1] = abi.encodeWithSignature("requestWithdrawalsWstETH(uint256[],address)", amounts, address(vault_));
-
-        bytes[] memory returnData = vault_.processor(targets, values, data);
-
-        uint256[] memory tokenIds = abi.decode(returnData[1], (uint256[]));
-        tokenId = tokenIds[0];
-    }
-
-    function _processClaimWithdrawalWstETH(IVault vault_, address contractAddress, uint256 tokenId) internal {
-        address[] memory targets = new address[](1);
-        targets[0] = contractAddress;
-
-        uint256[] memory values = new uint256[](1);
-        values[0] = 0;
-
-        bytes[] memory data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("claimWithdrawal(uint256)", tokenId);
 
         vault_.processor(targets, values, data);
     }
