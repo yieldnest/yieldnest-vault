@@ -54,6 +54,13 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         configureMainnet(vault);
 
+        {
+            // TODO: remove this once withdrawer is unpaused
+            vm.startPrank(ADMIN);
+            withdrawer.unpause();
+            vm.stopPrank();
+        }
+
         return (vault, Provider(vault.provider()));
     }
 
