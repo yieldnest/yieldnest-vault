@@ -26,6 +26,8 @@ interface IActors {
     function UPDATER() external view returns (address);
     /// @dev multisig
     function FEE_MANAGER() external view returns (address);
+    /// @dev multisig
+    function HOOKS_MANAGER() external view returns (address);
 
     /// @dev multisig
     function BOOTSTRAPPER() external view returns (address);
@@ -58,6 +60,7 @@ abstract contract LocalActors is IActors {
     address public constant MORPHO_USDC_CORE_VAULT_MANAGER = address(15);
     address public constant DEPOSIT_MANAGER = address(16);
     address public constant ALLOCATOR_MANAGER = address(17);
+    address public constant HOOKS_MANAGER = address(18);
 }
 
 contract HoleskyActors is IActors {
@@ -75,6 +78,7 @@ contract HoleskyActors is IActors {
     address public constant UNPAUSER = HoleskyAdmin;
     address public constant UPDATER = HoleskyAdmin;
     address public constant FEE_MANAGER = HoleskyAdmin;
+    address public constant HOOKS_MANAGER = HoleskyAdmin;
     address public constant BOOTSTRAPPER = HoleskyAdmin;
     address public constant UNAUTHORIZED = address(0);
     address public constant TIMELOCK = HoleskyAdmin;
@@ -104,6 +108,7 @@ contract MainnetActors is IActors {
     address public constant UNPAUSER = YnSecurityCouncil;
     address public constant MORPHO_USDC_CORE_VAULT_MANAGER = YnSecurityCouncil;
     address public constant FEE_MANAGER = YnSecurityCouncil;
+    address public constant HOOKS_MANAGER = YnSecurityCouncil;
     address public constant DEPOSIT_MANAGER = YnSecurityCouncil;
 
     address public constant ALLOCATOR_MANAGER = YnSecurityCouncil;
