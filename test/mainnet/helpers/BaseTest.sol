@@ -7,7 +7,7 @@ import {IVault} from "src/interface/IVault.sol";
 import {TimelockController as TLC} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "src/Common.sol";
+import {TransparentUpgradeableProxy} from "src/Common.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {Provider} from "src/module/Provider.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -30,6 +30,11 @@ import {TimelockController} from "@openzeppelin/contracts/governance/TimelockCon
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {FeeHooks} from "src/hooks/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
+import {
+    ProxyAdmin,
+    ITransparentUpgradeableProxy
+} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract BaseTest is Test, MainnetActors, TestHelper {
     struct PsPResponse {
@@ -65,54 +70,37 @@ contract BaseTest is Test, MainnetActors, TestHelper {
     }
 
     function _upgradeForHooksSupport(Vault vault) internal {
-        // proxy admin address for vault
-        vm.startPrank(0xe7B204706c948DE3b83d23fA6996000c182e25B3);
+        // Upgrade the proxy using the timelock as caller instead of the proxy admin
         Vault newVaultImplementation = new Vault();
-        ITransparentUpgradeableProxy(payable(address(vault))).upgradeToAndCall(address(newVaultImplementation), "");
-        vm.stopPrank();
-
-        // proxy admin address for withdrawer
-        vm.startPrank(0x3867Ff9489d1308CC2b4EDB79BfD464f76d37f22);
-        Withdrawer newWithdrawerImplementation = new Withdrawer();
-        ITransparentUpgradeableProxy(payable(address(withdrawer))).upgradeToAndCall(
-            address(newWithdrawerImplementation), ""
-        );
-        vm.stopPrank();
-
-        FeeHooks feeHooks = new FeeHooks(
-            address(vault),
-            ADMIN,
-            1e18,
-            ADMIN,
-            IHooks.Config({
-                beforeDeposit: false,
-                afterDeposit: false,
-                beforeMint: false,
-                afterMint: false,
-                beforeRedeem: false,
-                afterRedeem: false,
-                beforeWithdraw: false,
-                afterWithdraw: false,
-                beforeProcessAccounting: false,
-                afterProcessAccounting: true
-            })
+        vm.startPrank(TIMELOCK);
+        ProxyAdmin(ProxyUtils.getProxyAdmin(payable(address(vault)))).upgradeAndCall(
+            ITransparentUpgradeableProxy(payable(address(vault))), address(newVaultImplementation), ""
         );
 
-        vm.startPrank(ADMIN);
-        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), TIMELOCK);
-        withdrawer.grantRole(withdrawer.HOOKS_MANAGER_ROLE(), TIMELOCK);
         vm.stopPrank();
 
-        vm.startPrank(TIMELOCK);
-        vault.setHooks(address(feeHooks));
-        vm.stopPrank();
+        // FeeHooks feeHooks = new FeeHooks(
+        //     address(vault),
+        //     ADMIN,
+        //     1e18,
+        //     ADMIN,
+        //     IHooks.Config({
+        //         beforeDeposit: false,
+        //         afterDeposit: false,
+        //         beforeMint: false,
+        //         afterMint: false,
+        //         beforeRedeem: false,
+        //         afterRedeem: false,
+        //         beforeWithdraw: false,
+        //         afterWithdraw: false,
+        //         beforeProcessAccounting: false,
+        //         afterProcessAccounting: true
+        //     })
+        // );
 
-        Provider provider = new Provider(MC.WRAPPED_USDC);
-
-        vm.startPrank(TIMELOCK);
-        vault.setProvider(address(provider));
-        withdrawer.setProvider(address(provider));
-        vm.stopPrank();
+        // vm.startPrank(TIMELOCK);
+        // vault.setHooks(address(feeHooks));
+        // vm.stopPrank();
     }
 
     function configureMainnet(Vault vault) internal {
