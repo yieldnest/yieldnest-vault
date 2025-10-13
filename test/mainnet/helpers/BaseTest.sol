@@ -7,7 +7,7 @@ import {IVault} from "src/interface/IVault.sol";
 import {TimelockController as TLC} from "src/Common.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
-import {TransparentUpgradeableProxy} from "src/Common.sol";
+import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "src/Common.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {Provider} from "src/module/Provider.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -28,6 +28,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
+import {FeeHooks} from "src/module/FeeHooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 contract BaseTest is Test, MainnetActors, TestHelper {
     struct PsPResponse {
@@ -48,9 +50,46 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         TestHelper._initVault(vault);
 
+        _upgradeForHooksSupport(vault);
+
         configureMainnet(vault);
 
         return (vault, Provider(vault.provider()));
+    }
+
+    function _upgradeForHooksSupport(Vault vault) internal {
+        // proxy admin address
+        vm.startPrank(0xe7B204706c948DE3b83d23fA6996000c182e25B3);
+        Vault newVaultImplementation = new Vault();
+        ITransparentUpgradeableProxy(payable(address(vault))).upgradeToAndCall(address(newVaultImplementation), "");
+        vm.stopPrank();
+
+        FeeHooks feeHooks = new FeeHooks(
+            address(vault),
+            ADMIN,
+            1e18,
+            ADMIN,
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: true,
+                beforeWithdraw: true,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: true
+            })
+        );
+
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), TIMELOCK);
+        vm.stopPrank();
+
+        vm.startPrank(TIMELOCK);
+        vault.setHooks(address(feeHooks));
+        vm.stopPrank();
     }
 
     function configureMainnet(Vault vault) internal {
