@@ -28,7 +28,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
-import {FeeHooks} from "src/module/FeeHooks.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
 contract BaseTest is Test, MainnetActors, TestHelper {

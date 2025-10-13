@@ -293,15 +293,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (paused()) {
             revert Paused();
         }
-        (uint256 shares, uint256 baseAssets) = _convertToShares(asset(), assets, Math.Rounding.Floor);
-        IHooks hooks_ = hooks();
-        HooksLib.beforeDeposit(hooks_, asset(), assets, _msgSender(), receiver, shares, baseAssets);
 
-        _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
-
-        HooksLib.afterDeposit(hooks_, asset(), assets, _msgSender(), receiver, shares, baseAssets);
-
-        return shares;
+        return _depositAsset(asset(), assets, receiver);
     }
 
     /**
@@ -315,12 +308,21 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert Paused();
         }
         (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
+
         IHooks hooks_ = hooks();
-        HooksLib.beforeMint(hooks_, asset(), shares, _msgSender(), receiver, assets, baseAssets);
+        IHooks.MintParams memory params = IHooks.MintParams({
+            asset: asset(),
+            shares: shares,
+            caller: _msgSender(),
+            receiver: receiver,
+            assets: assets,
+            baseAssets: baseAssets
+        });
+        HooksLib.beforeMint(hooks_, params);
 
         _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
 
-        HooksLib.afterMint(hooks_, asset(), shares, _msgSender(), receiver, assets, baseAssets);
+        HooksLib.afterMint(hooks_, params);
 
         return assets;
     }
@@ -348,11 +350,19 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         shares = previewWithdraw(assets);
 
         IHooks hooks_ = hooks();
-        HooksLib.beforeWithdraw(hooks_, asset(), assets, _msgSender(), receiver, owner, shares);
+        IHooks.WithdrawParams memory params = IHooks.WithdrawParams({
+            asset: asset(),
+            assets: assets,
+            caller: _msgSender(),
+            receiver: receiver,
+            owner: owner,
+            shares: shares
+        });
+        HooksLib.beforeWithdraw(hooks_, params);
 
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
-        HooksLib.afterWithdraw(hooks_, asset(), assets, _msgSender(), receiver, owner, shares);
+        HooksLib.afterWithdraw(hooks_, params);
     }
 
     /**
@@ -376,12 +386,21 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert ExceededMaxRedeem(owner, shares, maxShares);
         }
         assets = previewRedeem(shares);
+
         IHooks hooks_ = hooks();
-        HooksLib.beforeRedeem(hooks_, asset(), shares, _msgSender(), receiver, owner, assets);
+        IHooks.RedeemParams memory params = IHooks.RedeemParams({
+            asset: asset(),
+            shares: shares,
+            caller: _msgSender(),
+            receiver: receiver,
+            owner: owner,
+            assets: assets
+        });
+        HooksLib.beforeRedeem(hooks_, params);
 
         _withdraw(_msgSender(), receiver, owner, assets, shares);
 
-        HooksLib.afterRedeem(hooks_, asset(), shares, _msgSender(), receiver, owner, assets);
+        HooksLib.afterRedeem(hooks_, params);
     }
 
     //// 4626-MAX ////
@@ -478,12 +497,39 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (paused()) {
             revert Paused();
         }
-        (uint256 shares, uint256 baseAssets) = _convertToShares(asset_, assets, Math.Rounding.Floor);
-        _deposit(asset_, _msgSender(), receiver, assets, shares, baseAssets);
-        return shares;
+
+        return _depositAsset(asset_, assets, receiver);
     }
 
     //// INTERNAL ////
+
+    /**
+     * @notice Internal function to handle deposits for specific assets.
+     * @param asset_ The address of the asset.
+     * @param assets The amount of assets to deposit.
+     * @param receiver The address of the receiver.
+     * @return uint256 The equivalent amount of shares.
+     */
+    function _depositAsset(address asset_, uint256 assets, address receiver) internal virtual returns (uint256) {
+        (uint256 shares, uint256 baseAssets) = _convertToShares(asset_, assets, Math.Rounding.Floor);
+
+        IHooks hooks_ = hooks();
+        IHooks.DepositParams memory params = IHooks.DepositParams({
+            asset: asset_,
+            assets: assets,
+            caller: _msgSender(),
+            receiver: receiver,
+            shares: shares,
+            baseAssets: baseAssets
+        });
+        HooksLib.beforeDeposit(hooks_, params);
+
+        _deposit(asset_, _msgSender(), receiver, assets, shares, baseAssets);
+
+        HooksLib.afterDeposit(hooks_, params);
+
+        return shares;
+    }
 
     /**
      * @notice Internal function to handle deposits.
@@ -671,6 +717,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         return VaultLib.convertBaseToAsset(asset_, assets);
     }
 
+    /// STORAGE ///
+
     /**
      * @notice Internal function to get the vault storage.
      * @return The vault storage.
@@ -693,6 +741,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function _getProcessorStorage() internal pure returns (ProcessorStorage storage) {
         return VaultLib.getProcessorStorage();
+    }
+
+    /**
+     * @notice Internal function to get the Hooks storage.
+     * @return $ The Hooks storage.
+     */
+    function _getHooksStorage() internal pure returns (HooksStorage storage) {
+        return VaultLib.getHooksStorage();
     }
 
     //// ADMIN ////
@@ -877,65 +933,45 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     function _processAccounting() internal virtual {
         uint256 totalAssetsBeforeAccounting = totalAssets();
         uint256 totalSupplyBeforeAccounting = totalSupply();
-        uint256 totalBaseBalanceBeforeAccounting = _getVaultStorage().totalAssets;
+        uint256 totalBaseAssetsBeforeAccounting = _getVaultStorage().totalAssets;
 
+        // handle before hook call
         IHooks hooks_ = hooks();
-
         HooksLib.beforeProcessAccounting(
-            hooks_, totalAssetsBeforeAccounting, totalSupplyBeforeAccounting, totalBaseBalanceBeforeAccounting
+            hooks_,
+            IHooks.BeforeProcessAccountingParams({
+                totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
+                totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
+                totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting
+            })
         );
 
-        uint256 totalBaseBalanceAfterAccounting = computeTotalAssets();
-
-        _getVaultStorage().totalAssets = totalBaseBalanceAfterAccounting;
+        /// update total base assets
+        uint256 totalBaseAssetsAfterAccounting = computeTotalAssets();
+        _getVaultStorage().totalAssets = totalBaseAssetsAfterAccounting;
         // solhint-disable-next-line not-rely-on-time
-        emit ProcessAccounting(block.timestamp, totalBaseBalanceAfterAccounting);
+        emit ProcessAccounting(block.timestamp, totalBaseAssetsBeforeAccounting, totalBaseAssetsAfterAccounting);
 
-        uint256 totalAssetsAfterAccounting = totalAssets();
-        uint256 totalSupplyAfterAccounting = totalSupply();
-
+        // handle after hook call
         HooksLib.afterProcessAccounting(
             hooks_,
-            totalAssetsBeforeAccounting,
-            totalAssetsAfterAccounting,
-            totalSupplyBeforeAccounting,
-            totalSupplyAfterAccounting,
-            totalBaseBalanceAfterAccounting,
-            totalBaseBalanceBeforeAccounting
+            IHooks.AfterProcessAccountingParams({
+                totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
+                totalAssetsAfterAccounting: totalAssets(),
+                totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
+                totalSupplyAfterAccounting: totalSupply(),
+                totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting,
+                totalBaseAssetsAfterAccounting: totalBaseAssetsAfterAccounting
+            })
         );
-    }
-
-    function mintShares(address recipient, uint256 shares) external {
-        if (msg.sender != address(hooks())) {
-            revert CallerNotHooks();
-        }
-
-        _mint(recipient, shares);
-    }
-
-    function setHooks(address hooks_) external onlyRole(HOOKS_MANAGER_ROLE) {
-        if (hooks_ != address(0) && address(IHooks(hooks_).VAULT()) != address(this)) {
-            revert InvalidHooks();
-        }
-        _setHooks(hooks_);
-    }
-
-    function _setHooks(address hooks_) internal virtual {
-        HooksStorage storage hooksStorage = _getHooksStorage();
-        emit SetHooks(address(hooksStorage.hooks), hooks_);
-        hooksStorage.hooks = IHooks(hooks_);
-    }
-
-    function hooks() public view returns (IHooks) {
-        return _getHooksStorage().hooks;
     }
 
     /**
      * @notice Computes the total assets in the vault.
-     * @return totalBaseBalance The total assets in the vault.
+     * @return totalBaseAssets The total base assets in the vault.
      */
-    function computeTotalAssets() public view virtual returns (uint256 totalBaseBalance) {
-        totalBaseBalance = VaultLib.computeTotalAssets();
+    function computeTotalAssets() public view virtual returns (uint256) {
+        return VaultLib.computeTotalAssets();
     }
 
     /**
@@ -955,11 +991,41 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
-     * @notice Internal function to get the Hooks storage.
-     * @return $ The Hooks storage.
+     * @notice Mints shares to a recipient. Can ONLY be called by the hooks() contract.
+     * @param recipient The address of the recipient.
+     * @param shares The amount of shares to mint.
      */
-    function _getHooksStorage() internal pure returns (HooksStorage storage) {
-        return VaultLib.getHooksStorage();
+    function mintShares(address recipient, uint256 shares) external {
+        if (msg.sender != address(hooks())) {
+            revert CallerNotHooks();
+        }
+
+        _mint(recipient, shares);
+    }
+
+    /**
+     * @notice Sets the hooks contract.
+     * @param hooks_ The address of the hooks contract.
+     */
+    function setHooks(address hooks_) external onlyRole(HOOKS_MANAGER_ROLE) {
+        if (hooks_ != address(0) && address(IHooks(hooks_).VAULT()) != address(this)) {
+            revert InvalidHooks();
+        }
+        _setHooks(hooks_);
+    }
+
+    function _setHooks(address hooks_) internal virtual {
+        HooksStorage storage hooksStorage = _getHooksStorage();
+        emit SetHooks(address(hooksStorage.hooks), hooks_);
+        hooksStorage.hooks = IHooks(hooks_);
+    }
+
+    /**
+     * @notice Returns the hooks contract.
+     * @return IHooks The hooks contract.
+     */
+    function hooks() public view returns (IHooks) {
+        return _getHooksStorage().hooks;
     }
 
     constructor() {
