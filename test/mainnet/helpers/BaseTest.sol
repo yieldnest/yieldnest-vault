@@ -64,7 +64,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
     function _upgradeForHooksSupport(Vault vault) internal {
         // Upgrade the proxy using the timelock as caller instead of the proxy admin
-        Vault newVaultImplementation = new Vault();
+        Vault newVaultImplementation = Vault(payable(0x9C1713BC42dCF621038F4016664fFAB096A05410));
         vm.startPrank(TIMELOCK);
         ProxyAdmin(ProxyUtils.getProxyAdmin(payable(address(vault)))).upgradeAndCall(
             ITransparentUpgradeableProxy(payable(address(vault))), address(newVaultImplementation), ""
