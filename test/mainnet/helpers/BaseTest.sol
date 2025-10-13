@@ -28,6 +28,13 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {ProxyUtils} from "script/ProxyUtils.sol";
+import {
+    ProxyAdmin,
+    ITransparentUpgradeableProxy
+} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract BaseTest is Test, MainnetActors, TestHelper {
     struct PsPResponse {
@@ -48,9 +55,45 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         TestHelper._initVault(vault);
 
+        _upgradeForHooksSupport(vault);
+
         configureMainnet(vault);
 
         return (vault, Provider(vault.provider()));
+    }
+
+    function _upgradeForHooksSupport(Vault vault) internal {
+        // Upgrade the proxy using the timelock as caller instead of the proxy admin
+        Vault newVaultImplementation = new Vault();
+        vm.startPrank(TIMELOCK);
+        ProxyAdmin(ProxyUtils.getProxyAdmin(payable(address(vault)))).upgradeAndCall(
+            ITransparentUpgradeableProxy(payable(address(vault))), address(newVaultImplementation), ""
+        );
+
+        vm.stopPrank();
+
+        // FeeHooks feeHooks = new FeeHooks(
+        //     address(vault),
+        //     ADMIN,
+        //     1e18,
+        //     ADMIN,
+        //     IHooks.Config({
+        //         beforeDeposit: false,
+        //         afterDeposit: false,
+        //         beforeMint: false,
+        //         afterMint: false,
+        //         beforeRedeem: false,
+        //         afterRedeem: false,
+        //         beforeWithdraw: false,
+        //         afterWithdraw: false,
+        //         beforeProcessAccounting: false,
+        //         afterProcessAccounting: true
+        //     })
+        // );
+
+        // vm.startPrank(TIMELOCK);
+        // vault.setHooks(address(feeHooks));
+        // vm.stopPrank();
     }
 
     function configureMainnet(Vault vault) internal {
@@ -69,6 +112,7 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         vault.processAccounting();
 
+        // TODO: remove whe withdrawer unpaused
         if (withdrawer.paused()) {
             vm.startPrank(ADMIN);
             withdrawer.unpause();

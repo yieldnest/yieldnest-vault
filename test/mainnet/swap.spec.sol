@@ -77,6 +77,7 @@ contract SwapTest is BaseTest {
             PsPResponse memory response = BaseTest._fetchPSPRoute(MC.USDC, assets[i], depositAmount, address(vault));
             processSwap(response);
             vault.processAccounting();
+            uint256 sharesMinted = vault.totalSupply() - vaultTotalSupplyBefore;
 
             uint256 assetBalanceAfter = IERC20(assets[i]).balanceOf(address(vault));
             uint256 vaultTotalAssetsAfter = vault.totalAssets();
@@ -112,7 +113,7 @@ contract SwapTest is BaseTest {
                 0.2e16,
                 "Asset balance should be within slippage tolerance"
             );
-            totalSupplyInvariant(vaultTotalSupplyBefore);
+            totalSupplyInvariant(vaultTotalSupplyBefore + sharesMinted);
         }
     }
 

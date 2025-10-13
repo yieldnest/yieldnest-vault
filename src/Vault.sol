@@ -18,16 +18,8 @@ import {VaultLib} from "src/library/VaultLib.sol";
  * - Role-based access control for administration and fee management
  */
 contract Vault is BaseVault {
-    string public constant VAULT_VERSION = "0.3.0";
+    string public constant VAULT_VERSION = "0.4.0";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
-
-    /**
-     * @notice Internal function to get the fee storage.
-     * @return $ The fee storage.
-     */
-    function _getFeeStorage() internal pure returns (FeeStorage storage) {
-        return VaultLib.getFeeStorage();
-    }
 
     /**
      * @notice Initializes the vault.
@@ -66,34 +58,45 @@ contract Vault is BaseVault {
 
     //// FEES ////
 
-    /**
-     * @notice Returns the fee on raw assets where the fee would get added on top of the assets.
-     * @param assets The amount of assets.
-     * @return The fee on raw assets.
-     */
-    function _feeOnRaw(uint256 assets) public view override returns (uint256) {
-        FeeStorage storage fees = _getFeeStorage();
-        uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;
-        if (baseWithdrawalFee_ == 0) {
-            return 0;
-        }
-        return FeeMath.feeOnRaw(assets, baseWithdrawalFee_);
+    function _getFeeStorage() internal pure returns (FeeStorage storage) {
+        return VaultLib.getFeeStorage();
     }
 
     /**
-     * @notice Returns the fee on total assets where the fee is already included.
-     * @param assets The amount of assets.
-     * @return The fee on total assets.
-     * @dev Calculates the fee part of an amount `assets` that already includes fees.
+     * @notice Returns the fee on amount where the fee would get added on top of the amount.
+     * @param amount The amount on which the fee would get added.
+     * @param user The address of the user.
+     * @return The fee amount.
+     */
+    function _feeOnRaw(uint256 amount, address user) public view override returns (uint256) {
+        return FeeMath.feeOnRaw(amount, _feesToCharge(user));
+    }
+
+    /**
+     * @notice Returns the fee amount where fee is already included in amount
+     * @param amount The amount on which the fee is already included.
+     * @param user The address of the user.
+     * @return The fee amount.
+     * @dev Calculates the fee part of an amount `amount` that already includes fees.
      * Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
      */
-    function _feeOnTotal(uint256 assets) public view override returns (uint256) {
+    function _feeOnTotal(uint256 amount, address user) public view override returns (uint256) {
+        return FeeMath.feeOnTotal(amount, _feesToCharge(user));
+    }
+
+    /**
+     * @notice Returns the fee to charge for a user based on whether the fee is overridden for the user
+     * @param user The address of the user.
+     * @return The fee to charge.
+     */
+    function _feesToCharge(address user) internal view returns (uint64) {
         FeeStorage storage fees = _getFeeStorage();
-        uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;
-        if (baseWithdrawalFee_ == 0) {
-            return 0;
+        bool isFeeOverridenForUser = fees.overriddenBaseWithdrawalFee[user].isOverridden;
+        if (isFeeOverridenForUser) {
+            return fees.overriddenBaseWithdrawalFee[user].baseWithdrawalFee;
+        } else {
+            return fees.baseWithdrawalFee;
         }
-        return FeeMath.feeOnTotal(assets, baseWithdrawalFee_);
     }
 
     //// FEES ADMIN ////
@@ -105,6 +108,34 @@ contract Vault is BaseVault {
      */
     function setBaseWithdrawalFee(uint64 baseWithdrawalFee_) external virtual onlyRole(FEE_MANAGER_ROLE) {
         _setBaseWithdrawalFee(baseWithdrawalFee_);
+    }
+
+    /**
+     * @notice Sets whether the withdrawal fee is exempted for a user
+     * @param user_ The address of the user
+     * @param baseWithdrawalFee_ The overridden base withdrawal fee in basis points (1/10000)
+     * @param toOverride_ Whether to override the withdrawal fee for the user
+     * @dev Only callable by accounts with FEE_MANAGER_ROLE
+     */
+    function overrideBaseWithdrawalFee(address user_, uint64 baseWithdrawalFee_, bool toOverride_)
+        external
+        virtual
+        onlyRole(FEE_MANAGER_ROLE)
+    {
+        _overrideBaseWithdrawalFee(user_, baseWithdrawalFee_, toOverride_);
+    }
+
+    /**
+     * @notice Internal function to set whether the withdrawal fee is exempted for a user
+     * @param user_ The address of the user
+     * @param baseWithdrawalFee_ The overridden base withdrawal fee in basis points (1/10000)
+     * @param toOverride_ Whether to override the withdrawal fee for the user
+     */
+    function _overrideBaseWithdrawalFee(address user_, uint64 baseWithdrawalFee_, bool toOverride_) internal virtual {
+        FeeStorage storage fees = _getFeeStorage();
+        fees.overriddenBaseWithdrawalFee[user_] =
+            OverriddenBaseWithdrawalFeeFields({baseWithdrawalFee: baseWithdrawalFee_, isOverridden: toOverride_});
+        emit WithdrawalFeeOverridden(user_, baseWithdrawalFee_, toOverride_);
     }
 
     /**
@@ -125,5 +156,18 @@ contract Vault is BaseVault {
      */
     function baseWithdrawalFee() external view returns (uint64) {
         return _getFeeStorage().baseWithdrawalFee;
+    }
+
+    /**
+     * @notice Returns whether the withdrawal fee is exempted for a user
+     * @param user_ The address of the user
+     * @return bool Whether the withdrawal fee is exempted for the user
+     */
+    function overriddenBaseWithdrawalFee(address user_)
+        external
+        view
+        returns (OverriddenBaseWithdrawalFeeFields memory)
+    {
+        return _getFeeStorage().overriddenBaseWithdrawalFee[user_];
     }
 }

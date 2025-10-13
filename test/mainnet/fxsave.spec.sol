@@ -119,7 +119,7 @@ contract FXSaveTest is BaseTest {
         vault.processAccounting();
     }
 
-    function redeemFromFxSave(uint256 fxSaveShares) internal {
+    function redeemFromFxSave(uint256 fxSaveShares, uint256 fxSaveBalanceBefore) internal {
         require(fxSaveShares > 0, "Vault should have FXSAVE shares to redeem");
 
         // Prepare calldata for IERC4626.redeem(uint256 shares, address receiver, address owner)
@@ -268,7 +268,7 @@ contract FXSaveTest is BaseTest {
         // Measure fxBASE balance before redeem
         uint256 fxBaseBalanceBefore = IERC20(MC.FXBASE).balanceOf(address(vault));
 
-        redeemFromFxSave(fxSaveObtained);
+        redeemFromFxSave(fxSaveObtained, fxSaveBalanceBefore);
 
         // Assert after depositToFxSave (allowing approx rel diff of 1e4)
         vm.assertApproxEqRel(
