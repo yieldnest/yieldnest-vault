@@ -50,7 +50,19 @@ library VaultVerification {
     }
 
     function getWithdrawer(IVault vault) internal view returns (Withdrawer) {
-        // Look up withdrawer by symbol
+        Withdrawer withdrawer = _getWithdrawer(vault);
+        if (address(withdrawer) != address(0)) {
+            return withdrawer;
+        }
+
+        revert WithdrawerNotFound(address(vault));
+    }
+
+    function safeGetWithdrawer(IVault vault) internal view returns (Withdrawer) {
+        return _getWithdrawer(vault);
+    }
+
+    function _getWithdrawer(IVault vault) internal view returns (Withdrawer) {
         address[] memory assets = vault.getAssets();
         for (uint256 i = 0; i < assets.length; i++) {
             if (keccak256(bytes(IVault(assets[i]).symbol())) == keccak256(bytes(WithdrawerConfig.WITHDRAWER_SYMBOL))) {
@@ -58,6 +70,6 @@ library VaultVerification {
             }
         }
 
-        revert WithdrawerNotFound(address(vault));
+        return Withdrawer(payable(address(0)));
     }
 }
