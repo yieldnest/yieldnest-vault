@@ -91,9 +91,13 @@ contract BaseTest is Test, MainnetActors, TestHelper {
         //     })
         // );
 
-        // vm.startPrank(TIMELOCK);
-        // vault.setHooks(address(feeHooks));
-        // vm.stopPrank();
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), ADMIN);
+        vm.stopPrank();
+
+        vm.startPrank(ADMIN);
+        vault.setHooks(0x436e02c1D2719EB79390aa0a52CCd6268267017d);
+        vm.stopPrank();
     }
 
     function configureMainnet(Vault vault) internal {
