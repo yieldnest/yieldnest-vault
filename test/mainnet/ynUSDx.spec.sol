@@ -15,6 +15,7 @@ import {ISuperUSDC} from "src/interface/ISuperUSDC.sol";
 import {BaseVault} from "src/BaseVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IVault} from "src/interface/IVault.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract YnUSDxTest is BaseTest {
     using SafeERC20 for IERC20;
@@ -84,6 +85,10 @@ contract YnUSDxTest is BaseTest {
         vm.startPrank(ADMIN);
         vault.setBaseWithdrawalFee(withdrawalFee);
         vm.stopPrank();
+
+        // set this to allow for donations
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 10_000_000_000e18);
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 10_000_000_000e18);
 
         address alice = makeAddr("alice");
         address donator = makeAddr("donator");

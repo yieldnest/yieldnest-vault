@@ -9,6 +9,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IVault} from "src/interface/IVault.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -58,6 +59,10 @@ contract SwapTest is BaseTest {
         assets[2] = MC.USDE;
         assets[3] = MC.CRVUSD;
         assets[4] = MC.FRAX;
+
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 0.01e18);
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 0.01e18);
+        HooksUtils.setMaxTotalAssetsDecreaseRatio(vault, 0.01e18);
 
         uint256 snapshotId = vm.snapshot();
 
