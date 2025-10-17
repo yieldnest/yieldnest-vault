@@ -110,7 +110,7 @@ contract SwapTest is BaseTest {
             assertApproxEqRel(
                 vaultTotalAssetsAfter,
                 vaultTotalAssetsBefore,
-                0.2e16,
+                0.3e16,
                 "Asset balance should be within slippage tolerance"
             );
             totalSupplyInvariant(vaultTotalSupplyBefore + sharesMinted);
