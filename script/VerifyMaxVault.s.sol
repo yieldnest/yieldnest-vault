@@ -132,7 +132,7 @@ contract VerifyMaxVault is BaseScript, Test {
 
         VaultVerification.verifyProvider(vaultProxy, Provider(address(rateProvider)));
 
-        assertEq(vaultProxy.VAULT_VERSION(), "0.3.0", "Vault version should be 0.3.0");
+        assertEq(vaultProxy.VAULT_VERSION(), "0.4.0", "Vault version should be 0.4.0");
         console.log("\u2705 Vault version:          ", vaultProxy.VAULT_VERSION());
         console.log("==============================================");
 
