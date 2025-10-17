@@ -55,45 +55,9 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
         TestHelper._initVault(vault);
 
-        _upgradeForHooksSupport(vault);
-
         configureMainnet(vault);
 
         return (vault, Provider(vault.provider()));
-    }
-
-    function _upgradeForHooksSupport(Vault vault) internal {
-        // Upgrade the proxy using the timelock as caller instead of the proxy admin
-        Vault newVaultImplementation = Vault(payable(0x9C1713BC42dCF621038F4016664fFAB096A05410));
-        vm.startPrank(TIMELOCK);
-        ProxyAdmin(ProxyUtils.getProxyAdmin(payable(address(vault)))).upgradeAndCall(
-            ITransparentUpgradeableProxy(payable(address(vault))), address(newVaultImplementation), ""
-        );
-
-        vm.stopPrank();
-
-        // FeeHooks feeHooks = new FeeHooks(
-        //     address(vault),
-        //     ADMIN,
-        //     1e18,
-        //     ADMIN,
-        //     IHooks.Config({
-        //         beforeDeposit: false,
-        //         afterDeposit: false,
-        //         beforeMint: false,
-        //         afterMint: false,
-        //         beforeRedeem: false,
-        //         afterRedeem: false,
-        //         beforeWithdraw: false,
-        //         afterWithdraw: false,
-        //         beforeProcessAccounting: false,
-        //         afterProcessAccounting: true
-        //     })
-        // );
-
-        // vm.startPrank(TIMELOCK);
-        // vault.setHooks(address(feeHooks));
-        // vm.stopPrank();
     }
 
     function configureMainnet(Vault vault) internal {
