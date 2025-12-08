@@ -12,6 +12,7 @@ import {MainnetActors} from "script/Actors.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {console} from "lib/forge-std/src/Test.sol";
 
 contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -579,6 +580,65 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
             totalAssetsBefore,
             totalAssetsAfter + assets,
             "Total assets should be total assets after plus assets withdrawn"
+        );
+    }
+
+    function test_Vault_previewRedeem_WithOverriddenFee_MultipleRedeem() external {
+        uint256 assets = 100 ether;
+        uint256 amountToRedeem = 1 ether;
+        uint64 overriddenFee = 1000;
+
+        vm.prank(FEE_MANAGER);
+        vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
+
+        vm.prank(alice);
+        vault.deposit(assets, alice);
+
+        uint256 maxBufferAssets = assets / 2;
+        vm.prank(ADMIN);
+        allocateToBuffer(maxBufferAssets);
+
+        vm.startPrank(alice);
+
+        if (amountToRedeem > vault.maxRedeem(alice)) {
+            amountToRedeem = vault.maxRedeem(alice);
+        }
+        uint256 amountWithoutFee = vault.convertToAssets(amountToRedeem);
+        uint256 expectedAssetsReceivedWithOneCall = vault.previewRedeem(amountToRedeem);
+        uint256 expectedFee = (expectedAssetsReceivedWithOneCall * overriddenFee) / FeeMath.BASIS_POINT_SCALE;
+        assertApproxEqAbs(
+            expectedAssetsReceivedWithOneCall,
+            amountWithoutFee - expectedFee,
+            5,
+            "Withdrawal fee should be overridden fee"
+        );
+        vm.stopPrank();
+
+        uint256 assetsRedeemed = 0;
+
+        uint256 loopCount = 10000;
+        uint256 amountLeftToRedeem = amountToRedeem;
+        uint256 amountToRedeemBatch = amountLeftToRedeem / loopCount;
+        for (uint256 i = 0; i < loopCount; i++) {
+            vm.startPrank(alice);
+            uint256 assetsRedeemedOnce = vault.redeem(amountToRedeemBatch, alice, alice);
+            vm.stopPrank();
+            assetsRedeemed += assetsRedeemedOnce;
+            amountLeftToRedeem -= amountToRedeemBatch;
+        }
+
+        console.log("expectedAssetsReceivedWithOneCall", expectedAssetsReceivedWithOneCall);
+        console.log("assetsRedeemed", assetsRedeemed);
+        assertGt(
+            assetsRedeemed,
+            expectedAssetsReceivedWithOneCall,
+            "assetsRedeemed should be greater than expectedAssetsReceivedWithOneCall"
+        );
+        assertApproxEqRel(
+            assetsRedeemed,
+            expectedAssetsReceivedWithOneCall,
+            1e12,
+            "Difference between assetsRedeemed and expectedAssetsReceivedWithOneCall should be within 1e14 relative tolerance"
         );
     }
 }
