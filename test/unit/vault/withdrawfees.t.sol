@@ -583,6 +583,43 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         );
     }
 
+    function test_Vault_previewRedeem_WithOverriddenFee_SingleRedeem() external {
+        uint256 assets = 100 ether;
+        uint256 amountToRedeem = 1 ether;
+        uint64 overriddenFee = 1000;
+
+        vm.prank(FEE_MANAGER);
+        vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
+
+        vm.prank(alice);
+
+        vault.deposit(assets, alice);
+
+        uint256 maxBufferAssets = assets / 2;
+        vm.prank(ADMIN);
+        allocateToBuffer(maxBufferAssets);
+
+        vm.startPrank(alice);
+
+        uint256 amountWithoutFee = vault.convertToAssets(amountToRedeem);
+        uint256 expectedAssetsReceivedWithOneCall = vault.previewRedeem(amountToRedeem);
+        uint256 expectedFee = (expectedAssetsReceivedWithOneCall * overriddenFee) / FeeMath.BASIS_POINT_SCALE;
+        assertApproxEqAbs(
+            expectedAssetsReceivedWithOneCall,
+            amountWithoutFee - expectedFee,
+            5,
+            "Withdrawal fee should be overridden fee"
+        );
+
+        uint256 assetsRedeemedOnce = vault.redeem(amountToRedeem, alice, alice);
+        vm.stopPrank();
+        assertEq(
+            assetsRedeemedOnce,
+            expectedAssetsReceivedWithOneCall,
+            "Assets redeemed should be equal to expected assets received with one call"
+        );
+    }
+
     function test_Vault_previewRedeem_WithOverriddenFee_MultipleRedeem() external {
         uint256 assets = 100 ether;
         uint256 amountToRedeem = 1 ether;
