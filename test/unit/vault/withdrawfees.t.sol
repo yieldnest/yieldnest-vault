@@ -664,8 +664,11 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
             amountLeftToRedeem -= amountToRedeemBatch;
         }
 
-        console.log("expectedAssetsReceivedWithOneCall", expectedAssetsReceivedWithOneCall);
-        console.log("assetsRedeemed", assetsRedeemed);
+        /*
+         NOTE: Withdrawal fees implementation is subject to the issue of undercounting fees when redeeming
+        with multiple calls. This is because fee is distributed to the vault, therefore the user's shares
+        get redistributed to the user itself
+        */
         assertGt(
             assetsRedeemed,
             expectedAssetsReceivedWithOneCall,
