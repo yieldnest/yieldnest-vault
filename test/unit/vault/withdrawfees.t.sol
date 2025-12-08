@@ -622,7 +622,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
     function test_Vault_previewRedeem_WithOverriddenFee_MultipleRedeem() external {
         uint256 assets = 100 ether;
-        uint256 amountToRedeem = 1 ether;
+        uint256 amountToRedeem = 10 ether;
         uint64 overriddenFee = 1000;
 
         vm.prank(FEE_MANAGER);
