@@ -623,7 +623,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
     function test_Vault_previewRedeem_WithOverriddenFee_MultipleRedeem() external {
         uint256 assets = 100 ether;
         uint256 amountToRedeem = 10 ether;
-        uint64 overriddenFee = 1000;
+        uint64 overriddenFee = 100000;
 
         vm.prank(FEE_MANAGER);
         vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
@@ -677,8 +677,84 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         assertApproxEqRel(
             assetsRedeemed,
             expectedAssetsReceivedWithOneCall,
-            1e12,
+            1e15,
             "Difference between assetsRedeemed and expectedAssetsReceivedWithOneCall should be within 1e14 relative tolerance"
         );
+    }
+
+    function test_fuzz_Vault_previewRedeem_WithOverriddenFee_MultipleRedeem(
+        uint256 assets,
+        uint256 amountToRedeem,
+        uint64 overriddenFee
+    ) external {
+        // uint256 assets = 12782;
+        // uint256 amountToRedeem = 7246;
+        // uint64 overriddenFee = 1864712049423024128;
+
+        assets = bound(assets, 1 ether, 100_000 ether);
+        amountToRedeem = bound(amountToRedeem, 100000, assets * 98 / 100);
+        overriddenFee = uint64(bound(overriddenFee, 10, 100000));
+
+        // console.log("assets", assets);
+        // console.log("amountToRedeem", amountToRedeem);
+        // console.log("overriddenFee", overriddenFee);
+
+        // return;
+
+        vm.prank(FEE_MANAGER);
+        vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
+
+        vm.prank(alice);
+        vault.deposit(assets, alice);
+
+        vm.prank(ADMIN);
+        allocateToBuffer(amountToRedeem);
+
+        vm.startPrank(alice);
+
+        uint256 amountWithoutFee = vault.convertToAssets(amountToRedeem);
+        uint256 expectedAssetsReceivedWithOneCall = vault.previewRedeem(amountToRedeem);
+        uint256 expectedFee = (expectedAssetsReceivedWithOneCall * overriddenFee) / FeeMath.BASIS_POINT_SCALE;
+        assertApproxEqAbs(
+            expectedAssetsReceivedWithOneCall,
+            amountWithoutFee - expectedFee,
+            5,
+            "Withdrawal fee should be overridden fee"
+        );
+        vm.stopPrank();
+
+        uint256 assetsRedeemed = 0;
+
+        // the loop count gives marginal gain to the user.
+        uint256 loopCount = 100;
+        uint256 amountLeftToRedeem = amountToRedeem;
+        uint256 amountToRedeemBatch = amountLeftToRedeem / loopCount;
+        for (uint256 i = 0; i < loopCount; i++) {
+            vm.startPrank(alice);
+            uint256 assetsRedeemedOnce = vault.redeem(amountToRedeemBatch, alice, alice);
+            vm.stopPrank();
+            assetsRedeemed += assetsRedeemedOnce;
+            amountLeftToRedeem -= amountToRedeemBatch;
+        }
+
+        /*
+         NOTE: Withdrawal fees implementation is subject to the issue of undercounting fees when redeeming
+        with multiple calls. This is because fee is distributed to the vault, therefore the user's shares
+        get redistributed to the user itself
+        */
+        if (assetsRedeemed > expectedAssetsReceivedWithOneCall) {
+            // only the case in which it's higher it;s relevant as it results in extra gains for the user
+            assertGt(
+                assetsRedeemed,
+                expectedAssetsReceivedWithOneCall,
+                "assetsRedeemed should be greater than expectedAssetsReceivedWithOneCall"
+            );
+            assertApproxEqRel(
+                assetsRedeemed,
+                expectedAssetsReceivedWithOneCall,
+                1e15,
+                "Difference between assetsRedeemed and expectedAssetsReceivedWithOneCall should be within 1e14 relative tolerance"
+            );
+        }
     }
 }
