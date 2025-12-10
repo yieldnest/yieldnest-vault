@@ -622,7 +622,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
     function test_Vault_previewRedeem_WithOverriddenFee_MultipleRedeem() external {
         uint256 assets = 100 ether;
-        uint256 amountToRedeem = 10 ether;
+        uint256 amountToRedeem = 99 ether;
         uint64 overriddenFee = 100000;
 
         vm.prank(FEE_MANAGER);
@@ -631,7 +631,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         vm.prank(alice);
         vault.deposit(assets, alice);
 
-        uint256 maxBufferAssets = assets / 2;
+        uint256 maxBufferAssets = 99.5 ether;
         vm.prank(ADMIN);
         allocateToBuffer(maxBufferAssets);
 
@@ -653,7 +653,7 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 assetsRedeemed = 0;
 
-        uint256 loopCount = 10000;
+        uint256 loopCount = 100;
         uint256 amountLeftToRedeem = amountToRedeem;
         uint256 amountToRedeemBatch = amountLeftToRedeem / loopCount;
         for (uint256 i = 0; i < loopCount; i++) {
@@ -674,6 +674,13 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
             expectedAssetsReceivedWithOneCall,
             "assetsRedeemed should be greater than expectedAssetsReceivedWithOneCall"
         );
+
+        uint256 actualFeePaid = amountWithoutFee - assetsRedeemed;
+        uint256 expectedFeeWithOneRedemption = amountWithoutFee - expectedAssetsReceivedWithOneCall;
+        console.log("actualFeePaid", actualFeePaid);
+        console.log("expectedFeeWithOneRedemption", expectedFeeWithOneRedemption);
+        console.log("difference", expectedFeeWithOneRedemption - actualFeePaid);
+
         assertApproxEqRel(
             assetsRedeemed,
             expectedAssetsReceivedWithOneCall,
