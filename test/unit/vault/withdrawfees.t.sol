@@ -677,9 +677,8 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
 
         uint256 actualFeePaid = amountWithoutFee - assetsRedeemed;
         uint256 expectedFeeWithOneRedemption = amountWithoutFee - expectedAssetsReceivedWithOneCall;
-        console.log("actualFeePaid", actualFeePaid);
-        console.log("expectedFeeWithOneRedemption", expectedFeeWithOneRedemption);
-        console.log("difference", expectedFeeWithOneRedemption - actualFeePaid);
+
+        assertLt(actualFeePaid, expectedFeeWithOneRedemption, "Actual fee paid should be less than expected fee with one redemption");
 
         assertApproxEqRel(
             assetsRedeemed,
@@ -694,19 +693,10 @@ contract VaultWithdrawFeesUnitTest is Test, MainnetActors, Etches {
         uint256 amountToRedeem,
         uint64 overriddenFee
     ) external {
-        // uint256 assets = 12782;
-        // uint256 amountToRedeem = 7246;
-        // uint64 overriddenFee = 1864712049423024128;
-
+        
         assets = bound(assets, 1 ether, 100_000 ether);
         amountToRedeem = bound(amountToRedeem, 100000, assets * 98 / 100);
         overriddenFee = uint64(bound(overriddenFee, 10, 100000));
-
-        // console.log("assets", assets);
-        // console.log("amountToRedeem", amountToRedeem);
-        // console.log("overriddenFee", overriddenFee);
-
-        // return;
 
         vm.prank(FEE_MANAGER);
         vault.overrideBaseWithdrawalFee(alice, overriddenFee, true);
