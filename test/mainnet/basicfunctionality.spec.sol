@@ -266,14 +266,11 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         );
     }
 
-    function testDepositOETHAndWithdraw(
-        uint256 depositAmount
-    ) public {
+    function testDepositOETHAndWithdraw(uint256 depositAmount) public {
         vm.assume(depositAmount > 1e9);
         vm.assume(depositAmount < 100_000 ether);
         uint256 depositAmountActual;
         address asset = MC.OETH;
-
 
         uint256 initialVaultOETH = IERC20(asset).balanceOf(address(vault));
         uint256 initialWithdrawerOETH = IERC20(asset).balanceOf(address(withdrawer));
