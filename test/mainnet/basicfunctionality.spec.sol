@@ -464,8 +464,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             oethVault.mint(address(weth), outstandingWithdrawals + donateAmount, 1);
             vm.stopPrank();
 
-            // assertGt(weth.balanceOf(MC.OETH_VAULT), donateAmount + outstandingWithdrawals, "WETH balance should match");
-
             // solhint-disable-next-line not-rely-on-time
             uint256 timestamp = block.timestamp;
             vm.warp(timestamp + oethVault.withdrawalClaimDelay() + 10 minutes);
