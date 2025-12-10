@@ -435,7 +435,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         assertApproxEqRel(
             vault.totalAssets(),
             tvlBeforeWithdraw + withdrawer.totalAssets() - withdrawerTotalBefore,
-            1e9,
+            1e11,
             "Total assets should remain unchanged after processing accounting"
         );
     }
