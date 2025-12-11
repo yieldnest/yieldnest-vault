@@ -6,7 +6,6 @@ import {FeeMath} from "src/module/FeeMath.sol";
 import {IVault} from "src/interface/IVault.sol";
 
 abstract contract LinearWithdrawFee {
-
     //// FEES ////
 
     function _getFeeStorage() internal pure returns (IVault.FeeStorage storage) {
@@ -60,8 +59,9 @@ abstract contract LinearWithdrawFee {
      */
     function _overrideBaseWithdrawalFee(address user_, uint64 baseWithdrawalFee_, bool toOverride_) internal virtual {
         IVault.FeeStorage storage fees = _getFeeStorage();
-        fees.overriddenBaseWithdrawalFee[user_] =
-            IVault.OverriddenBaseWithdrawalFeeFields({baseWithdrawalFee: baseWithdrawalFee_, isOverridden: toOverride_});
+        fees.overriddenBaseWithdrawalFee[user_] = IVault.OverriddenBaseWithdrawalFeeFields({
+            baseWithdrawalFee: baseWithdrawalFee_, isOverridden: toOverride_
+        });
         emit IVault.WithdrawalFeeOverridden(user_, baseWithdrawalFee_, toOverride_);
     }
 
@@ -97,5 +97,4 @@ abstract contract LinearWithdrawFee {
     {
         return _getFeeStorage().overriddenBaseWithdrawalFee[user_];
     }
-
 }
