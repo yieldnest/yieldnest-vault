@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {BaseVault} from "src/BaseVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {VaultLib} from "src/library/VaultLib.sol";
-import {LinearWithdrawalFee} from "src/library/LinearWithdrawFee.sol";
+import {LinearWithdrawalFee} from "src/module/LinearWithdrawalFee.sol";
 
 /**
  * @title Vault

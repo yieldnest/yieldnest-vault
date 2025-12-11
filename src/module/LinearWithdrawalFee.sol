@@ -6,7 +6,6 @@ import {FeeMath} from "src/module/FeeMath.sol";
 import {IVault} from "src/interface/IVault.sol";
 
 abstract contract LinearWithdrawalFee {
-
     //// FEES ////
 
     function _getFeeStorage() internal pure returns (IVault.FeeStorage storage) {
@@ -97,5 +96,4 @@ abstract contract LinearWithdrawalFee {
     {
         return _getFeeStorage().overriddenBaseWithdrawalFee[user_];
     }
-
 }
