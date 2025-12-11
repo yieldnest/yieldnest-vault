@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {BaseVault} from "src/BaseVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {VaultLib} from "src/library/VaultLib.sol";
-import {LinearWithdrawFee} from "src/library/LinearWithdrawFee.sol";
+import {LinearWithdrawalFee} from "src/library/LinearWithdrawFee.sol";
 
 /**
  * @title Vault
@@ -18,7 +18,7 @@ import {LinearWithdrawFee} from "src/library/LinearWithdrawFee.sol";
  * - Flexible accounting with real-time or cached asset valuation
  * - Role-based access control for administration and fee management
  */
-contract Vault is BaseVault, LinearWithdrawFee {
+contract Vault is BaseVault, LinearWithdrawalFee {
     string public constant VAULT_VERSION = "0.4.1";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 

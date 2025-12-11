@@ -5,7 +5,8 @@ import {VaultLib} from "src/library/VaultLib.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IVault} from "src/interface/IVault.sol";
 
-abstract contract LinearWithdrawFee {
+abstract contract LinearWithdrawalFee {
+
     //// FEES ////
 
     function _getFeeStorage() internal pure returns (IVault.FeeStorage storage) {
@@ -49,7 +50,7 @@ abstract contract LinearWithdrawFee {
         }
     }
 
-    //// FEES ADMIN ////
+    //// FEES ADMIN ///
 
     /**
      * @notice Internal function to set whether the withdrawal fee is exempted for a user
@@ -96,4 +97,5 @@ abstract contract LinearWithdrawFee {
     {
         return _getFeeStorage().overriddenBaseWithdrawalFee[user_];
     }
+
 }
