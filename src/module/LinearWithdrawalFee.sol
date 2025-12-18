@@ -4,13 +4,10 @@ pragma solidity ^0.8.24;
 import {VaultLib} from "src/library/VaultLib.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {IVault} from "src/interface/IVault.sol";
+import {LinearWithdrawalFeeLib} from "src/library/LinearWithdrawalFeeLib.sol";
 
 abstract contract LinearWithdrawalFee {
     //// FEES ////
-
-    function _getFeeStorage() internal pure returns (IVault.FeeStorage storage) {
-        return VaultLib.getFeeStorage();
-    }
 
     /**
      * @notice Returns the fee on amount where the fee would get added on top of the amount.
@@ -18,8 +15,8 @@ abstract contract LinearWithdrawalFee {
      * @param user The address of the user.
      * @return The fee amount.
      */
-    function __feeOnRaw(uint256 amount, address user) public view returns (uint256) {
-        return FeeMath.feeOnRaw(amount, _feesToCharge(user));
+    function __feeOnRaw(uint256 amount, address user) internal view returns (uint256) {
+        return LinearWithdrawalFeeLib.feeOnRaw(amount, user);
     }
 
     /**
@@ -30,8 +27,8 @@ abstract contract LinearWithdrawalFee {
      * @dev Calculates the fee part of an amount `amount` that already includes fees.
      * Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
      */
-    function __feeOnTotal(uint256 amount, address user) public view returns (uint256) {
-        return FeeMath.feeOnTotal(amount, _feesToCharge(user));
+    function __feeOnTotal(uint256 amount, address user) internal view returns (uint256) {
+        return LinearWithdrawalFeeLib.feeOnTotal(amount, user);
     }
 
     /**
@@ -40,13 +37,7 @@ abstract contract LinearWithdrawalFee {
      * @return The fee to charge.
      */
     function _feesToCharge(address user) internal view returns (uint64) {
-        IVault.FeeStorage storage fees = _getFeeStorage();
-        bool isFeeOverridenForUser = fees.overriddenBaseWithdrawalFee[user].isOverridden;
-        if (isFeeOverridenForUser) {
-            return fees.overriddenBaseWithdrawalFee[user].baseWithdrawalFee;
-        } else {
-            return fees.baseWithdrawalFee;
-        }
+        return LinearWithdrawalFeeLib.feesToCharge(user);
     }
 
     //// FEES ADMIN ///
@@ -58,10 +49,7 @@ abstract contract LinearWithdrawalFee {
      * @param toOverride_ Whether to override the withdrawal fee for the user
      */
     function _overrideBaseWithdrawalFee(address user_, uint64 baseWithdrawalFee_, bool toOverride_) internal virtual {
-        IVault.FeeStorage storage fees = _getFeeStorage();
-        fees.overriddenBaseWithdrawalFee[user_] =
-            IVault.OverriddenBaseWithdrawalFeeFields({baseWithdrawalFee: baseWithdrawalFee_, isOverridden: toOverride_});
-        emit IVault.WithdrawalFeeOverridden(user_, baseWithdrawalFee_, toOverride_);
+        LinearWithdrawalFeeLib.overrideBaseWithdrawalFee(user_, baseWithdrawalFee_, toOverride_);
     }
 
     /**
@@ -69,11 +57,7 @@ abstract contract LinearWithdrawalFee {
      * @param baseWithdrawalFee_ The new base withdrawal fee in basis points (1/10000)
      */
     function _setBaseWithdrawalFee(uint64 baseWithdrawalFee_) internal virtual {
-        if (baseWithdrawalFee_ > FeeMath.BASIS_POINT_SCALE) revert IVault.ExceedsMaxBasisPoints(baseWithdrawalFee_);
-        IVault.FeeStorage storage fees = _getFeeStorage();
-        uint64 oldFee = fees.baseWithdrawalFee;
-        fees.baseWithdrawalFee = baseWithdrawalFee_;
-        emit IVault.SetBaseWithdrawalFee(oldFee, baseWithdrawalFee_);
+        LinearWithdrawalFeeLib.setBaseWithdrawalFee(baseWithdrawalFee_);
     }
 
     /**
@@ -81,19 +65,19 @@ abstract contract LinearWithdrawalFee {
      * @return uint64 The base withdrawal fee in basis points (1/10000)
      */
     function baseWithdrawalFee() external view returns (uint64) {
-        return _getFeeStorage().baseWithdrawalFee;
+        return LinearWithdrawalFeeLib.getBaseWithdrawalFee();
     }
 
     /**
      * @notice Returns whether the withdrawal fee is exempted for a user
      * @param user_ The address of the user
-     * @return bool Whether the withdrawal fee is exempted for the user
+     * @return The overridden fee fields for the user
      */
     function overriddenBaseWithdrawalFee(address user_)
         external
         view
         returns (IVault.OverriddenBaseWithdrawalFeeFields memory)
     {
-        return _getFeeStorage().overriddenBaseWithdrawalFee[user_];
+        return LinearWithdrawalFeeLib.getOverriddenBaseWithdrawalFee(user_);
     }
 }
