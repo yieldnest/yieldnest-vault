@@ -167,6 +167,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Converts a given amount of assets to shares.
+     * @dev The computation rounds down to follow the ERC4626 convention.
      * @param assets The amount of assets to convert.
      * @return shares The equivalent amount of shares.
      */
@@ -176,6 +177,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Converts a given amount of shares to assets.
+     * @dev The computation rounds down to follow the ERC4626 convention.
      * @param shares The amount of shares to convert.
      * @return assets The equivalent amount of assets.
      */
@@ -194,6 +196,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Previews the amount of assets that would be required to mint a given amount of shares.
+     * @dev The computation rounds up to follow the ERC4626 convention.
      * @param shares The amount of shares to mint.
      * @return assets The equivalent amount of assets.
      */
@@ -203,6 +206,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Previews the amount of shares that would be required to withdraw a given amount of assets.
+     * @dev The computation rounds up to follow the ERC4626 convention.
      * @param assets The amount of assets to withdraw.
      * @return shares The equivalent amount of shares.
      */
@@ -213,6 +217,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Previews the amount of assets that would be received for a given amount of shares.
+     * @dev The computation rounds down to follow the ERC4626 convention.
      * @param shares The amount of shares to redeem.
      * @return assets The equivalent amount of assets.
      */
@@ -307,6 +312,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (paused()) {
             revert Paused();
         }
+        // Rounds up to error on the side of more assets being deposited.
         (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Ceil);
 
         IHooks hooks_ = hooks();
@@ -473,6 +479,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Previews the amount of shares that would be received for a given amount of assets for a specific asset.
+     * @dev the computation rounds down for deposits.
      * @param asset_ The address of the asset.
      * @param assets The amount of assets to deposit.
      * @return shares The equivalent amount of shares.
@@ -624,6 +631,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (paused()) {
             revert Paused();
         }
+        // Rounds up to error on the side of more shares being burned.
         (shares,) = _convertToShares(asset_, assets, Math.Rounding.Ceil);
         if (assets > IERC20(asset_).balanceOf(address(this)) || balanceOf(owner) < shares) {
             revert ExceededMaxWithdraw(owner, assets, IERC20(asset_).balanceOf(address(this)));
