@@ -198,9 +198,17 @@ library VaultLib {
      * @return assets The equivalent amount in asset units.
      */
     function convertBaseToAsset(address asset_, uint256 baseAssets) public view returns (uint256 assets) {
+        return convertBaseToAsset(asset_, baseAssets, Math.Rounding.Floor);
+    }
+
+    function convertBaseToAsset(address asset_, uint256 baseAssets, Math.Rounding rounding)
+        public
+        view
+        returns (uint256 assets)
+    {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
         uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
-        assets = baseAssets.mulDiv(10 ** (getAssetStorage().assets[asset_].decimals), rate, Math.Rounding.Floor);
+        assets = baseAssets.mulDiv(10 ** (getAssetStorage().assets[asset_].decimals), rate, rounding);
     }
 
     /**
@@ -241,7 +249,7 @@ library VaultLib {
         uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
         baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
-        assets = convertBaseToAsset(asset_, baseAssets);
+        assets = convertBaseToAsset(asset_, baseAssets, rounding);
     }
 
     /**

@@ -307,7 +307,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (paused()) {
             revert Paused();
         }
-        (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
+        (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Ceil);
 
         IHooks hooks_ = hooks();
         IHooks.MintParams memory params = IHooks.MintParams({
