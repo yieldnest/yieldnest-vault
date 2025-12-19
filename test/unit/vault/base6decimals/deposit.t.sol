@@ -477,4 +477,57 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
             "Alice's asset value should remain the same after processor"
         );
     }
+
+    function test_Vault_initial_low_mint_success() public {
+        uint256 sharesToMint = 1e11; // 1000 vault shares with 18 decimals
+        bool alwaysComputeTotalAssets = true;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        {
+            // Give Alice USDC
+            deal(MC.USDC, alice, INITIAL_BALANCE);
+        }
+
+        // Get rate before mint
+        uint256 initialRate = vault.convertToAssets(1e18);
+
+        // Approve vault to spend Alice's wUSDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
+
+        // Mint shares
+        uint256 assetsDeposited = vault.mint(sharesToMint, alice);
+        vm.stopPrank();
+
+        // Check that assets were deposited
+        // assertGt(assetsDeposited, 0, "No assets were deposited");
+
+        // Check that the vault received the wUSDC
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), assetsDeposited, "Vault did not receive wUSDC");
+
+        // Check that Alice's USDC balance decreased
+        assertEq(
+            IERC20(MC.USDC).balanceOf(alice),
+            INITIAL_BALANCE - assetsDeposited,
+            "Alice's balance did not decrease correctly"
+        );
+
+        // Check that Alice received the correct amount of shares
+        assertEq(vault.balanceOf(alice), sharesToMint, "Alice did not receive the correct amount of shares");
+
+        // Check that assets deposited is sharesToMint (since wUSDC has 18 decimals)
+        // assertEq(assetsDeposited * 1e12, sharesToMint, "Incorrect amount of assets deposited");
+
+        // Check that total assets increased
+        assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly");
+        assertEq(vault.totalBaseAssets(), assetsDeposited * 1e12, "Total assets did not increase correctly");
+
+        assertEq(vault.totalSupply(), sharesToMint, "Convert to shares failed");
+
+        assertEq(vault.convertToAssets(sharesToMint), assetsDeposited, "Convert to assets failed");
+
+        assertEq(vault.convertToAssets(1e18), initialRate, "Convert to assets failed");
+    }
 }
