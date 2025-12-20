@@ -193,7 +193,6 @@ library VaultLib {
     {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
         uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
-        // NOTE: this can use a rounding parameter
         baseAssets = assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals), rounding);
     }
 
@@ -276,7 +275,6 @@ library VaultLib {
         // ASSUMPTION: Under the assumption that baseAssets have at least the same decimals as the asset
         // this currently rounds down, and it ignores the rounding parameter.
         uint256 baseAssets = convertAssetToBase(asset_, assets, Math.Rounding.Floor);
-        // NOTE: this correctly passes in the rounding parameter
         uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
         return (shares, baseAssets);
     }
