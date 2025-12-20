@@ -168,6 +168,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Previews the amount of assets that would be required to mint a given amount of shares.
+     * @dev The computation rounds up to error on the side of more assets being deposited.
      * @param asset_ The address of the asset.
      * @param shares The amount of shares to mint.
      * @return assets The equivalent amount of assets.
@@ -178,6 +179,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Previews the amount of assets that would be received for a given amount of shares.
+     * @dev The computation rounds down to error on the side of less assets being received.
      * @param asset_ The address of the asset.
      * @param shares The amount of shares to redeem.
      * @return assets The equivalent amount of assets.
