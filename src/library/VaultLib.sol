@@ -200,12 +200,9 @@ library VaultLib {
      * @notice Converts a base amount to asset units.
      * @param asset_ The address of the asset.
      * @param baseAssets The amount of the assets in base units.
+     * @param rounding The rounding direction.
      * @return assets The equivalent amount in asset units.
      */
-    function convertBaseToAsset(address asset_, uint256 baseAssets) public view returns (uint256 assets) {
-        return convertBaseToAsset(asset_, baseAssets, Math.Rounding.Floor);
-    }
-
     function convertBaseToAsset(address asset_, uint256 baseAssets, Math.Rounding rounding)
         public
         view
@@ -275,6 +272,7 @@ library VaultLib {
         // ASSUMPTION: Under the assumption that baseAssets have at least the same decimals as the asset
         // this currently rounds down, and it ignores the rounding parameter.
         uint256 baseAssets = convertAssetToBase(asset_, assets, Math.Rounding.Floor);
+
         uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
         return (shares, baseAssets);
     }

@@ -133,7 +133,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The total assets.
      */
     function totalAssets() public view virtual returns (uint256) {
-        return VaultLib.convertBaseToAsset(asset(), totalBaseAssets());
+        return VaultLib.convertBaseToAsset(asset(), totalBaseAssets(), Math.Rounding.Floor);
     }
 
     /**
