@@ -659,7 +659,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     ) internal virtual {
         if (!hasAsset(asset_)) revert InvalidAsset(asset_);
 
-        _subTotalAssets(_convertAssetToBase(asset_, assets));
+        _subTotalAssets(VaultLib.convertAssetToBase(asset_, assets, Math.Rounding.Floor));
 
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
@@ -703,28 +703,6 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         returns (uint256, uint256)
     {
         return VaultLib.convertToShares(asset_, assets, rounding);
-    }
-
-    /**
-     * @notice Internal function to convert an asset amount to base denomination.
-     * @param asset_ The address of the asset.
-     * @param assets The amount of the asset.
-     * @return uint256 The equivalent amount in base denomination.
-     */
-    function _convertAssetToBase(address asset_, uint256 assets) internal view virtual returns (uint256) {
-        // TODO: question this rounding parameter
-        return VaultLib.convertAssetToBase(asset_, assets);
-    }
-
-    /**
-     * @notice Internal function to convert base denominated amount to asset value.
-     * @param asset_ The address of the asset.
-     * @param assets The amount of the asset.
-     * @return uint256 The equivalent amount of assets.
-     */
-    function _convertBaseToAsset(address asset_, uint256 assets) internal view virtual returns (uint256) {
-        // TODO: question this rounding parameter
-        return VaultLib.convertBaseToAsset(asset_, assets);
     }
 
     /// STORAGE ///
