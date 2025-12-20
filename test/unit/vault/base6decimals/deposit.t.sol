@@ -24,7 +24,6 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
@@ -536,6 +535,81 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         //assertEq(vault.convertToAssets(1e18), initialRate, "Rate stays the same");
     }
 
+    function test_Vault_second_low_mint_success() public {
+        uint256 sharesToMint = 1e11; // 1000 vault shares with 18 decimals
+        bool alwaysComputeTotalAssets = true;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        {
+            // Give Alice USDC
+            deal(MC.USDC, alice, INITIAL_BALANCE);
+        }
+
+        // Get rate before mint
+        uint256 initialRate = vault.convertToAssets(1e18);
+
+        uint256 bootstrapDeposit = 100_000e6;
+        uint256 boostrapShares;
+        {
+            // Do a deposit call with alice for 1000 ether before mint
+            vm.startPrank(alice);
+            IERC20(MC.USDC).approve(address(vault), type(uint256).max);
+            boostrapShares = vault.deposit(bootstrapDeposit, alice);
+            vm.stopPrank();
+        }
+
+        // Approve vault to spend Alice's wUSDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
+
+        // Mint shares
+        uint256 assetsDeposited = vault.mint(sharesToMint, alice);
+        vm.stopPrank();
+
+        // Check that assets were deposited
+        // assertGt(assetsDeposited, 0, "No assets were deposited");
+
+        // Check that the vault received the wUSDC
+        assertEq(
+            IERC20(MC.USDC).balanceOf(address(vault)), assetsDeposited + bootstrapDeposit, "Vault did not receive wUSDC"
+        );
+
+        // Check that Alice's USDC balance decreased
+        assertEq(
+            IERC20(MC.USDC).balanceOf(alice),
+            INITIAL_BALANCE - assetsDeposited - bootstrapDeposit,
+            "Alice's balance did not decrease correctly"
+        );
+
+        // Check that Alice received the correct amount of shares
+        assertEq(
+            vault.balanceOf(alice), sharesToMint + boostrapShares, "Alice did not receive the correct amount of shares"
+        );
+
+        // Check that assets deposited is sharesToMint (since wUSDC has 18 decimals)
+        // assertEq(assetsDeposited * 1e12, sharesToMint, "Incorrect amount of assets deposited");
+
+        // Check that total assets increased
+        assertEq(vault.totalAssets(), assetsDeposited + bootstrapDeposit, "Total assets did not increase correctly");
+        assertEq(
+            vault.totalBaseAssets(),
+            (assetsDeposited + bootstrapDeposit) * 1e12,
+            "Total assets did not increase correctly"
+        );
+
+        assertEq(vault.totalSupply(), sharesToMint + boostrapShares, "Total supply mismatch");
+
+        assertEq(
+            assetsDeposited,
+            vault.convertToAssets(sharesToMint * 10),
+            "Assets deposited should be equivalent to minting 10x the shares"
+        );
+
+        assertEq(vault.convertToAssets(1e18), initialRate, "Rate stays the same");
+    }
+
     function test_Vault_initial_low_deposit_success() public {
         uint256 sharesToMint = 1e12; // 1000 vault shares with 18 decimals
         bool alwaysComputeTotalAssets = true;
@@ -593,8 +667,8 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Record initial rate
         uint256 initialRate = vault.convertToAssets(1e18);
 
-        // Deposit USDC
-        uint256 assetsDeposited = vault.mint(sharesToMint, alice); // Convert sharesToMint to USDC 6 decimals
+        vault.mint(sharesToMint, alice); // Convert sharesToMint to USDC 6 decimals
+
         vm.stopPrank();
 
         // Assumptions and checks
