@@ -518,6 +518,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The equivalent amount of shares.
      */
     function _depositAsset(address asset_, uint256 assets, address receiver) internal virtual returns (uint256) {
+        // baseAssets is rounded down to error on the side of undercounting total assets.
         (uint256 shares, uint256 baseAssets) = _convertToShares(asset_, assets, Math.Rounding.Floor);
 
         IHooks hooks_ = hooks();
@@ -600,6 +601,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
     {
         VaultStorage storage vaultStorage = _getVaultStorage();
+
+        // baseAssets is rounded down to error on the side of undercounting the removed assets
+        // Rate may increase as a result of the rounding.
         _subTotalAssets(_convertAssetToBase(asset(), assets, Math.Rounding.Floor));
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
@@ -659,6 +663,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     ) internal virtual {
         if (!hasAsset(asset_)) revert InvalidAsset(asset_);
 
+        // baseAssets is rounded down to error on the side of undercounting the removed assets
+        // Rate may increase as a result of the rounding.
         _subTotalAssets(_convertAssetToBase(asset_, assets, Math.Rounding.Floor));
 
         if (caller != owner) {
@@ -691,10 +697,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Internal function to convert assets to shares.
+     * @dev baseAssets is always rounded down, ignoring the rounding parameter.
      * @param asset_ The address of the asset.
      * @param assets The amount of assets to convert.
      * @param rounding The rounding direction.
-     * @return (uint256 shares, uint256 baseAssets) The equivalent amount of shares.
+     * @return (uint256 shares, uint256 baseAssets) The equivalent amount of shares and base assets.
      */
     function _convertToShares(address asset_, uint256 assets, Math.Rounding rounding)
         internal

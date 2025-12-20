@@ -256,6 +256,7 @@ library VaultLib {
 
     /**
      * @notice Converts a given amount of assets to shares.
+     * @dev baseAssets is always rounded down, ignoring the rounding parameter.
      * @param asset_ The address of the asset.
      * @param assets The amount of assets to convert.
      * @param rounding The rounding direction.
@@ -269,8 +270,7 @@ library VaultLib {
         uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
 
-        // ASSUMPTION: Under the assumption that baseAssets have at least the same decimals as the asset
-        // this currently rounds down, and it ignores the rounding parameter.
+        // ASSUMPTION:  baseAssets has equal or more decimals than asset_
         uint256 baseAssets = convertAssetToBase(asset_, assets, Math.Rounding.Floor);
 
         uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
