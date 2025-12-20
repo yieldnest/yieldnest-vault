@@ -186,10 +186,25 @@ library VaultLib {
      * @return baseAssets The equivalent amount in base units.
      */
     function convertAssetToBase(address asset_, uint256 assets) public view returns (uint256 baseAssets) {
+        return convertAssetToBase(asset_, assets, Math.Rounding.Floor);
+    }
+
+    /**
+     * @notice Converts an asset amount to base units.
+     * @param asset_ The address of the asset.
+     * @param assets The amount of the asset.
+     * @param rounding The rounding direction.
+     * @return baseAssets The equivalent amount in base units.
+     */
+    function convertAssetToBase(address asset_, uint256 assets, Math.Rounding rounding)
+        public
+        view
+        returns (uint256 baseAssets)
+    {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
         uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
         // NOTE: this can use a rounding parameter
-        baseAssets = assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals), Math.Rounding.Floor);
+        baseAssets = assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals), rounding);
     }
 
     /**
@@ -268,7 +283,7 @@ library VaultLib {
         uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
 
-        // NOTE: under the assumption that baseAssets have at least the same decimals as the asset
+        // ASSUMPTION: Under the assumption that baseAssets have at least the same decimals as the asset
         // this currently rounds down, and it ignores the rounding parameter.
         uint256 baseAssets = convertAssetToBase(asset_, assets);
         // NOTE: this correctly passes in the rounding parameter

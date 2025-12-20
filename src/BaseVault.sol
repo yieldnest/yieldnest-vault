@@ -712,6 +712,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The equivalent amount in base denomination.
      */
     function _convertAssetToBase(address asset_, uint256 assets) internal view virtual returns (uint256) {
+        // TODO: question this rounding parameter
         return VaultLib.convertAssetToBase(asset_, assets);
     }
 
@@ -722,6 +723,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The equivalent amount of assets.
      */
     function _convertBaseToAsset(address asset_, uint256 assets) internal view virtual returns (uint256) {
+        // TODO: question this rounding parameter
         return VaultLib.convertBaseToAsset(asset_, assets);
     }
 
