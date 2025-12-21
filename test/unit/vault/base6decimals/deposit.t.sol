@@ -648,6 +648,62 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(afterRate, initialRate, "Vault conversion rate changed after low deposit");
     }
 
+    function test_Vault_second_low_deposit_success() public {
+        uint256 boostrapShares = 100_000e18; // 100,000 vault shares (18 decimals)
+        uint256 sharesToMint = 1e12;
+        bool alwaysComputeTotalAssets = true;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        {
+            // Give Alice USDC for bootstrap + second deposit
+            deal(MC.USDC, alice, INITIAL_BALANCE);
+        }
+
+        // Approve vault to spend Alice's USDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
+
+        // Record initial rate
+        uint256 initialRate = vault.convertToAssets(1e18);
+
+        // Alice does a first bootstrap deposit
+        uint256 bootstrapDepositAmount = boostrapShares / 1e12; // 1000 USDC (6 decimals)
+        uint256 bootstrapSharesMinted = vault.deposit(bootstrapDepositAmount, alice);
+
+        // Record rate after first deposit
+        uint256 afterBootstrapRate = vault.convertToAssets(1e18);
+
+        // Alice does a second small deposit
+        uint256 secondDepositAmount = 1;
+        uint256 sharesMinted = vault.deposit(secondDepositAmount, alice);
+
+        assertEq(sharesMinted, sharesToMint, "Shares minted should be equivalent to the second deposit amount");
+
+        vm.stopPrank();
+
+        // Check vault balances and state
+        assertEq(
+            vault.balanceOf(alice),
+            bootstrapSharesMinted + sharesMinted,
+            "Alice did not receive correct amount of shares"
+        );
+        assertEq(vault.totalSupply(), bootstrapSharesMinted + sharesMinted, "Total supply mismatch");
+        assertEq(
+            IERC20(MC.USDC).balanceOf(address(vault)),
+            bootstrapDepositAmount + secondDepositAmount,
+            "Vault did not receive correct USDC"
+        );
+        assertEq(vault.totalAssets(), bootstrapDepositAmount + secondDepositAmount, "Vault totalAssets incorrect");
+        assertEq(vault.totalBaseAssets(), (bootstrapSharesMinted + sharesMinted), "Vault totalBaseAssets incorrect");
+
+        // Check that the conversion rate did not change substantially between the two deposits
+        uint256 finalRate = vault.convertToAssets(1e18);
+        assertEq(afterBootstrapRate, initialRate, "Vault conversion rate changed after bootstrap deposit");
+        assertEq(finalRate, afterBootstrapRate, "Vault conversion rate changed after second deposit");
+    }
+
     function test_Vault_initial_min_usdc_mint_success() public {
         uint256 sharesToMint = 1e12; // 1000 vault shares with 18 decimals
         bool alwaysComputeTotalAssets = true;
