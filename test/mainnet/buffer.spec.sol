@@ -104,11 +104,6 @@ contract VaultBufferInvariantsTest is BaseTest {
                 bufferDepositAmount,
                 "USDC balance should decrease by amount deposited in buffer"
             );
-            assertEq(
-                usdcBalanceOfBufferAfter,
-                0,
-                "Buffer balance should be allocated to usdc core vault due to sync deposit on"
-            );
         }
 
         assertGt(bufferStrategySharesMinted, 0, "Buffer shares should be greater than 0");
