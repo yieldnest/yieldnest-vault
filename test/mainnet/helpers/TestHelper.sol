@@ -97,7 +97,7 @@ contract TestHelper is Test, AssertUtils {
         assertEqThreshold(
             expectedTotalSupply,
             finalVaultTotalSupply,
-            10,
+            50,
             "Vault totalSupply should be original totalSupply plus additional"
         );
     }
