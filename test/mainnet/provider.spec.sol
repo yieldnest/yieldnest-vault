@@ -6,12 +6,23 @@ import {IERC4626} from "src/Common.sol";
 import {Provider} from "src/module/Provider.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IFxUSDBasePool} from "src/interface/IFxUSDBasePool.sol";
+import {Vault} from "src/Vault.sol";
 
 contract ProviderTest is BaseTest {
     Provider public provider;
+    Vault public vault;
 
     function setUp() public {
-        (, provider) = BaseTest.deploy();
+        (vault, provider) = BaseTest.deploy();
+
+        // upgrade to new provider
+        // Deploy a fresh Provider contract, update the Vault to use new Provider
+        Provider newProvider = new Provider(address(wrappedUSDC));
+
+        vm.startPrank(TIMELOCK);
+        vault.setProvider(address(newProvider));
+        vm.stopPrank();
+        provider = newProvider;
     }
 
     function test_getRate_Of_WrappedUSDC() public view {
