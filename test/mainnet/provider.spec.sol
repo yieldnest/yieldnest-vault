@@ -95,4 +95,13 @@ contract ProviderTest is BaseTest {
     function test_getRate_Of_FXUSD() public view {
         assertEq(provider.getRate(MC.FXUSD), 1e18);
     }
+
+    function test_getRate_of_ArbStrategy() public view {
+        assertEq(IERC4626(MC.USDC_ARB1_STRATEGY).asset(), MC.USDC);
+        assertEq(IERC4626(MC.USDC_ARB1_STRATEGY).decimals(), 6);
+        uint256 expectedRate = IERC4626(MC.USDC_ARB1_STRATEGY).convertToAssets(1e6) * 1e12;
+        assertLt(expectedRate, 2e18);
+        assertGe(expectedRate, 1e18);
+        assertEq(provider.getRate(MC.USDC_ARB1_STRATEGY), expectedRate);
+    }
 }
