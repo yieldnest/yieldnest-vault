@@ -7,6 +7,8 @@ import {Provider} from "src/module/Provider.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IFxUSDBasePool} from "src/interface/IFxUSDBasePool.sol";
 import {Vault} from "src/Vault.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {MockStrategy} from "test/mainnet/mocks/MockStrategy.sol";
 
 contract ProviderTest is BaseTest {
     Provider public provider;
@@ -114,5 +116,47 @@ contract ProviderTest is BaseTest {
         assertLt(expectedRate, 2e18);
         assertGe(expectedRate, 1e18);
         assertEq(provider.getRate(MC.USDC_ARB1_STRATEGY), expectedRate);
+    }
+
+    function test_getRate_of_FreshVaultWithUSDC() public {
+        // Deploy a new BaseStrategy implementation and use a proxy for it
+        // Deploy a Vault implementation with USDC as the main asset and 18 decimals behind a proxy. Do not inline the initialization.
+
+        // Deploy the Vault implementation (not WrappedToken)
+        MockStrategy implementation = new MockStrategy();
+
+        // Deploy the TransparentUpgradeableProxy, but don't inline the call to initialize
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+
+        // Now initialize behind the proxy. Use the MockStrategy's initializer.
+        string memory name = "Test Wrapped USDC";
+        string memory symbol = "tUSDC";
+        address asset = MC.USDC;
+        uint8 decimals = 18;
+
+        MockStrategy(payable(address(proxy))).initialize(
+            address(this), // admin
+            name,
+            symbol,
+            decimals,
+            0, // baseWithdrawalFee_
+            false, // countNativeAsset_
+            false, // alwaysComputeTotalAssets_
+            1 // defaultAssetIndex_
+        );
+
+        // Use MockStrategy interface for rate tests
+        MockStrategy testVault = MockStrategy(payable(address(proxy)));
+
+        testVault.grantRole(testVault.ASSET_MANAGER_ROLE(), address(this));
+        testVault.grantRole(testVault.PROVIDER_MANAGER_ROLE(), address(this));
+
+        testVault.addAsset(address(wrappedUSDC), false);
+        testVault.addAsset(asset, true);
+        testVault.setProvider(address(provider));
+
+        // Expect the rate for this new vault (should be 1:1 with underlying for a fresh vault)
+        // Use the already deployed provider instance
+        assertEq(provider.getRate(address(testVault)), 1e18);
     }
 }
