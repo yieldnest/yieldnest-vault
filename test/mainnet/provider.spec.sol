@@ -6,12 +6,42 @@ import {IERC4626} from "src/Common.sol";
 import {Provider} from "src/module/Provider.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IFxUSDBasePool} from "src/interface/IFxUSDBasePool.sol";
+import {Vault} from "src/Vault.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {IProvider} from "src/interface/IProvider.sol";
+import {MockStrategy} from "test/mainnet/mocks/MockStrategy.sol";
+import {console} from "forge-std/console.sol";
+
+contract SimpleProvider {
+    address underlying;
+
+    constructor(address asset_) {
+        underlying = asset_;
+    }
+
+    function getRate(address asset) public view returns (uint256) {
+        if (asset == underlying) {
+            return 10 ** IERC4626(underlying).decimals();
+        }
+        revert Provider.UnsupportedAsset(asset);
+    }
+}
 
 contract ProviderTest is BaseTest {
     Provider public provider;
+    Vault public vault;
 
     function setUp() public {
-        (, provider) = BaseTest.deploy();
+        (vault, provider) = BaseTest.deploy();
+
+        // upgrade to new provider
+        // Deploy a fresh Provider contract, update the Vault to use new Provider
+        Provider newProvider = new Provider(address(wrappedUSDC));
+
+        vm.startPrank(TIMELOCK);
+        vault.setProvider(address(newProvider));
+        vm.stopPrank();
+        provider = newProvider;
     }
 
     function test_getRate_Of_WrappedUSDC() public view {
@@ -94,5 +124,100 @@ contract ProviderTest is BaseTest {
 
     function test_getRate_Of_FXUSD() public view {
         assertEq(provider.getRate(MC.FXUSD), 1e18);
+    }
+
+    function test_getRate_of_ArbStrategy() public view {
+        assertEq(IERC4626(MC.USDC_ARB1_STRATEGY).asset(), MC.USDC);
+        assertEq(IERC4626(MC.USDC_ARB1_STRATEGY).decimals(), 6);
+        uint256 expectedRate = IERC4626(MC.USDC_ARB1_STRATEGY).convertToAssets(1e6) * 1e12;
+        assertLt(expectedRate, 2e18);
+        assertGe(expectedRate, 1e18);
+        assertEq(provider.getRate(MC.USDC_ARB1_STRATEGY), expectedRate);
+    }
+
+    function test_getRate_of_FreshVaultWithUSDC() public {
+        // Deploy a new BaseStrategy implementation and use a proxy for it
+        // Deploy a Vault implementation with USDC as the main asset and 18 decimals behind a proxy. Do not inline the initialization.
+
+        // Deploy the Vault implementation (not WrappedToken)
+        MockStrategy implementation = new MockStrategy();
+
+        // Deploy the TransparentUpgradeableProxy, but don't inline the call to initialize
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+
+        // Now initialize behind the proxy. Use the MockStrategy's initializer.
+        string memory name = "Test Wrapped USDC";
+        string memory symbol = "tUSDC";
+        address asset = MC.USDC;
+        uint8 decimals = 18;
+
+        MockStrategy(payable(address(proxy))).initialize(
+            address(this), // admin
+            name,
+            symbol,
+            decimals,
+            0, // baseWithdrawalFee_
+            false, // countNativeAsset_
+            false, // alwaysComputeTotalAssets_
+            1 // defaultAssetIndex_
+        );
+
+        // Use MockStrategy interface for rate tests
+        MockStrategy testVault = MockStrategy(payable(address(proxy)));
+
+        testVault.grantRole(testVault.ASSET_MANAGER_ROLE(), address(this));
+        testVault.grantRole(testVault.PROVIDER_MANAGER_ROLE(), address(this));
+
+        testVault.addAsset(address(wrappedUSDC), false);
+        testVault.addAsset(asset, true);
+        testVault.setProvider(address(provider));
+
+        // Expect the rate for this new vault (should be 1:1 with underlying for a fresh vault)
+        // Use the already deployed provider instance
+        assertEq(provider.getRate(address(testVault)), 1e18);
+    }
+
+    function test_getRate_of_FreshVaultWithUSDC_6decimals_DefaultAssetIndex0() public {
+        // Deploy a new BaseStrategy implementation and use a proxy for it
+        // Vault: 6 decimals, defaultAssetIndex 0, only asset is USDC (index 0, default asset)
+        MockStrategy implementation = new MockStrategy();
+
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+
+        string memory name = "Test USDC Vault 6 Decimals";
+        string memory symbol = "mUSDC";
+        address asset = MC.USDC;
+        uint8 decimals = 6;
+
+        // defaultAssetIndex = 0 (the first asset we add will be USDC)
+        MockStrategy(payable(address(proxy))).initialize(
+            address(this), // admin
+            name,
+            symbol,
+            decimals,
+            0, // baseWithdrawalFee_
+            false, // countNativeAsset_
+            false, // alwaysComputeTotalAssets_
+            0 // defaultAssetIndex_
+        );
+
+        MockStrategy testVault = MockStrategy(payable(address(proxy)));
+
+        testVault.grantRole(testVault.ASSET_MANAGER_ROLE(), address(this));
+        testVault.grantRole(testVault.PROVIDER_MANAGER_ROLE(), address(this));
+
+        // Only add USDC as asset at index 0 (default asset)
+        testVault.addAsset(asset, true);
+
+        testVault.setProvider(address(new SimpleProvider(asset)));
+
+        assertEq(IERC4626(address(testVault)).convertToAssets(10e6), 10e6);
+
+        // // Should be 1:1 for a fresh vault
+        assertEq(provider.getRate(address(testVault)), 1e18);
+
+        // Confirm vault's asset() is USDC and decimals() is 6
+        assertEq(testVault.asset(), asset);
+        assertEq(testVault.decimals(), 6);
     }
 }

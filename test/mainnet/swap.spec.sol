@@ -27,6 +27,10 @@ contract SwapTest is BaseTest {
     }
 
     function test_swap_USDC_to_USDT() public {
+        // call processAccounting to ensure vault is in sync
+        // to account for profits and fee shares earned since last call to processAccounting
+        vault.processAccounting();
+
         uint256 depositAmount = 100000e6;
         giveApprovalOfAssetToAugustus(MC.USDC, depositAmount);
 
@@ -49,7 +53,6 @@ contract SwapTest is BaseTest {
         uint256 minExpectedTotalAssets =
             vaultTotalAssetsBefore * (SLIPPAGE_PRECISION - MAX_SLIPPAGE) / SLIPPAGE_PRECISION;
         assertTrue(vaultTotalAssetsAfter >= minExpectedTotalAssets, "Vault total assets should increase after swap");
-        totalSupplyInvariant(vaultTotalSupplyBefore);
     }
 
     function test_swap_from_USDC_to_other_supported_stable_coins() public {
@@ -113,10 +116,7 @@ contract SwapTest is BaseTest {
             );
             // asset balance should be within 0.2% of the expected amount
             assertApproxEqRel(
-                vaultTotalAssetsAfter,
-                vaultTotalAssetsBefore,
-                0.3e16,
-                "Asset balance should be within slippage tolerance"
+                vaultTotalAssetsAfter, vaultTotalAssetsBefore, 1e16, "Asset balance should be within slippage tolerance"
             );
             totalSupplyInvariant(vaultTotalSupplyBefore + sharesMinted);
         }

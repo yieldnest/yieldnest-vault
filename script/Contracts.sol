@@ -52,6 +52,8 @@ library MainnetContracts {
     address public constant FXBASE = 0x65C9A641afCEB9C0E6034e558A319488FA0FA3be;
 
     address public constant FXUSD = 0x085780639CC2cACd35E474e71f4d000e2405d8f6;
+
+    address public constant USDC_ARB1_STRATEGY = 0x360b2ba897dbEa77A39A93d9181597f9c2fdD9D3;
 }
 
 contract L1Contracts is IContracts {
