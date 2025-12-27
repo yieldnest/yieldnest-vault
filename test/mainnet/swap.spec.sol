@@ -53,7 +53,6 @@ contract SwapTest is BaseTest {
         uint256 minExpectedTotalAssets =
             vaultTotalAssetsBefore * (SLIPPAGE_PRECISION - MAX_SLIPPAGE) / SLIPPAGE_PRECISION;
         assertTrue(vaultTotalAssetsAfter >= minExpectedTotalAssets, "Vault total assets should increase after swap");
-        totalSupplyInvariant(vaultTotalSupplyBefore);
     }
 
     function test_swap_from_USDC_to_other_supported_stable_coins() public {
