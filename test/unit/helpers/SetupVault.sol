@@ -83,6 +83,7 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         // Add assets: Base asset always first
         vault.addAsset(MC.WETH, true);
+        vault.addAsset(MC.USDT, true);
         vault.addAsset(MC.BUFFER, false);
         vault.addAsset(MC.STETH, true);
         vault.addAsset(MC.WBTC, true);

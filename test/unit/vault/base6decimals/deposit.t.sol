@@ -432,4 +432,72 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
             "Alice's asset value should remain the same after processor"
         );
     }
+
+    function test_Vault_deposit_1_wei() public {
+        // Give Alice 1 wei USDC
+        deal(MC.USDC, alice, 1);
+
+        vm.prank(alice);
+        IERC20(MC.USDC).approve(address(vault), 1);
+
+        // Check initial conversion rate
+        uint256 initialRate = vault.convertToAssets(1e18);
+
+        // Deposit 1 wei USDC
+        vm.startPrank(alice);
+        uint256 sharesMinted = vault.deposit(1, alice);
+        vm.stopPrank();
+
+        // It should mint 1e12 shares (because USDC is 6 decimals, and shares are 18 decimals)
+        assertEq(sharesMinted, 1e12, "Incorrect shares minted for 1 wei deposit");
+
+        // Alice should have 0 USDC and sharesMinted shares
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "Alice's USDC not deducted");
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive correct shares");
+
+        // Vault should have 1 USDC
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 1, "Vault did not receive 1 USDC");
+
+        // Total assets/storage should reflect the deposit
+        assertEq(vault.totalAssets(), 1, "totalAssets should be 1");
+        assertEq(vault.totalBaseAssets(), 1e12, "totalBaseAssets should be 1e12");
+
+        // Conversion rate for 1e18 shares should stay the same after 1 wei deposit
+        uint256 afterRate = vault.convertToAssets(1e18);
+        assertEq(initialRate, afterRate, "Conversion rate changed after 1 wei deposit");
+    }
+
+    function test_Vault_deposit_1_wei_USDT() public {
+        // Give Alice 1 wei USDT
+        deal(MC.USDT, alice, 1);
+
+        vm.prank(alice);
+        IERC20(MC.USDT).approve(address(vault), 1);
+
+        // Check initial conversion rate
+        uint256 initialRate = vault.convertToAssets(1e18);
+
+        // Deposit 1 wei USDT
+        vm.startPrank(alice);
+        uint256 sharesMinted = vault.depositAsset(MC.USDT, 1, alice);
+        vm.stopPrank();
+
+        // It should mint 1e12 shares (because USDT is 6 decimals, and shares are 18 decimals)
+        assertEq(sharesMinted, 1e12, "Incorrect shares minted for 1 wei deposit");
+
+        // Alice should have 0 USDT and sharesMinted shares
+        assertEq(IERC20(MC.USDT).balanceOf(alice), 0, "Alice's USDT not deducted");
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive correct shares");
+
+        // Vault should have 1 USDT
+        assertEq(IERC20(MC.USDT).balanceOf(address(vault)), 1, "Vault did not receive 1 USDT");
+
+        // Total assets/storage should reflect the deposit
+        assertEq(vault.totalAssets(), 1, "totalAssets should be 1");
+        assertEq(vault.totalBaseAssets(), 1e12, "totalBaseAssets should be 1e12");
+
+        // Conversion rate for 1e18 shares should stay the same after 1 wei deposit
+        uint256 afterRate = vault.convertToAssets(1e18);
+        assertEq(initialRate, afterRate, "Conversion rate changed after 1 wei deposit");
+    }
 }
