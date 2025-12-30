@@ -85,6 +85,67 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalBaseAssets(), assetsDeposited * 1e12, "Total assets did not increase correctly");
     }
 
+    function testFuzz_Vault_initial_mint_success(uint256 sharesToMint) public {
+        // Bound sharesToMint to ensure it's a reasonably small number (like the deposit fuzz)
+        // 1e12 shares = 1 USDC required to mint (since 1 share = 1e18, 1 USDC = 1e6)
+        // Let's set lower bound to 1e12 (1 USDC) and upper bound to 100_000 * 1e18 (100k vault shares)
+        vm.assume(sharesToMint >= 1e12 && sharesToMint <= 100_000 * 1e18);
+
+        bool alwaysComputeTotalAssets = true;
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        // Give Alice enough USDC to cover minting the fuzzed shares
+        deal(MC.USDC, alice, INITIAL_BALANCE);
+
+        // Approve vault to spend Alice's USDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
+
+        // Record initial rate
+        uint256 initialRate = vault.convertToAssets(1e18);
+
+        // Mint shares
+        uint256 assetsDeposited = vault.mint(sharesToMint, alice);
+
+        vm.stopPrank();
+
+        // Check that some assets were deposited and the shares minted are not zero
+        assertGt(assetsDeposited, 0, "No assets were deposited");
+        assertGt(sharesToMint, 0, "No shares were minted");
+
+        // Check that the vault received the correct amount of USDC
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), assetsDeposited, "Vault did not receive USDC");
+
+        // Check that Alice's USDC balance decreased
+        assertEq(
+            IERC20(MC.USDC).balanceOf(alice),
+            INITIAL_BALANCE - assetsDeposited,
+            "Alice's balance did not decrease correctly"
+        );
+
+        // Check that Alice received the correct amount of shares
+        assertEq(vault.balanceOf(alice), sharesToMint, "Alice did not receive the correct amount of shares");
+
+        // VERY IMPORTANT: the shares minted are below the value of the assets deposited always.
+        assertApproxEqAbs(assetsDeposited, sharesToMint / 1e12, 1, "Incorrect amount of assets deposited");
+        assertLe(
+            sharesToMint / 1e12, assetsDeposited, "Assets deposited should be less than or equal to sharesToMint / 1e12"
+        );
+
+        // Check that total assets increased correctly
+        assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly");
+        assertEq(vault.totalBaseAssets(), assetsDeposited * 1e12, "Total base assets did not increase correctly");
+
+        // Total supply should match what was minted
+        assertEq(vault.totalSupply(), sharesToMint, "Total supply mismatch");
+
+        // Conversion rate should be clamped between 1 and 2x the initial rate since share minting can be 2e12 - 1.
+        uint256 afterRate = vault.convertToAssets(1e18);
+        assertLt(afterRate, 2 * initialRate, "Vault conversion rate changed after mint");
+        assertGe(afterRate, initialRate, "Vault conversion rate should increase after mint");
+    }
+
     function test_Vault_initial_low_mint_success() public {
         uint256 sharesToMint = 1e11; // 1000 vault shares with 18 decimals
         bool alwaysComputeTotalAssets = true;
@@ -134,12 +195,6 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalSupply(), sharesToMint, "Convert to shares failed");
 
         // assertEq(vault.convertToAssets(sharesToMint), assetsDeposited, "Convert to assets failed");
-
-        console.log("vault.totalSupply()", vault.totalSupply());
-        console.log("vault.totalAssets()", vault.totalAssets());
-        console.log("vault.totalBaseAssets()", vault.totalBaseAssets());
-        console.log("vault.convertToAssets(1e18)", vault.convertToAssets(1e18));
-        console.log("initialRate", initialRate);
         //assertEq(vault.convertToAssets(1e18), initialRate, "Rate stays the same");
     }
 
