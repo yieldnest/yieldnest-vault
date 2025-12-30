@@ -198,6 +198,54 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         //assertEq(vault.convertToAssets(1e18), initialRate, "Rate stays the same");
     }
 
+    function testFuzz_Vault_initial_low_mint_success(uint64 fuzzSharesToMint) public {
+        // Cap sharesToMint to [1, 1e12)
+        uint256 sharesToMint = bound(uint256(fuzzSharesToMint), 1, 1e12 - 1); // range: [1, 1e12 - 1]
+
+        bool alwaysComputeTotalAssets = true;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        // Give Alice enough USDC to mint these shares, using previewMint for calculation
+        uint256 usdcNeeded = vault.previewMint(sharesToMint);
+        deal(MC.USDC, alice, usdcNeeded);
+
+        // Get rate before mint
+        uint256 initialRate = vault.convertToAssets(1e18);
+
+        // Approve vault to spend Alice's USDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
+
+        // Mint shares
+        uint256 assetsDeposited = vault.mint(sharesToMint, alice);
+        vm.stopPrank();
+
+        // Check that at least some assets were deposited and Alice got the shares
+        assertGt(assetsDeposited, 0, "No assets were deposited");
+        assertEq(vault.balanceOf(alice), sharesToMint, "Alice did not receive correct shares");
+        assertEq(vault.totalSupply(), sharesToMint, "Total supply mismatch on fuzz mint");
+
+        // Vault should have received the assets deposited
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), assetsDeposited, "Vault did not receive correct USDC");
+
+        // Alice's USDC balance decreased as expected
+        assertEq(
+            IERC20(MC.USDC).balanceOf(alice),
+            usdcNeeded - assetsDeposited,
+            "Alice balance did not decrease by assetsDeposited"
+        );
+
+        // Check totalAssets and totalBaseAssets
+        assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly (fuzz)");
+        assertEq(vault.totalBaseAssets(), assetsDeposited * 1e12, "TotalBaseAssets incorrect (fuzz)");
+
+        // Conversion rate should stay the same (allow rounding difference of 1)
+        uint256 afterRate = vault.convertToAssets(1e18);
+        assertGe(afterRate, initialRate, "Vault conversion rate should increase after fuzz mint");
+    }
+
     function test_Vault_initial_low_deposit_success() public {
         uint256 sharesToMint = 1e12; // 1000 vault shares with 18 decimals
         bool alwaysComputeTotalAssets = true;
