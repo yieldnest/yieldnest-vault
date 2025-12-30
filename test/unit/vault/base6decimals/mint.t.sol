@@ -377,8 +377,8 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Check vault balances and state
         assertEq(vault.balanceOf(alice), sharesToMint, "Alice did not receive correct amount of shares");
         assertEq(vault.totalSupply(), sharesToMint, "Total supply mismatch");
-        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), sharesToMint / 1e12, "Vault did not receive correct USDC");
-        assertEq(vault.totalAssets(), sharesToMint / 1e12, "Vault totalAssets incorrect");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 1 wei, "Vault did not receive correct USDC");
+        assertEq(vault.totalAssets(), 1 wei, "Vault totalAssets incorrect");
         assertEq(vault.totalBaseAssets(), sharesToMint, "Vault totalBaseAssets incorrect");
 
         // Assert the conversion rate stayed the same
@@ -420,7 +420,7 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         vm.stopPrank();
 
         // Check that assets were deposited
-        // assertGt(assetsDeposited, 0, "No assets were deposited");
+        assertGt(assetsDeposited, 0, "No assets were deposited");
 
         // Check that the vault received the wUSDC
         assertEq(
