@@ -169,9 +169,6 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         uint256 assetsDeposited = vault.mint(sharesToMint, alice);
         vm.stopPrank();
 
-        // Check that assets were deposited
-        // assertGt(assetsDeposited, 0, "No assets were deposited");
-
         // Check that the vault received the wUSDC
         assertEq(IERC20(MC.USDC).balanceOf(address(vault)), assetsDeposited, "Vault did not receive wUSDC");
 
@@ -194,8 +191,13 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         assertEq(vault.totalSupply(), sharesToMint, "Convert to shares failed");
 
-        // assertEq(vault.convertToAssets(sharesToMint), assetsDeposited, "Convert to assets failed");
-        //assertEq(vault.convertToAssets(1e18), initialRate, "Rate stays the same");
+        uint256 finalRate = vault.convertToAssets(1e18);
+
+        assertGt(finalRate, initialRate, "Vault conversion rate should increase after mint");
+
+        // rate increases by 10x - 1 wei, due to rounding up.
+        // Note this only happens if the boostrap mint call is 1e12 -1 shares or less.abi
+        assertEq(finalRate, initialRate * 10 - 1, "Vault conversion rate should be 10x the initial rate - 1");
     }
 
     function testFuzz_Vault_initial_low_mint_success(uint64 fuzzSharesToMint) public {
@@ -241,9 +243,15 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly (fuzz)");
         assertEq(vault.totalBaseAssets(), assetsDeposited * 1e12, "TotalBaseAssets incorrect (fuzz)");
 
-        // Conversion rate should stay the same (allow rounding difference of 1)
+        // Conversion rate should stay the same or increase
         uint256 afterRate = vault.convertToAssets(1e18);
         assertGe(afterRate, initialRate, "Vault conversion rate should increase after fuzz mint");
+        // Rate can increase by up to 1e12x the initial rate, due to rounding up.
+        assertLe(
+            afterRate,
+            initialRate * 1e12,
+            "Vault conversion rate should be less than or equal to 1e12x the initial rate"
+        );
     }
 
     function test_Vault_initial_low_deposit_success() public {
