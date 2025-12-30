@@ -73,6 +73,66 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
     }
 
+    function test_Vault_deposit_1_wei() public {
+        uint256 depositAmount = 1 wei;
+        bool alwaysComputeTotalAssets = true;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        // Make sure Alice has at least 1 wei
+        assertGe(weth.balanceOf(alice), depositAmount, "Alice does not have enough WETH to deposit 1 wei");
+
+        vm.prank(alice);
+        uint256 sharesMinted = vault.deposit(depositAmount, alice);
+
+        // At least 1 share should be minted, or whatever the minimum vault allows
+        assertGt(sharesMinted, 0, "No shares were minted for 1 wei deposit");
+
+        // Vault should receive 1 wei
+        assertEq(weth.balanceOf(address(vault)), depositAmount, "Vault did not receive 1 wei");
+
+        // Alice's WETH should decrease by 1 wei
+        assertEq(weth.balanceOf(alice), INITIAL_BALANCE - depositAmount, "Alice's balance did not decrease by 1 wei");
+
+        // Alice should have the minted shares
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive shares for 1 wei deposit");
+
+        // Vault totalAssets should increase by 1 wei (or to 1 wei, if this is the first deposit)
+        assertEq(vault.totalAssets(), depositAmount, "Vault total assets did not reflect 1 wei deposit");
+    }
+
+    function test_Vault_deposit_zero_wei() public {
+        uint256 depositAmount = 0;
+        bool alwaysComputeTotalAssets = true;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        // Alice's initial balance
+        uint256 initialWethBalance = weth.balanceOf(alice);
+        uint256 initialVaultTokenBalance = vault.balanceOf(alice);
+        uint256 initialVaultTotalAssets = vault.totalAssets();
+
+        vm.prank(alice);
+        uint256 sharesMinted = vault.deposit(depositAmount, alice);
+
+        // For zero deposit, zero shares should be minted
+        assertEq(sharesMinted, 0, "Should mint 0 shares for 0 deposit");
+
+        // Vault should not receive any additional tokens
+        assertEq(weth.balanceOf(address(vault)), 0, "Vault should not receive tokens for 0 deposit");
+
+        // Alice's WETH should remain unchanged
+        assertEq(weth.balanceOf(alice), initialWethBalance, "Alice's WETH balance should not change");
+
+        // Alice's vault token balance should remain unchanged
+        assertEq(vault.balanceOf(alice), initialVaultTokenBalance, "Alice's share balance should not change");
+
+        // totalAssets should not change
+        assertEq(vault.totalAssets(), initialVaultTotalAssets, "Vault's total assets should not change for 0 deposit");
+    }
+
     event Log(string, uint256);
 
     function test_Vault_depositAsset_STETH(uint256 depositAmount, bool alwaysComputeTotalAssets) public {
