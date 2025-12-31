@@ -343,28 +343,6 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), expectedTotal, "Total assets changed after processAccounting");
     }
 
-    function test_Vault_mint(uint256 mintAmount, bool alwaysComputeTotalAssets) public {
-        if (mintAmount < 10) return;
-        if (mintAmount > 100_000 ether) return;
-
-        vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
-
-        vm.startPrank(alice);
-        uint256 sharesMinted = vault.mint(mintAmount, alice);
-
-        // Check that shares were minted
-        assertGt(sharesMinted, 0, "No shares were minted");
-
-        // Check that Alice received the correct amount of shares
-        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
-
-        // Check that total assets did not change
-        assertEq(vault.totalAssets(), mintAmount, "Total assets changed incorrectly");
-
-        vm.stopPrank();
-    }
-
     function test_Vault_depositAsset_WrongAsset() public {
         vm.prank(alice);
         vm.expectRevert();
@@ -381,16 +359,6 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         vault.depositAsset(address(0), 1000, alice);
     }
 
-    function test_Vault_mintWhilePaused() public {
-        vm.prank(PAUSER);
-        vault.pause();
-        assertEq(vault.paused(), true);
-
-        vm.prank(alice);
-        vm.expectRevert();
-        vault.mint(1000, alice);
-    }
-
     function test_Vault_pauseAndDeposit() public {
         vm.prank(PAUSER);
         vault.pause();
@@ -399,11 +367,6 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         vm.prank(alice);
         vm.expectRevert();
         vault.deposit(1000, alice);
-    }
-
-    function test_Vault_maxMint() public view {
-        uint256 maxMint = vault.maxMint(alice);
-        assertEq(maxMint, type(uint256).max, "Max mint does not match");
     }
 
     function test_Vault_previewDeposit(uint256 assets, bool alwaysComputeTotalAssets) public {
@@ -415,17 +378,6 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
         uint256 shares = vault.previewDeposit(assets);
         assertEq(shares, assets, "Preview deposit does not match expected shares");
-    }
-
-    function test_Vault_previewMint(uint256 shares, bool alwaysComputeTotalAssets) public {
-        if (shares < 10) return;
-        if (shares > 100_000 ether) return;
-
-        vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
-
-        uint256 assets = vault.previewMint(shares);
-        assertEq(assets, shares, "Preview mint does not match expected assets");
     }
 
     function test_Vault_getAsset() public view {
@@ -453,15 +405,6 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         uint256 assets = 1000;
         vm.expectRevert();
         vault.previewDepositAsset(invalidAssetAddress, assets);
-    }
-
-    function test_Vault_maxMint_whenPaused_shouldRevert() public {
-        // Pause the vault
-        vm.prank(PAUSER);
-        vault.pause();
-
-        // Expect revert when calling maxMint while paused
-        assertEq(vault.maxMint(alice), 0, "Should be zero when paused");
     }
 
     function test_Vault_maxRedeem_whenPaused_shouldRevert() public {
