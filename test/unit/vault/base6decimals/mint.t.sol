@@ -460,4 +460,32 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         assertEq(vault.convertToAssets(1e18), initialRate, "Rate stays the same");
     }
+
+    function test_Vault_mint_zero_shares_zero_effect() public {
+        uint256 sharesToMint = 0;
+        bool alwaysComputeTotalAssets = true;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        // Give Alice USDC
+        deal(MC.USDC, alice, INITIAL_BALANCE);
+
+        // Approve vault to spend Alice's USDC
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
+
+        uint256 assetsDeposited = vault.mint(sharesToMint, alice);
+
+        vm.stopPrank();
+
+        // Nothing should have changed
+        assertEq(assetsDeposited, 0, "No assets should be deposited");
+        assertEq(vault.balanceOf(alice), 0, "Alice should receive zero shares");
+        assertEq(IERC20(MC.USDC).balanceOf(alice), INITIAL_BALANCE, "Alice's USDC balance should not change");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 0, "Vault should not receive any USDC");
+        assertEq(vault.totalAssets(), 0, "Vault total assets should remain 0");
+        assertEq(vault.totalBaseAssets(), 0, "Vault total base assets should remain 0");
+        assertEq(vault.totalSupply(), 0, "Vault total supply should remain 0");
+    }
 }

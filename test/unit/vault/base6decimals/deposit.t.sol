@@ -500,4 +500,40 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         uint256 afterRate = vault.convertToAssets(1e18);
         assertEq(initialRate, afterRate, "Conversion rate changed after 1 wei deposit");
     }
+
+    function test_Vault_deposit_zero_wei_USDC() public {
+        // Give Alice 0 USDC
+        deal(MC.USDC, alice, 0);
+
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), 0);
+
+        uint256 sharesMinted = vault.depositAsset(MC.USDC, 0, alice);
+        vm.stopPrank();
+
+        assertEq(sharesMinted, 0, "Should mint 0 shares for 0 USDC deposit");
+        assertEq(vault.balanceOf(alice), 0, "Alice's shares should stay 0");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 0, "Vault USDC should stay 0");
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "Alice's USDC should stay 0");
+        assertEq(vault.totalAssets(), 0, "Vault totalAssets should stay 0");
+        assertEq(vault.totalBaseAssets(), 0, "Vault totalBaseAssets should stay 0");
+    }
+
+    function test_Vault_deposit_zero_wei_USDT() public {
+        // Give Alice 0 USDT
+        deal(MC.USDT, alice, 0);
+
+        vm.startPrank(alice);
+        IERC20(MC.USDT).approve(address(vault), 0);
+
+        uint256 sharesMinted = vault.depositAsset(MC.USDT, 0, alice);
+        vm.stopPrank();
+
+        assertEq(sharesMinted, 0, "Should mint 0 shares for 0 USDT deposit");
+        assertEq(vault.balanceOf(alice), 0, "Alice's shares should stay 0");
+        assertEq(IERC20(MC.USDT).balanceOf(address(vault)), 0, "Vault USDT should stay 0");
+        assertEq(IERC20(MC.USDT).balanceOf(alice), 0, "Alice's USDT should stay 0");
+        assertEq(vault.totalAssets(), 0, "Vault totalAssets should stay 0");
+        assertEq(vault.totalBaseAssets(), 0, "Vault totalBaseAssets should stay 0");
+    }
 }

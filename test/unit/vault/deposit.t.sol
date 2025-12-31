@@ -17,6 +17,7 @@ import {Provider} from "src/module/Provider.sol";
 import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 contract VaultDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -73,9 +74,8 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
     }
 
-    function test_Vault_deposit_1_wei() public {
+    function test_Vault_deposit_1_wei(bool alwaysComputeTotalAssets) public {
         uint256 depositAmount = 1 wei;
-        bool alwaysComputeTotalAssets = true;
 
         vm.prank(ASSET_MANAGER);
         vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
@@ -86,8 +86,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         vm.prank(alice);
         uint256 sharesMinted = vault.deposit(depositAmount, alice);
 
-        // At least 1 share should be minted, or whatever the minimum vault allows
-        assertGt(sharesMinted, 0, "No shares were minted for 1 wei deposit");
+        assertEq(sharesMinted, 1 wei, "Incorrect shares minted for 1 wei deposit");
 
         // Vault should receive 1 wei
         assertEq(weth.balanceOf(address(vault)), depositAmount, "Vault did not receive 1 wei");
@@ -100,19 +99,42 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
 
         // Vault totalAssets should increase by 1 wei (or to 1 wei, if this is the first deposit)
         assertEq(vault.totalAssets(), depositAmount, "Vault total assets did not reflect 1 wei deposit");
+
+        assertEq(vault.convertToAssets(1e18), 1e18, "Conversion to assets did not reflect 1 USDT deposit");
     }
 
-    function test_Vault_deposit_zero_wei() public {
-        uint256 depositAmount = 0;
-        bool alwaysComputeTotalAssets = true;
+    function test_Vault_deposit_USDT_1_wei(bool alwaysComputeTotalAssets) public {
+        uint256 depositAmount = 1 wei;
 
         vm.prank(ASSET_MANAGER);
         vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
 
-        // Alice's initial balance
+        deal(MC.USDT, alice, depositAmount);
+
+        vm.startPrank(alice);
+        IERC20(MC.USDT).approve(address(vault), depositAmount);
+
+        uint256 sharesMinted = vault.depositAsset(MC.USDT, depositAmount, alice);
+
+        vm.stopPrank();
+
+        assertEq(sharesMinted, 0.001e18 / 1e6, "Incorrect shares minted for 1 USDT deposit");
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive the correct amount of shares");
+
+        assertEq(vault.totalAssets(), 0.001e18 / 1e6, "Vault total assets did not reflect 1 USDT deposit");
+
+        assertEq(IERC20(MC.USDT).balanceOf(alice), 0, "Alice's USDT balance did not decrease by 1 wei");
+
+        assertEq(vault.convertToAssets(1e18), 1e18, "Conversion to assets did not reflect 1 USDT deposit");
+    }
+
+    function test_Vault_deposit_zero_wei(bool alwaysComputeTotalAssets) public {
+        uint256 depositAmount = 0;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
         uint256 initialWethBalance = weth.balanceOf(alice);
-        uint256 initialVaultTokenBalance = vault.balanceOf(alice);
-        uint256 initialVaultTotalAssets = vault.totalAssets();
 
         vm.prank(alice);
         uint256 sharesMinted = vault.deposit(depositAmount, alice);
@@ -127,10 +149,10 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(weth.balanceOf(alice), initialWethBalance, "Alice's WETH balance should not change");
 
         // Alice's vault token balance should remain unchanged
-        assertEq(vault.balanceOf(alice), initialVaultTokenBalance, "Alice's share balance should not change");
+        assertEq(vault.balanceOf(alice), 0, "Alice's share balance should not change");
 
         // totalAssets should not change
-        assertEq(vault.totalAssets(), initialVaultTotalAssets, "Vault's total assets should not change for 0 deposit");
+        assertEq(vault.totalAssets(), 0, "Vault's total assets should not change for 0 deposit");
     }
 
     event Log(string, uint256);
