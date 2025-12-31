@@ -107,6 +107,8 @@ contract SetupVault is Test, Etches, MainnetActors {
         // Set METH rate to 1.2 ETH
         MockProvider(MC.PROVIDER).setRate(MC.METH, 1.2e18);
 
+        MockProvider(MC.PROVIDER).setRate(MC.USDT, 0.001e18);
+
         // Unpause the vault
         vault.unpause();
         vm.stopPrank();
