@@ -41,6 +41,27 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         deal(alice, INITIAL_BALANCE);
     }
 
+    function test_Vault_previewMint_1_wei() public {
+        uint256 shares = 1 wei;
+        uint256 assets = vault.previewMint(shares);
+        // there's always at least a 1 wei mint, due to rounding up.
+        assertEq(assets, 1 wei, "Preview mint does not match expected assets");
+    }
+
+    function test_Vault_previewMint_1e12_minus_1() public {
+        uint256 shares = 1e12 - 1;
+        uint256 assets = vault.previewMint(shares);
+        // there's always at least a 1 wei mint, due to rounding up.
+        assertEq(assets, 1 wei, "Preview mint does not match expected assets");
+    }
+
+    function test_Vault_previewMint_1e12() public {
+        uint256 shares = 1e12;
+        uint256 assets = vault.previewMint(shares);
+        // there's always at least a 1 wei mint, due to rounding up.
+        assertEq(assets, 1 wei, "Preview mint does not match expected assets");
+    }
+
     function test_Vault_initial_mint_success() public {
         uint256 sharesToMint = 1000e18; // 1000 vault shares with 18 decimals
         bool alwaysComputeTotalAssets = true;

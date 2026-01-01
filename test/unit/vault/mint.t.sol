@@ -230,6 +230,12 @@ contract VaultMintUnitTest is Test, MainnetActors, Etches {
         assertEq(assets, shares, "Preview mint does not match expected assets");
     }
 
+    function test_Vault_previewMint_1_wei() public {
+        uint256 shares = 1 wei;
+        uint256 assets = vault.previewMint(shares);
+        assertEq(assets, 1 wei, "Preview mint does not match expected assets");
+    }
+
     function test_Vault_maxMint_whenPaused_shouldRevert() public {
         // Pause the vault
         vm.prank(PAUSER);
