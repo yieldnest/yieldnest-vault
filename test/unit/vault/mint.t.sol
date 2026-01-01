@@ -65,7 +65,99 @@ contract VaultMintUnitTest is Test, MainnetActors, Etches {
         // Check that total assets did not change
         assertEq(vault.totalAssets(), mintAmount, "Total assets changed incorrectly");
 
+        assertEq(vault.convertToShares(1e18), 1e18, "Conversion to shares did not reflect mint");
+
         vm.stopPrank();
+    }
+
+    function test_Vault_mint_1_wei(bool alwaysComputeTotalAssets) public {
+        uint256 mintAmount = 1 wei;
+        uint256 assetsRequired = 1 wei;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        // Make sure Alice has enough WETH to mint 1 share
+        assertGe(weth.balanceOf(alice), assetsRequired, "Alice does not have enough WETH to mint 1 wei shares");
+
+        vm.startPrank(alice);
+        weth.approve(address(vault), assetsRequired);
+        uint256 sharesMinted = vault.mint(mintAmount, alice);
+        vm.stopPrank();
+
+        assertEq(sharesMinted, mintAmount, "Incorrect shares minted for 1 wei mint");
+
+        // Vault should receive exactly 1 wei
+        assertEq(weth.balanceOf(address(vault)), assetsRequired, "Vault did not receive 1 wei for 1 wei mint");
+
+        // Alice's WETH should decrease by 1 wei
+        assertEq(weth.balanceOf(alice), INITIAL_BALANCE - assetsRequired, "Alice's WETH did not decrease by 1 wei");
+
+        // Alice's Vault token balance should be 1 wei
+        assertEq(vault.balanceOf(alice), mintAmount, "Alice did not receive 1 wei shares");
+
+        // Vault totalAssets should increase by 1 wei
+        assertEq(vault.totalAssets(), assetsRequired, "Vault total assets did not reflect 1 wei mint");
+
+        // Conversion should stay consistent
+        assertEq(vault.convertToShares(assetsRequired), mintAmount, "Conversion to shares did not reflect 1 wei mint");
+
+        assertEq(vault.convertToShares(1e18), 1e18, "Conversion to shares did not reflect mint");
+
+        if (!alwaysComputeTotalAssets) {
+            vault.processAccounting();
+
+            // states stays the same
+            assertEq(vault.totalAssets(), assetsRequired, "Vault total assets did not reflect 1 wei mint");
+            assertEq(vault.balanceOf(alice), mintAmount, "Alice did not receive 1 wei shares");
+            assertEq(weth.balanceOf(address(vault)), assetsRequired, "Vault did not receive 1 wei for 1 wei mint");
+            assertEq(weth.balanceOf(alice), INITIAL_BALANCE - assetsRequired, "Alice's WETH did not decrease by 1 wei");
+            assertEq(
+                vault.convertToShares(assetsRequired), mintAmount, "Conversion to shares did not reflect 1 wei mint"
+            );
+
+            assertEq(vault.convertToShares(1e18), 1e18, "Conversion to shares did not reflect mint");
+        }
+    }
+
+    function test_Vault_mint_zero_shares(bool alwaysComputeTotalAssets) public {
+        uint256 mintAmount = 0;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        uint256 initialWethBalance = weth.balanceOf(alice);
+
+        vm.prank(alice);
+        uint256 sharesMinted = vault.mint(mintAmount, alice);
+
+        // Should mint 0 shares for 0 mint amount
+        assertEq(sharesMinted, 0, "Should mint 0 shares for 0 mint");
+
+        // Vault should not receive any tokens
+        assertEq(weth.balanceOf(address(vault)), 0, "Vault should not receive WETH for 0 mint");
+
+        // Alice's WETH should remain unchanged
+        assertEq(weth.balanceOf(alice), initialWethBalance, "Alice's WETH balance should not change");
+
+        // Alice's vault token balance should remain unchanged
+        assertEq(vault.balanceOf(alice), 0, "Alice's share balance should not change");
+
+        // totalAssets should not change
+        assertEq(vault.totalAssets(), 0, "Vault's total assets should not change for 0 mint");
+
+        assertEq(vault.convertToShares(1e18), 1e18, "Conversion to shares did not reflect mint");
+
+        if (!alwaysComputeTotalAssets) {
+            vault.processAccounting();
+            assertEq(vault.totalAssets(), 0, "Vault's total assets should not change for 0 mint");
+            assertEq(vault.balanceOf(alice), 0, "Alice's share balance should not change");
+            assertEq(weth.balanceOf(address(vault)), 0, "Vault should not receive WETH for 0 mint");
+            assertEq(weth.balanceOf(alice), initialWethBalance, "Alice's WETH balance should not change");
+            assertEq(vault.convertToShares(0), 0, "Conversion to shares did not reflect 0 mint");
+
+            assertEq(vault.convertToShares(1e18), 1e18, "Conversion to shares did not reflect mint");
+        }
     }
 
     function test_Vault_previewMint(uint256 shares, bool alwaysComputeTotalAssets) public {
