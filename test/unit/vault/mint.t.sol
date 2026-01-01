@@ -194,4 +194,17 @@ contract VaultMintUnitTest is Test, MainnetActors, Etches {
         vm.expectRevert();
         vault.mint(1000, alice);
     }
+
+    function test_Vault_mint_reverts_when_not_enough_assets(bool alwaysComputeTotalAssets) public {
+        uint256 mintAmount = 1 ether;
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        vm.startPrank(alice);
+        weth.approve(address(vault), 0);
+        vm.expectRevert();
+        vault.mint(mintAmount, alice);
+        vm.stopPrank();
+    }
 }
