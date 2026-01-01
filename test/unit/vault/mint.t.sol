@@ -17,6 +17,7 @@ import {Provider} from "src/module/Provider.sol";
 import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract VaultMintUnitTest is Test, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -158,6 +159,64 @@ contract VaultMintUnitTest is Test, MainnetActors, Etches {
 
             assertEq(vault.convertToShares(1e18), 1e18, "Conversion to shares did not reflect mint");
         }
+    }
+
+    function test_Vault_mint_post_initial_deposit_and_donation(bool alwaysComputeTotalAssets) public {
+        uint256 initialDeposit = 100 ether;
+        uint256 donationAmount = 10 ether;
+        uint256 mintAmount = 1 ether;
+
+        HooksUtils.setPerformanceFee(vault, 0);
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
+
+        // Alice does an initial deposit
+        vm.prank(alice);
+        uint256 initShares = vault.deposit(initialDeposit, alice);
+
+        // Simulate a donation (send tokens directly to vault)
+        deal(address(weth), address(this), donationAmount);
+        weth.transfer(address(vault), donationAmount);
+
+        if (!alwaysComputeTotalAssets) {
+            vault.processAccounting();
+            assertEq(
+                vault.totalAssets(), initialDeposit + donationAmount, "Total assets should reflect deposit + donation"
+            );
+        }
+
+        // Total assets should increase by donationAmount, but total supply is unchanged
+        assertEq(vault.totalAssets(), initialDeposit + donationAmount, "Total assets should reflect deposit + donation");
+        assertEq(vault.totalSupply(), initShares, "Total supply should only reflect deposited shares");
+
+        // Let's check what assets are now needed to mint 1 ether shares -- expected proportionally less due to donation
+        uint256 requiredAssetsToMintNext = vault.previewMint(mintAmount);
+        assertGt(requiredAssetsToMintNext, mintAmount, "Required assets should increase post-donation");
+
+        // Bob mints 1 ether worth of shares
+        address bob = address(0xB0B);
+        deal(address(weth), bob, requiredAssetsToMintNext);
+        vm.startPrank(bob);
+        weth.approve(address(vault), requiredAssetsToMintNext);
+        vault.mint(mintAmount, bob);
+        vm.stopPrank();
+
+        // Now check total supply and asset balances
+        assertEq(vault.totalSupply(), initShares + mintAmount, "Total supply should reflect mint + deposit");
+        assertEq(
+            vault.totalAssets(),
+            initialDeposit + donationAmount + requiredAssetsToMintNext,
+            "Total assets should include donation and second deposit"
+        );
+
+        // Check Alice's and Bob's share proportions; Alice should have a larger proportion due to donation's dilution
+        // Alice's proportion should be: initShares / (initShares + mintAmount)
+        // Bob's: mintAmount / (initShares + mintAmount)
+        // The total asset value that Alice could redeem should be larger than the initial deposit due to the donation
+
+        uint256 aliceAssets = vault.previewRedeem(initShares);
+        assertGt(aliceAssets, initialDeposit, "Alice's asset value should increase due to donation");
     }
 
     function test_Vault_previewMint(uint256 shares, bool alwaysComputeTotalAssets) public {
