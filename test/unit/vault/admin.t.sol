@@ -188,13 +188,13 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.addAsset(address(asset2), true);
         vm.stopPrank();
 
-        assertEq(vault.getAssets().length, 7);
+        assertEq(vault.getAssets().length, 8);
 
         vm.startPrank(ASSET_MANAGER);
         vault.deleteAsset(1);
         vm.stopPrank();
 
-        assertEq(vault.getAssets().length, 6);
+        assertEq(vault.getAssets().length, 7);
     }
 
     function test_Vault_deleteAsset_updatesIndex() public {
@@ -305,12 +305,12 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.addAsset(address(asset2), true);
         vm.stopPrank();
 
-        assertEq(vault.getAssets().length, 7);
+        assertEq(vault.getAssets().length, 8);
 
         deal(address(asset2), address(vault), 100);
         vm.startPrank(ASSET_MANAGER);
         vm.expectRevert(abi.encodeWithSelector(IVault.AssetNotEmpty.selector, address(asset2)));
-        vault.deleteAsset(6);
+        vault.deleteAsset(7);
         vm.stopPrank();
     }
 
