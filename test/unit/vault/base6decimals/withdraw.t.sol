@@ -137,6 +137,18 @@ contract Vault6DecimalsBaseWithdrawUnitTest is Test, MainnetActors, Etches {
         assertEq(IERC20(MC.BUFFER).balanceOf(address(vault)), amount, "Vault should have received buffer shares");
     }
 
+    function test_Vault_previewWithdraw_0_wei() public {
+        uint256 assets = 0;
+        uint256 shares = vault.previewWithdraw(assets);
+        assertEq(shares, 0, "Preview withdraw does not match expected shares");
+    }
+
+    function test_Vault_previewWithdraw_1_wei() public {
+        uint256 assets = 1 wei;
+        uint256 shares = vault.previewWithdraw(assets);
+        assertEq(shares, 1e12, "Preview withdraw does not match expected shares");
+    }
+
     function test_Vault_deposit_usde_and_withdraw_usdc_success_without_fees(
         uint256 depositAmount,
         uint256 withdrawAmount

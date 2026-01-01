@@ -41,6 +41,18 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         deal(alice, INITIAL_BALANCE);
     }
 
+    function test_Vault_previewDeposit_0_wei() public {
+        uint256 assets = 0;
+        uint256 shares = vault.previewDeposit(assets);
+        assertEq(shares, 0, "Preview deposit does not match expected shares");
+    }
+
+    function test_Vault_previewDeposit_1_wei() public {
+        uint256 assets = 1 wei;
+        uint256 shares = vault.previewDeposit(assets);
+        assertEq(shares, 1e12, "Preview deposit does not match expected shares");
+    }
+
     function test_Vault_initial_deposit_success(uint256 depositAmount, bool alwaysComputeTotalAssets) public {
         // Bound deposit amount between 10 and 100k USDC (6 decimals)
         if (depositAmount < 10) return;
