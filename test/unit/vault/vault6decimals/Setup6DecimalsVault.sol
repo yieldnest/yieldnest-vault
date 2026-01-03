@@ -100,9 +100,11 @@ contract Setup6DecimalsVault is SetupVault {
 
         // Add assets: Base asset (USDC) first
         vault.addAsset(MC.USDC, true); // USDC mocked at WETH address
+        vault.addAsset(MC.USDT, true); // USDT mocked at WETH address
         vault.addAsset(MC.BUFFER, false);
         // Set rates in provider
         mock6DecimalsProvider.setRate(MC.USDC, 1e6); // 1 USD USDC
+        mock6DecimalsProvider.setRate(MC.USDT, 1e6); // 1 USD USDT
         mock6DecimalsProvider.addERC4626(MC.BUFFER);
 
         vault.unpause();
