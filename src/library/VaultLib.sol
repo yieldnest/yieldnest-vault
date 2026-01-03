@@ -271,7 +271,7 @@ library VaultLib {
         uint256 totalSupply = getERC20Storage().totalSupply;
 
         // ASSUMPTION:  baseAssets has equal or more decimals than asset_
-        uint256 baseAssets = convertAssetToBase(asset_, assets, Math.Rounding.Floor);
+        uint256 baseAssets = convertAssetToBase(asset_, assets, rounding);
 
         uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
         return (shares, baseAssets);

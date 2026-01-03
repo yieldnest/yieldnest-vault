@@ -518,7 +518,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The equivalent amount of shares.
      */
     function _depositAsset(address asset_, uint256 assets, address receiver) internal virtual returns (uint256) {
-        // baseAssets is rounded down to error on the side of undercounting total assets.
+        // shares is rounded down to error on the side of minting less shares
+        // baseAssets is rounded down to error on the side of undercounting total assets post deposit
         (uint256 shares, uint256 baseAssets) = _convertToShares(asset_, assets, Math.Rounding.Floor);
 
         IHooks hooks_ = hooks();
