@@ -154,6 +154,21 @@ contract VaultWithdrawAssetUnitTest is Test, MainnetActors, Etches {
             selectedAsset, withdrawAmount, Math.Rounding.Ceil
         ); // vault.previewWithdraw(withdrawAmount);
 
+        // due to rounding, withdrawer may not be able to burn the full amount deposited.
+        if (expectedSharesToBurn > vault.balanceOf(withdrawerManager)) {
+            expectedSharesToBurn = vault.balanceOf(withdrawerManager);
+            (uint256 actualWithdrawAmount,) = PublicViewsVault(payable(address(vault))).convertToAssetsForAsset(
+                selectedAsset, vault.balanceOf(withdrawerManager), Math.Rounding.Floor
+            );
+            assertEq(
+                actualWithdrawAmount,
+                withdrawAmount - 1,
+                "Actual withdraw amount should be less than expected withdraw amount due to rounding"
+            );
+
+            withdrawAmount = actualWithdrawAmount;
+        }
+
         // Withdraw selected asset using withdrawAsset (withdrawerManager withdraws for withdrawerManager)
         vm.prank(withdrawerManager);
         uint256 sharesBurned = vault.withdrawAsset(selectedAsset, withdrawAmount, withdrawerManager, withdrawerManager);
