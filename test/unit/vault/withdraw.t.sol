@@ -14,6 +14,7 @@ import {IHooks} from "src/interface/IHooks.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 
 contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
@@ -403,5 +404,92 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vault.approve(alice, depositAmount);
         vm.expectRevert();
         vault.withdraw(depositAmount, bob, bob);
+    }
+
+    // Security test for zero buffer scenario
+    function test_Vault_withdraw_revertsWhenBufferNotSet() public {
+        // Create a new vault without setting buffer
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+        newVault.initialize(address(this), "Test Vault", "TV", 18, 0, false, false, 0);
+
+        // Grant roles
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        newVault.grantRole(newVault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
+        newVault.grantRole(newVault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
+        newVault.grantRole(newVault.UNPAUSER_ROLE(), UNPAUSER);
+
+        // Setup vault
+        vm.startPrank(PROVIDER_MANAGER);
+        newVault.setProvider(MC.PROVIDER);
+        vm.stopPrank();
+
+        vm.startPrank(ASSET_MANAGER);
+        newVault.addAsset(MC.WETH, true);
+        vm.stopPrank();
+
+        // Unpause vault (requires provider but not buffer)
+        vm.prank(UNPAUSER);
+        newVault.unpause();
+
+        // Deposit some assets
+        deal(MC.WETH, alice, 1000 ether);
+        vm.startPrank(alice);
+        IERC20(MC.WETH).approve(address(newVault), type(uint256).max);
+        newVault.deposit(100 ether, alice);
+        vm.stopPrank();
+
+        // Attempt withdrawal should revert due to unset buffer
+        vm.prank(alice);
+        vm.expectRevert();
+        newVault.withdraw(10 ether, alice, alice);
+    }
+
+    function test_Vault_maxWithdraw_returnsZeroWhenBufferIsZeroAddress() public {
+        // Deploy a fresh vault
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+        newVault.initialize(address(this), "Test Vault", "TV", 18, 0, false, false, 0);
+
+        // Grant relevant roles
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        newVault.grantRole(newVault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
+
+        // Add an asset
+        vm.startPrank(ASSET_MANAGER);
+        newVault.addAsset(address(weth), true);
+        vm.stopPrank();
+
+        {
+            // Create a MockProvider instance and set a rate for WETH
+            MockProvider mockProvider = new MockProvider();
+            // Set an example rate for WETH, e.g., 1:1 (1e18 = 1)
+            mockProvider.setRate(address(weth), 1e18);
+
+            newVault.grantRole(newVault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
+
+            // Set the MockProvider as the provider in the vault
+            vm.startPrank(PROVIDER_MANAGER);
+            newVault.setProvider(address(mockProvider));
+            vm.stopPrank();
+        }
+
+        newVault.grantRole(newVault.UNPAUSER_ROLE(), UNPAUSER);
+        vm.prank(UNPAUSER);
+        newVault.unpause();
+
+        deal(address(weth), alice, 1000 ether);
+        vm.startPrank(alice);
+        weth.approve(address(newVault), type(uint256).max);
+        newVault.deposit(100 ether, alice);
+        vm.stopPrank();
+
+        assertEq(newVault.buffer(), address(0));
+
+        // maxWithdraw should return zero when buffer is address(0)
+        uint256 maxWithdrawValue = newVault.maxWithdraw(alice);
+        assertEq(maxWithdrawValue, 0, "maxWithdraw should return 0 when buffer is address(0)");
     }
 }
