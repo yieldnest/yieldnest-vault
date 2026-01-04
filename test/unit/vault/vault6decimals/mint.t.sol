@@ -17,12 +17,11 @@ import {Provider} from "src/module/Provider.sol";
 import {IERC20} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
-import {SetupBase6DecimalsVault} from "test/unit/vault/base6decimals/SetupBase6DecimalsVault.sol";
+import {Setup6DecimalsVault} from "test/unit/vault/vault6decimals/Setup6DecimalsVault.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {console} from "lib/forge-std/src/console.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 
 contract Vault6DecimalsMintUnitTest is Test, MainnetActors, Etches {
@@ -30,12 +29,9 @@ contract Vault6DecimalsMintUnitTest is Test, MainnetActors, Etches {
     address public alice = address(0x12345);
     uint256 public constant INITIAL_BALANCE = 20_000_000_000 * 1e6; // 6 decimals, e.g. USDC
 
-    WrappedToken public wusdc;
-
     function setUp() public {
-        SetupBase6DecimalsVault setupVault = new SetupBase6DecimalsVault();
+        Setup6DecimalsVault setupVault = new Setup6DecimalsVault();
         (vault,) = setupVault.setup();
-        wusdc = setupVault.wusdc();
 
         // Give Alice some tokens (as if 6 decimals)
         deal(alice, INITIAL_BALANCE);
@@ -151,7 +147,7 @@ contract Vault6DecimalsMintUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.balanceOf(alice), sharesToMint, "Alice did not receive the correct amount of shares");
         assertEq(assetsDeposited, sharesToMint, "Incorrect amount of assets deposited");
         assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly");
-        assertEq(vault.totalBaseAssets(), assetsDeposited * 1e12, "Total assets did not increase correctly");
+        assertEq(vault.totalBaseAssets(), assetsDeposited, "Total assets did not increase correctly");
         assertEq(vault.totalSupply(), sharesToMint, "Convert to shares failed");
 
         uint256 finalRate = vault.convertToAssets(1e6);
@@ -188,7 +184,7 @@ contract Vault6DecimalsMintUnitTest is Test, MainnetActors, Etches {
             "Alice balance did not decrease by assetsDeposited"
         );
         assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly (fuzz)");
-        assertEq(vault.totalBaseAssets(), assetsDeposited * 1e12, "TotalBaseAssets incorrect (fuzz)");
+        assertEq(vault.totalBaseAssets(), assetsDeposited, "TotalBaseAssets incorrect (fuzz)");
 
         uint256 afterRate = vault.convertToAssets(1e6);
         assertEq(afterRate, initialRate, "Vault conversion rate should not change on mint");
@@ -216,7 +212,7 @@ contract Vault6DecimalsMintUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalSupply(), sharesMinted, "Total supply mismatch");
         assertEq(IERC20(MC.USDC).balanceOf(address(vault)), depositAmount, "Vault did not receive correct USDC");
         assertEq(vault.totalAssets(), depositAmount, "Vault totalAssets incorrect");
-        assertEq(vault.totalBaseAssets(), depositAmount * 1e12, "Vault totalBaseAssets incorrect");
+        assertEq(vault.totalBaseAssets(), depositAmount, "Vault totalBaseAssets incorrect");
 
         uint256 afterRate = vault.convertToAssets(1e6);
         assertEq(afterRate, initialRate, "Vault conversion rate changed after low deposit");
@@ -290,14 +286,12 @@ contract Vault6DecimalsMintUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.balanceOf(alice), sharesToMint, "Alice did not receive correct amount of shares");
         assertEq(vault.totalSupply(), sharesToMint, "Total supply mismatch");
 
-        console.log("vault.totalAssets()", vault.totalAssets());
-        console.log("ERC20(MC.USDC).balanceOf(address(vault))", IERC20(MC.USDC).balanceOf(address(vault)));
-        // assertEq(IERC20(MC.USDC).balanceOf(address(vault)), sharesToMint, "Vault did not receive correct USDC");
-        // assertEq(vault.totalAssets(), sharesToMint, "Vault totalAssets incorrect");
-        // assertEq(vault.totalBaseAssets(), sharesToMint, "Vault totalBaseAssets incorrect");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), sharesToMint, "Vault did not receive correct USDC");
+        assertEq(vault.totalAssets(), sharesToMint, "Vault totalAssets incorrect");
+        assertEq(vault.totalBaseAssets(), sharesToMint, "Vault totalBaseAssets incorrect");
 
-        // uint256 afterRate = vault.convertToAssets(1e6);
-        // assertEq(afterRate, initialRate, "Vault conversion rate changed after low deposit");
+        uint256 afterRate = vault.convertToAssets(1e6);
+        assertEq(afterRate, initialRate, "Vault conversion rate changed after low deposit");
     }
 
     function test_Vault_second_low_mint_success() public {
@@ -340,7 +334,7 @@ contract Vault6DecimalsMintUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.totalAssets(), assetsDeposited + bootstrapDeposit, "Total assets did not increase correctly");
         assertEq(
             vault.totalBaseAssets(),
-            (assetsDeposited + bootstrapDeposit) * 1e12,
+            (assetsDeposited + bootstrapDeposit),
             "Total base assets did not increase correctly"
         );
         assertEq(vault.totalSupply(), sharesToMint + boostrapShares, "Total supply mismatch");
