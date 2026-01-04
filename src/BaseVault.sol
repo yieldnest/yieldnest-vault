@@ -41,7 +41,7 @@ import {IERC4626} from "src/Common.sol";
  *       - Can be the same as base asset (defaultAssetIndex == 0)
  *    - Can be different from the base asset (defaultAssetIndex == 1)
  *
- *  REQUIREMENT: default Asset MUST be the underyling asset of Base Asset.
+ *  REQUIREMENT: default Asset MUST be the underlying asset of Base Asset.
  *               Example: Default Asset is USDC, Base Asset is Wrapped USDC.
  *
  * The vault maintains a list of supported assets, each with their own decimal precision.
@@ -129,7 +129,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Returns the total assets held by the vault denominated in the default asset.
-     * @dev The ERC4626 interface underyling asset is the default asset.
+     * @dev The ERC4626 interface underlying asset is the default asset.
      * @return uint256 The total assets.
      */
     function totalAssets() public view virtual returns (uint256) {
