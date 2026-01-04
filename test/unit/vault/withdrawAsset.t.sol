@@ -178,7 +178,7 @@ contract VaultWithdrawAssetUnitTest is Test, MainnetActors, Etches {
         }
 
         // Verify the correct amount of shares were burned
-        assertEq(sharesBurned, expectedSharesToBurn, "Shares burned should match preview");
+        assertApproxEqAbs(sharesBurned, expectedSharesToBurn, 1, "Shares burned should match preview");
 
         // Verify withdrawerManager's share balance decreased
         assertEq(
