@@ -15,6 +15,7 @@ import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
@@ -491,5 +492,11 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // maxWithdraw should return zero when buffer is address(0)
         uint256 maxWithdrawValue = newVault.maxWithdraw(alice);
         assertEq(maxWithdrawValue, 0, "maxWithdraw should return 0 when buffer is address(0)");
+
+        // Attempt to withdraw and expect revert because buffer is address(0)
+        vm.startPrank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVault.ExceededMaxWithdraw.selector, alice, 1 ether, 0));
+        newVault.withdraw(1 ether, alice, alice);
+        vm.stopPrank();
     }
 }
