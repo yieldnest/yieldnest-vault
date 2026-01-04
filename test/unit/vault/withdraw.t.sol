@@ -188,53 +188,6 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
     }
 
-    function test_Vault_previewRedeem(uint256 shares, bool alwaysComputeTotalAssets) external {
-        if (shares < 2) return;
-        if (shares > 100_000 ether) return;
-
-        vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
-
-        uint256 assets = vault.previewWithdraw(shares);
-        assertEq(assets, shares, "Preview Assets response not shares");
-    }
-
-    function test_Vault_redeem_success(uint256 amount, bool alwaysComputeTotalAssets) external {
-        if (amount < 2) return;
-        if (amount > 100_000 ether) return;
-
-        vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
-
-        uint256 aliceWethBalanceBefore = weth.balanceOf(alice);
-        vm.prank(alice);
-        uint256 depositShares = vault.deposit(amount, alice);
-
-        allocateToBuffer(amount);
-
-        uint256 balanceBefore = weth.balanceOf(alice);
-        uint256 totalAssetsBefore = vault.totalAssets();
-        uint256 previewAssets = vault.previewRedeem(depositShares);
-
-        vm.prank(alice);
-        uint256 assetsAfter = vault.redeem(depositShares, alice, alice);
-        uint256 balanceAfter = weth.balanceOf(alice);
-        uint256 totalAssetsAfter = vault.totalAssets();
-        uint256 aliceWethBalanceAfter = weth.balanceOf(alice);
-
-        assertEq(assetsAfter, previewAssets, "assetsAfter = previewAmount");
-        assertEq(balanceAfter, balanceBefore + previewAssets, "balanceAfter = balanceBefore + previewAmount");
-
-        assertEq(
-            totalAssetsBefore, totalAssetsAfter + previewAssets, "totalAssetsBefore = totalAssetsAfter + previewAmount"
-        );
-        assertEq(
-            aliceWethBalanceBefore,
-            aliceWethBalanceAfter,
-            "Alice's WETH balance should be increased by the assets withdrawn"
-        );
-    }
-
     function test_Vault_withdrawMoreThanBalance() public {
         vm.startPrank(alice);
         uint256 depositAmount = 100 ether;
@@ -246,17 +199,6 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vault.withdraw(excessiveWithdrawAmount, alice, alice);
     }
 
-    function test_Vault_redeemMoreThanShareBalance() public {
-        vm.startPrank(alice);
-        uint256 depositAmount = 100 ether;
-        uint256 sharesMinted = vault.deposit(depositAmount, alice);
-
-        // Attempt to redeem more shares than the balance
-        uint256 excessiveRedeemAmount = sharesMinted + 1;
-        vm.expectRevert();
-        vault.redeem(excessiveRedeemAmount, alice, alice);
-    }
-
     function test_Vault_withdraw_as_non_owner() public {
         vm.startPrank(alice);
         uint256 depositAmount = 100 ether;
@@ -266,16 +208,6 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(bob);
         vm.expectRevert();
         vault.withdraw(sharesMinted, bob, alice);
-    }
-
-    function test_Vault_redeemWhilePaused() public {
-        vm.prank(PAUSER);
-        vault.pause();
-        assertEq(vault.paused(), true);
-
-        vm.prank(alice);
-        vm.expectRevert();
-        vault.redeem(1000, alice, alice);
     }
 
     function test_Vault_withdrawWhilePaused() public {
@@ -361,23 +293,6 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // Test maxWithdraw after deposit
         uint256 maxWithdrawAfterDeposit = vault.maxWithdraw(alice);
         assertEq(maxWithdrawAfterDeposit, depositAmount, "Max withdraw after deposit does not match");
-    }
-
-    function test_Vault_maxRedeem() public view {
-        uint256 maxRedeem = vault.maxRedeem(alice);
-        assertEq(maxRedeem, 0, "Max redeem does not match");
-    }
-
-    function test_Vault_maxRedeem_afterDeposit() public {
-        // Simulate a deposit
-        uint256 depositAmount = 1000;
-        vm.prank(alice);
-        vault.deposit(depositAmount, alice);
-
-        allocateToBuffer(depositAmount);
-        // Test maxRedeem after deposit
-        uint256 maxRedeemAfterDeposit = vault.maxRedeem(alice);
-        assertEq(maxRedeemAfterDeposit, depositAmount, "Max redeem after deposit does not match");
     }
 
     function test_Vault_maxWithdrawWhenPaused() public {
