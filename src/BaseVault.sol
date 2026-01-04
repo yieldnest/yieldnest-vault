@@ -254,7 +254,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The maximum amount of assets.
      */
     function maxWithdraw(address owner) public view virtual returns (uint256) {
-        if (paused()) {
+        if (paused() || buffer() == address(0)) {
             return 0;
         }
 
@@ -275,7 +275,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The maximum amount of shares.
      */
     function maxRedeem(address owner) public view virtual returns (uint256) {
-        if (paused()) {
+        if (paused() || buffer() == address(0)) {
             return 0;
         }
 
