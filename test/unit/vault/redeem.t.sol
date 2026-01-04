@@ -147,4 +147,56 @@ contract VaultRedeemUnitTest is Test, MainnetActors, Etches, AssertUtils {
         uint256 maxRedeemAfterDeposit = vault.maxRedeem(alice);
         assertEq(maxRedeemAfterDeposit, depositAmount, "Max redeem after deposit does not match");
     }
+
+    function test_Vault_maxRedeem_returnsZeroWhenBufferIsZeroAddress() public {
+        // Deploy a fresh vault
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+        newVault.initialize(address(this), "Test Vault", "TV", 18, 0, false, false, 0);
+
+        // Grant relevant roles
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        newVault.grantRole(newVault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
+
+        // Add an asset
+        vm.startPrank(ASSET_MANAGER);
+        newVault.addAsset(address(weth), true);
+        vm.stopPrank();
+
+        {
+            // Create a MockProvider instance and set a rate for WETH
+            MockProvider mockProvider = new MockProvider();
+            // Set a 1:1 rate for WETH
+            mockProvider.setRate(address(weth), 1e18);
+
+            newVault.grantRole(newVault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
+            // Set the MockProvider as provider in the vault
+            vm.startPrank(PROVIDER_MANAGER);
+            newVault.setProvider(address(mockProvider));
+            vm.stopPrank();
+        }
+
+        newVault.grantRole(newVault.UNPAUSER_ROLE(), UNPAUSER);
+        vm.prank(UNPAUSER);
+        newVault.unpause();
+
+        deal(address(weth), alice, 1000 ether);
+        vm.startPrank(alice);
+        weth.approve(address(newVault), type(uint256).max);
+        newVault.deposit(100 ether, alice);
+        vm.stopPrank();
+
+        assertEq(newVault.buffer(), address(0));
+
+        // maxRedeem should return zero when buffer is address(0)
+        uint256 maxRedeemValue = newVault.maxRedeem(alice);
+        assertEq(maxRedeemValue, 0, "maxRedeem should return 0 when buffer is address(0)");
+
+        // Attempt to redeem and expect revert because buffer is address(0)
+        vm.startPrank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVault.ExceededMaxRedeem.selector, alice, 1 ether, 0));
+        newVault.redeem(1 ether, alice, alice);
+        vm.stopPrank();
+    }
 }
