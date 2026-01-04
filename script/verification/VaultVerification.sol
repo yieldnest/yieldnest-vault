@@ -17,6 +17,7 @@ import {OriginRules} from "script/rules/OriginRules.sol";
 import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
+import {IERC4626} from "src/Common.sol";
 
 library VaultVerification {
     error WithdrawerNotFound(address vault);
@@ -64,8 +65,24 @@ library VaultVerification {
         address[] memory assets = vault.getAssets();
         vm.assertEq(assets[0], MC.WETH);
 
-        // Verify buffer configuration
-        vm.assertEq(vault.buffer(), MC.MORPHO_MEV_CAPITAL_WETH, "Buffer should be set to Morpho MEV Capital WETH");
+        {
+            // Verify buffer configuration
+            // Verify buffer is in the getAssets() set
+            address buffer = vault.buffer();
+            bool bufferFound = false;
+            for (uint256 i = 0; i < assets.length; i++) {
+                if (assets[i] == buffer) {
+                    bufferFound = true;
+                    break;
+                }
+            }
+            vm.assertTrue(bufferFound, "Buffer should be included in getAssets()");
+        }
+
+        uint256 bufferRate = Provider(vault.provider()).getRate(vault.buffer());
+        vm.assertGt(bufferRate, 1e18, "Buffer should have a rate greater than 1:1");
+
+        vm.assertEq(IERC4626(vault.buffer()).asset(), MC.WETH, "Buffer's asset should be WETHY");
     }
 
     function verifyProvider(Provider provider, Withdrawer withdrawer) internal view {

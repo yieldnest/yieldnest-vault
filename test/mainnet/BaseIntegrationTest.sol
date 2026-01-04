@@ -37,10 +37,5 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     function setUp() public virtual {
         vault = Vault(payable(MC.YNETHX));
         vault.processAccounting();
-
-        // TODO: remove this
-        vm.startPrank(ADMIN);
-        VaultVerification.getWithdrawer(vault).unpause();
-        vm.stopPrank();
     }
 }

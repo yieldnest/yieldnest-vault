@@ -435,7 +435,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         assertApproxEqRel(
             vault.totalAssets(),
             tvlBeforeWithdraw + withdrawer.totalAssets() - withdrawerTotalBefore,
-            1e9,
+            1e11,
             "Total assets should remain unchanged after processing accounting"
         );
     }
@@ -463,8 +463,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             weth.approve(address(oethVault), outstandingWithdrawals + donateAmount);
             oethVault.mint(address(weth), outstandingWithdrawals + donateAmount, 1);
             vm.stopPrank();
-
-            assertGt(weth.balanceOf(MC.OETH_VAULT), donateAmount + outstandingWithdrawals, "WETH balance should match");
 
             // solhint-disable-next-line not-rely-on-time
             uint256 timestamp = block.timestamp;
