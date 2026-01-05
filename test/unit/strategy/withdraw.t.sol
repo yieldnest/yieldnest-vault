@@ -102,7 +102,7 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
         vm.stopPrank();
     }
 
-    function test_Strategy_Withdraw_AllocatorRestriction() public {
+    function test_Strategy_Withdraw_OnlyAllocator() public {
         // Give Alice some shares
         vm.prank(alice);
         weth.approve(address(strategy), INITIAL_BALANCE);
@@ -132,7 +132,7 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
         strategy.withdraw(INITIAL_BALANCE, alice, alice);
     }
 
-    function test_Strategy_WithdrawAsset_AllocatorRestriction() public {
+    function test_Strategy_WithdrawAsset_OnlyAllocator() public {
         // Give Alice some shares
         vm.startPrank(alice);
         weth.approve(address(strategy), INITIAL_BALANCE);
