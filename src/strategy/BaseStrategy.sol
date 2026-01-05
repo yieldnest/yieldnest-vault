@@ -61,6 +61,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Sets whether the asset is withdrawable.
+     * @dev This function can be called even if the asset is not added to the vault.
      * @param asset_ The address of the asset.
      * @param withdrawable_ The new value for the withdrawable flag.
      */
@@ -70,6 +71,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Internal function to set whether the asset is withdrawable.
+     * @dev This function can be called even if the asset is not added to the vault.
      * @param asset_ The address of the asset.
      * @param withdrawable_ The new value for the withdrawable flag.
      */
