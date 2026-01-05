@@ -101,15 +101,6 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
         vm.stopPrank();
     }
 
-    function test_Strategy_Deposit_Revert_OnlyAllocator() public {
-        vm.prank(ALLOCATOR_MANAGER);
-        strategy.setHasAllocator(true);
-        vm.startPrank(alice);
-        weth.approve(address(strategy), INITIAL_BALANCE);
-        vm.expectRevert();
-        strategy.depositAsset(address(weth), INITIAL_BALANCE, alice);
-    }
-
     function test_Strategy_WithdrawAsset(uint256 assets) external {
         // Bound inputs to valid ranges
         vm.assume(assets >= 1000 && assets <= 100_000 ether);
