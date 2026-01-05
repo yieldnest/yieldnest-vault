@@ -166,6 +166,8 @@ contract Vault6DecimalsMintUnitTest is Test, MainnetActors, Etches {
         uint256 usdcNeeded = vault.previewMint(sharesToMint);
         deal(MC.USDC, alice, usdcNeeded);
 
+        assertEq(usdcNeeded, sharesToMint, "USDC needed should be 1 wei");
+
         uint256 initialRate = vault.convertToAssets(1e6);
 
         vm.startPrank(alice);

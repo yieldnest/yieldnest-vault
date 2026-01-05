@@ -240,6 +240,8 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         uint256 usdcNeeded = vault.previewMint(sharesToMint);
         deal(MC.USDC, alice, usdcNeeded);
 
+        assertEq(usdcNeeded, 1 wei, "USDC needed should be 1 wei");
+
         // Get rate before mint
         uint256 initialRate = vault.convertToAssets(1e18);
 
