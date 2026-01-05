@@ -16,6 +16,7 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {MockERC20} from "test/unit/mocks/MockERC20.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {IAccessControl} from "src/Common.sol";
 
 contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
@@ -98,6 +99,68 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
         vm.startPrank(alice);
         vm.expectRevert();
         strategy.withdrawAsset(address(newAsset), 1e5, alice, alice);
+        vm.stopPrank();
+    }
+
+    function test_Strategy_Withdraw_AllocatorRestriction() public {
+        // Give Alice some shares
+        vm.prank(alice);
+        weth.approve(address(strategy), INITIAL_BALANCE);
+        strategy.deposit(INITIAL_BALANCE, alice);
+
+        // Enable allocator restriction
+        vm.prank(ALLOCATOR_MANAGER);
+        strategy.setHasAllocator(true);
+
+        // Alice is NOT allocator, should revert
+        vm.startPrank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, alice, strategy.ALLOCATOR_ROLE()
+            )
+        );
+        strategy.withdraw(INITIAL_BALANCE, alice, alice);
+        vm.stopPrank();
+
+        // Grant ALLOCATOR_ROLE to Alice
+        vm.startPrank(ADMIN);
+        strategy.grantRole(strategy.ALLOCATOR_ROLE(), alice);
+        vm.stopPrank();
+
+        // Now Alice, as allocator, can withdraw
+        vm.prank(alice);
+        strategy.withdraw(INITIAL_BALANCE, alice, alice);
+    }
+
+    function test_Strategy_WithdrawAsset_AllocatorRestriction() public {
+        // Give Alice some shares
+        vm.startPrank(alice);
+        weth.approve(address(strategy), INITIAL_BALANCE);
+        strategy.depositAsset(address(weth), INITIAL_BALANCE, alice);
+        vm.stopPrank();
+
+        // Enable allocator restriction
+        vm.prank(ALLOCATOR_MANAGER);
+        strategy.setHasAllocator(true);
+
+        // Alice is NOT allocator, should revert
+        vm.startPrank(alice);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, alice, strategy.ALLOCATOR_ROLE()
+            )
+        );
+        strategy.withdrawAsset(address(weth), INITIAL_BALANCE, alice, alice);
+        vm.stopPrank();
+
+        // Grant ALLOCATOR_ROLE to Alice
+        vm.startPrank(ADMIN);
+        strategy.grantRole(strategy.ALLOCATOR_ROLE(), alice);
+        vm.stopPrank();
+
+        // Now Alice, as allocator, can withdrawAsset
+        vm.startPrank(alice);
+        strategy.withdrawAsset(address(weth), INITIAL_BALANCE, alice, alice);
         vm.stopPrank();
     }
 
