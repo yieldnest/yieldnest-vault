@@ -55,6 +55,12 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(assets, 1 wei, "Preview mint does not match expected assets");
     }
 
+    function test_fuzz_Vault_previewMint_low_shares(uint256 fuzzShares) public {
+        uint256 shares = bound(uint256(fuzzShares), 1, 1e12);
+        uint256 assets = vault.previewMint(shares);
+        assertEq(assets, 1 wei, "Preview mint does not match expected assets");
+    }
+
     function test_Vault_previewMint_1e12() public {
         uint256 shares = 1e12;
         uint256 assets = vault.previewMint(shares);
