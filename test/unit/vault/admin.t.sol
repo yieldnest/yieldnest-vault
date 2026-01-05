@@ -329,8 +329,23 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
 
     function test_Vault_setBuffer_nullAddress() public {
         vm.prank(ADMIN);
-        vm.expectRevert();
         vault.setBuffer(address(0));
+
+        assertEq(vault.buffer(), address(0));
+    }
+
+    function test_Vault_setBuffer_toggle() public {
+        address originalBuffer = vault.buffer();
+
+        // Set buffer to address(0)
+        vm.prank(ADMIN);
+        vault.setBuffer(address(0));
+        assertEq(vault.buffer(), address(0), "Buffer should be set to zero address");
+
+        // Set buffer back to previous/original buffer
+        vm.prank(ADMIN);
+        vault.setBuffer(originalBuffer);
+        assertEq(vault.buffer(), originalBuffer, "Buffer should be set back to original value");
     }
 
     function test_Vault_pause_whenPaused() public {

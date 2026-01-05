@@ -305,12 +305,9 @@ library VaultLib {
      * @param buffer_ The address of the buffer strategy.
      */
     function setBuffer(address buffer_) public {
-        if (buffer_ == address(0)) {
-            revert IVault.ZeroAddress();
-        }
-
+        address previousBuffer = getVaultStorage().buffer;
         getVaultStorage().buffer = buffer_;
-        emit IVault.SetBuffer(buffer_);
+        emit IVault.SetBuffer(previousBuffer, buffer_);
     }
 
     /**
