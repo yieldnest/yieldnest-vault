@@ -959,39 +959,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _processAccounting() internal virtual {
-        uint256 totalAssetsBeforeAccounting = totalAssets();
-        uint256 totalSupplyBeforeAccounting = totalSupply();
-        uint256 totalBaseAssetsBeforeAccounting = _getVaultStorage().totalAssets;
-
-        // handle before hook call
-        IHooks hooks_ = hooks();
-        HooksLib.beforeProcessAccounting(
-            hooks_,
-            IHooks.BeforeProcessAccountingParams({
-                totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
-                totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
-                totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting
-            })
-        );
-
-        /// update total base assets
-        uint256 totalBaseAssetsAfterAccounting = computeTotalAssets();
-        _getVaultStorage().totalAssets = totalBaseAssetsAfterAccounting;
-        // solhint-disable-next-line not-rely-on-time
-        emit ProcessAccounting(block.timestamp, totalBaseAssetsBeforeAccounting, totalBaseAssetsAfterAccounting);
-
-        // handle after hook call
-        HooksLib.afterProcessAccounting(
-            hooks_,
-            IHooks.AfterProcessAccountingParams({
-                totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
-                totalAssetsAfterAccounting: totalAssets(),
-                totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
-                totalSupplyAfterAccounting: totalSupply(),
-                totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting,
-                totalBaseAssetsAfterAccounting: totalBaseAssetsAfterAccounting
-            })
-        );
+        VaultLib.processAccounting();
     }
 
     /**

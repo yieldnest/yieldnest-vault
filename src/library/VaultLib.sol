@@ -5,6 +5,8 @@ import {IVault} from "src/interface/IVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {Math, IERC20} from "src/Common.sol";
 import {Guard} from "src/module/Guard.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {HooksLib} from "src/library/HooksLib.sol";
 
 library VaultLib {
     using Math for uint256;
@@ -326,6 +328,49 @@ library VaultLib {
             if (balance == 0) continue;
             totalBaseBalance += convertAssetToBase(assetList[i], balance, Math.Rounding.Floor);
         }
+    }
+
+    /**
+     * @notice Processes the accounting of the vault by calculating the total base balance.
+     */
+    function processAccounting() public {
+        IVault _vault = IVault(address(this));
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+
+        uint256 totalAssetsBeforeAccounting = _vault.totalAssets();
+        uint256 totalSupplyBeforeAccounting = _vault.totalSupply();
+        uint256 totalBaseAssetsBeforeAccounting = vaultStorage.totalAssets;
+
+        // handle before hook call
+        IHooks hooks_ = _vault.hooks();
+        HooksLib.beforeProcessAccounting(
+            hooks_,
+            IHooks.BeforeProcessAccountingParams({
+                totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
+                totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
+                totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting
+            })
+        );
+
+        // update total base assets
+        uint256 totalBaseAssetsAfterAccounting = computeTotalAssets();
+        vaultStorage.totalAssets = totalBaseAssetsAfterAccounting;
+
+        // solhint-disable-next-line not-rely-on-time
+        emit IVault.ProcessAccounting(block.timestamp, totalBaseAssetsBeforeAccounting, totalBaseAssetsAfterAccounting);
+
+        // handle after hook call
+        HooksLib.afterProcessAccounting(
+            hooks_,
+            IHooks.AfterProcessAccountingParams({
+                totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
+                totalAssetsAfterAccounting: _vault.totalAssets(),
+                totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
+                totalSupplyAfterAccounting: _vault.totalSupply(),
+                totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting,
+                totalBaseAssetsAfterAccounting: totalBaseAssetsAfterAccounting
+            })
+        );
     }
 
     /**
