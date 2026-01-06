@@ -104,9 +104,10 @@ contract StrategyWithdrawUnitTest is Test, Etches, MainnetActors {
 
     function test_Strategy_Withdraw_OnlyAllocator() public {
         // Give Alice some shares
-        vm.prank(alice);
+        vm.startPrank(alice);
         weth.approve(address(strategy), INITIAL_BALANCE);
         strategy.deposit(INITIAL_BALANCE, alice);
+        vm.stopPrank();
 
         // Enable allocator restriction
         vm.prank(ALLOCATOR_MANAGER);
