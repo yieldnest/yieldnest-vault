@@ -260,21 +260,18 @@ library VaultLib {
      * @param asset_ The address of the asset.
      * @param assets The amount of assets to convert.
      * @param rounding The rounding direction.
-     * @return (shares, baseAssets) The equivalent amount of shares.
+     * @return shares The amount of shares.
+     * @return baseAssets The amount of base assets.
      */
     function convertToShares(address asset_, uint256 assets, Math.Rounding rounding)
         public
         view
-        returns (uint256, uint256)
+        returns (uint256 shares, uint256 baseAssets)
     {
         uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
-
-        // ASSUMPTION:  baseAssets has equal or more decimals than asset_
-        uint256 baseAssets = convertAssetToBase(asset_, assets, rounding);
-
-        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
-        return (shares, baseAssets);
+        baseAssets = convertAssetToBase(asset_, assets, rounding);
+        shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
     }
 
     /**
