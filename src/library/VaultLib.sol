@@ -288,6 +288,26 @@ library VaultLib {
     }
 
     /**
+     * @notice Library version: Sets multiple processor rules for given contract addresses and function signatures.
+     * @param target Array of target contract addresses.
+     * @param functionSig Array of function signatures.
+     * @param rule Array of function rules.
+     */
+    function setProcessorRules(
+        address[] calldata target,
+        bytes4[] calldata functionSig,
+        IVault.FunctionRule[] calldata rule
+    ) public {
+        uint256 targetLength = target.length;
+        if (targetLength != functionSig.length || targetLength != rule.length) {
+            revert IVault.InvalidArray();
+        }
+        for (uint256 i = 0; i < targetLength; i++) {
+            setProcessorRule(target[i], functionSig[i], rule[i]);
+        }
+    }
+
+    /**
      * @notice Sets the provider.
      * @param provider_ The address of the provider.
      */

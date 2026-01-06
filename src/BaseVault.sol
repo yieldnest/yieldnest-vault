@@ -822,35 +822,27 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
-     * @notice Sets the processor rule for a given contract address and function signature.
+     * @notice Internal function to set the processor rule for a given contract address and function signature.
      * @param target The address of the target contract.
      * @param functionSig The function signature.
      * @param rule The function rule.
      */
     function _setProcessorRule(address target, bytes4 functionSig, FunctionRule calldata rule) internal virtual {
-        _getProcessorStorage().rules[target][functionSig] = rule;
-        emit SetProcessorRule(target, functionSig, rule);
+        VaultLib.setProcessorRule(target, functionSig, rule);
     }
 
     /**
-     * @notice Sets the processor rule for a given contract address and function signature.
-     * @param target The address of the target contract.
-     * @param functionSig The function signature.
-     * @param rule The function rule.
+     * @notice Sets multiple processor rules for given contract addresses and function signatures.
+     * @param target Array of target contract addresses.
+     * @param functionSig Array of function signatures.
+     * @param rule Array of function rules.
      */
     function setProcessorRules(address[] calldata target, bytes4[] calldata functionSig, FunctionRule[] calldata rule)
         public
         virtual
         onlyRole(PROCESSOR_MANAGER_ROLE)
     {
-        uint256 targetLength = target.length;
-        if (targetLength != functionSig.length || targetLength != rule.length) {
-            revert InvalidArray();
-        }
-
-        for (uint256 i = 0; i < targetLength; i++) {
-            _setProcessorRule(target[i], functionSig[i], rule[i]);
-        }
+        VaultLib.setProcessorRules(target, functionSig, rule);
     }
 
     /**
