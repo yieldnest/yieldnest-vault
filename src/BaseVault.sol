@@ -90,24 +90,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.paused = paused_;
-        if (decimals_ == 0) {
-            revert InvalidDecimals();
-        }
-        vaultStorage.decimals = decimals_;
-        vaultStorage.countNativeAsset = countNativeAsset_;
-        vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
-
-        // The defaultAssetIndex must be 0 or 1 because:
-        // 1. When an asset is deleted, it's replaced with the last asset in the array
-        // 2. The base asset (index 0) and default asset should never be deleted
-        // 3. Therefore, they must be the first two positions in the array
-        // 4. Or if defaultAssetIndex is 0, then the base asset is also the default asset
-        if (defaultAssetIndex_ > 1) {
-            revert InvalidDefaultAssetIndex(defaultAssetIndex_);
-        }
-        vaultStorage.defaultAssetIndex = defaultAssetIndex_;
+        VaultLib.initialize(paused_, decimals_, countNativeAsset_, alwaysComputeTotalAssets_, defaultAssetIndex_);
     }
 
     /**
