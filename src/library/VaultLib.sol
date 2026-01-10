@@ -342,8 +342,9 @@ library VaultLib {
         if (provider_ == address(0)) {
             revert IVault.ZeroAddress();
         }
+        address previousProvider = getVaultStorage().provider;
         getVaultStorage().provider = provider_;
-        emit IVault.SetProvider(provider_);
+        emit IVault.SetProvider(previousProvider, provider_);
     }
 
     /**

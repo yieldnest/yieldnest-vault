@@ -879,8 +879,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         onlyRole(ASSET_MANAGER_ROLE)
     {
+        bool previous = _getVaultStorage().alwaysComputeTotalAssets;
         _getVaultStorage().alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
-        emit SetAlwaysComputeTotalAssets(alwaysComputeTotalAssets_);
+        emit SetAlwaysComputeTotalAssets(previous, alwaysComputeTotalAssets_);
 
         if (!alwaysComputeTotalAssets_) {
             _processAccounting();

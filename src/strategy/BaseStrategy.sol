@@ -45,9 +45,10 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      */
     function _setHasAllocator(bool hasAllocators_) internal {
         BaseStrategyStorage storage strategyStorage = _getBaseStrategyStorage();
+        bool previous = strategyStorage.hasAllocators;
         strategyStorage.hasAllocators = hasAllocators_;
 
-        emit SetHasAllocator(hasAllocators_);
+        emit SetHasAllocator(previous, hasAllocators_);
     }
 
     /**
@@ -77,9 +78,10 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      */
     function _setAssetWithdrawable(address asset_, bool withdrawable_) internal {
         BaseStrategyStorage storage strategyStorage = _getBaseStrategyStorage();
+        bool previous = strategyStorage.isAssetWithdrawable[asset_];
         strategyStorage.isAssetWithdrawable[asset_] = withdrawable_;
 
-        emit SetAssetWithdrawable(asset_, withdrawable_);
+        emit SetAssetWithdrawable(asset_, previous, withdrawable_);
     }
 
     /**

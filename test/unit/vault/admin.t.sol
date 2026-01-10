@@ -420,8 +420,9 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_setAlwaysComputeTotalAssets_emitsEvent() public {
+        bool previous = vault.alwaysComputeTotalAssets();
         vm.expectEmit(true, false, false, false);
-        emit IVault.SetAlwaysComputeTotalAssets(true);
+        emit IVault.SetAlwaysComputeTotalAssets(previous, true);
 
         vm.prank(ASSET_MANAGER);
         vault.setAlwaysComputeTotalAssets(true);
@@ -433,10 +434,11 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
     }
 
     function test_Vault_setProvider_emitsEvent() public {
+        address oldProvider = vault.provider();
         address newProvider = address(0x123);
 
-        vm.expectEmit(true, false, false, false);
-        emit IVault.SetProvider(newProvider);
+        vm.expectEmit(true, true, false, false);
+        emit IVault.SetProvider(oldProvider, newProvider);
 
         vm.prank(PROVIDER_MANAGER);
         vault.setProvider(newProvider);
