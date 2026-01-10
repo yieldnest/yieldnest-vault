@@ -154,4 +154,84 @@ contract VaultInitializeUnitTest is Test, MainnetActors, Etches {
         vm.expectRevert(abi.encodeWithSelector(IVault.InvalidDecimals.selector));
         vault.initialize(address(this), "Test Vault", "TV", invalidDecimals, 0, false, true, 0);
     }
+
+    function test_Vault_initialize_doesNotRevertWithZeroAdmin() public {
+        vault.initialize(address(0), "Test Vault", "TV", 18, 0, false, true, 0);
+    }
+
+    function test_Vault_initialize_No_RevertInvalidNativeAssetDecimals() public {
+        // Case: countNativeAsset is true, decimals != 18
+        uint8 invalidNativeDecimals = 10;
+        // Use 0 for defaultAssetIndex, which is allowed
+        vault.initialize(address(this), "Test Vault", "TV", invalidNativeDecimals, 0, true, true, 0);
+    }
+
+    function test_Vault_initialize_revertWhenAddFirstAssetInvalidNativeAssetDecimals() public {
+        // Initialize the vault with countNativeAsset = true and decimals not 18
+        uint8 invalidNativeDecimals = 10;
+        vault.initialize(address(this), "Test Vault", "TV", invalidNativeDecimals, 0, true, true, 0);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
+
+        // Deploy a MockERC20 with wrong decimals for base asset (first asset)
+        MockERC20CustomDecimals badNativeAsset = new MockERC20CustomDecimals("BadNative", "BADN", invalidNativeDecimals);
+
+        // Adding the first asset should revert with InvalidNativeAssetDecimals when countNativeAsset is true and decimals != 18
+        vm.expectRevert(abi.encodeWithSelector(IVault.InvalidNativeAssetDecimals.selector, invalidNativeDecimals));
+        vault.addAsset(address(badNativeAsset), true);
+    }
+
+    function test_Vault_initialize_validWithNativeAssetDecimals18() public {
+        // Should not revert if decimals is 18 and countNativeAsset is true
+        vault.initialize(address(this), "Test Vault", "TV", 18, 0, true, true, 0);
+    }
+
+    function test_Vault_initialize_validWithDefaultAssetIndex1() public {
+        // Should not revert if defaultAssetIndex is 1 (allowed)
+        vault.initialize(address(this), "Test Vault", "TV", 18, 0, false, true, 1);
+    }
+
+    function test_Vault_initialize_revertWithAssetDecimalsHigherThanBaseAsset() public {
+        address admin = address(0xABCD);
+        vault.initialize(admin, "Test Vault", "TV", 18, 0, false, true, 0);
+
+        vm.startPrank(admin);
+
+        MockERC20CustomDecimals baseAsset = new MockERC20CustomDecimals("BaseAsset", "BA", 18);
+        // Add base asset (first asset), decimals = 18
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), admin);
+        vault.addAsset(address(baseAsset), true);
+        vm.stopPrank();
+
+        // Try to add asset with decimals > base decimals using a real ERC20 mock
+        uint8 higherDecimals = 20;
+        MockERC20CustomDecimals highDecAsset = new MockERC20CustomDecimals("HighDecAsset", "HDA", higherDecimals);
+        vm.startPrank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IVault.InvalidAssetDecimals.selector, higherDecimals));
+        vault.addAsset(address(highDecAsset), true);
+        vm.stopPrank();
+    }
+
+    function test_Vault_initialize_revertWithDuplicateAsset() public {
+        vault.initialize(address(this), "Test Vault", "TV", 18, 0, false, true, 0);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
+
+        // Use a mock asset
+        MockERC20 mockAsset = new MockERC20("Mock Token", "MOCK");
+
+        // Add base asset
+        vault.addAsset(address(mockAsset), true);
+
+        // Try to add the same asset again (should revert as duplicate)
+        vm.expectRevert(abi.encodeWithSelector(IVault.DuplicateAsset.selector, address(mockAsset)));
+        vault.addAsset(address(mockAsset), true);
+    }
+
+    function test_Vault_initialize_revertWithZeroAddressAsset() public {
+        vault.initialize(address(this), "Test Vault", "TV", 18, 0, false, true, 0);
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
+
+        // Try to add asset with zero address; fails on the decimals call
+        vm.expectRevert();
+        vault.addAsset(address(0), true);
+    }
 }
