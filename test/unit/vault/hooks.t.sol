@@ -1570,4 +1570,42 @@ contract HooksUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vault.setHooks(address(0));
         assertEq(address(vault.hooks()), address(0));
     }
+
+    function test_Vault_setHooks_zeroAddress() public {
+        vm.prank(HOOKS_MANAGER);
+        vault.setHooks(address(0));
+
+        assertEq(address(vault.hooks()), address(0), "Hooks should be set to zero address");
+    }
+
+    function test_Vault_setHooks_emitsEvent() public {
+        MockNoOpHooks newHooks = new MockNoOpHooks(vault);
+
+        vm.expectEmit(true, true, false, false);
+        emit IVault.SetHooks(address(vault.hooks()), address(newHooks));
+
+        vm.prank(HOOKS_MANAGER);
+        vault.setHooks(address(newHooks));
+    }
+
+    function test_Vault_setHooks_revertsWhenInvalidHooks() public {
+        // Create hooks for a different vault
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault otherVault = Vault(payable(address(proxy)));
+        otherVault.initialize(address(this), "Other", "OTH", 18, 0, false, false, 0);
+
+        MockNoOpHooks invalidHooks = new MockNoOpHooks(otherVault);
+
+        vm.expectRevert(IVault.InvalidHooks.selector);
+        vm.prank(HOOKS_MANAGER);
+        vault.setHooks(address(invalidHooks));
+    }
+
+    function test_Vault_setHooks_unauthorized() public {
+        MockNoOpHooks newHooks = new MockNoOpHooks(vault);
+
+        vm.expectRevert();
+        vault.setHooks(address(newHooks));
+    }
 }

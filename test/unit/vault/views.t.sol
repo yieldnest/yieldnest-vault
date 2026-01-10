@@ -15,6 +15,7 @@ import {console} from "lib/forge-std/src/console.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {MockERC20} from "test/unit/mocks/MockERC20.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 contract VaultViewsUnitTest is Test, Etches, MainnetActors {
     using Math for uint256;
@@ -449,5 +450,37 @@ contract VaultViewsUnitTest is Test, Etches, MainnetActors {
         uint256 totalAssets = vault.computeTotalAssets();
         // The base asset (WETH) should still be counted if present
         assertGe(totalAssets, 0, "Total assets should be non-negative");
+    }
+
+    function test_Vault_convertToShares_zeroAssets() public view {
+        assertEq(vault.convertToShares(0), 0, "convertToShares(0) should return 0");
+    }
+
+    function test_Vault_convertToAssets_zeroShares() public view {
+        assertEq(vault.convertToAssets(0), 0, "convertToAssets(0) should return 0");
+    }
+
+    function test_Vault_convertToShares_veryLargeAmount() public view {
+        uint256 largeAmount = type(uint256).max / 2;
+        uint256 shares = vault.convertToShares(largeAmount);
+        assertGe(shares, 0, "Should handle large amounts");
+    }
+
+    function test_Vault_convertToAssets_veryLargeShares() public view {
+        uint256 largeShares = type(uint256).max / 2;
+        uint256 assets = vault.convertToAssets(largeShares);
+        assertGe(assets, 0, "Should handle large shares");
+    }
+
+    function test_Vault_getAsset_nonExistentAsset() public view {
+        address nonExistent = address(0x999);
+        IVault.AssetParams memory params = vault.getAsset(nonExistent);
+        assertEq(params.index, 0, "Non-existent asset should have index 0");
+        assertFalse(params.active, "Non-existent asset should not be active");
+    }
+
+    function test_Vault_hasAsset_nonExistentAsset() public view {
+        address nonExistent = address(0x999);
+        assertFalse(vault.hasAsset(nonExistent), "Non-existent asset should return false");
     }
 }

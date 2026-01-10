@@ -28,6 +28,7 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
     MockSTETH public steth;
 
     address public alice = address(0x1);
+    address public bob = address(0x2);
     uint256 public constant INITIAL_BALANCE = 200_000 ether;
 
     function setUp() public {
@@ -380,6 +381,30 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(shares, assets, "Preview deposit does not match expected shares");
     }
 
+    function test_Vault_previewDeposit_zeroAssets() public view {
+        assertEq(vault.previewDeposit(0), 0, "previewDeposit(0) should return 0");
+    }
+
+    function test_Vault_previewDeposit_afterYield(uint256 depositAmount, uint256 yieldAmount, uint256 newDeposit)
+        public
+    {
+        depositAmount = bound(depositAmount, 1 ether, 1000 ether);
+        yieldAmount = bound(yieldAmount, 0.1 ether, 100 ether);
+        newDeposit = bound(newDeposit, 1 ether, 1000 ether);
+
+        vm.prank(alice);
+        vault.deposit(depositAmount, alice);
+
+        // Add yield
+        deal(address(weth), address(this), yieldAmount);
+        weth.transfer(address(vault), yieldAmount);
+        vault.processAccounting();
+
+        uint256 previewShares = vault.previewDeposit(newDeposit);
+        // After yield, depositing same assets should get fewer shares
+        assertLe(previewShares, newDeposit, "previewDeposit should account for yield");
+    }
+
     function test_Vault_getAsset() public view {
         address assetAddress = MC.WETH;
         IVault.AssetParams memory expectedAssetParams = IVault.AssetParams({active: true, index: 0, decimals: 18});
@@ -393,11 +418,55 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         assertEq(maxDeposit, type(uint256).max, "Max deposit does not match");
     }
 
+    function test_Vault_maxDeposit_whenPaused() public {
+        vm.prank(PAUSER);
+        vault.pause();
+
+        assertEq(vault.maxDeposit(alice), 0, "maxDeposit should be 0 when paused");
+        assertEq(vault.maxDeposit(bob), 0, "maxDeposit should be 0 for any user when paused");
+    }
+
+    function test_Vault_maxDeposit_whenUnpaused() public view {
+        assertEq(vault.maxDeposit(alice), type(uint256).max, "maxDeposit should be max when unpaused");
+        assertEq(vault.maxDeposit(bob), type(uint256).max, "maxDeposit should be max for any user");
+        assertEq(vault.maxDeposit(address(0)), type(uint256).max, "maxDeposit should work for zero address");
+    }
+
+    function test_Vault_maxDeposit_afterPauseUnpause() public {
+        // Initially unpaused
+        assertEq(vault.maxDeposit(alice), type(uint256).max);
+
+        // Pause
+        vm.prank(PAUSER);
+        vault.pause();
+        assertEq(vault.maxDeposit(alice), 0);
+
+        // Unpause
+        vm.prank(UNPAUSER);
+        vault.unpause();
+        assertEq(vault.maxDeposit(alice), type(uint256).max);
+    }
+
     function test_Vault_previewDepositAsset() public view {
         uint256 assets = 1000;
         uint256 expectedShares = 1000; // Assuming a 1:1 conversion for simplicity
         uint256 shares = vault.previewDepositAsset(MC.WETH, assets);
         assertEq(shares, expectedShares, "Preview deposit asset does not match expected shares");
+    }
+
+    function test_Vault_previewDepositAsset_zeroAssets() public view {
+        assertEq(vault.previewDepositAsset(MC.WETH, 0), 0, "previewDepositAsset(0) should return 0");
+    }
+
+    function test_Vault_previewDepositAsset_differentAssets(uint256 amount) public view {
+        amount = bound(amount, 1 ether, 100 ether);
+
+        uint256 wethShares = vault.previewDepositAsset(MC.WETH, amount);
+        uint256 stethShares = vault.previewDepositAsset(MC.STETH, amount);
+
+        // Both should return shares based on their rates
+        assertGt(wethShares, 0, "WETH preview should return shares");
+        assertGt(stethShares, 0, "STETH preview should return shares");
     }
 
     function test_Vault_previewDepositAsset_WrongAsset() public {
@@ -426,6 +495,38 @@ contract VaultDepositUnitTest is Test, MainnetActors, Etches {
         // Check the shares minted
         uint256 assets = vault.totalAssets();
         assertEq(depositAmount, assets, "No shares minted");
+    }
+
+    function test_Vault_receive_emitsNativeDepositEvent(uint256 amount) public {
+        amount = bound(amount, 1 wei, 1000 ether);
+
+        vm.expectEmit(true, false, false, false);
+        emit IVault.NativeDeposit(amount);
+
+        (bool success,) = address(vault).call{value: amount}("");
+        assertTrue(success, "Native deposit failed");
+    }
+
+    function test_Vault_receive_multipleDeposits() public {
+        uint256 deposit1 = 1 ether;
+        uint256 deposit2 = 2 ether;
+
+        (bool success1,) = address(vault).call{value: deposit1}("");
+        assertTrue(success1, "First deposit failed");
+
+        (bool success2,) = address(vault).call{value: deposit2}("");
+        assertTrue(success2, "Second deposit failed");
+
+        assertEq(address(vault).balance, deposit1 + deposit2, "Vault balance incorrect");
+    }
+
+    function test_Vault_receive_zeroAmount() public {
+        // Zero amount should still emit event
+        vm.expectEmit(true, false, false, false);
+        emit IVault.NativeDeposit(0);
+
+        (bool success,) = address(vault).call{value: 0}("");
+        assertTrue(success, "Zero deposit should succeed");
     }
 
     function test_Vault_depositAsset_InvalidAsset() public {

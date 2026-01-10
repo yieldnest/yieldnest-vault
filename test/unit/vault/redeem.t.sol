@@ -74,6 +74,27 @@ contract VaultRedeemUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEq(assets, shares, "Preview Assets response not shares");
     }
 
+    function test_Vault_previewRedeem_zeroShares() public view {
+        assertEq(vault.previewRedeem(0), 0, "previewRedeem(0) should return 0");
+    }
+
+    function test_Vault_previewRedeem_withFee(uint256 depositAmount, uint256 redeemShares) public {
+        depositAmount = bound(depositAmount, 1 ether, 1000 ether);
+        redeemShares = bound(redeemShares, 1 ether, depositAmount);
+
+        vm.startPrank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(10000); // 1% fee
+        vm.stopPrank();
+
+        vm.prank(alice);
+        uint256 shares = vault.deposit(depositAmount, alice);
+        redeemShares = bound(redeemShares, 1, shares);
+
+        uint256 previewAssets = vault.previewRedeem(redeemShares);
+        // With fee, should receive less assets
+        assertLe(previewAssets, redeemShares, "previewRedeem should account for fee");
+    }
+
     function test_Vault_redeem_success(uint256 amount, bool alwaysComputeTotalAssets) external {
         if (amount < 2) return;
         if (amount > 100_000 ether) return;
@@ -134,6 +155,27 @@ contract VaultRedeemUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function test_Vault_maxRedeem() public view {
         uint256 maxRedeem = vault.maxRedeem(alice);
         assertEq(maxRedeem, 0, "Max redeem does not match");
+    }
+
+    function test_Vault_maxRedeem_whenBufferIsZero() public {
+        // Create a new vault without buffer
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+        newVault.initialize(address(this), "Test", "TST", 18, 0, false, false, 0);
+
+        assertEq(newVault.maxRedeem(alice), 0, "maxRedeem should be 0 when buffer is zero");
+    }
+
+    function test_Vault_maxRedeem_whenPaused() public {
+        vm.prank(PAUSER);
+        vault.pause();
+
+        assertEq(vault.maxRedeem(alice), 0, "maxRedeem should be 0 when paused");
+    }
+
+    function test_Vault_maxRedeem_withNoShares() public view {
+        assertEq(vault.maxRedeem(bob), 0, "maxRedeem should be 0 for user with no shares");
     }
 
     function test_Vault_maxRedeem_afterDeposit() public {

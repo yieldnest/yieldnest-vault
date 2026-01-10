@@ -28,6 +28,7 @@ contract VaultMintUnitTest is Test, MainnetActors, Etches {
     MockSTETH public steth;
 
     address public alice = address(0x1);
+    address public bob = address(0x2);
     uint256 public constant INITIAL_BALANCE = 200_000 ether;
 
     function setUp() public {
@@ -230,6 +231,39 @@ contract VaultMintUnitTest is Test, MainnetActors, Etches {
         assertEq(assets, shares, "Preview mint does not match expected assets");
     }
 
+    function test_Vault_previewMint_zeroShares() public view {
+        assertEq(vault.previewMint(0), 0, "previewMint(0) should return 0");
+    }
+
+    function test_Vault_previewMint_afterDeposit(uint256 depositAmount, uint256 mintShares) public {
+        depositAmount = bound(depositAmount, 1 ether, 1000 ether);
+        mintShares = bound(mintShares, 1 ether, 1000 ether);
+
+        vm.prank(alice);
+        vault.deposit(depositAmount, alice);
+
+        uint256 previewAssets = vault.previewMint(mintShares);
+        assertGe(previewAssets, mintShares, "previewMint should return at least the shares amount");
+    }
+
+    function test_Vault_previewMint_afterYield(uint256 depositAmount, uint256 yieldAmount, uint256 mintShares) public {
+        depositAmount = bound(depositAmount, 1 ether, 1000 ether);
+        yieldAmount = bound(yieldAmount, 0.1 ether, 100 ether);
+        mintShares = bound(mintShares, 1 ether, 1000 ether);
+
+        vm.prank(alice);
+        vault.deposit(depositAmount, alice);
+
+        // Add yield
+        deal(address(weth), address(this), yieldAmount);
+        weth.transfer(address(vault), yieldAmount);
+        vault.processAccounting();
+
+        uint256 previewAssets = vault.previewMint(mintShares);
+        // After yield, minting same shares should require more assets
+        assertGe(previewAssets, mintShares, "previewMint should account for yield");
+    }
+
     function test_Vault_previewMint_1_wei() public {
         uint256 shares = 1 wei;
         uint256 assets = vault.previewMint(shares);
@@ -248,6 +282,35 @@ contract VaultMintUnitTest is Test, MainnetActors, Etches {
     function test_Vault_maxMint() public view {
         uint256 maxMint = vault.maxMint(alice);
         assertEq(maxMint, type(uint256).max, "Max mint does not match");
+    }
+
+    function test_Vault_maxMint_whenPaused() public {
+        vm.prank(PAUSER);
+        vault.pause();
+
+        assertEq(vault.maxMint(alice), 0, "maxMint should be 0 when paused");
+        assertEq(vault.maxMint(bob), 0, "maxMint should be 0 for any user when paused");
+    }
+
+    function test_Vault_maxMint_whenUnpaused() public view {
+        assertEq(vault.maxMint(alice), type(uint256).max, "maxMint should be max when unpaused");
+        assertEq(vault.maxMint(bob), type(uint256).max, "maxMint should be max for any user");
+        assertEq(vault.maxMint(address(0)), type(uint256).max, "maxMint should work for zero address");
+    }
+
+    function test_Vault_maxMint_afterPauseUnpause() public {
+        // Initially unpaused
+        assertEq(vault.maxMint(alice), type(uint256).max);
+
+        // Pause
+        vm.prank(PAUSER);
+        vault.pause();
+        assertEq(vault.maxMint(alice), 0);
+
+        // Unpause
+        vm.prank(UNPAUSER);
+        vault.unpause();
+        assertEq(vault.maxMint(alice), type(uint256).max);
     }
 
     function test_Vault_mintWhilePaused() public {
@@ -271,5 +334,33 @@ contract VaultMintUnitTest is Test, MainnetActors, Etches {
         vm.expectRevert();
         vault.mint(mintAmount, alice);
         vm.stopPrank();
+    }
+
+    function test_Vault_mintShares_revertsWhenNotCalledByHooks() public {
+        vm.expectRevert(IVault.CallerNotHooks.selector);
+        vault.mintShares(alice, 1 ether);
+    }
+
+    function test_Vault_mintShares_succeedsWhenCalledByHooks(uint256 shares) public {
+        shares = bound(shares, 1, 1000 ether);
+
+        address hooksAddress = address(vault.hooks());
+        uint256 balanceBefore = vault.balanceOf(alice);
+
+        vm.prank(hooksAddress);
+        vault.mintShares(alice, shares);
+
+        assertEq(vault.balanceOf(alice), balanceBefore + shares, "Shares should be minted");
+        assertEq(vault.totalSupply(), vault.totalSupply(), "Total supply should increase");
+    }
+
+    function test_Vault_mintShares_zeroShares() public {
+        address hooksAddress = address(vault.hooks());
+        uint256 balanceBefore = vault.balanceOf(alice);
+
+        vm.prank(hooksAddress);
+        vault.mintShares(alice, 0);
+
+        assertEq(vault.balanceOf(alice), balanceBefore, "Balance should not change");
     }
 }

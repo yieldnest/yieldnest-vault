@@ -74,6 +74,26 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEq(amount, assets);
     }
 
+    function test_Vault_previewWithdraw_zeroAssets() public view {
+        assertEq(vault.previewWithdraw(0), 0, "previewWithdraw(0) should return 0");
+    }
+
+    function test_Vault_previewWithdraw_withFee(uint256 depositAmount, uint256 withdrawAmount) public {
+        depositAmount = bound(depositAmount, 1 ether, 1000 ether);
+        withdrawAmount = bound(withdrawAmount, 1 ether, depositAmount);
+
+        vm.startPrank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(10000); // 1% fee
+        vm.stopPrank();
+
+        vm.prank(alice);
+        vault.deposit(depositAmount, alice);
+
+        uint256 previewShares = vault.previewWithdraw(withdrawAmount);
+        // With fee, should require more shares
+        assertGe(previewShares, withdrawAmount, "previewWithdraw should account for fee");
+    }
+
     function test_Vault_withdraw_success(uint256 assets) external {
         if (assets < 2) return;
         if (assets > 100_000 ether) return;
@@ -274,6 +294,27 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
     function test_Vault_maxWithdraw() public view {
         uint256 maxWithdraw = vault.maxWithdraw(alice);
         assertEq(maxWithdraw, 0, "Max withdraw does not match");
+    }
+
+    function test_Vault_maxWithdraw_whenBufferIsZero() public {
+        // Create a new vault without buffer
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+        newVault.initialize(address(this), "Test", "TST", 18, 0, false, false, 0);
+
+        assertEq(newVault.maxWithdraw(alice), 0, "maxWithdraw should be 0 when buffer is zero");
+    }
+
+    function test_Vault_maxWithdraw_whenPaused() public {
+        vm.prank(PAUSER);
+        vault.pause();
+
+        assertEq(vault.maxWithdraw(alice), 0, "maxWithdraw should be 0 when paused");
+    }
+
+    function test_Vault_maxWithdraw_withNoShares() public view {
+        assertEq(vault.maxWithdraw(bob), 0, "maxWithdraw should be 0 for user with no shares");
     }
 
     event Log(uint256, string);

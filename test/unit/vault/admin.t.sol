@@ -362,6 +362,109 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.unpause();
     }
 
+    function test_Vault_unpause_revertsWhenProviderNotSet() public {
+        // Create a new vault without provider
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+        newVault.initialize(address(this), "Test", "TST", 18, 0, false, false, 0);
+
+        // Grant unpauser role
+        newVault.grantRole(newVault.UNPAUSER_ROLE(), address(this));
+
+        // Try to unpause without provider - should revert
+        vm.expectRevert(IVault.ProviderNotSet.selector);
+        newVault.unpause();
+    }
+
+    function test_Vault_unpause_succeedsWhenProviderSet() public {
+        vm.prank(PAUSER);
+        vault.pause();
+
+        vm.prank(UNPAUSER);
+        vault.unpause();
+
+        assertFalse(vault.paused(), "Vault should be unpaused");
+    }
+
+    function test_Vault_pause_whenAlreadyPaused() public {
+        vm.prank(PAUSER);
+        vault.pause();
+
+        vm.expectRevert(IVault.Paused.selector);
+        vm.prank(PAUSER);
+        vault.pause();
+    }
+
+    function test_Vault_setAlwaysComputeTotalAssets_callsProcessAccountingWhenDisabling() public {
+        vm.prank(alice);
+        vault.deposit(1 ether, alice);
+
+        // Enable always compute
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(true);
+        assertTrue(vault.alwaysComputeTotalAssets());
+
+        // Add some yield
+        deal(address(weth), address(this), 0.1 ether);
+        weth.transfer(address(vault), 0.1 ether);
+
+        // Disable always compute - should call processAccounting
+        uint256 totalAssetsBefore = vault.totalAssets();
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(false);
+
+        // Total assets should be updated after processAccounting
+        assertFalse(vault.alwaysComputeTotalAssets());
+        assertGe(vault.totalAssets(), totalAssetsBefore, "Total assets should be updated");
+    }
+
+    function test_Vault_setAlwaysComputeTotalAssets_emitsEvent() public {
+        vm.expectEmit(true, false, false, false);
+        emit IVault.SetAlwaysComputeTotalAssets(true);
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(true);
+    }
+
+    function test_Vault_setAlwaysComputeTotalAssets_unauthorized() public {
+        vm.expectRevert();
+        vault.setAlwaysComputeTotalAssets(true);
+    }
+
+    function test_Vault_setProvider_emitsEvent() public {
+        address newProvider = address(0x123);
+
+        vm.expectEmit(true, false, false, false);
+        emit IVault.SetProvider(newProvider);
+
+        vm.prank(PROVIDER_MANAGER);
+        vault.setProvider(newProvider);
+
+        assertEq(vault.provider(), newProvider, "Provider should be set");
+    }
+
+    function test_Vault_setProvider_unauthorized() public {
+        vm.expectRevert();
+        vault.setProvider(address(0x123));
+    }
+
+    function test_Vault_setBuffer_emitsEvent() public {
+        address newBuffer = address(0x456);
+        address oldBuffer = vault.buffer();
+
+        vm.expectEmit(true, true, false, false);
+        emit IVault.SetBuffer(oldBuffer, newBuffer);
+
+        vm.prank(BUFFER_MANAGER);
+        vault.setBuffer(newBuffer);
+    }
+
+    function test_Vault_setBuffer_unauthorized() public {
+        vm.expectRevert();
+        vault.setBuffer(address(0x456));
+    }
+
     function test_Vault_addAsset_firstAssetWithDifferentDecimals() public {
         // Deploy implementation and proxy
         Vault implementation = new Vault();
