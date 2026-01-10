@@ -65,9 +65,64 @@ contract VaultInitializeUnitTest is Test, MainnetActors, Etches {
         assertEq(vault.baseWithdrawalFee(), fee, "Fee mismatch");
         assertEq(vault.defaultAssetIndex(), defaultAssetIndex, "Default asset index mismatch");
         assertEq(vault.alwaysComputeTotalAssets(), alwaysComputeTotalAssets, "Always compute total assets mismatch");
+        assertEq(vault.countNativeAsset(), countNativeAsset, "countNativeAsset mismatch");
 
         // Verify roles
         assertTrue(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), Admin), "Admin role not granted");
+
+        // The vault should start paused
+        assertTrue(vault.paused(), "Vault should be paused after initialization");
+    }
+
+    function test_Vault_initialize_withAssets(
+        string memory name,
+        string memory symbol,
+        uint8 decimals,
+        uint256 defaultAssetIndex,
+        bool alwaysComputeTotalAssets,
+        uint64 fee,
+        bool countNativeAsset
+    ) public {
+        // Bound the inputs to reasonable values
+        vm.assume(bytes(name).length > 0 && bytes(name).length <= 32);
+        vm.assume(bytes(symbol).length > 0 && bytes(symbol).length <= 8);
+        decimals = uint8(bound(decimals, 1, 36)); // Bound decimals between 1 and 36
+        defaultAssetIndex = bound(defaultAssetIndex, 0, 1); // 0 or 1 since we'll only have 2 assets max
+        fee = uint64(bound(fee, 0, 10000)); // Fee is typically expressed in basis points (0-10000)
+
+        if (countNativeAsset) {
+            decimals = 18;
+        }
+
+        address Admin = address(0xABCD);
+
+        // Initialize the vault
+        vault.initialize(
+            Admin, name, symbol, decimals, fee, countNativeAsset, alwaysComputeTotalAssets, defaultAssetIndex
+        );
+
+        // Reinitialize should revert
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        vault.initialize(
+            Admin, name, symbol, decimals, fee, countNativeAsset, alwaysComputeTotalAssets, defaultAssetIndex
+        );
+
+        MockERC20CustomDecimals asset1 = new MockERC20CustomDecimals("ASSET1", "ASSET1", decimals);
+        MockERC20CustomDecimals asset2 = new MockERC20CustomDecimals("ASSET2", "ASSET2", decimals);
+        {
+            vm.startPrank(Admin);
+            vault.grantRole(vault.ASSET_MANAGER_ROLE(), Admin);
+
+            vault.addAsset(address(asset1), true);
+            vault.addAsset(address(asset2), true);
+            vm.stopPrank();
+        }
+
+        if (defaultAssetIndex == 0) {
+            assertEq(vault.asset(), address(asset1), "Asset should be WETH");
+        } else {
+            assertEq(vault.asset(), address(asset2), "Asset should be asset");
+        }
     }
 
     function test_Vault_initialize_revertWhenAlreadyInitialized() public {
