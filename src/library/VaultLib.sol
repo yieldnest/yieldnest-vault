@@ -201,6 +201,8 @@ library VaultLib {
 
         // Update the index for the asset that was moved to the deleted position
         if (index < assetStorage.list.length) {
+            // index can never be the defaultAssetIndex, therefore defaultAssetIndex does not change.
+            // since defaultAssetIndex is always 0 or 1, and never deleted.
             address movedAsset = assetStorage.list[index];
             assetStorage.assets[movedAsset].index = index;
         }
