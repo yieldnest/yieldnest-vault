@@ -210,6 +210,7 @@ library VaultLib {
 
     /**
      * @notice Converts an asset amount to base units.
+     * @dev SECURITY: computation assumes provider ensures rate is accurate and safeguards against manipulation.
      * @param asset_ The address of the asset.
      * @param assets The amount of the asset.
      * @param rounding The rounding direction.
@@ -227,6 +228,7 @@ library VaultLib {
 
     /**
      * @notice Converts a base amount to asset units.
+     * @dev SECURITY: computation assumes provider ensures rate is accurate and safeguards against manipulation.
      * @param asset_ The address of the asset.
      * @param baseAssets The amount of the assets in base units.
      * @param rounding The rounding direction.
@@ -260,6 +262,8 @@ library VaultLib {
     function subTotalAssets(uint256 baseAssets) public {
         IVault.VaultStorage storage vaultStorage = getVaultStorage();
         if (!vaultStorage.alwaysComputeTotalAssets) {
+            // May revert on underflow when withdrawn assets are valued higher than stored total assets.
+            //Mitigated by seeding the vault to create enough of a buffer for error.
             vaultStorage.totalAssets -= baseAssets;
         }
     }
@@ -285,7 +289,6 @@ library VaultLib {
 
     /**
      * @notice Converts a given amount of assets to shares.
-     * @dev baseAssets is always rounded down, ignoring the rounding parameter.
      * @param asset_ The address of the asset.
      * @param assets The amount of assets to convert.
      * @param rounding The rounding direction.
@@ -350,6 +353,7 @@ library VaultLib {
     /**
      * @notice Sets the buffer strategy.
      * @param buffer_ The address of the buffer strategy.
+     * @dev SECURITY: buffer=address(0) allowed - disables ERC4626 redeem/withdraw calls.
      */
     function setBuffer(address buffer_) public {
         address previousBuffer = getVaultStorage().buffer;
