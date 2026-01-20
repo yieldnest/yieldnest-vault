@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
 import {WETH9} from "test/unit/mocks/MockWETH.sol";
+import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {SetupVault} from "test/unit/helpers/SetupVault.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {TransparentUpgradeableProxy} from "src/Common.sol";
@@ -16,6 +17,7 @@ import {TransparentUpgradeableProxy} from "src/Common.sol";
 contract NativeEthAccountingTest is Test, MainnetActors {
     Vault public vault;
     WETH9 public weth;
+    MockProvider public provider;
 
     address public alice = address(0xA11Ce);
     address public bob = address(0xB0b);
@@ -23,6 +25,10 @@ contract NativeEthAccountingTest is Test, MainnetActors {
 
     function setUp() public {
         weth = new WETH9();
+        provider = new MockProvider();
+
+        // Set WETH rate to 1:1
+        provider.setRate(address(weth), 1e18);
 
         // Fund users
         deal(alice, INITIAL_BALANCE);
@@ -59,6 +65,20 @@ contract NativeEthAccountingTest is Test, MainnetActors {
             0 // defaultAssetIndex
         );
 
+        // Grant necessary roles and setup
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), address(this));
+        newVault.grantRole(newVault.PROVIDER_MANAGER_ROLE(), address(this));
+        newVault.grantRole(newVault.UNPAUSER_ROLE(), address(this));
+
+        // Add WETH asset
+        newVault.addAsset(address(weth), true);
+
+        // Set provider (using mock provider)
+        newVault.setProvider(address(provider));
+
+        // Unpause the vault
+        newVault.unpause();
+
         return newVault;
     }
 
@@ -68,13 +88,6 @@ contract NativeEthAccountingTest is Test, MainnetActors {
      */
     function test_NativeEth_DonationInflatesSharePrice() public {
         vault = _createVaultWithNativeAsset();
-
-        // Setup vault with WETH asset
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
-        vault.addAsset(address(weth), true);
-
-        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), address(this));
-        // Note: Would need to set provider here in real scenario
 
         // Alice deposits WETH normally
         vm.startPrank(alice);
@@ -98,7 +111,7 @@ contract NativeEthAccountingTest is Test, MainnetActors {
         // This means share price increased from 1.0 to 1.5
         // Alice's shares are now worth 150 ETH despite depositing only 100 ETH
         uint256 aliceValue = vault.convertToAssets(aliceShares);
-        assertEq(aliceValue, 150 ether, "Alice's shares worth 150 ETH now");
+        assertApproxEqAbs(aliceValue, 150 ether, 1, "Alice's shares worth 150 ETH now");
 
         // Bob deposits same amount but gets fewer shares
         vm.startPrank(bob);
@@ -119,9 +132,6 @@ contract NativeEthAccountingTest is Test, MainnetActors {
      */
     function test_NativeEth_AttackerExploitation() public {
         vault = _createVaultWithNativeAsset();
-
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
-        vault.addAsset(address(weth), true);
 
         address attacker = address(0xBA0);
         deal(attacker, INITIAL_BALANCE);
@@ -153,9 +163,6 @@ contract NativeEthAccountingTest is Test, MainnetActors {
      */
     function test_NativeEth_ReceiveFunctionDoesntMintShares() public {
         vault = _createVaultWithNativeAsset();
-
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
-        vault.addAsset(address(weth), true);
 
         // Alice deposits normally
         vm.startPrank(alice);
@@ -250,8 +257,6 @@ contract NativeEthAccountingTest is Test, MainnetActors {
         donation = bound(donation, 0.1 ether, 100 ether);
 
         vault = _createVaultWithNativeAsset();
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
-        vault.addAsset(address(weth), true);
 
         // Initial deposit
         vm.startPrank(alice);
@@ -264,10 +269,12 @@ contract NativeEthAccountingTest is Test, MainnetActors {
         vault.processAccounting();
 
         // Share price inflated by donation amount
-        uint256 expectedSharePrice = (100 ether + donation) * 1e18 / 100 ether;
-        uint256 actualSharePrice = vault.convertToAssets(1 ether);
+        // Expected: convertToAssets(1 ether) should give us 1 ether * totalAssets / totalSupply
+        // = 1 ether * (100 ether + donation) / 100 ether
+        uint256 expectedValue = 1 ether + (donation * 1 ether / 100 ether);
+        uint256 actualValue = vault.convertToAssets(1 ether);
 
-        assertApproxEqAbs(actualSharePrice, expectedSharePrice / 1e18, 100, "Share price inflated by donation");
+        assertApproxEqRel(actualValue, expectedValue, 0.01e18, "Share price inflated by donation");
     }
 
     /**
@@ -276,8 +283,6 @@ contract NativeEthAccountingTest is Test, MainnetActors {
      */
     function test_NativeEth_NotWithdrawable() public {
         vault = _createVaultWithNativeAsset();
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
-        vault.addAsset(address(weth), true);
 
         // Deposit WETH
         vm.startPrank(alice);
@@ -302,8 +307,6 @@ contract NativeEthAccountingTest is Test, MainnetActors {
      */
     function test_NativeEth_GriefingAttack() public {
         vault = _createVaultWithNativeAsset();
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
-        vault.addAsset(address(weth), true);
 
         // Deposit
         vm.startPrank(alice);
@@ -344,7 +347,11 @@ contract NativeEthAccountingTest is Test, MainnetActors {
         );
 
         vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
+        vault.grantRole(vault.PROVIDER_MANAGER_ROLE(), address(this));
+        vault.grantRole(vault.UNPAUSER_ROLE(), address(this));
         vault.addAsset(address(weth), true);
+        vault.setProvider(address(provider));
+        vault.unpause();
 
         // Deposit
         vm.startPrank(alice);

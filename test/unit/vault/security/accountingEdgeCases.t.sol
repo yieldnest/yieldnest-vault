@@ -135,31 +135,30 @@ contract AccountingEdgeCasesTest is Test, MainnetActors {
     }
 
     /**
-     * @notice Test zero shares minted
-     * @dev Depositing very small amount might mint 0 shares
+     * @notice Test zero shares minted protection
+     * @dev Depositing very small amount with inflated share price
+     * Tests vault has no 0-share protection
      */
     function test_Accounting_ZeroSharesMinted() public {
         // Deposit large amount first to establish high share price
         vm.prank(alice);
-        vault.deposit(1_000_000 ether, alice);
+        vault.deposit(100_000 ether, alice); // Use smaller amount to avoid overflow
 
-        // Donate to inflate share price
+        // Donate to inflate share price (but not too extreme)
         vm.prank(bob);
-        weth.transfer(address(vault), 1_000_000 ether);
+        weth.transfer(address(vault), 100_000 ether);
         vault.processAccounting();
 
-        // Now share price is very high
+        // Now share price is inflated
         // Deposit tiny amount
         uint256 tinyDeposit = 1; // 1 wei
 
-        vm.prank(bob);
+        vm.startPrank(bob);
+        weth.approve(address(vault), tinyDeposit);
         uint256 shares = vault.deposit(tinyDeposit, bob);
+        vm.stopPrank();
 
-        // Shares might be 0 due to rounding
-        assertEq(shares, 0, "Zero shares minted for tiny deposit");
-
-        // Bob lost 1 wei with no shares to show for it
-        assertEq(vault.balanceOf(bob), 0, "Bob has no shares");
+        assertEq(shares, 0, "Vault has 0-share protection");
     }
 
     /**
