@@ -17,6 +17,7 @@ import {IVault} from "src/interface/IVault.sol";
 import {Math} from "src/Common.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 
 contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
     using Math for uint256;
@@ -27,6 +28,7 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
     WETH9 public weth;
 
     address public alice = address(0x1);
+    address public bob = address(0x2);
     uint256 public constant INITIAL_BALANCE = 1_000_000 ether;
 
     function setUp() public {
@@ -40,6 +42,13 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
 
         // Approve vault to spend Alice's tokens
         vm.prank(alice);
+        weth.approve(address(vault), type(uint256).max);
+
+        // Give Bob some tokens
+        deal(bob, INITIAL_BALANCE);
+        vm.prank(bob);
+        weth.deposit{value: INITIAL_BALANCE}();
+        vm.prank(bob);
         weth.approve(address(vault), type(uint256).max);
     }
 
@@ -539,5 +548,254 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         vm.stopPrank();
 
         assertEq(vault.balanceOf(alice), 1);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    ACCOUNTING EDGE CASES
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Test totalAssets underflow scenario
+     * @dev HIGH #4: subTotalAssets can underflow if accounting goes wrong
+     */
+    function test_Accounting_UnderflowRisk() public {
+        // Deposit
+        vm.prank(alice);
+        vault.deposit(100 ether, alice);
+
+        // Allocate to buffer
+        allocateToBuffer(100 ether);
+
+        // Withdraw
+        vm.prank(alice);
+        vault.withdraw(50 ether, alice, alice);
+
+        // Total assets should be 50 ether
+        assertEq(vault.totalAssets(), 50 ether, "Total assets should be 50");
+    }
+
+    /**
+     * @notice Test rounding accumulation
+     * @dev Multiple operations with rounding can accumulate errors
+     */
+    function test_Accounting_RoundingAccumulation() public {
+        uint256 depositAmount = 1 ether + 1; // Odd amount for rounding
+
+        for (uint256 i = 0; i < 10; i++) {
+            vm.prank(alice);
+            uint256 shares = vault.deposit(depositAmount, alice);
+
+            allocateToBuffer(depositAmount);
+
+            vm.prank(alice);
+            vault.redeem(shares, alice, alice);
+        }
+
+        // After multiple round trips, total assets should be minimal (dust)
+        assertLt(vault.totalAssets(), 1000, "Only dust remaining");
+    }
+
+    /**
+     * @notice Test zero shares minted scenario
+     * @dev Depositing very small amount with inflated share price
+     */
+    function test_Accounting_ZeroSharesMinted() public {
+        // Deposit large amount first to establish share price
+        vm.prank(alice);
+        vault.deposit(100_000 ether, alice);
+
+        // Donate to inflate share price
+        vm.prank(bob);
+        weth.transfer(address(vault), 100_000 ether);
+        vault.processAccounting();
+
+        // Deposit tiny amount - should mint 0 shares
+        uint256 tinyDeposit = 1; // 1 wei
+
+        vm.startPrank(bob);
+        weth.approve(address(vault), tinyDeposit);
+        uint256 shares = vault.deposit(tinyDeposit, bob);
+        vm.stopPrank();
+
+        assertEq(shares, 0, "Tiny deposit mints 0 shares");
+    }
+
+    /**
+     * @notice Test dust amounts in conversions
+     * @dev Very small amounts can round to zero
+     */
+    function test_Accounting_DustConversions() public view {
+        uint256 shares = vault.convertToShares(1);
+        uint256 assetsBack = vault.convertToAssets(shares);
+
+        assertEq(assetsBack, 1, "Dust amount conversion");
+    }
+
+    /**
+     * @notice Test minimum deposit behavior
+     */
+    function test_Accounting_MinimumDeposit() public {
+        vm.prank(alice);
+        uint256 shares = vault.deposit(1, alice);
+
+        assertEq(shares, 1, "Can deposit 1 wei");
+    }
+
+    /**
+     * @notice Test totalAssets vs actual balance discrepancy
+     * @dev totalAssets tracking can diverge from actual balances
+     */
+    function test_Accounting_TotalAssetsDivergence() public {
+        // Deposit
+        vm.prank(alice);
+        vault.deposit(100 ether, alice);
+
+        assertEq(vault.totalAssets(), 100 ether, "Total assets = 100");
+        assertEq(weth.balanceOf(address(vault)), 100 ether, "Actual balance = 100");
+
+        // Direct transfer creates divergence
+        vm.prank(bob);
+        weth.transfer(address(vault), 50 ether);
+
+        assertEq(weth.balanceOf(address(vault)), 150 ether, "Actual balance = 150");
+        assertEq(vault.totalAssets(), 100 ether, "Total assets still 100 (stale)");
+
+        // processAccounting syncs them
+        vault.processAccounting();
+        assertEq(vault.totalAssets(), 150 ether, "Total assets synced to 150");
+    }
+
+    /**
+     * @notice Test processAccounting with no assets
+     */
+    function test_Accounting_ProcessAccountingEmpty() public {
+        vault.processAccounting();
+        assertEq(vault.totalAssets(), 0, "Total assets should be 0");
+    }
+
+    /**
+     * @notice Test deposit then immediate redeem
+     */
+    function test_Accounting_DepositRedeemRoundtrip() public {
+        uint256 depositAmount = 100 ether;
+
+        vm.prank(alice);
+        uint256 shares = vault.deposit(depositAmount, alice);
+
+        allocateToBuffer(depositAmount);
+
+        vm.prank(alice);
+        uint256 assets = vault.redeem(shares, alice, alice);
+
+        uint256 expectedAssets = depositAmount - vault._feeOnTotal(depositAmount, alice);
+        assertEq(assets, expectedAssets, "Should get back deposit amount minus fees");
+    }
+
+    /**
+     * @notice Test multiple users deposit and withdraw invariant
+     */
+    function test_Accounting_MultiUserInvariant() public {
+        // Alice deposits
+        vm.prank(alice);
+        uint256 aliceShares = vault.deposit(100 ether, alice);
+
+        // Bob deposits
+        vm.prank(bob);
+        uint256 bobShares = vault.deposit(200 ether, bob);
+
+        assertEq(vault.totalAssets(), 300 ether, "Total assets = 300");
+
+        uint256 aliceValue = vault.convertToAssets(aliceShares);
+        uint256 bobValue = vault.convertToAssets(bobShares);
+
+        assertApproxEqAbs(aliceValue + bobValue, 300 ether, 2, "Sum of shares = total assets");
+
+        allocateToBuffer(300 ether);
+
+        // Alice withdraws half
+        vm.prank(alice);
+        vault.redeem(aliceShares / 2, alice, alice);
+
+        // Invariant should still hold
+        uint256 totalAssets = vault.totalAssets();
+        aliceValue = vault.convertToAssets(vault.balanceOf(alice));
+        bobValue = vault.convertToAssets(vault.balanceOf(bob));
+
+        assertApproxEqAbs(aliceValue + bobValue, totalAssets, 100, "Invariant maintained");
+    }
+
+    /**
+     * @notice Fuzz test extreme deposit values
+     */
+    function testFuzz_Accounting_ExtremeValues(uint256 amount) public {
+        amount = bound(amount, 1 ether, 1_000_000 ether);
+
+        vm.startPrank(alice);
+        uint256 shares = vault.deposit(amount, alice);
+
+        assertApproxEqRel(shares, amount, 0.01e18, "Shares roughly equal to amount");
+        vm.stopPrank();
+    }
+
+    /**
+     * @notice Test deposit zero amount
+     */
+    function test_Accounting_DepositZero() public {
+        vm.prank(alice);
+        uint256 shares = vault.deposit(0, alice);
+        assertEq(shares, 0, "Zero deposit should mint zero shares");
+    }
+
+    /**
+     * @notice Test withdraw zero amount
+     */
+    function test_Accounting_WithdrawZero() public {
+        vm.prank(alice);
+        vault.deposit(100 ether, alice);
+
+        allocateToBuffer(100 ether);
+
+        vm.prank(alice);
+        uint256 shares = vault.withdraw(0, alice, alice);
+
+        assertEq(shares, 0, "Zero withdraw should burn zero shares");
+    }
+
+    /**
+     * @notice Test processAccounting gas cost
+     */
+    function test_Accounting_ProcessAccountingGasCost() public {
+        uint256 gasBefore = gasleft();
+        vault.processAccounting();
+        uint256 gasUsed = gasBefore - gasleft();
+
+        assertLt(gasUsed, 500_000, "Process accounting gas cost reasonable");
+    }
+
+    /**
+     * @notice Test totalAssets consistency between cached and computed values
+     */
+    function test_Accounting_TotalAssetsConsistency() public {
+        vm.prank(alice);
+        vault.deposit(100 ether, alice);
+
+        uint256 cachedTotal = vault.totalAssets();
+        uint256 computedTotal = vault.computeTotalAssets();
+
+        assertEq(cachedTotal, computedTotal, "Cached and computed should match");
+
+        // Direct transfer makes cached stale
+        vm.prank(bob);
+        weth.transfer(address(vault), 50 ether);
+
+        cachedTotal = vault.totalAssets();
+        assertEq(cachedTotal, 100 ether, "Cached is stale");
+
+        computedTotal = vault.computeTotalAssets();
+        assertEq(computedTotal, 150 ether, "Computed is fresh");
+
+        // processAccounting syncs
+        vault.processAccounting();
+        assertEq(vault.totalAssets(), 150 ether, "Cached updated");
     }
 }
