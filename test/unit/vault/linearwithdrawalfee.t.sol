@@ -12,14 +12,14 @@ import {IVault} from "src/interface/IVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 
 /**
- * @title FeeEdgeCasesTest
- * @notice Tests for withdrawal fee edge cases and rounding issues
- * @dev Tests:
- *   - MEDIUM #1: Fee calculation rounding
- *   - Fee bypass via allowance (fee-exempt user withdrawing on behalf of fee-paying user)
- *   - overrideBaseWithdrawalFee > 100% (per-user fee exceeding BASIS_POINT_SCALE)
+ * @title LinearWithdrawalFeeTest
+ * @notice Tests to cover withdrawal fee edge cases and rounding issues.
+ * @dev Test coverage:
+ *   - Rounding in fee calculation (preview and actual withdrawal)
+ *   - Ensuring fee is not bypassed even if allowances are used
+ *   - Handling of per-user override fees exceeding 100% (greater than BASIS_POINT_SCALE)
  */
-contract FeeEdgeCasesTest is Test, MainnetActors {
+contract LinearWithdrawalFeeTest is Test, MainnetActors {
     Vault public vault;
     WETH9 public weth;
 
