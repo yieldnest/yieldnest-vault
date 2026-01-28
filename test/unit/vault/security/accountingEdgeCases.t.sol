@@ -10,6 +10,7 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IERC20} from "src/Common.sol";
 import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 import {IVault} from "src/interface/IVault.sol";
+import {console} from "forge-std/console.sol";
 
 /**
  * @title AccountingEdgeCasesTest
@@ -77,33 +78,6 @@ contract AccountingEdgeCasesTest is Test, MainnetActors {
     }
 
     /**
-     * @notice Test withdraw more than totalAssets causes underflow
-     * @dev Demonstrates underflow in subTotalAssets
-     */
-    function test_Accounting_WithdrawExceedsTotalAssets() public {
-        // Scenario where totalAssets tracking could become incorrect:
-        // 1. Direct asset transfer (not counted in totalAssets)
-        // 2. Rounding errors accumulate
-        // 3. Oracle rate changes between deposit and withdraw
-
-        vm.prank(alice);
-        vault.deposit(100 ether, alice);
-
-        // Manually mess with totalAssets (simulating accounting bug)
-        // Note: We can't actually do this without modifying the vault
-        // But we can show what would happen
-
-        // If totalAssets = 50 but user tries to withdraw 60:
-        // subTotalAssets(60) would do: 50 -= 60 → underflow
-
-        // The code should check: require(baseAssets <= totalAssets)
-        // Before subtracting
-
-        // Current implementation in VaultLib.sol:262 doesn't check:
-        // vaultStorage.totalAssets -= baseAssets; // Can underflow!
-    }
-
-    /**
      * @notice Test rounding accumulation
      * @dev Multiple operations with rounding can accumulate errors
      */
@@ -129,6 +103,10 @@ contract AccountingEdgeCasesTest is Test, MainnetActors {
         // After multiple round trips, total assets should be 0
         // But rounding errors might leave dust
         assertLt(vault.totalAssets(), 1000, "Only dust remaining");
+
+        console.log("vault.convertToAssets(1e18)", vault.convertToAssets(1e18));
+
+        console.log("totalAssets", vault.totalAssets());
 
         // This demonstrates rounding is generally safe
         // But in edge cases could cause issues
@@ -165,27 +143,17 @@ contract AccountingEdgeCasesTest is Test, MainnetActors {
      * @notice Test dust amounts in conversions
      * @dev Very small amounts can round to zero
      */
-    function test_Accounting_DustConversions() public {
+    function test_Accounting_DustConversions() public view {
         // Test converting dust amounts
 
         // 1 wei of assets
         uint256 shares = vault.convertToShares(1);
         uint256 assetsBack = vault.convertToAssets(shares);
 
-        // Due to rounding, 1 wei might become 0
-        assertLe(assetsBack, 1, "Dust amount rounds to zero or one");
+        assertEq(assetsBack, 1, "Dust amount rounds to zero or one");
     }
 
-    /**
-     * @notice Test minimum deposit amount need
-     * @dev Very small deposits are problematic
-     */
     function test_Accounting_NeedMinimumDeposit() public {
-        // The vault should enforce a minimum deposit to avoid:
-        // 1. Zero shares minted
-        // 2. Griefing attacks with tiny deposits
-        // 3. Gas waste on negligible amounts
-
         // Current implementation has no minimum
         // Anyone can deposit 1 wei
 
@@ -194,9 +162,6 @@ contract AccountingEdgeCasesTest is Test, MainnetActors {
 
         // This succeeds but creates dust
         assertEq(shares, 1, "Can deposit 1 wei");
-
-        // Recommendation: Add MIN_DEPOSIT constant
-        // e.g., require(assets >= MIN_DEPOSIT)
     }
 
     /**
