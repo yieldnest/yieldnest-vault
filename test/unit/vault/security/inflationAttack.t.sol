@@ -242,54 +242,6 @@ contract InflationAttackTest is Test, MainnetActors {
     }
 
     /**
-     * @notice Test the recommendation: virtual shares offset
-     * @dev This test demonstrates what protection SHOULD look like (not currently implemented)
-     */
-    function test_VirtualSharesOffset_ProperProtection() public {
-        // NOTE: This test shows the RECOMMENDED fix, not current behavior
-        // The vault currently doesn't implement virtual shares offset
-
-        // With virtual offset (e.g., 1e6), calculations become:
-        // shares = assets * (totalSupply + OFFSET) / (totalAssets + OFFSET)
-
-        uint256 VIRTUAL_OFFSET = 1e6; // Example offset
-
-        // Simulate attack scenario
-        uint256 attackerDeposit = 1;
-        uint256 donation = 1000 ether;
-        uint256 victimDeposit = 100 ether;
-
-        // Without virtual offset (current behavior):
-        // Victim shares = victimDeposit * (attackerDeposit) / (attackerDeposit + donation)
-        //               = 100 ether * 1 / 1000 ether ≈ 0
-
-        // With virtual offset:
-        // Victim shares = victimDeposit * (attackerDeposit + OFFSET) / (attackerDeposit + donation + OFFSET)
-        //               = 100 ether * 1e6 / (1000 ether + 1e6)
-        //               ≈ 100 ether (approximately fair)
-
-        // This demonstrates that virtual offset makes the attack economically infeasible
-    }
-
-    /**
-     * @notice Test dead shares mitigation
-     * @dev Test the concept of minting initial shares to address(0) or dead address
-     */
-    function test_DeadSharesMitigation_Concept() public {
-        // NOTE: This demonstrates the RECOMMENDED fix
-        // The idea is to mint initial shares (e.g., 1000) to a dead address
-        // on first deposit, making inflation attacks prohibitively expensive
-
-        // If 1000 shares were minted to dead address on first deposit:
-        // - First depositor gets fewer shares but protected
-        // - Inflation attack becomes very expensive
-        // - Math: attacker deposits 1 wei, gets ~0 shares (most go to dead)
-        //        attacker would need to donate ~1000 wei per wei deposited to inflate
-
-        // Current implementation doesn't have this protection
-    }
-
-    /**
      * @notice Test edge case: zero shares minted
      * @dev When donation is large enough, subsequent depositors can receive 0 shares
      */
