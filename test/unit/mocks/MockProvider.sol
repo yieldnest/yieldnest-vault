@@ -8,12 +8,21 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 contract MockProvider is Provider {
     using Math for uint256;
 
-    mapping(address => uint256) private _mockRates;
+    struct MockRate {
+        uint256 rate;
+        bool isZero;
+    }
+
+    mapping(address => MockRate) private _mockRates;
 
     mapping(address => bool) private _erc4626;
 
     function setRate(address asset, uint256 rate_) external {
-        _mockRates[asset] = rate_;
+        _mockRates[asset] = MockRate({rate: rate_, isZero: false});
+    }
+
+    function setZeroRate(address asset) external {
+        _mockRates[asset] = MockRate({rate: 0, isZero: true});
     }
 
     function getRate(address asset) public view override returns (uint256) {
@@ -24,9 +33,9 @@ contract MockProvider is Provider {
             return assetsInUnderlying.mulDiv(underlyingRate, 1e18);
         }
 
-        uint256 mockRate = _mockRates[asset];
-        if (mockRate != 0) {
-            return mockRate;
+        MockRate memory mockRate = _mockRates[asset];
+        if (mockRate.rate != 0 || mockRate.isZero) {
+            return mockRate.rate;
         }
         return super.getRate(asset);
     }

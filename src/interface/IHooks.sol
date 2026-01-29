@@ -94,6 +94,8 @@ interface IHooks {
 
     error CallerNotVault();
 
+    event SetConfig(Config oldConfig, Config newConfig);
+
     /**
      * @notice Returns the name of the hooks module
      * @return The name of the hooks module

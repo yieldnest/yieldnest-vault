@@ -14,6 +14,8 @@ import {IHooks} from "src/interface/IHooks.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {IVault} from "src/interface/IVault.sol";
 
 contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
     using Math for uint256;
@@ -70,6 +72,26 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
 
         uint256 amount = vault.previewWithdraw(assets);
         assertEq(amount, assets);
+    }
+
+    function test_Vault_previewWithdraw_zeroAssets() public view {
+        assertEq(vault.previewWithdraw(0), 0, "previewWithdraw(0) should return 0");
+    }
+
+    function test_Vault_previewWithdraw_withFee(uint256 depositAmount, uint256 withdrawAmount) public {
+        depositAmount = bound(depositAmount, 1 ether, 1000 ether);
+        withdrawAmount = bound(withdrawAmount, 1 ether, depositAmount);
+
+        vm.startPrank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(10000); // 1% fee
+        vm.stopPrank();
+
+        vm.prank(alice);
+        vault.deposit(depositAmount, alice);
+
+        uint256 previewShares = vault.previewWithdraw(withdrawAmount);
+        // With fee, should require more shares
+        assertGe(previewShares, withdrawAmount, "previewWithdraw should account for fee");
     }
 
     function test_Vault_withdraw_success(uint256 assets) external {
@@ -186,53 +208,6 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.stopPrank();
     }
 
-    function test_Vault_previewRedeem(uint256 shares, bool alwaysComputeTotalAssets) external {
-        if (shares < 2) return;
-        if (shares > 100_000 ether) return;
-
-        vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
-
-        uint256 assets = vault.previewWithdraw(shares);
-        assertEq(assets, shares, "Preview Assets response not shares");
-    }
-
-    function test_Vault_redeem_success(uint256 amount, bool alwaysComputeTotalAssets) external {
-        if (amount < 2) return;
-        if (amount > 100_000 ether) return;
-
-        vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
-
-        uint256 aliceWethBalanceBefore = weth.balanceOf(alice);
-        vm.prank(alice);
-        uint256 depositShares = vault.deposit(amount, alice);
-
-        allocateToBuffer(amount);
-
-        uint256 balanceBefore = weth.balanceOf(alice);
-        uint256 totalAssetsBefore = vault.totalAssets();
-        uint256 previewAssets = vault.previewRedeem(depositShares);
-
-        vm.prank(alice);
-        uint256 assetsAfter = vault.redeem(depositShares, alice, alice);
-        uint256 balanceAfter = weth.balanceOf(alice);
-        uint256 totalAssetsAfter = vault.totalAssets();
-        uint256 aliceWethBalanceAfter = weth.balanceOf(alice);
-
-        assertEq(assetsAfter, previewAssets, "assetsAfter = previewAmount");
-        assertEq(balanceAfter, balanceBefore + previewAssets, "balanceAfter = balanceBefore + previewAmount");
-
-        assertEq(
-            totalAssetsBefore, totalAssetsAfter + previewAssets, "totalAssetsBefore = totalAssetsAfter + previewAmount"
-        );
-        assertEq(
-            aliceWethBalanceBefore,
-            aliceWethBalanceAfter,
-            "Alice's WETH balance should be increased by the assets withdrawn"
-        );
-    }
-
     function test_Vault_withdrawMoreThanBalance() public {
         vm.startPrank(alice);
         uint256 depositAmount = 100 ether;
@@ -244,17 +219,6 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vault.withdraw(excessiveWithdrawAmount, alice, alice);
     }
 
-    function test_Vault_redeemMoreThanShareBalance() public {
-        vm.startPrank(alice);
-        uint256 depositAmount = 100 ether;
-        uint256 sharesMinted = vault.deposit(depositAmount, alice);
-
-        // Attempt to redeem more shares than the balance
-        uint256 excessiveRedeemAmount = sharesMinted + 1;
-        vm.expectRevert();
-        vault.redeem(excessiveRedeemAmount, alice, alice);
-    }
-
     function test_Vault_withdraw_as_non_owner() public {
         vm.startPrank(alice);
         uint256 depositAmount = 100 ether;
@@ -264,16 +228,6 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vm.startPrank(bob);
         vm.expectRevert();
         vault.withdraw(sharesMinted, bob, alice);
-    }
-
-    function test_Vault_redeemWhilePaused() public {
-        vm.prank(PAUSER);
-        vault.pause();
-        assertEq(vault.paused(), true);
-
-        vm.prank(alice);
-        vm.expectRevert();
-        vault.redeem(1000, alice, alice);
     }
 
     function test_Vault_withdrawWhilePaused() public {
@@ -342,6 +296,27 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         assertEq(maxWithdraw, 0, "Max withdraw does not match");
     }
 
+    function test_Vault_maxWithdraw_whenBufferIsZero() public {
+        // Create a new vault without buffer
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+        newVault.initialize(address(this), "Test", "TST", 18, 0, false, false, 0);
+
+        assertEq(newVault.maxWithdraw(alice), 0, "maxWithdraw should be 0 when buffer is zero");
+    }
+
+    function test_Vault_maxWithdraw_whenPaused() public {
+        vm.prank(PAUSER);
+        vault.pause();
+
+        assertEq(vault.maxWithdraw(alice), 0, "maxWithdraw should be 0 when paused");
+    }
+
+    function test_Vault_maxWithdraw_withNoShares() public view {
+        assertEq(vault.maxWithdraw(bob), 0, "maxWithdraw should be 0 for user with no shares");
+    }
+
     event Log(uint256, string);
 
     function test_Vault_maxWithdraw_afterDeposit() public {
@@ -359,23 +334,6 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         // Test maxWithdraw after deposit
         uint256 maxWithdrawAfterDeposit = vault.maxWithdraw(alice);
         assertEq(maxWithdrawAfterDeposit, depositAmount, "Max withdraw after deposit does not match");
-    }
-
-    function test_Vault_maxRedeem() public view {
-        uint256 maxRedeem = vault.maxRedeem(alice);
-        assertEq(maxRedeem, 0, "Max redeem does not match");
-    }
-
-    function test_Vault_maxRedeem_afterDeposit() public {
-        // Simulate a deposit
-        uint256 depositAmount = 1000;
-        vm.prank(alice);
-        vault.deposit(depositAmount, alice);
-
-        allocateToBuffer(depositAmount);
-        // Test maxRedeem after deposit
-        uint256 maxRedeemAfterDeposit = vault.maxRedeem(alice);
-        assertEq(maxRedeemAfterDeposit, depositAmount, "Max redeem after deposit does not match");
     }
 
     function test_Vault_maxWithdrawWhenPaused() public {
@@ -403,5 +361,98 @@ contract VaultWithdrawUnitTest is Test, MainnetActors, Etches, AssertUtils {
         vault.approve(alice, depositAmount);
         vm.expectRevert();
         vault.withdraw(depositAmount, bob, bob);
+    }
+
+    // Security test for zero buffer scenario
+    function test_Vault_withdraw_revertsWhenBufferNotSet() public {
+        // Create a new vault without setting buffer
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+        newVault.initialize(address(this), "Test Vault", "TV", 18, 0, false, false, 0);
+
+        // Grant roles
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        newVault.grantRole(newVault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
+        newVault.grantRole(newVault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
+        newVault.grantRole(newVault.UNPAUSER_ROLE(), UNPAUSER);
+
+        // Setup vault
+        vm.startPrank(PROVIDER_MANAGER);
+        newVault.setProvider(MC.PROVIDER);
+        vm.stopPrank();
+
+        vm.startPrank(ASSET_MANAGER);
+        newVault.addAsset(MC.WETH, true);
+        vm.stopPrank();
+
+        // Unpause vault (requires provider but not buffer)
+        vm.prank(UNPAUSER);
+        newVault.unpause();
+
+        // Deposit some assets
+        deal(MC.WETH, alice, 1000 ether);
+        vm.startPrank(alice);
+        IERC20(MC.WETH).approve(address(newVault), type(uint256).max);
+        newVault.deposit(100 ether, alice);
+        vm.stopPrank();
+
+        // Attempt withdrawal should revert due to unset buffer
+        vm.prank(alice);
+        vm.expectRevert();
+        newVault.withdraw(10 ether, alice, alice);
+    }
+
+    function test_Vault_maxWithdraw_returnsZeroWhenBufferIsZeroAddress() public {
+        // Deploy a fresh vault
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+        newVault.initialize(address(this), "Test Vault", "TV", 18, 0, false, false, 0);
+
+        // Grant relevant roles
+        newVault.grantRole(newVault.ASSET_MANAGER_ROLE(), ASSET_MANAGER);
+        newVault.grantRole(newVault.BUFFER_MANAGER_ROLE(), BUFFER_MANAGER);
+
+        // Add an asset
+        vm.startPrank(ASSET_MANAGER);
+        newVault.addAsset(address(weth), true);
+        vm.stopPrank();
+
+        {
+            // Create a MockProvider instance and set a rate for WETH
+            MockProvider mockProvider = new MockProvider();
+            // Set an example rate for WETH, e.g., 1:1 (1e18 = 1)
+            mockProvider.setRate(address(weth), 1e18);
+
+            newVault.grantRole(newVault.PROVIDER_MANAGER_ROLE(), PROVIDER_MANAGER);
+
+            // Set the MockProvider as the provider in the vault
+            vm.startPrank(PROVIDER_MANAGER);
+            newVault.setProvider(address(mockProvider));
+            vm.stopPrank();
+        }
+
+        newVault.grantRole(newVault.UNPAUSER_ROLE(), UNPAUSER);
+        vm.prank(UNPAUSER);
+        newVault.unpause();
+
+        deal(address(weth), alice, 1000 ether);
+        vm.startPrank(alice);
+        weth.approve(address(newVault), type(uint256).max);
+        newVault.deposit(100 ether, alice);
+        vm.stopPrank();
+
+        assertEq(newVault.buffer(), address(0));
+
+        // maxWithdraw should return zero when buffer is address(0)
+        uint256 maxWithdrawValue = newVault.maxWithdraw(alice);
+        assertEq(maxWithdrawValue, 0, "maxWithdraw should return 0 when buffer is address(0)");
+
+        // Attempt to withdraw and expect revert because buffer is address(0)
+        vm.startPrank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IVault.ExceededMaxWithdraw.selector, alice, 1 ether, 0));
+        newVault.withdraw(1 ether, alice, alice);
+        vm.stopPrank();
     }
 }

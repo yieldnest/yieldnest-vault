@@ -12,8 +12,8 @@ interface IBaseStrategy {
         bool syncWithdraw;
     }
 
-    event SetHasAllocator(bool hasAllocator);
-    event SetAssetWithdrawable(address asset, bool isWithdrawable);
+    event SetHasAllocator(bool previous, bool hasAllocator);
+    event SetAssetWithdrawable(address asset, bool previous, bool isWithdrawable);
 
     error AssetNotWithdrawable();
 

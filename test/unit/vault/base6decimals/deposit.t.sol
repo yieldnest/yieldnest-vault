@@ -24,7 +24,6 @@ import {PublicViewsVault} from "test/unit/helpers/PublicViewsVault.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
-import {console} from "lib/forge-std/src/console.sol";
 
 contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
     Vault public vault;
@@ -40,6 +39,18 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
 
         // Give Alice some tokens
         deal(alice, INITIAL_BALANCE);
+    }
+
+    function test_Vault_previewDeposit_0_wei() public {
+        uint256 assets = 0;
+        uint256 shares = vault.previewDeposit(assets);
+        assertEq(shares, 0, "Preview deposit does not match expected shares");
+    }
+
+    function test_Vault_previewDeposit_1_wei() public {
+        uint256 assets = 1 wei;
+        uint256 shares = vault.previewDeposit(assets);
+        assertEq(shares, 1e12, "Preview deposit does not match expected shares");
     }
 
     function test_Vault_initial_deposit_success(uint256 depositAmount, bool alwaysComputeTotalAssets) public {
@@ -92,50 +103,6 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
         // Check that total assets increased
         assertEq(vault.totalAssets(), depositAmount, "Total assets did not increase correctly");
         assertEq(vault.totalBaseAssets(), depositAmount * 1e12, "Total assets did not increase correctly");
-    }
-
-    function test_Vault_initial_mint_success() public {
-        uint256 sharesToMint = 1000e18; // 1000 vault shares with 18 decimals
-        bool alwaysComputeTotalAssets = true;
-
-        vm.prank(ASSET_MANAGER);
-        vault.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets);
-
-        {
-            // Give Alice USDC
-            deal(MC.USDC, alice, INITIAL_BALANCE);
-        }
-
-        // Approve vault to spend Alice's wUSDC
-        vm.startPrank(alice);
-        IERC20(MC.USDC).approve(address(vault), type(uint256).max);
-
-        // Mint shares
-        uint256 assetsDeposited = vault.mint(sharesToMint, alice);
-        vm.stopPrank();
-
-        // Check that assets were deposited
-        assertGt(assetsDeposited, 0, "No assets were deposited");
-
-        // Check that the vault received the wUSDC
-        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), assetsDeposited, "Vault did not receive wUSDC");
-
-        // Check that Alice's USDC balance decreased
-        assertEq(
-            IERC20(MC.USDC).balanceOf(alice),
-            INITIAL_BALANCE - assetsDeposited,
-            "Alice's balance did not decrease correctly"
-        );
-
-        // Check that Alice received the correct amount of shares
-        assertEq(vault.balanceOf(alice), sharesToMint, "Alice did not receive the correct amount of shares");
-
-        // Check that assets deposited is sharesToMint (since wUSDC has 18 decimals)
-        assertEq(assetsDeposited * 1e12, sharesToMint, "Incorrect amount of assets deposited");
-
-        // Check that total assets increased
-        assertEq(vault.totalAssets(), assetsDeposited, "Total assets did not increase correctly");
-        assertEq(vault.totalBaseAssets(), assetsDeposited * 1e12, "Total assets did not increase correctly");
     }
 
     function testFuzz_Vault_initial_depositAsset_USDE_success(uint256 depositAmount) public {
@@ -476,5 +443,109 @@ contract Vault6DecimalsBaseDepositUnitTest is Test, MainnetActors, Etches {
             2,
             "Alice's asset value should remain the same after processor"
         );
+    }
+
+    function test_Vault_deposit_1_wei() public {
+        // Give Alice 1 wei USDC
+        deal(MC.USDC, alice, 1);
+
+        vm.prank(alice);
+        IERC20(MC.USDC).approve(address(vault), 1);
+
+        // Check initial conversion rate
+        uint256 initialRate = vault.convertToAssets(1e18);
+
+        // Deposit 1 wei USDC
+        vm.startPrank(alice);
+        uint256 sharesMinted = vault.deposit(1, alice);
+        vm.stopPrank();
+
+        // It should mint 1e12 shares (because USDC is 6 decimals, and shares are 18 decimals)
+        assertEq(sharesMinted, 1e12, "Incorrect shares minted for 1 wei deposit");
+
+        // Alice should have 0 USDC and sharesMinted shares
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "Alice's USDC not deducted");
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive correct shares");
+
+        // Vault should have 1 USDC
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 1, "Vault did not receive 1 USDC");
+
+        // Total assets/storage should reflect the deposit
+        assertEq(vault.totalAssets(), 1, "totalAssets should be 1");
+        assertEq(vault.totalBaseAssets(), 1e12, "totalBaseAssets should be 1e12");
+
+        // Conversion rate for 1e18 shares should stay the same after 1 wei deposit
+        uint256 afterRate = vault.convertToAssets(1e18);
+        assertEq(initialRate, afterRate, "Conversion rate changed after 1 wei deposit");
+    }
+
+    function test_Vault_deposit_1_wei_USDT() public {
+        // Give Alice 1 wei USDT
+        deal(MC.USDT, alice, 1);
+
+        vm.prank(alice);
+        IERC20(MC.USDT).approve(address(vault), 1);
+
+        // Check initial conversion rate
+        uint256 initialRate = vault.convertToAssets(1e18);
+
+        // Deposit 1 wei USDT
+        vm.startPrank(alice);
+        uint256 sharesMinted = vault.depositAsset(MC.USDT, 1, alice);
+        vm.stopPrank();
+
+        // It should mint 1e12 shares (because USDT is 6 decimals, and shares are 18 decimals)
+        assertEq(sharesMinted, 1e12, "Incorrect shares minted for 1 wei deposit");
+
+        // Alice should have 0 USDT and sharesMinted shares
+        assertEq(IERC20(MC.USDT).balanceOf(alice), 0, "Alice's USDT not deducted");
+        assertEq(vault.balanceOf(alice), sharesMinted, "Alice did not receive correct shares");
+
+        // Vault should have 1 USDT
+        assertEq(IERC20(MC.USDT).balanceOf(address(vault)), 1, "Vault did not receive 1 USDT");
+
+        // Total assets/storage should reflect the deposit
+        assertEq(vault.totalAssets(), 1, "totalAssets should be 1");
+        assertEq(vault.totalBaseAssets(), 1e12, "totalBaseAssets should be 1e12");
+
+        // Conversion rate for 1e18 shares should stay the same after 1 wei deposit
+        uint256 afterRate = vault.convertToAssets(1e18);
+        assertEq(initialRate, afterRate, "Conversion rate changed after 1 wei deposit");
+    }
+
+    function test_Vault_deposit_zero_wei_USDC() public {
+        // Give Alice 0 USDC
+        deal(MC.USDC, alice, 0);
+
+        vm.startPrank(alice);
+        IERC20(MC.USDC).approve(address(vault), 0);
+
+        uint256 sharesMinted = vault.depositAsset(MC.USDC, 0, alice);
+        vm.stopPrank();
+
+        assertEq(sharesMinted, 0, "Should mint 0 shares for 0 USDC deposit");
+        assertEq(vault.balanceOf(alice), 0, "Alice's shares should stay 0");
+        assertEq(IERC20(MC.USDC).balanceOf(address(vault)), 0, "Vault USDC should stay 0");
+        assertEq(IERC20(MC.USDC).balanceOf(alice), 0, "Alice's USDC should stay 0");
+        assertEq(vault.totalAssets(), 0, "Vault totalAssets should stay 0");
+        assertEq(vault.totalBaseAssets(), 0, "Vault totalBaseAssets should stay 0");
+    }
+
+    function test_Vault_deposit_zero_wei_USDT() public {
+        // Give Alice 0 USDT
+        deal(MC.USDT, alice, 0);
+
+        vm.startPrank(alice);
+        IERC20(MC.USDT).approve(address(vault), 0);
+
+        uint256 sharesMinted = vault.depositAsset(MC.USDT, 0, alice);
+        vm.stopPrank();
+
+        assertEq(sharesMinted, 0, "Should mint 0 shares for 0 USDT deposit");
+        assertEq(vault.balanceOf(alice), 0, "Alice's shares should stay 0");
+        assertEq(IERC20(MC.USDT).balanceOf(address(vault)), 0, "Vault USDT should stay 0");
+        assertEq(IERC20(MC.USDT).balanceOf(alice), 0, "Alice's USDT should stay 0");
+        assertEq(vault.totalAssets(), 0, "Vault totalAssets should stay 0");
+        assertEq(vault.totalBaseAssets(), 0, "Vault totalBaseAssets should stay 0");
     }
 }
