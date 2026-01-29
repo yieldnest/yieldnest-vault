@@ -566,55 +566,62 @@ contract LinearWithdrawalFeeTest is Test, MainnetActors {
     }
 
     /*//////////////////////////////////////////////////////////////
-            OVERRIDE BASE WITHDRAWAL FEE > 100%
+            OVERRIDE BASE WITHDRAWAL FEE VALIDATION
     //////////////////////////////////////////////////////////////*/
 
     /**
-     * @notice Test that per-user fee override can exceed 100% (BASIS_POINT_SCALE)
-     * @dev LinearWithdrawalFeeLib.overrideBaseWithdrawalFee has no validation
+     * @notice Test that per-user fee override cannot exceed 100% (BASIS_POINT_SCALE)
+     * @dev LinearWithdrawalFeeLib.overrideBaseWithdrawalFee now validates the fee
      */
-    function test_OverrideFeeExceeds100Percent() public {
+    function test_OverrideFeeExceeds100Percent_Reverts() public {
         // Set a normal base fee first
         vm.prank(FEE_MANAGER);
         vault.setBaseWithdrawalFee(100000); // 0.1% fee
 
-        // Alice deposits
-        vm.prank(alice);
-        vault.deposit(100 ether, alice);
-
-        // Allocate to buffer
-        ProcessorUtils.allocateToERC4626(address(vault), address(weth), address(vault.buffer()), 100 ether, PROCESSOR);
-
-        // BUG: Can set Alice's override fee to > 100% - no validation
+        // Try to set Alice's override fee to > 100% - should revert
         uint64 excessiveFee = uint64(FeeMath.BASIS_POINT_SCALE + 1); // 100.000001%
 
         vm.prank(FEE_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(IVault.ExceedsMaxBasisPoints.selector, excessiveFee));
         vault.overrideBaseWithdrawalFee(alice, excessiveFee, true);
-
-        // Verify excessive fee was accepted
-        IVault.OverriddenBaseWithdrawalFeeFields memory override_ = vault.overriddenBaseWithdrawalFee(alice);
-        assertEq(override_.baseWithdrawalFee, excessiveFee, "Excessive fee was accepted");
-        assertTrue(override_.baseWithdrawalFee > FeeMath.BASIS_POINT_SCALE, "Fee exceeds 100%");
-
-        // Check what happens when Alice tries to withdraw
-        uint256 feeOnRaw = vault._feeOnRaw(50 ether, alice);
-        assertTrue(feeOnRaw > 50 ether, "Fee exceeds withdrawal amount");
-
-        // Withdrawal reverts because fee exceeds available assets
-        vm.prank(alice);
-        vm.expectRevert();
-        vault.withdraw(50 ether, alice, alice);
     }
 
     /**
-     * @notice Test extreme fee values via override
+     * @notice Test that valid fee overrides still work (up to 100%)
      */
-    function testFuzz_OverrideFeeExtremeValues(uint64 feeValue) public {
-        // Focus on values around and above BASIS_POINT_SCALE
-        feeValue = uint64(bound(feeValue, FeeMath.BASIS_POINT_SCALE / 2, type(uint64).max));
+    function test_OverrideFeeAtMaximum_Succeeds() public {
+        // Set Alice's override fee to exactly 100% - should succeed
+        uint64 maxFee = uint64(FeeMath.BASIS_POINT_SCALE); // 100%
 
         vm.prank(FEE_MANAGER);
-        // BUG: All values are accepted, even > 100%
+        vault.overrideBaseWithdrawalFee(alice, maxFee, true);
+
+        // Verify the fee was accepted
+        IVault.OverriddenBaseWithdrawalFeeFields memory override_ = vault.overriddenBaseWithdrawalFee(alice);
+        assertEq(override_.baseWithdrawalFee, maxFee, "Max fee should be accepted");
+        assertTrue(override_.isOverridden, "Override flag should be true");
+    }
+
+    /**
+     * @notice Test extreme fee values via override are rejected
+     */
+    function testFuzz_OverrideFeeExtremeValues_Reverts(uint64 feeValue) public {
+        // Focus on values above BASIS_POINT_SCALE - all should revert
+        feeValue = uint64(bound(feeValue, FeeMath.BASIS_POINT_SCALE + 1, type(uint64).max));
+
+        vm.prank(FEE_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(IVault.ExceedsMaxBasisPoints.selector, feeValue));
+        vault.overrideBaseWithdrawalFee(alice, feeValue, true);
+    }
+
+    /**
+     * @notice Test that valid fee values via override are accepted
+     */
+    function testFuzz_OverrideFeeValidValues_Succeeds(uint64 feeValue) public {
+        // All values up to and including BASIS_POINT_SCALE should work
+        feeValue = uint64(bound(feeValue, 0, FeeMath.BASIS_POINT_SCALE));
+
+        vm.prank(FEE_MANAGER);
         vault.overrideBaseWithdrawalFee(alice, feeValue, true);
 
         IVault.OverriddenBaseWithdrawalFeeFields memory override_ = vault.overriddenBaseWithdrawalFee(alice);
@@ -623,9 +630,9 @@ contract LinearWithdrawalFeeTest is Test, MainnetActors {
     }
 
     /**
-     * @notice Test that setBaseWithdrawalFee correctly validates but override doesn't
+     * @notice Test that setBaseWithdrawalFee and overrideBaseWithdrawalFee have consistent validation
      */
-    function test_FeeValidationInconsistency() public {
+    function test_FeeValidationConsistency() public {
         vm.startPrank(FEE_MANAGER);
 
         uint64 excessiveFee = uint64(FeeMath.BASIS_POINT_SCALE + 1);
@@ -634,22 +641,20 @@ contract LinearWithdrawalFeeTest is Test, MainnetActors {
         vm.expectRevert(abi.encodeWithSelector(IVault.ExceedsMaxBasisPoints.selector, excessiveFee));
         vault.setBaseWithdrawalFee(excessiveFee);
 
-        // BUG: overrideBaseWithdrawalFee accepts it (no validation)
+        // overrideBaseWithdrawalFee also reverts for > 100% (FIX applied)
+        vm.expectRevert(abi.encodeWithSelector(IVault.ExceedsMaxBasisPoints.selector, excessiveFee));
         vault.overrideBaseWithdrawalFee(alice, excessiveFee, true);
-
-        IVault.OverriddenBaseWithdrawalFeeFields memory override_ = vault.overriddenBaseWithdrawalFee(alice);
-        assertEq(override_.baseWithdrawalFee, excessiveFee, "Excessive fee was accepted via override");
 
         vm.stopPrank();
     }
 
     /**
-     * @notice Test the impact of > 100% fee on actual withdrawals
+     * @notice Test that 100% fee override works correctly for withdrawals
      */
-    function test_ExcessiveFeeImpactOnWithdrawal() public {
-        // Set up Alice with 200% fee
+    function test_MaxFeeOverrideWithdrawal() public {
+        // Set up Alice with 100% fee (maximum allowed)
         vm.prank(FEE_MANAGER);
-        vault.overrideBaseWithdrawalFee(alice, uint64(2 * FeeMath.BASIS_POINT_SCALE), true);
+        vault.overrideBaseWithdrawalFee(alice, uint64(FeeMath.BASIS_POINT_SCALE), true);
 
         // Alice deposits
         vm.prank(alice);
@@ -658,25 +663,83 @@ contract LinearWithdrawalFeeTest is Test, MainnetActors {
         // Allocate to buffer
         ProcessorUtils.allocateToERC4626(address(vault), address(weth), address(vault.buffer()), 100 ether, PROCESSOR);
 
-        // Check fee calculation
+        // Check fee calculation - with 100% fee, fee equals the withdrawal amount
         uint256 withdrawAmount = 10 ether;
         uint256 fee = vault._feeOnRaw(withdrawAmount, alice);
 
-        // With 200% fee, the fee is 20 ether for a 10 ether withdrawal
-        assertEq(fee, 20 ether, "200% fee should double the withdrawal amount in fees");
+        // With 100% fee, the fee equals the withdrawal amount
+        assertEq(fee, 10 ether, "100% fee should equal the withdrawal amount");
 
         // Preview the withdrawal
         vm.prank(alice);
         uint256 sharesNeeded = vault.previewWithdraw(withdrawAmount);
 
-        // This requires 30 ether worth of shares to withdraw 10 ether
-        assertEq(sharesNeeded, 30 ether, "Need 3x shares due to 200% fee");
+        // This requires 20 ether worth of shares to withdraw 10 ether (amount + 100% fee)
+        assertEq(sharesNeeded, 20 ether, "Need 2x shares due to 100% fee");
 
         // Perform the withdrawal
         vm.prank(alice);
         uint256 actualShares = vault.withdraw(withdrawAmount, alice, alice);
 
         assertEq(actualShares, sharesNeeded, "Should burn previewed shares");
-        assertEq(actualShares, 30 ether, "With 200% fee, burns 3x the withdrawal amount in shares");
+        assertEq(actualShares, 20 ether, "With 100% fee, burns 2x the withdrawal amount in shares");
+    }
+
+    /**
+     * @notice Test that zero fee override works
+     */
+    function test_ZeroFeeOverride() public {
+        // Set base fee first
+        vm.prank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(500000); // 0.5% fee
+
+        // Set Alice's override to 0% fee
+        vm.prank(FEE_MANAGER);
+        vault.overrideBaseWithdrawalFee(alice, 0, true);
+
+        // Alice deposits
+        vm.prank(alice);
+        vault.deposit(100 ether, alice);
+
+        // Allocate to buffer
+        ProcessorUtils.allocateToERC4626(address(vault), address(weth), address(vault.buffer()), 100 ether, PROCESSOR);
+
+        // Check fee calculation - should be 0
+        uint256 fee = vault._feeOnRaw(50 ether, alice);
+        assertEq(fee, 0, "Zero fee override should result in no fee");
+
+        // Preview and perform withdrawal
+        vm.prank(alice);
+        uint256 sharesNeeded = vault.previewWithdraw(50 ether);
+        assertEq(sharesNeeded, 50 ether, "With 0% fee, shares equal withdrawal amount");
+
+        vm.prank(alice);
+        uint256 actualShares = vault.withdraw(50 ether, alice, alice);
+        assertEq(actualShares, 50 ether, "With 0% fee, burns exactly the withdrawal amount in shares");
+    }
+
+    /**
+     * @notice Test disabling fee override
+     */
+    function test_DisableFeeOverride() public {
+        // Set base fee
+        vm.prank(FEE_MANAGER);
+        vault.setBaseWithdrawalFee(500000); // 0.5% fee
+
+        // Set Alice's override to 0% fee
+        vm.prank(FEE_MANAGER);
+        vault.overrideBaseWithdrawalFee(alice, 0, true);
+
+        // Verify override is active
+        uint256 feeWithOverride = vault._feeOnRaw(100 ether, alice);
+        assertEq(feeWithOverride, 0, "Override should give 0 fee");
+
+        // Disable the override (setting toOverride_ = false)
+        vm.prank(FEE_MANAGER);
+        vault.overrideBaseWithdrawalFee(alice, 0, false);
+
+        // Now Alice should pay the base fee
+        uint256 feeWithoutOverride = vault._feeOnRaw(100 ether, alice);
+        assertGt(feeWithoutOverride, 0, "Without override, should pay base fee");
     }
 }
