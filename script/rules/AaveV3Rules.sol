@@ -37,7 +37,8 @@ library AaveV3Rules {
         // Param 2: onBehalfOf - must be the vault
         address[] memory vaultAllowList = new address[](1);
         vaultAllowList[0] = vault;
-        paramRules[2] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: vaultAllowList});
+        paramRules[2] =
+            IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: vaultAllowList});
 
         // Param 3: referralCode - no restriction (uint16 treated as UINT256)
         paramRules[3] =
@@ -93,7 +94,8 @@ library AaveV3Rules {
         // Param 2: to - must be the vault
         address[] memory vaultAllowList = new address[](1);
         vaultAllowList[0] = vault;
-        paramRules[2] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: vaultAllowList});
+        paramRules[2] =
+            IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: vaultAllowList});
 
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
@@ -149,7 +151,8 @@ library AaveV3Rules {
         // Param 4: onBehalfOf - must be the vault
         address[] memory vaultAllowList = new address[](1);
         vaultAllowList[0] = vault;
-        paramRules[4] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: vaultAllowList});
+        paramRules[4] =
+            IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: vaultAllowList});
 
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
@@ -201,7 +204,8 @@ library AaveV3Rules {
         // Param 3: onBehalfOf - must be the vault
         address[] memory vaultAllowList = new address[](1);
         vaultAllowList[0] = vault;
-        paramRules[3] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: vaultAllowList});
+        paramRules[3] =
+            IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: vaultAllowList});
 
         IVault.FunctionRule memory rule =
             IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
