@@ -44,9 +44,9 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
     IAaveV3Oracle public aaveOracle;
     Provider public provider;
 
-    // Use smaller amounts from existing vault balance
-    uint256 public SUPPLY_AMOUNT;
-    uint256 public BORROW_AMOUNT; // Will be calculated based on collateral
+    // Fuzz bounds for wstETH supply amount
+    uint256 constant MIN_SUPPLY = 0.1 ether;
+    uint256 constant MAX_SUPPLY = 100 ether;
 
     event Log(string message, uint256 value);
     event LogAddress(string message, address value);
@@ -57,32 +57,40 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         aavePool = IAaveV3Pool(MC.AAVE_V3_POOL);
         aaveOracle = IAaveV3Oracle(MC.AAVE_V3_ORACLE);
 
-        // Deploy new provider with USDC and aToken support
+        // Deploy new provider with aToken support
         provider = new Provider();
-
-        // Use existing vault wstETH balance (use a small portion)
-        uint256 vaultWstEth = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
-        console2.log("Vault existing wstETH balance:", vaultWstEth);
-
-        // Use the full wstETH balance available (or cap at 1 ether for safety)
-        SUPPLY_AMOUNT = vaultWstEth > 1 ether ? 1 ether : vaultWstEth;
-        if (SUPPLY_AMOUNT < 0.01 ether) {
-            revert("Vault needs at least 0.01 wstETH for tests");
-        }
-
-        // Calculate safe borrow amount (roughly 30% of collateral value in USDC)
-        // wstETH ~= 1.22 ETH, ETH ~= $3000, so 0.1 wstETH ~= $366
-        // Borrow ~30% = ~$100 = 100 USDC
-        uint256 wstEthToEthRate = IStETH(MC.STETH).getPooledEthByShares(1e18);
-        uint256 collateralInUsd = (SUPPLY_AMOUNT * wstEthToEthRate * 3000) / 1e36; // rough ETH price
-        BORROW_AMOUNT = (collateralInUsd * 30 / 100) * 1e6; // 30% of collateral, in USDC (6 decimals)
-        if (BORROW_AMOUNT < 10e6) {
-            BORROW_AMOUNT = 10e6; // minimum 10 USDC
-        }
-        console2.log("Calculated borrow amount (USDC):", BORROW_AMOUNT);
 
         // Setup: Grant roles and configure vault for Aave integration
         _setupVaultForAave();
+    }
+
+    /**
+     * @notice Bootstrap the vault with wstETH by directly dealing to the vault
+     * @param amount The amount of wstETH to add to the vault
+     */
+    function _bootstrapVaultWithWstETH(uint256 amount) internal {
+        // Directly deal wstETH to the vault
+        deal(MC.WSTETH, MC.YNETHX, amount);
+        console2.log("Bootstrapped vault with wstETH:", amount);
+    }
+
+    /**
+     * @notice Calculate safe borrow amount based on collateral
+     * @param supplyAmount The amount of wstETH being supplied as collateral
+     * @return borrowAmount The safe amount of USDC to borrow (30% of collateral value)
+     */
+    function _calculateBorrowAmount(uint256 supplyAmount) internal view returns (uint256) {
+        // wstETH -> ETH rate
+        uint256 wstEthToEthRate = IStETH(MC.STETH).getPooledEthByShares(1e18);
+        // Rough ETH price in USD ($3000)
+        uint256 collateralInUsd = (supplyAmount * wstEthToEthRate * 3000) / 1e36;
+        // Borrow 30% of collateral value, in USDC (6 decimals)
+        uint256 borrowAmount = (collateralInUsd * 30 / 100) * 1e6;
+        // Minimum 10 USDC
+        if (borrowAmount < 10e6) {
+            borrowAmount = 10e6;
+        }
+        return borrowAmount;
     }
 
     function _setupVaultForAave() internal {
@@ -151,21 +159,25 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
     }
 
     /**
-     * @notice Test supplying wstETH to Aave as collateral
-     * @dev Uses existing vault wstETH balance
+     * @notice Test supplying wstETH to Aave as collateral (fuzzed)
+     * @param supplyAmount The fuzzed amount of wstETH to supply
      */
-    function test_Aave_SupplyCollateral() public {
-        uint256 vaultWstEthBefore = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
-        require(vaultWstEthBefore >= SUPPLY_AMOUNT, "Vault needs wstETH balance");
+    function testFuzz_Aave_SupplyCollateral(uint256 supplyAmount) public {
+        supplyAmount = bound(supplyAmount, MIN_SUPPLY, MAX_SUPPLY);
 
-        uint256 totalAssetsBefore = vault.totalAssets();
+        // Bootstrap vault with wstETH
+        _bootstrapVaultWithWstETH(supplyAmount);
+
+        uint256 vaultWstEthBefore = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
+        // Use computeTotalAssets since deal() doesn't update internal accounting
+        uint256 totalAssetsBefore = vault.computeTotalAssets();
 
         console2.log("Vault wstETH before supply:", vaultWstEthBefore);
         console2.log("Total assets before supply:", totalAssetsBefore);
-        console2.log("Supply amount:", SUPPLY_AMOUNT);
+        console2.log("Supply amount:", supplyAmount);
 
         // Supply wstETH to Aave
-        _supplyToAave(MC.WSTETH, SUPPLY_AMOUNT);
+        _supplyToAave(MC.WSTETH, supplyAmount);
 
         uint256 vaultWstEthAfter = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
         uint256 aTokenBalance = IERC20(MC.AAVE_A_WSTETH).balanceOf(MC.YNETHX);
@@ -174,39 +186,47 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         console2.log("Vault aWSTETH balance:", aTokenBalance);
 
         // wstETH should have left the vault
-        assertEq(vaultWstEthAfter, vaultWstEthBefore - SUPPLY_AMOUNT, "wstETH should be sent to Aave");
+        assertEq(vaultWstEthAfter, vaultWstEthBefore - supplyAmount, "wstETH should be sent to Aave");
 
-        // Vault should now have aTokens
-        assertGe(aTokenBalance, SUPPLY_AMOUNT - 1, "Vault should receive aTokens");
+        // Vault should now have aTokens (allow for small rounding difference)
+        assertGe(aTokenBalance, supplyAmount - 2, "Vault should receive aTokens");
 
         // Compute total assets (wstETH -> aWSTETH should be value neutral)
         uint256 computedTotalAssets = vault.computeTotalAssets();
         console2.log("Computed total assets after supply:", computedTotalAssets);
 
         // Total assets should remain roughly the same (wstETH -> aWSTETH, same rate)
+        // Use a relative threshold of 0.01% for large values
+        uint256 threshold = totalAssetsBefore / 10000; // 0.01%
+        if (threshold < 1e15) threshold = 1e15;
         assertEqThreshold(
-            computedTotalAssets, totalAssetsBefore, 1e15, "Total assets should remain similar after supply"
+            computedTotalAssets, totalAssetsBefore, threshold, "Total assets should remain similar after supply"
         );
     }
 
     /**
-     * @notice Test borrowing USDC against wstETH collateral
+     * @notice Test borrowing USDC against wstETH collateral (fuzzed)
+     * @param supplyAmount The fuzzed amount of wstETH to supply as collateral
      */
-    function test_Aave_BorrowUSDC() public {
-        uint256 vaultWstEthBefore = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
-        require(vaultWstEthBefore >= SUPPLY_AMOUNT, "Vault needs wstETH balance");
+    function testFuzz_Aave_BorrowUSDC(uint256 supplyAmount) public {
+        supplyAmount = bound(supplyAmount, MIN_SUPPLY, MAX_SUPPLY);
+
+        // Bootstrap vault with wstETH
+        _bootstrapVaultWithWstETH(supplyAmount);
 
         // First supply collateral
-        _supplyToAave(MC.WSTETH, SUPPLY_AMOUNT);
+        _supplyToAave(MC.WSTETH, supplyAmount);
 
         uint256 totalAssetsBefore = vault.computeTotalAssets();
         uint256 usdcBefore = IERC20(MC.USDC).balanceOf(MC.YNETHX);
+        uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
 
         console2.log("Computed total assets before borrow:", totalAssetsBefore);
         console2.log("USDC balance before borrow:", usdcBefore);
+        console2.log("Borrow amount:", borrowAmount);
 
         // Get Aave account data before borrow
-        (uint256 totalCollateral, uint256 totalDebt, uint256 availableBorrow,,, uint256 healthFactor) =
+        (uint256 totalCollateral,, uint256 availableBorrow,,, uint256 healthFactor) =
             aavePool.getUserAccountData(MC.YNETHX);
 
         console2.log("Aave total collateral (USD, 8 decimals):", totalCollateral);
@@ -214,17 +234,17 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         console2.log("Aave health factor before:", healthFactor);
 
         // Borrow USDC
-        _borrowFromAave(MC.USDC, BORROW_AMOUNT);
+        _borrowFromAave(MC.USDC, borrowAmount);
 
         uint256 usdcAfter = IERC20(MC.USDC).balanceOf(MC.YNETHX);
         console2.log("USDC balance after borrow:", usdcAfter);
 
-        assertEq(usdcAfter, usdcBefore + BORROW_AMOUNT, "Vault should receive borrowed USDC");
+        assertEq(usdcAfter, usdcBefore + borrowAmount, "Vault should receive borrowed USDC");
 
         // Check debt
         uint256 debtBalance = IERC20(MC.AAVE_VARIABLE_DEBT_USDC).balanceOf(MC.YNETHX);
         console2.log("Variable debt USDC balance:", debtBalance);
-        assertGe(debtBalance, BORROW_AMOUNT, "Vault should have USDC debt");
+        assertGe(debtBalance, borrowAmount, "Vault should have USDC debt");
 
         // Compute total assets after borrow
         uint256 totalAssetsAfter = vault.computeTotalAssets();
@@ -240,33 +260,39 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
     }
 
     /**
-     * @notice Test full cycle: supply, borrow, repay, withdraw
+     * @notice Test full cycle: supply, borrow, repay, withdraw (fuzzed)
+     * @param supplyAmount The fuzzed amount of wstETH to use
      */
-    function test_Aave_FullCycle() public {
+    function testFuzz_Aave_FullCycle(uint256 supplyAmount) public {
+        supplyAmount = bound(supplyAmount, MIN_SUPPLY, MAX_SUPPLY);
+
+        // Bootstrap vault with wstETH
+        _bootstrapVaultWithWstETH(supplyAmount);
+
         uint256 vaultWstEthBefore = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
-        require(vaultWstEthBefore >= SUPPLY_AMOUNT, "Vault needs wstETH balance");
+        uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
 
         console2.log("Starting full cycle test");
         console2.log("Initial wstETH balance:", vaultWstEthBefore);
-        console2.log("Supply amount:", SUPPLY_AMOUNT);
+        console2.log("Supply amount:", supplyAmount);
 
         // 1. Supply collateral
-        _supplyToAave(MC.WSTETH, SUPPLY_AMOUNT);
+        _supplyToAave(MC.WSTETH, supplyAmount);
         console2.log("Step 1: Supplied collateral");
 
         uint256 aTokenAfterSupply = IERC20(MC.AAVE_A_WSTETH).balanceOf(MC.YNETHX);
         console2.log("aToken balance after supply:", aTokenAfterSupply);
 
         // 2. Borrow USDC
-        _borrowFromAave(MC.USDC, BORROW_AMOUNT);
+        _borrowFromAave(MC.USDC, borrowAmount);
         console2.log("Step 2: Borrowed USDC");
 
         uint256 usdcBalance = IERC20(MC.USDC).balanceOf(MC.YNETHX);
-        assertEq(usdcBalance, BORROW_AMOUNT, "Should have borrowed USDC");
+        assertEq(usdcBalance, borrowAmount, "Should have borrowed USDC");
 
         // 3. Repay USDC (use type(uint256).max for full repayment including accrued interest)
         // Need to give vault extra USDC to cover any accrued interest
-        deal(MC.USDC, MC.YNETHX, BORROW_AMOUNT + 1000e6); // Extra 1000 USDC for interest buffer
+        deal(MC.USDC, MC.YNETHX, borrowAmount + 1000e6); // Extra 1000 USDC for interest buffer
         _repayToAave(MC.USDC, type(uint256).max);
         console2.log("Step 3: Repaid USDC (full)");
 
@@ -296,41 +322,52 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
     }
 
     /**
-     * @notice Test that accounting correctly tracks value with Aave position
+     * @notice Test that accounting correctly tracks value with Aave position (fuzzed)
+     * @param supplyAmount The fuzzed amount of wstETH to use
      */
-    function test_Aave_AccountingCorrectness() public {
-        uint256 vaultWstEthBefore = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
-        require(vaultWstEthBefore >= SUPPLY_AMOUNT, "Vault needs wstETH balance");
+    function testFuzz_Aave_AccountingCorrectness(uint256 supplyAmount) public {
+        supplyAmount = bound(supplyAmount, MIN_SUPPLY, MAX_SUPPLY);
+
+        // Bootstrap vault with wstETH
+        _bootstrapVaultWithWstETH(supplyAmount);
+
+        uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
 
         // Get initial state using computeTotalAssets (not processAccounting)
         uint256 initialTotalAssets = vault.computeTotalAssets();
         console2.log("Initial computed total assets:", initialTotalAssets);
 
         // Supply to Aave
-        _supplyToAave(MC.WSTETH, SUPPLY_AMOUNT);
+        _supplyToAave(MC.WSTETH, supplyAmount);
         uint256 afterAaveSupply = vault.computeTotalAssets();
         console2.log("After Aave supply:", afterAaveSupply);
 
         // Value should be preserved (wstETH -> aWSTETH)
-        assertEqThreshold(afterAaveSupply, initialTotalAssets, 1e15, "Value should be preserved after Aave supply");
+        // Use a relative threshold of 0.01% for large values
+        uint256 threshold = initialTotalAssets / 10000; // 0.01%
+        if (threshold < 1e15) threshold = 1e15;
+        assertEqThreshold(afterAaveSupply, initialTotalAssets, threshold, "Value should be preserved after Aave supply");
 
         // Borrow USDC
-        _borrowFromAave(MC.USDC, BORROW_AMOUNT);
+        _borrowFromAave(MC.USDC, borrowAmount);
         uint256 afterBorrow = vault.computeTotalAssets();
         console2.log("After USDC borrow:", afterBorrow);
 
         // Note: USDC is not tracked in the provider, so total assets won't reflect borrowed USDC
         // The vault tracks collateral (aWSTETH) but not the borrowed USDC value
         // Total assets should remain roughly the same (only aWSTETH is tracked)
-        assertEqThreshold(afterBorrow, afterAaveSupply, 1e15, "Total assets should remain similar (USDC not tracked)");
+        assertEqThreshold(afterBorrow, afterAaveSupply, threshold, "Total assets should remain similar (USDC not tracked)");
     }
 
     /**
-     * @notice Test processor rules are enforced
+     * @notice Test processor rules are enforced (fuzzed)
+     * @param supplyAmount The fuzzed amount of wstETH to use
      */
-    function test_Aave_UnauthorizedCallReverts() public {
-        uint256 vaultWstEthBefore = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
-        require(vaultWstEthBefore >= SUPPLY_AMOUNT, "Vault needs wstETH balance");
+    function testFuzz_Aave_UnauthorizedCallReverts(uint256 supplyAmount) public {
+        supplyAmount = bound(supplyAmount, MIN_SUPPLY, MAX_SUPPLY);
+
+        // Bootstrap vault with wstETH
+        _bootstrapVaultWithWstETH(supplyAmount);
 
         // Try to supply to an unauthorized address (should revert)
         address unauthorizedReceiver = address(0xdead);
@@ -342,10 +379,10 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256[] memory values = new uint256[](2);
 
         bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", MC.AAVE_V3_POOL, SUPPLY_AMOUNT);
+        data[0] = abi.encodeWithSignature("approve(address,uint256)", MC.AAVE_V3_POOL, supplyAmount);
         // Try to supply on behalf of unauthorized address
         data[1] = abi.encodeWithSignature(
-            "supply(address,uint256,address,uint16)", MC.WSTETH, SUPPLY_AMOUNT, unauthorizedReceiver, 0
+            "supply(address,uint256,address,uint16)", MC.WSTETH, supplyAmount, unauthorizedReceiver, 0
         );
 
         vm.startPrank(PROCESSOR);
