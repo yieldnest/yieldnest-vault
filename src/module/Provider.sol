@@ -10,7 +10,8 @@ import {
     IswETH,
     IFrxEthWethDualOracle,
     IynLSDe,
-    ICurveLpConnector
+    ICurveLpConnector,
+    IChainlinkAggregator
 } from "src/interface/IProvider.sol";
 import {IERC4626} from "src/Common.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
@@ -112,6 +113,38 @@ contract Provider is IProvider {
             return IERC4626(asset).convertToAssets(1e18);
         }
 
+        // USDC rate: convert USDC (6 decimals) to ETH (18 decimals)
+        // Returns how much ETH 1 USDC is worth (scaled to 1e18)
+        if (asset == MC.USDC) {
+            return _getUsdcToEthRate();
+        }
+
+        // Aave aWSTETH: same rate as wstETH since it's 1:1 with underlying
+        if (asset == MC.AAVE_A_WSTETH) {
+            return IStETH(MC.STETH).getPooledEthByShares(1e18);
+        }
+
         revert UnsupportedAsset(asset);
+    }
+
+    /**
+     * @notice Get the rate of USDC to ETH using Chainlink price feeds
+     * @dev USDC has 6 decimals, we return rate scaled to 1e18
+     *      Formula: (USDC/USD) / (ETH/USD) = USDC/ETH
+     * @return The amount of ETH (in wei) that 1e6 USDC is worth, scaled to 1e18
+     */
+    function _getUsdcToEthRate() internal view returns (uint256) {
+        // Get ETH/USD price (8 decimals)
+        (, int256 ethUsdPrice,,,) = IChainlinkAggregator(MC.CL_ETH_USD_FEED).latestRoundData();
+        require(ethUsdPrice > 0, "Invalid ETH price");
+
+        // Get USDC/USD price (8 decimals)
+        (, int256 usdcUsdPrice,,,) = IChainlinkAggregator(MC.CL_USDC_USD_FEED).latestRoundData();
+        require(usdcUsdPrice > 0, "Invalid USDC price");
+
+        // USDC/ETH = (USDC/USD) / (ETH/USD)
+        // Scale: (1e8 * 1e18) / 1e8 = 1e18
+        // This gives us how much ETH 1 USDC is worth (scaled to 1e18)
+        return uint256(usdcUsdPrice) * 1e18 / uint256(ethUsdPrice);
     }
 }
