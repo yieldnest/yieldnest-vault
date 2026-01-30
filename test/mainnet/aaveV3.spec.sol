@@ -97,10 +97,8 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         // Set the new provider
         vault.setProvider(address(provider));
 
-        // Add USDC as an asset (6 decimals)
-        if (!vault.hasAsset(MC.USDC)) {
-            vault.addAsset(MC.USDC, true);
-        }
+        // Note: USDC is NOT added as a vault asset since we don't track it in the provider
+        // The vault only tracks collateral (aWSTETH), not borrowed assets
 
         // Add aWSTETH as an asset for accounting
         if (!vault.hasAsset(MC.AAVE_A_WSTETH)) {
@@ -136,19 +134,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
 
         // 7. SetUserEMode rule (optional, for ETH-correlated assets)
         SafeRules.setProcessorRule(vault, AaveV3Rules.getSetUserEModeRule(MC.AAVE_V3_POOL), true);
-    }
-
-    /**
-     * @notice Test that the provider correctly returns USDC rate
-     */
-    function test_Provider_USDCRate() public view {
-        uint256 usdcRate = provider.getRate(MC.USDC);
-        console2.log("USDC rate (ETH per 1 USDC, scaled 1e18):", usdcRate);
-
-        // USDC should be worth roughly 1/ETH_PRICE in ETH
-        // If ETH is ~$3000, then 1 USDC ≈ 0.000333 ETH = 3.33e14 wei
-        assertGt(usdcRate, 0, "USDC rate should be positive");
-        assertLt(usdcRate, 1e18, "1 USDC should be worth less than 1 ETH");
     }
 
     /**
@@ -245,14 +230,8 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 totalAssetsAfter = vault.computeTotalAssets();
         console2.log("Computed total assets after borrow:", totalAssetsAfter);
 
-        // Total assets should increase by the value of borrowed USDC
-        uint256 usdcRate = provider.getRate(MC.USDC);
-        uint256 expectedIncrease = (BORROW_AMOUNT * usdcRate) / 1e6; // USDC has 6 decimals
-        console2.log("Expected increase from USDC:", expectedIncrease);
-
-        // Note: Total assets increases because we received USDC but debt is not tracked in totalAssets
-        // This is a design consideration - you may want to subtract debt from totalAssets
-        assertGt(totalAssetsAfter, totalAssetsBefore, "Total assets should increase from borrowed USDC");
+        // Note: USDC is not tracked in the provider, so total assets won't reflect borrowed USDC
+        // The vault tracks collateral (aWSTETH) but not the borrowed USDC value
 
         // Check health factor is still healthy
         (,,,,, healthFactor) = aavePool.getUserAccountData(MC.YNETHX);
@@ -340,15 +319,10 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 afterBorrow = vault.computeTotalAssets();
         console2.log("After USDC borrow:", afterBorrow);
 
-        // Calculate expected USDC value in ETH terms
-        uint256 usdcValueInEth = (BORROW_AMOUNT * provider.getRate(MC.USDC)) / 1e6;
-        console2.log("USDC value in ETH:", usdcValueInEth);
-
-        // Total assets should increase by the borrowed USDC value
-        // (Note: This doesn't account for debt - that's a separate consideration)
-        assertEqThreshold(
-            afterBorrow, afterAaveSupply + usdcValueInEth, 1e15, "Total assets should increase by borrowed USDC value"
-        );
+        // Note: USDC is not tracked in the provider, so total assets won't reflect borrowed USDC
+        // The vault tracks collateral (aWSTETH) but not the borrowed USDC value
+        // Total assets should remain roughly the same (only aWSTETH is tracked)
+        assertEqThreshold(afterBorrow, afterAaveSupply, 1e15, "Total assets should remain similar (USDC not tracked)");
     }
 
     /**
