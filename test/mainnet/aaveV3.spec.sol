@@ -65,12 +65,42 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
     }
 
     /**
-     * @notice Bootstrap the vault with wstETH by directly dealing to the vault
-     * @param amount The amount of wstETH to add to the vault
+     * @notice Bootstrap the vault with wstETH by enabling deposits temporarily
+     * @param amount The amount of wstETH to deposit into the vault
      */
     function _bootstrapVaultWithWstETH(uint256 amount) internal {
-        // Directly deal wstETH to the vault
-        deal(MC.WSTETH, MC.YNETHX, amount);
+        address depositor = address(0xDE9051700);
+
+        // Deal wstETH to the depositor
+        deal(MC.WSTETH, depositor, amount);
+
+        // Find wstETH index in the asset list
+        address[] memory assets = vault.getAssets();
+        uint256 wstEthIndex = type(uint256).max;
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (assets[i] == MC.WSTETH) {
+                wstEthIndex = i;
+                break;
+            }
+        }
+        require(wstEthIndex != type(uint256).max, "wstETH not found in asset list");
+
+        // Temporarily enable wstETH deposits
+        vm.startPrank(ADMIN);
+        vault.updateAsset(wstEthIndex, IVault.AssetUpdateFields({active: true}));
+        vm.stopPrank();
+
+        // Deposit wstETH into the vault
+        vm.startPrank(depositor);
+        IERC20(MC.WSTETH).approve(address(vault), amount);
+        vault.depositAsset(MC.WSTETH, amount, depositor);
+        vm.stopPrank();
+
+        // Disable wstETH deposits after bootstrapping
+        vm.startPrank(ADMIN);
+        vault.updateAsset(wstEthIndex, IVault.AssetUpdateFields({active: false}));
+        vm.stopPrank();
+
         console2.log("Bootstrapped vault with wstETH:", amount);
     }
 
