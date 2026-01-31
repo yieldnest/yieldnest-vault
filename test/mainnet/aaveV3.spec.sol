@@ -280,13 +280,13 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         assertApproxEqAbs(debtBalance, borrowAmount, 3, "Vault should have USDC debt");
 
         // Check health factor is healthy (borrowing at 30% LTV should give ~3x health factor)
-        (uint256 totalCollateralUsd, uint256 totalDebtUsd,,,, uint256 healthFactor) =
-            aavePool.getUserAccountData(MC.YNETHX);
+        (, uint256 totalDebtUsd,,,, uint256 healthFactor) = aavePool.getUserAccountData(MC.YNETHX);
 
-        // Calculate expected values
-        uint256 expectedDebtUsd = (borrowAmount / 1e6) * 1e8; // USDC (6 decimals) to Aave USD (8 decimals)
+        // Calculate expected values - USDC (6 decimals) to Aave USD (8 decimals)
+        // Allow 1% tolerance since USDC price may deviate slightly from $1
+        uint256 expectedDebtUsd = (borrowAmount / 1e6) * 1e8;
 
-        assertApproxEqAbs(totalDebtUsd, expectedDebtUsd, 1e8, "Debt should match borrowed USDC");
+        assertApproxEqRel(totalDebtUsd, expectedDebtUsd, 0.01e18, "Debt should match borrowed USDC within 1%");
         // Health factor = (collateral * liquidation threshold) / debt, at 30% LTV expect ~2.5-3x
         assertApproxEqRel(healthFactor, 3e18, 0.5e18, "Health factor should be ~3 at 30% LTV");
     }
@@ -409,14 +409,18 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         );
 
         // Verify Aave position still exists with reduced debt
-        (uint256 totalCollateralUsd, uint256 totalDebtUsd,,,, uint256 healthFactor) =
-            aavePool.getUserAccountData(MC.YNETHX);
+        (, uint256 totalDebtUsd,,,, uint256 healthFactor) = aavePool.getUserAccountData(MC.YNETHX);
 
-        // Calculate expected values
-        uint256 expectedDebtUsd = (expectedRemainingDebt / 1e6) * 1e8; // USDC to Aave USD (8 decimals)
+        // Calculate expected values - USDC (6 decimals) to Aave USD (8 decimals)
+        // Debt should be close to expected remaining debt
+        // Tolerance accounts for: USDC price deviation from $1, interest accrual, oracle rounding
+        uint256 expectedDebtUsd = (expectedRemainingDebt / 1e6) * 1e8;
 
-        // Debt should match remaining debt (allow 1 USDC tolerance for interest)
-        assertApproxEqAbs(totalDebtUsd, expectedDebtUsd, 1e8, "Debt should match remaining USDC");
+        // Use 1% relative tolerance or $5 absolute, whichever is larger
+        uint256 tolerance = expectedDebtUsd / 100; // 1%
+        if (tolerance < 5e8) tolerance = 5e8; // minimum $5
+
+        assertApproxEqAbs(totalDebtUsd, expectedDebtUsd, tolerance, "Debt should match remaining USDC");
 
         // Health factor increases as debt decreases: HF = (collateral * LT) / debt
         // At 30% LTV with partial repay, HF should be higher than initial ~3x
@@ -606,14 +610,13 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         assertApproxEqAbs(assetsAfterTransfer, assetsAfterBorrow, 3, "Assets should remain similar after transfer");
 
         // Verify Aave position still exists
-        (uint256 totalCollateralUsd, uint256 totalDebtUsd,,,, uint256 healthFactor) =
-            aavePool.getUserAccountData(MC.YNETHX);
+        (, uint256 totalDebtUsd,,,, uint256 healthFactor) = aavePool.getUserAccountData(MC.YNETHX);
 
-        // Calculate expected values
-        uint256 expectedDebtUsd = (borrowAmount / 1e6) * 1e8; // USDC to Aave USD (8 decimals)
+        // Calculate expected values - USDC (6 decimals) to Aave USD (8 decimals)
+        // Allow 1% tolerance since USDC price may deviate slightly from $1
+        uint256 expectedDebtUsd = (borrowAmount / 1e6) * 1e8;
 
-        // Debt should match borrowed USDC
-        assertApproxEqAbs(totalDebtUsd, expectedDebtUsd, 1e8, "Debt should match borrowed USDC");
+        assertApproxEqRel(totalDebtUsd, expectedDebtUsd, 0.01e18, "Debt should match borrowed USDC within 1%");
         // Health factor = (collateral * liquidation threshold) / debt, at 30% LTV expect ~3x
         assertApproxEqRel(healthFactor, 3e18, 0.5e18, "Health factor should be ~3 at 30% LTV");
     }
