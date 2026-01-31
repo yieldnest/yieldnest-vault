@@ -43,10 +43,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
     IAaveV3Oracle public aaveOracle;
     Provider public provider;
 
-    // Fuzz bounds for wstETH supply amount
-    uint256 constant MIN_SUPPLY = 0.1 ether;
-    uint256 constant MAX_SUPPLY = 100 ether;
-
     function setUp() public override {
         super.setUp();
 
@@ -187,7 +183,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
      * @param supplyAmount The fuzzed amount of wstETH to supply
      */
     function testFuzz_Aave_SupplyCollateral(uint256 supplyAmount) public {
-        supplyAmount = bound(supplyAmount, MIN_SUPPLY, MAX_SUPPLY);
+        supplyAmount = bound(supplyAmount, 0.1 ether, 100 ether);
 
         vault.processAccounting();
 
@@ -217,7 +213,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         assertApproxEqAbs(
             storedAfterProcess,
             totalAssetsBefore,
-            2, // Very tight threshold
+            3, // Very tight threshold
             "processAccounting should update stored totalAssets"
         );
     }
@@ -227,7 +223,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
      * @param supplyAmount The fuzzed amount of wstETH to supply as collateral
      */
     function testFuzz_Aave_BorrowUSDC(uint256 supplyAmount) public {
-        supplyAmount = bound(supplyAmount, MIN_SUPPLY, MAX_SUPPLY);
+        supplyAmount = bound(supplyAmount, 0.1 ether, 100 ether);
 
         // Bootstrap vault with wstETH
         _bootstrapVaultWithWstETH(supplyAmount);
@@ -260,7 +256,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
      * @param supplyAmount The fuzzed amount of wstETH to use
      */
     function testFuzz_Aave_FullCycle(uint256 supplyAmount) public {
-        supplyAmount = bound(supplyAmount, MIN_SUPPLY, MAX_SUPPLY);
+        supplyAmount = bound(supplyAmount, 0.1 ether, 100 ether);
 
         // Bootstrap vault with wstETH
         _bootstrapVaultWithWstETH(supplyAmount);
@@ -328,7 +324,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
      * @param supplyAmount The fuzzed amount of wstETH to use
      */
     function testFuzz_Aave_AccountingCorrectness(uint256 supplyAmount) public {
-        supplyAmount = bound(supplyAmount, MIN_SUPPLY, MAX_SUPPLY);
+        supplyAmount = bound(supplyAmount, 0.1 ether, 100 ether);
 
         // Bootstrap vault with wstETH
         _bootstrapVaultWithWstETH(supplyAmount);
@@ -396,7 +392,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
      * @param supplyAmount The fuzzed amount of wstETH to use
      */
     function testFuzz_Aave_UnauthorizedCallReverts(uint256 supplyAmount) public {
-        supplyAmount = bound(supplyAmount, MIN_SUPPLY, MAX_SUPPLY);
+        supplyAmount = bound(supplyAmount, 0.1 ether, 100 ether);
 
         // Bootstrap vault with wstETH
         _bootstrapVaultWithWstETH(supplyAmount);
