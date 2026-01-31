@@ -245,10 +245,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 storedAfterSupply = vault.totalAssets();
 
         assertApproxEqAbs(
-            storedAfterSupply,
-            computedAfterSupply,
-            3,
-            "processAccounting should update stored totalAssets after supply"
+            storedAfterSupply, computedAfterSupply, 3, "processAccounting should update stored totalAssets after supply"
         );
 
         // Value should be preserved after supply
@@ -266,18 +263,12 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 storedAfterBorrow = vault.totalAssets();
 
         assertApproxEqAbs(
-            storedAfterBorrow,
-            computedAfterBorrow,
-            3,
-            "processAccounting should update stored totalAssets after borrow"
+            storedAfterBorrow, computedAfterBorrow, 3, "processAccounting should update stored totalAssets after borrow"
         );
 
         // USDC not tracked, so assets should remain similar
         assertApproxEqAbs(
-            storedAfterBorrow,
-            storedAfterSupply,
-            3,
-            "Assets should remain similar after borrow (USDC not tracked)"
+            storedAfterBorrow, storedAfterSupply, 3, "Assets should remain similar after borrow (USDC not tracked)"
         );
 
         uint256 usdcAfter = IERC20(MC.USDC).balanceOf(MC.YNETHX);
@@ -286,7 +277,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
 
         // Check debt
         uint256 debtBalance = IERC20(MC.AAVE_VARIABLE_DEBT_USDC).balanceOf(MC.YNETHX);
-        assertGe(debtBalance, borrowAmount, "Vault should have USDC debt");
+        assertApproxEqAbs(debtBalance, borrowAmount, 3, "Vault should have USDC debt");
 
         // Check health factor is still healthy
         (,,,,, uint256 healthFactor) = aavePool.getUserAccountData(MC.YNETHX);
@@ -307,7 +298,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 vaultWstEthBefore = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
         uint256 initialTotalAssets = vault.totalAssets();
         uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
-
 
         // 1. Supply collateral
         _supplyToAave(MC.WSTETH, supplyAmount);
@@ -356,6 +346,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         (uint256 totalCollateral, uint256 totalDebt,,,,) = aavePool.getUserAccountData(MC.YNETHX);
 
         assertEq(totalCollateral, 0, "Collateral should be zero");
+        assertEq(totalDebt, 0, "Debt should be zero");
     }
 
     /**
