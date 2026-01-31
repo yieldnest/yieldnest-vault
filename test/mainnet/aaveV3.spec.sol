@@ -350,6 +350,71 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
     }
 
     /**
+     * @notice Test partial repayment cycle: supply, borrow, partial repay, verify position
+     * @dev Verifies processAccounting at each step with partial debt repayment
+     * @param supplyAmount The fuzzed amount of wstETH to use
+     * @param repayPercentage The fuzzed percentage of debt to repay (1-99%)
+     */
+    function testFuzz_Aave_PartialRepay(uint256 supplyAmount, uint256 repayPercentage) public {
+        supplyAmount = bound(supplyAmount, 0.1 ether, 100 ether);
+        repayPercentage = bound(repayPercentage, 1, 99); // 1% to 99%
+
+        // Bootstrap vault with wstETH
+        _bootstrapVaultWithWstETH(supplyAmount);
+
+        uint256 initialTotalAssets = vault.totalAssets();
+        uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
+
+        // 1. Supply collateral
+        _supplyToAave(MC.WSTETH, supplyAmount);
+        vault.processAccounting();
+        uint256 assetsAfterSupply = vault.totalAssets();
+
+        assertApproxEqAbs(assetsAfterSupply, initialTotalAssets, 3, "Value should be preserved after supply");
+
+        // 2. Borrow USDC
+        _borrowFromAave(MC.USDC, borrowAmount);
+        vault.processAccounting();
+        uint256 assetsAfterBorrow = vault.totalAssets();
+
+        uint256 debtBefore = IERC20(MC.AAVE_VARIABLE_DEBT_USDC).balanceOf(MC.YNETHX);
+        assertApproxEqAbs(debtBefore, borrowAmount, 3, "Should have borrowed USDC debt");
+
+        // USDC not tracked, so assets should remain similar
+        assertApproxEqAbs(assetsAfterBorrow, assetsAfterSupply, 3, "Assets should remain similar after borrow");
+
+        // 3. Partial repay - repay only a percentage of the debt
+        uint256 repayAmount = (borrowAmount * repayPercentage) / 100;
+        _repayToAave(MC.USDC, repayAmount);
+        vault.processAccounting();
+        uint256 assetsAfterPartialRepay = vault.totalAssets();
+
+        // Verify partial repayment
+        uint256 debtAfterPartialRepay = IERC20(MC.AAVE_VARIABLE_DEBT_USDC).balanceOf(MC.YNETHX);
+        uint256 expectedRemainingDebt = borrowAmount - repayAmount;
+
+        // Debt should be reduced by approximately the repay amount (allow for small interest accrual)
+        assertApproxEqAbs(debtAfterPartialRepay, expectedRemainingDebt, 1e6, "Debt should be reduced by repay amount");
+        assertGt(debtAfterPartialRepay, 0, "Should still have remaining debt");
+
+        // Assets should remain similar (USDC not tracked)
+        assertApproxEqAbs(
+            assetsAfterPartialRepay, assetsAfterBorrow, 3, "Assets should remain similar after partial repay"
+        );
+
+        // Verify Aave position still exists with reduced debt
+        (uint256 totalCollateral, uint256 totalDebtUsd,,,, uint256 healthFactor) =
+            aavePool.getUserAccountData(MC.YNETHX);
+
+        assertGt(totalCollateral, 0, "Should still have collateral");
+        assertGt(totalDebtUsd, 0, "Should still have debt");
+        assertGt(healthFactor, 1e18, "Health factor should be > 1");
+
+        // Health factor should have improved after partial repay
+        // (less debt with same collateral = higher health factor)
+    }
+
+    /**
      * @notice Test that accounting correctly tracks value with Aave position (fuzzed)
      * @dev Verifies processAccounting updates totalAssets correctly after Aave operations
      * @param supplyAmount The fuzzed amount of wstETH to use
