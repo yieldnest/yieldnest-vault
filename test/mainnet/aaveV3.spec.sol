@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {console2} from "lib/forge-std/src/console2.sol";
 import {MainnetContracts as MC} from "script/Contracts.sol";
 import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
@@ -47,9 +46,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
     // Fuzz bounds for wstETH supply amount
     uint256 constant MIN_SUPPLY = 0.1 ether;
     uint256 constant MAX_SUPPLY = 100 ether;
-
-    event Log(string message, uint256 value);
-    event LogAddress(string message, address value);
 
     function setUp() public override {
         super.setUp();
@@ -100,8 +96,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         vm.startPrank(ADMIN);
         vault.updateAsset(wstEthIndex, IVault.AssetUpdateFields({active: false}));
         vm.stopPrank();
-
-        console2.log("Bootstrapped vault with wstETH:", amount);
     }
 
     /**
@@ -181,9 +175,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 aWstEthRate = provider.getRate(MC.AAVE_A_WSTETH);
         uint256 wstEthRate = provider.getRate(MC.WSTETH);
 
-        console2.log("aWSTETH rate:", aWstEthRate);
-        console2.log("wstETH rate:", wstEthRate);
-
         // aWSTETH should have the same rate as wstETH (1:1 underlying)
         assertEq(aWstEthRate, wstEthRate, "aWSTETH rate should equal wstETH rate");
     }
@@ -202,18 +193,11 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 vaultWstEthBefore = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
         uint256 totalAssetsBefore = vault.totalAssets();
 
-        console2.log("Vault wstETH before supply:", vaultWstEthBefore);
-        console2.log("Total assets before supply:", totalAssetsBefore);
-        console2.log("Supply amount:", supplyAmount);
-
         // Supply wstETH to Aave
         _supplyToAave(MC.WSTETH, supplyAmount);
 
         uint256 vaultWstEthAfter = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
         uint256 aTokenBalance = IERC20(MC.AAVE_A_WSTETH).balanceOf(MC.YNETHX);
-
-        console2.log("Vault wstETH after supply:", vaultWstEthAfter);
-        console2.log("Vault aWSTETH balance:", aTokenBalance);
 
         // wstETH should have left the vault
         assertEq(vaultWstEthAfter, vaultWstEthBefore - supplyAmount, "wstETH should be sent to Aave");
@@ -223,12 +207,10 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
 
         // Compute total assets (wstETH -> aWSTETH should be value neutral)
         uint256 computedTotalAssets = vault.computeTotalAssets();
-        console2.log("Computed total assets after supply:", computedTotalAssets);
 
         // Call processAccounting to update stored totalAssets
         vault.processAccounting();
         uint256 storedAfterProcess = vault.totalAssets();
-        console2.log("Stored total assets after processAccounting:", storedAfterProcess);
 
         // Verify processAccounting updated the stored value correctly
         assertEqThreshold(
@@ -260,45 +242,22 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         // First supply collateral
         _supplyToAave(MC.WSTETH, supplyAmount);
 
-        uint256 totalAssetsBefore = vault.computeTotalAssets();
         uint256 usdcBefore = IERC20(MC.USDC).balanceOf(MC.YNETHX);
         uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
-
-        console2.log("Computed total assets before borrow:", totalAssetsBefore);
-        console2.log("USDC balance before borrow:", usdcBefore);
-        console2.log("Borrow amount:", borrowAmount);
-
-        // Get Aave account data before borrow
-        (uint256 totalCollateral,, uint256 availableBorrow,,, uint256 healthFactor) =
-            aavePool.getUserAccountData(MC.YNETHX);
-
-        console2.log("Aave total collateral (USD, 8 decimals):", totalCollateral);
-        console2.log("Aave available borrow (USD, 8 decimals):", availableBorrow);
-        console2.log("Aave health factor before:", healthFactor);
 
         // Borrow USDC
         _borrowFromAave(MC.USDC, borrowAmount);
 
         uint256 usdcAfter = IERC20(MC.USDC).balanceOf(MC.YNETHX);
-        console2.log("USDC balance after borrow:", usdcAfter);
 
         assertEq(usdcAfter, usdcBefore + borrowAmount, "Vault should receive borrowed USDC");
 
         // Check debt
         uint256 debtBalance = IERC20(MC.AAVE_VARIABLE_DEBT_USDC).balanceOf(MC.YNETHX);
-        console2.log("Variable debt USDC balance:", debtBalance);
         assertGe(debtBalance, borrowAmount, "Vault should have USDC debt");
 
-        // Compute total assets after borrow
-        uint256 totalAssetsAfter = vault.computeTotalAssets();
-        console2.log("Computed total assets after borrow:", totalAssetsAfter);
-
-        // Note: USDC is not tracked in the provider, so total assets won't reflect borrowed USDC
-        // The vault tracks collateral (aWSTETH) but not the borrowed USDC value
-
         // Check health factor is still healthy
-        (,,,,, healthFactor) = aavePool.getUserAccountData(MC.YNETHX);
-        console2.log("Aave health factor after borrow:", healthFactor);
+        (,,,,, uint256 healthFactor) = aavePool.getUserAccountData(MC.YNETHX);
         assertGt(healthFactor, 1e18, "Health factor should be > 1");
     }
 
@@ -317,11 +276,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 initialTotalAssets = vault.totalAssets();
         uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
 
-        console2.log("Starting full cycle test");
-        console2.log("Initial wstETH balance:", vaultWstEthBefore);
-        console2.log("Initial total assets:", initialTotalAssets);
-        console2.log("Supply amount:", supplyAmount);
-
         // Use a relative threshold of 0.01% for large values
         uint256 threshold = initialTotalAssets / 10000;
         if (threshold < 1e15) threshold = 1e15;
@@ -330,10 +284,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         _supplyToAave(MC.WSTETH, supplyAmount);
         vault.processAccounting();
         uint256 assetsAfterSupply = vault.totalAssets();
-        console2.log("Step 1: Supplied collateral, total assets:", assetsAfterSupply);
-
-        uint256 aTokenAfterSupply = IERC20(MC.AAVE_A_WSTETH).balanceOf(MC.YNETHX);
-        console2.log("aToken balance after supply:", aTokenAfterSupply);
 
         // Value should be preserved after supply
         assertEqThreshold(assetsAfterSupply, initialTotalAssets, threshold, "Value should be preserved after supply");
@@ -342,7 +292,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         _borrowFromAave(MC.USDC, borrowAmount);
         vault.processAccounting();
         uint256 assetsAfterBorrow = vault.totalAssets();
-        console2.log("Step 2: Borrowed USDC, total assets:", assetsAfterBorrow);
 
         uint256 usdcBalance = IERC20(MC.USDC).balanceOf(MC.YNETHX);
         assertEq(usdcBalance, borrowAmount, "Should have borrowed USDC");
@@ -355,24 +304,16 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         deal(MC.USDC, MC.YNETHX, borrowAmount + 1000e6); // Extra 1000 USDC for interest buffer
         _repayToAave(MC.USDC, type(uint256).max);
         vault.processAccounting();
-        uint256 assetsAfterRepay = vault.totalAssets();
-        console2.log("Step 3: Repaid USDC, total assets:", assetsAfterRepay);
 
         uint256 debtAfterRepay = IERC20(MC.AAVE_VARIABLE_DEBT_USDC).balanceOf(MC.YNETHX);
-        console2.log("Debt after repay:", debtAfterRepay);
         assertEq(debtAfterRepay, 0, "Debt should be zero after full repay");
 
         // 4. Withdraw collateral (use type(uint256).max to withdraw all)
-        uint256 aTokenBalance = IERC20(MC.AAVE_A_WSTETH).balanceOf(MC.YNETHX);
-        console2.log("aToken balance before withdraw:", aTokenBalance);
-
         _withdrawFromAave(MC.WSTETH, type(uint256).max);
         vault.processAccounting();
         uint256 assetsAfterWithdraw = vault.totalAssets();
-        console2.log("Step 4: Withdrew collateral, total assets:", assetsAfterWithdraw);
 
         uint256 wstEthAfter = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
-        console2.log("wstETH after withdraw:", wstEthAfter);
 
         // Should have gotten back approximately the same amount (minus any rounding)
         assertGe(wstEthAfter, vaultWstEthBefore - 10, "Should have withdrawn wstETH back");
@@ -384,8 +325,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
 
         // Check Aave position is closed
         (uint256 totalCollateral, uint256 totalDebt,,,,) = aavePool.getUserAccountData(MC.YNETHX);
-        console2.log("Final Aave collateral:", totalCollateral);
-        console2.log("Final Aave debt:", totalDebt);
 
         assertEq(totalCollateral, 0, "Collateral should be zero");
     }
@@ -404,10 +343,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
 
         // Get initial state - totalAssets() returns stored value, computeTotalAssets() calculates fresh
-        uint256 initialStoredAssets = vault.totalAssets();
         uint256 initialComputedAssets = vault.computeTotalAssets();
-        console2.log("Initial stored total assets:", initialStoredAssets);
-        console2.log("Initial computed total assets:", initialComputedAssets);
 
         // Use a relative threshold of 0.01% for large values
         uint256 threshold = initialComputedAssets / 10000; // 0.01%
@@ -417,17 +353,13 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         _supplyToAave(MC.WSTETH, supplyAmount);
 
         // Before processAccounting, stored value is stale
-        uint256 storedBeforeProcess = vault.totalAssets();
         uint256 computedAfterSupply = vault.computeTotalAssets();
-        console2.log("After supply - stored (stale):", storedBeforeProcess);
-        console2.log("After supply - computed (fresh):", computedAfterSupply);
 
         // Call processAccounting to update stored totalAssets
         vault.processAccounting();
 
         // After processAccounting, stored should match computed
         uint256 storedAfterProcess = vault.totalAssets();
-        console2.log("After processAccounting - stored:", storedAfterProcess);
 
         // Verify processAccounting updated the stored value correctly
         assertEqThreshold(
@@ -445,12 +377,10 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         // Borrow USDC
         _borrowFromAave(MC.USDC, borrowAmount);
         uint256 computedAfterBorrow = vault.computeTotalAssets();
-        console2.log("After USDC borrow - computed:", computedAfterBorrow);
 
         // Process accounting again after borrow
         vault.processAccounting();
         uint256 storedAfterBorrow = vault.totalAssets();
-        console2.log("After borrow processAccounting - stored:", storedAfterBorrow);
 
         // Verify processAccounting updated correctly after borrow
         assertEqThreshold(
@@ -536,8 +466,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         IVault.FunctionRule memory repayRule =
             vault.getProcessorRule(MC.AAVE_V3_POOL, bytes4(keccak256("repay(address,uint256,uint256,address)")));
         assertTrue(repayRule.isActive, "Aave repay rule should be active");
-
-        console2.log("All required Aave rules are configured correctly");
     }
 
     // ============ Helper Functions ============
