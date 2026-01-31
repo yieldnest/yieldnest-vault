@@ -474,6 +474,82 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
     }
 
     /**
+     * @notice Test full borrow and transfer flow: deposit wstETH, borrow USDC, transfer USDC out
+     * @dev Verifies processAccounting at each step and demonstrates transfer rule usage
+     * @param supplyAmount The fuzzed amount of wstETH to use
+     */
+    function testFuzz_Aave_BorrowAndTransferOut(uint256 supplyAmount) public {
+        supplyAmount = bound(supplyAmount, 0.1 ether, 100 ether);
+
+        // Designated recipient for USDC transfer
+        address usdcRecipient = address(0xBEEF);
+
+        // Bootstrap vault with wstETH
+        _bootstrapVaultWithWstETH(supplyAmount);
+
+        // Get initial state
+        uint256 initialComputedAssets = vault.computeTotalAssets();
+
+        // Setup transfer rule for USDC to recipient
+        vm.startPrank(ADMIN);
+        SafeRules.setProcessorRule(vault, BaseRules.getTransferRule(MC.USDC, usdcRecipient), true);
+        vm.stopPrank();
+
+        // Verify transfer rule is active
+        IVault.FunctionRule memory transferRule =
+            vault.getProcessorRule(MC.USDC, bytes4(keccak256("transfer(address,uint256)")));
+        assertTrue(transferRule.isActive, "USDC transfer rule should be active");
+
+        // 1. Supply wstETH to Aave as collateral
+        _supplyToAave(MC.WSTETH, supplyAmount);
+        vault.processAccounting();
+        uint256 assetsAfterSupply = vault.totalAssets();
+
+        // Value should be preserved after supply
+        assertApproxEqAbs(assetsAfterSupply, initialComputedAssets, 3, "Value should be preserved after supply");
+
+        // 2. Borrow USDC against collateral
+        uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
+        _borrowFromAave(MC.USDC, borrowAmount);
+        vault.processAccounting();
+        uint256 assetsAfterBorrow = vault.totalAssets();
+
+        // Verify vault received USDC
+        uint256 vaultUsdcBalance = IERC20(MC.USDC).balanceOf(MC.YNETHX);
+        assertEq(vaultUsdcBalance, borrowAmount, "Vault should have borrowed USDC");
+
+        // USDC not tracked, so assets should remain similar
+        assertApproxEqAbs(assetsAfterBorrow, assetsAfterSupply, 3, "Assets should remain similar after borrow");
+
+        // 3. Transfer USDC out to designated recipient
+        uint256 recipientBalanceBefore = IERC20(MC.USDC).balanceOf(usdcRecipient);
+        _transferToken(MC.USDC, usdcRecipient, borrowAmount);
+        vault.processAccounting();
+        uint256 assetsAfterTransfer = vault.totalAssets();
+
+        // Verify USDC was transferred
+        uint256 vaultUsdcAfterTransfer = IERC20(MC.USDC).balanceOf(MC.YNETHX);
+        uint256 recipientBalanceAfter = IERC20(MC.USDC).balanceOf(usdcRecipient);
+
+        assertEq(vaultUsdcAfterTransfer, 0, "Vault should have no USDC after transfer");
+        assertEq(
+            recipientBalanceAfter, recipientBalanceBefore + borrowAmount, "Recipient should have received borrowed USDC"
+        );
+
+        // USDC not tracked, so assets should remain similar after transfer
+        assertApproxEqAbs(assetsAfterTransfer, assetsAfterBorrow, 3, "Assets should remain similar after transfer");
+
+        // Verify Aave position still exists
+        (uint256 totalCollateral, uint256 totalDebt,,,,) = aavePool.getUserAccountData(MC.YNETHX);
+        assertGt(totalCollateral, 0, "Should still have collateral in Aave");
+        assertGt(totalDebt, 0, "Should still have debt in Aave");
+
+        // Verify health factor is still healthy
+        (,,,,, uint256 healthFactor) = aavePool.getUserAccountData(MC.YNETHX);
+        assertGt(healthFactor, 1e18, "Health factor should be > 1");
+    }
+
+    /**
      * @notice Test setting up all required rules for Aave integration
      * @dev This documents all the rules needed
      */
@@ -567,6 +643,19 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         data[0] = abi.encodeWithSignature("approve(address,uint256)", MC.AAVE_V3_POOL, amount);
         // interestRateMode: 2 = variable rate
         data[1] = abi.encodeWithSignature("repay(address,uint256,uint256,address)", asset, amount, 2, MC.YNETHX);
+
+        vm.prank(PROCESSOR);
+        vault.processor(targets, values, data);
+    }
+
+    function _transferToken(address token, address recipient, uint256 amount) internal {
+        address[] memory targets = new address[](1);
+        targets[0] = token;
+
+        uint256[] memory values = new uint256[](1);
+
+        bytes[] memory data = new bytes[](1);
+        data[0] = abi.encodeWithSignature("transfer(address,uint256)", recipient, amount);
 
         vm.prank(PROCESSOR);
         vault.processor(targets, values, data);
