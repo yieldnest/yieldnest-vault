@@ -280,8 +280,15 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         assertApproxEqAbs(debtBalance, borrowAmount, 3, "Vault should have USDC debt");
 
         // Check health factor is healthy (borrowing at 30% LTV should give ~3x health factor)
-        (,,,,, uint256 healthFactor) = aavePool.getUserAccountData(MC.YNETHX);
-        assertGe(healthFactor, 2e18, "Health factor should be >= 2 at 30% LTV");
+        (uint256 totalCollateralUsd, uint256 totalDebtUsd,,,, uint256 healthFactor) =
+            aavePool.getUserAccountData(MC.YNETHX);
+
+        // Calculate expected values
+        uint256 expectedDebtUsd = (borrowAmount / 1e6) * 1e8; // USDC (6 decimals) to Aave USD (8 decimals)
+
+        assertApproxEqAbs(totalDebtUsd, expectedDebtUsd, 1e8, "Debt should match borrowed USDC");
+        // Health factor = (collateral * liquidation threshold) / debt, at 30% LTV expect ~2.5-3x
+        assertApproxEqRel(healthFactor, 3e18, 0.5e18, "Health factor should be ~3 at 30% LTV");
     }
 
     /**
@@ -335,7 +342,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 wstEthAfter = IERC20(MC.WSTETH).balanceOf(MC.YNETHX);
 
         // Should have gotten back approximately the same amount (minus any rounding)
-        assertGe(wstEthAfter, vaultWstEthBefore - 10, "Should have withdrawn wstETH back");
+        assertApproxEqAbs(wstEthAfter, vaultWstEthBefore, 10, "Should have withdrawn wstETH back");
 
         // Final assets should be close to initial (full cycle complete)
         assertApproxEqAbs(
@@ -395,7 +402,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
 
         // Debt should be reduced by approximately the repay amount (allow for small interest accrual)
         assertApproxEqAbs(debtAfterPartialRepay, expectedRemainingDebt, 1e6, "Debt should be reduced by repay amount");
-        assertGe(debtAfterPartialRepay, expectedRemainingDebt, "Should still have remaining debt >= expected");
 
         // Assets should remain similar (USDC not tracked)
         assertApproxEqAbs(
@@ -406,12 +412,16 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         (uint256 totalCollateralUsd, uint256 totalDebtUsd,,,, uint256 healthFactor) =
             aavePool.getUserAccountData(MC.YNETHX);
 
-        // Collateral should reflect the supplied wstETH value (rough check: > $100 for 0.1 ETH at $3000/ETH)
-        assertGe(totalCollateralUsd, 100e8, "Collateral should be >= $100 (8 decimals)");
-        // Debt should be approximately the remaining debt in USD (with 8 decimals)
-        assertGe(totalDebtUsd, (expectedRemainingDebt / 1e6) * 1e8 * 99 / 100, "Debt should reflect remaining USDC");
-        // Health factor should be healthy and improved after partial repay
-        assertGe(healthFactor, 2e18, "Health factor should be >= 2 after partial repay");
+        // Calculate expected values
+        uint256 expectedDebtUsd = (expectedRemainingDebt / 1e6) * 1e8; // USDC to Aave USD (8 decimals)
+
+        // Debt should match remaining debt (allow 1 USDC tolerance for interest)
+        assertApproxEqAbs(totalDebtUsd, expectedDebtUsd, 1e8, "Debt should match remaining USDC");
+
+        // Health factor increases as debt decreases: HF = (collateral * LT) / debt
+        // At 30% LTV with partial repay, HF should be higher than initial ~3x
+        uint256 expectedHealthFactor = (3e18 * 100) / (100 - repayPercentage); // Rough estimate
+        assertApproxEqRel(healthFactor, expectedHealthFactor, 0.5e18, "Health factor should reflect reduced debt");
     }
 
     /**
@@ -599,12 +609,13 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         (uint256 totalCollateralUsd, uint256 totalDebtUsd,,,, uint256 healthFactor) =
             aavePool.getUserAccountData(MC.YNETHX);
 
-        // Collateral should reflect the supplied wstETH value (rough check: > $100 for 0.1 ETH at $3000/ETH)
-        assertGe(totalCollateralUsd, 100e8, "Collateral should be >= $100 (8 decimals)");
-        // Debt should be approximately the borrowed USDC in USD (with 8 decimals)
-        assertApproxEqAbs(totalDebtUsd, (borrowAmount / 1e6) * 1e8, 1e8, "Debt should reflect borrowed USDC");
-        // Health factor should be healthy at 30% LTV
-        assertGe(healthFactor, 2e18, "Health factor should be >= 2 at 30% LTV");
+        // Calculate expected values
+        uint256 expectedDebtUsd = (borrowAmount / 1e6) * 1e8; // USDC to Aave USD (8 decimals)
+
+        // Debt should match borrowed USDC
+        assertApproxEqAbs(totalDebtUsd, expectedDebtUsd, 1e8, "Debt should match borrowed USDC");
+        // Health factor = (collateral * liquidation threshold) / debt, at 30% LTV expect ~3x
+        assertApproxEqRel(healthFactor, 3e18, 0.5e18, "Health factor should be ~3 at 30% LTV");
     }
 
     /**
