@@ -244,10 +244,10 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         vault.processAccounting();
         uint256 storedAfterSupply = vault.totalAssets();
 
-        assertEqThreshold(
+        assertApproxEqAbs(
             storedAfterSupply,
             computedAfterSupply,
-            1e10,
+            3,
             "processAccounting should update stored totalAssets after supply"
         );
 
@@ -265,18 +265,18 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         vault.processAccounting();
         uint256 storedAfterBorrow = vault.totalAssets();
 
-        assertEqThreshold(
+        assertApproxEqAbs(
             storedAfterBorrow,
             computedAfterBorrow,
-            1e10,
+            3,
             "processAccounting should update stored totalAssets after borrow"
         );
 
         // USDC not tracked, so assets should remain similar
-        assertEqThreshold(
+        assertApproxEqAbs(
             storedAfterBorrow,
             storedAfterSupply,
-            threshold,
+            3,
             "Assets should remain similar after borrow (USDC not tracked)"
         );
 
@@ -308,9 +308,6 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 initialTotalAssets = vault.totalAssets();
         uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
 
-        // Use a relative threshold of 0.01% for large values
-        uint256 threshold = initialTotalAssets / 10000;
-        if (threshold < 1e15) threshold = 1e15;
 
         // 1. Supply collateral
         _supplyToAave(MC.WSTETH, supplyAmount);
@@ -318,7 +315,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 assetsAfterSupply = vault.totalAssets();
 
         // Value should be preserved after supply
-        assertEqThreshold(assetsAfterSupply, initialTotalAssets, threshold, "Value should be preserved after supply");
+        assertApproxEqAbs(assetsAfterSupply, initialTotalAssets, 3, "Value should be preserved after supply");
 
         // 2. Borrow USDC
         _borrowFromAave(MC.USDC, borrowAmount);
@@ -329,7 +326,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         assertEq(usdcBalance, borrowAmount, "Should have borrowed USDC");
 
         // USDC not tracked, so assets should remain similar
-        assertEqThreshold(assetsAfterBorrow, assetsAfterSupply, threshold, "Assets should remain similar after borrow");
+        assertApproxEqAbs(assetsAfterBorrow, assetsAfterSupply, 3, "Assets should remain similar after borrow");
 
         // 3. Repay USDC (use type(uint256).max for full repayment including accrued interest)
         // Need to give vault extra USDC to cover any accrued interest
@@ -351,8 +348,8 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         assertGe(wstEthAfter, vaultWstEthBefore - 10, "Should have withdrawn wstETH back");
 
         // Final assets should be close to initial (full cycle complete)
-        assertEqThreshold(
-            assetsAfterWithdraw, initialTotalAssets, threshold, "Final assets should match initial after full cycle"
+        assertApproxEqAbs(
+            assetsAfterWithdraw, initialTotalAssets, 3, "Final assets should match initial after full cycle"
         );
 
         // Check Aave position is closed
