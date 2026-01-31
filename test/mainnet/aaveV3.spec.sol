@@ -220,6 +220,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
 
     /**
      * @notice Test borrowing USDC against wstETH collateral (fuzzed)
+     * @dev Verifies processAccounting correctly updates TVL after supply and borrow
      * @param supplyAmount The fuzzed amount of wstETH to supply as collateral
      */
     function testFuzz_Aave_BorrowUSDC(uint256 supplyAmount) public {
@@ -228,14 +229,56 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         // Bootstrap vault with wstETH
         _bootstrapVaultWithWstETH(supplyAmount);
 
+        // Get initial computed assets for comparison
+        uint256 initialComputedAssets = vault.computeTotalAssets();
+
+        // Use a relative threshold of 0.01% for large values
+        uint256 threshold = initialComputedAssets / 10000;
+        if (threshold < 1e15) threshold = 1e15;
+
         // First supply collateral
         _supplyToAave(MC.WSTETH, supplyAmount);
+
+        // Verify processAccounting after supply
+        uint256 computedAfterSupply = vault.computeTotalAssets();
+        vault.processAccounting();
+        uint256 storedAfterSupply = vault.totalAssets();
+
+        assertEqThreshold(
+            storedAfterSupply,
+            computedAfterSupply,
+            1e10,
+            "processAccounting should update stored totalAssets after supply"
+        );
+
+        // Value should be preserved after supply
+        assertEqThreshold(storedAfterSupply, initialComputedAssets, threshold, "Value should be preserved after supply");
 
         uint256 usdcBefore = IERC20(MC.USDC).balanceOf(MC.YNETHX);
         uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
 
         // Borrow USDC
         _borrowFromAave(MC.USDC, borrowAmount);
+
+        // Verify processAccounting after borrow
+        uint256 computedAfterBorrow = vault.computeTotalAssets();
+        vault.processAccounting();
+        uint256 storedAfterBorrow = vault.totalAssets();
+
+        assertEqThreshold(
+            storedAfterBorrow,
+            computedAfterBorrow,
+            1e10,
+            "processAccounting should update stored totalAssets after borrow"
+        );
+
+        // USDC not tracked, so assets should remain similar
+        assertEqThreshold(
+            storedAfterBorrow,
+            storedAfterSupply,
+            threshold,
+            "Assets should remain similar after borrow (USDC not tracked)"
+        );
 
         uint256 usdcAfter = IERC20(MC.USDC).balanceOf(MC.YNETHX);
 
@@ -389,6 +432,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
 
     /**
      * @notice Test processor rules are enforced (fuzzed)
+     * @dev Verifies processAccounting state is unchanged after failed operation
      * @param supplyAmount The fuzzed amount of wstETH to use
      */
     function testFuzz_Aave_UnauthorizedCallReverts(uint256 supplyAmount) public {
@@ -396,6 +440,11 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
 
         // Bootstrap vault with wstETH
         _bootstrapVaultWithWstETH(supplyAmount);
+
+        // Record state before failed operation
+        vault.processAccounting();
+        uint256 storedBefore = vault.totalAssets();
+        uint256 computedBefore = vault.computeTotalAssets();
 
         // Try to supply to an unauthorized address (should revert)
         address unauthorizedReceiver = address(0xdead);
@@ -417,6 +466,14 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         vm.expectRevert(); // Should revert due to address not in allowlist
         vault.processor(targets, values, data);
         vm.stopPrank();
+
+        // Verify state unchanged after failed operation
+        vault.processAccounting();
+        uint256 storedAfter = vault.totalAssets();
+        uint256 computedAfter = vault.computeTotalAssets();
+
+        assertEq(storedAfter, storedBefore, "Stored totalAssets should be unchanged after failed operation");
+        assertEq(computedAfter, computedBefore, "Computed totalAssets should be unchanged after failed operation");
     }
 
     /**
