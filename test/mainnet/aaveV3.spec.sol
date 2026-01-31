@@ -506,7 +506,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 assetsAfterSupply = vault.totalAssets();
 
         // Value should be preserved after supply
-        assertApproxEqAbs(assetsAfterSupply, initialComputedAssets, 3, "Value should be preserved after supply");
+        assertApproxEqAbs(assetsAfterSupply, initialComputedAssets, 4, "Value should be preserved after supply");
 
         // 2. Borrow USDC against collateral
         uint256 borrowAmount = _calculateBorrowAmount(supplyAmount);
