@@ -114,7 +114,7 @@ contract Provider is IProvider {
 
         // Aave aWSTETH: same rate as wstETH since it's 1:1 with underlying
         if (asset == MC.AAVE_A_WSTETH) {
-            return IStETH(MC.STETH).getPooledEthByShares(1e18);
+            return getRate(MC.WSTETH);
         }
 
         revert UnsupportedAsset(asset);
