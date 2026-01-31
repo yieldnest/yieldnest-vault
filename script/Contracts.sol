@@ -78,6 +78,16 @@ library MainnetContracts {
     // Smokehouse WSTETH
     address public constant SMOKEHOUSE_WSTETH = 0x833AdaeF212c5cD3f78906B44bBfb18258F238F0;
     address public constant MORPHO_MEV_CAPITAL_WETH = 0x9a8bC3B04b7f3D87cfC09ba407dCED575f2d61D8;
+
+    // Aave V3
+    address public constant AAVE_V3_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
+    address public constant AAVE_V3_ORACLE = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
+    address public constant AAVE_A_WSTETH = 0x0B925eD163218f6662a35e0f0371Ac234f9E9371; // aEthwstETH
+    address public constant AAVE_VARIABLE_DEBT_USDC = 0x72E95b8931767C79bA4EeE721354d6E99a61D004; // variableDebtEthUSDC
+
+    // Chainlink Price Feeds
+    address public constant CL_ETH_USD_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address public constant CL_USDC_USD_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
 }
 
 contract L1Contracts is IContracts {

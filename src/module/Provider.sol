@@ -113,6 +113,11 @@ contract Provider is IProvider {
             return IERC4626(asset).convertToAssets(1e18);
         }
 
+        // Aave aWSTETH: same rate as wstETH since it's 1:1 with underlying
+        if (asset == MC.AAVE_A_WSTETH) {
+            return getRate(MC.WSTETH);
+        }
+
         revert UnsupportedAsset(asset);
     }
 }
