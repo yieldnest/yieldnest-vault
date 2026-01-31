@@ -146,7 +146,9 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
     function _setupAaveProcessorRules() internal {
         // 1. Approval rule for wstETH -> Aave Pool
         SafeRules.setProcessorRule(
-            vault, BaseRules.getApprovalRule(MC.WSTETH, MC.AAVE_V3_POOL), true // force
+            vault,
+            BaseRules.getApprovalRule(MC.WSTETH, MC.AAVE_V3_POOL),
+            true // force
         );
 
         // 2. Approval rule for USDC -> Aave Pool (for repayment)
@@ -187,6 +189,8 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
     function testFuzz_Aave_SupplyCollateral(uint256 supplyAmount) public {
         supplyAmount = bound(supplyAmount, MIN_SUPPLY, MAX_SUPPLY);
 
+        vault.processAccounting();
+
         // Bootstrap vault with wstETH
         _bootstrapVaultWithWstETH(supplyAmount);
 
@@ -203,29 +207,18 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         assertEq(vaultWstEthAfter, vaultWstEthBefore - supplyAmount, "wstETH should be sent to Aave");
 
         // Vault should now have aTokens (allow for small rounding difference)
-        assertGe(aTokenBalance, supplyAmount - 2, "Vault should receive aTokens");
-
-        // Compute total assets (wstETH -> aWSTETH should be value neutral)
-        uint256 computedTotalAssets = vault.computeTotalAssets();
+        assertApproxEqAbs(aTokenBalance, supplyAmount, 2, "Vault should receive aTokens");
 
         // Call processAccounting to update stored totalAssets
         vault.processAccounting();
         uint256 storedAfterProcess = vault.totalAssets();
 
         // Verify processAccounting updated the stored value correctly
-        assertEqThreshold(
+        assertApproxEqAbs(
             storedAfterProcess,
-            computedTotalAssets,
-            1e10, // Very tight threshold
+            totalAssetsBefore,
+            2, // Very tight threshold
             "processAccounting should update stored totalAssets"
-        );
-
-        // Total assets should remain roughly the same (wstETH -> aWSTETH, same rate)
-        // Use a relative threshold of 0.01% for large values
-        uint256 threshold = totalAssetsBefore / 10000; // 0.01%
-        if (threshold < 1e15) threshold = 1e15;
-        assertEqThreshold(
-            storedAfterProcess, totalAssetsBefore, threshold, "Total assets should remain similar after supply"
         );
     }
 
