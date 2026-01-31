@@ -279,9 +279,9 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         uint256 debtBalance = IERC20(MC.AAVE_VARIABLE_DEBT_USDC).balanceOf(MC.YNETHX);
         assertApproxEqAbs(debtBalance, borrowAmount, 3, "Vault should have USDC debt");
 
-        // Check health factor is still healthy
+        // Check health factor is healthy (borrowing at 30% LTV should give ~3x health factor)
         (,,,,, uint256 healthFactor) = aavePool.getUserAccountData(MC.YNETHX);
-        assertGt(healthFactor, 1e18, "Health factor should be > 1");
+        assertGe(healthFactor, 2e18, "Health factor should be >= 2 at 30% LTV");
     }
 
     /**
@@ -395,7 +395,7 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
 
         // Debt should be reduced by approximately the repay amount (allow for small interest accrual)
         assertApproxEqAbs(debtAfterPartialRepay, expectedRemainingDebt, 1e6, "Debt should be reduced by repay amount");
-        assertGt(debtAfterPartialRepay, 0, "Should still have remaining debt");
+        assertGe(debtAfterPartialRepay, expectedRemainingDebt, "Should still have remaining debt >= expected");
 
         // Assets should remain similar (USDC not tracked)
         assertApproxEqAbs(
@@ -403,15 +403,15 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         );
 
         // Verify Aave position still exists with reduced debt
-        (uint256 totalCollateral, uint256 totalDebtUsd,,,, uint256 healthFactor) =
+        (uint256 totalCollateralUsd, uint256 totalDebtUsd,,,, uint256 healthFactor) =
             aavePool.getUserAccountData(MC.YNETHX);
 
-        assertGt(totalCollateral, 0, "Should still have collateral");
-        assertGt(totalDebtUsd, 0, "Should still have debt");
-        assertGt(healthFactor, 1e18, "Health factor should be > 1");
-
-        // Health factor should have improved after partial repay
-        // (less debt with same collateral = higher health factor)
+        // Collateral should reflect the supplied wstETH value (rough check: > $100 for 0.1 ETH at $3000/ETH)
+        assertGe(totalCollateralUsd, 100e8, "Collateral should be >= $100 (8 decimals)");
+        // Debt should be approximately the remaining debt in USD (with 8 decimals)
+        assertGe(totalDebtUsd, (expectedRemainingDebt / 1e6) * 1e8 * 99 / 100, "Debt should reflect remaining USDC");
+        // Health factor should be healthy and improved after partial repay
+        assertGe(healthFactor, 2e18, "Health factor should be >= 2 after partial repay");
     }
 
     /**
@@ -596,13 +596,15 @@ contract AaveV3IntegrationTest is BaseIntegrationTest {
         assertApproxEqAbs(assetsAfterTransfer, assetsAfterBorrow, 3, "Assets should remain similar after transfer");
 
         // Verify Aave position still exists
-        (uint256 totalCollateral, uint256 totalDebt,,,,) = aavePool.getUserAccountData(MC.YNETHX);
-        assertGt(totalCollateral, 0, "Should still have collateral in Aave");
-        assertGt(totalDebt, 0, "Should still have debt in Aave");
+        (uint256 totalCollateralUsd, uint256 totalDebtUsd,,,, uint256 healthFactor) =
+            aavePool.getUserAccountData(MC.YNETHX);
 
-        // Verify health factor is still healthy
-        (,,,,, uint256 healthFactor) = aavePool.getUserAccountData(MC.YNETHX);
-        assertGt(healthFactor, 1e18, "Health factor should be > 1");
+        // Collateral should reflect the supplied wstETH value (rough check: > $100 for 0.1 ETH at $3000/ETH)
+        assertGe(totalCollateralUsd, 100e8, "Collateral should be >= $100 (8 decimals)");
+        // Debt should be approximately the borrowed USDC in USD (with 8 decimals)
+        assertApproxEqAbs(totalDebtUsd, (borrowAmount / 1e6) * 1e8, 1e8, "Debt should reflect borrowed USDC");
+        // Health factor should be healthy at 30% LTV
+        assertGe(healthFactor, 2e18, "Health factor should be >= 2 at 30% LTV");
     }
 
     /**
