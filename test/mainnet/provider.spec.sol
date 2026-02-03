@@ -104,7 +104,13 @@ contract ProviderTest is BaseTest {
     }
 
     function test_getRate_Of_EVKVaultEUSDC95() public view {
-        assertEq(provider.getRate(MC.EVK_VAULT_EUSDC_95), IERC4626(MC.EVK_VAULT_EUSDC_95).convertToAssets(1e18) * 1e12);
+        // Calculate one share using the decimals of the vault
+        uint8 decimals = IERC4626(MC.EVK_VAULT_EUSDC_95).decimals();
+        uint256 oneShare = 10 ** decimals;
+        // EVK Vault returns rate in WUSDC units (should match 18 decimals, i.e., 1e18 is 1 WUSDC)
+        assertEq(
+            provider.getRate(MC.EVK_VAULT_EUSDC_95), IERC4626(MC.EVK_VAULT_EUSDC_95).convertToAssets(oneShare) * 1e12
+        );
     }
 
     function test_getRate_Of_Withdrawer() public view {
