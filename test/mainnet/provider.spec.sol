@@ -103,6 +103,10 @@ contract ProviderTest is BaseTest {
         );
     }
 
+    function test_getRate_Of_EVKVaultEUSDC95() public view {
+        assertEq(provider.getRate(MC.EVK_VAULT_EUSDC_95), IERC4626(MC.EVK_VAULT_EUSDC_95).convertToAssets(1e18) * 1e12);
+    }
+
     function test_getRate_Of_Withdrawer() public view {
         // The provider should return the result of IERC4626(withdrawer).convertToAssets(1e18)
         assertEq(provider.getRate(address(withdrawer)), IERC4626(address(withdrawer)).convertToAssets(1e18) * 1e12);
