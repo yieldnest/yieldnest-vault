@@ -109,7 +109,7 @@ contract ProviderTest is BaseTest {
         uint256 oneShare = 10 ** decimals;
         // EVK Vault returns rate in WUSDC units (should match 18 decimals, i.e., 1e18 is 1 WUSDC)
         assertEq(
-            provider.getRate(MC.EVK_VAULT_EUSDC_95), IERC4626(MC.EVK_VAULT_EUSDC_95).convertToAssets(oneShare) * 1e12
+            provider.getRate(MC.EVK_VAULT_EUSDC_95), IERC4626(MC.EVK_VAULT_EUSDC_95).convertToAssets(oneShare * 1e12)
         );
     }
 
