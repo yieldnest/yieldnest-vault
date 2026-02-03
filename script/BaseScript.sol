@@ -27,7 +27,6 @@ abstract contract BaseScript is Script {
 
     address public deployer;
     TimelockController public timelock;
-    IProvider public rateProvider;
     Vault public vaultProxy;
     Vault public vaultImplementation;
     address public vaultProxyAdmin;
@@ -61,10 +60,7 @@ abstract contract BaseScript is Script {
         if (block.chainid != 1) {
             revert UnsupportedChain();
         }
-        if (
-            address(actors) == address(0) || address(contracts) == address(0) || address(rateProvider) == address(0)
-                || address(timelock) == address(0)
-        ) {
+        if (address(actors) == address(0) || address(contracts) == address(0) || address(timelock) == address(0)) {
             revert InvalidSetup();
         }
     }
@@ -89,7 +85,6 @@ abstract contract BaseScript is Script {
 
         deployer = address(vm.parseJsonAddress(jsonInput, ".deployer"));
         timelock = TimelockController(payable(address(vm.parseJsonAddress(jsonInput, ".timelock"))));
-        rateProvider = IProvider(payable(address(vm.parseJsonAddress(jsonInput, ".rateProvider"))));
 
         viewerProxy = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-proxy"))));
         viewerImplementation = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-implementation"))));
@@ -115,7 +110,6 @@ abstract contract BaseScript is Script {
         vm.serializeAddress(symbol(), "deployer", deployer);
         vm.serializeAddress(symbol(), "admin", actors.ADMIN());
         vm.serializeAddress(symbol(), "timelock", address(timelock));
-        vm.serializeAddress(symbol(), "rateProvider", address(rateProvider));
 
         vm.serializeAddress(symbol(), "viewer-proxy", address(viewerProxy));
         vm.serializeAddress(symbol(), "viewer-implementation", address(viewerImplementation));

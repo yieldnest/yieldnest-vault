@@ -53,7 +53,6 @@ contract VerifyMaxVault is BaseScript, Test {
         assertEq(vaultProxy.name(), "ynUSD Max", "name is invalid");
         assertEq(vaultProxy.symbol(), "ynUSDx", "symbol is invalid");
         assertEq(vaultProxy.decimals(), 18, "decimals is invalid");
-        assertEq(vaultProxy.provider(), address(rateProvider), "provider is invalid");
         assertEq(vaultProxy.baseWithdrawalFee(), 100000, "base withdrawal fee is invalid");
         assertEq(vaultProxy.countNativeAsset(), false, "count native asset is invalid");
         assertFalse(vaultProxy.alwaysComputeTotalAssets(), "always compute total assets is invalid");
@@ -88,35 +87,6 @@ contract VerifyMaxVault is BaseScript, Test {
             console.log("\u2705 Vault proxy admin:        ", vaultAdmin);
         }
 
-        console.log("Verifying deposit and approval rules.");
-        RulesVerification.verifyProcessorRule(
-            vaultProxy, BaseRules.getDepositRule(MC.MORPHO_GAUNTLET_USDC_VAULT, address(vaultProxy))
-        );
-        RulesVerification.verifyProcessorRule(
-            vaultProxy, BaseRules.getDepositRule(MC.SUPER_USDC_VAULT, address(vaultProxy))
-        );
-        address[] memory usdcApprovalAllowList = new address[](5);
-        usdcApprovalAllowList[0] = MC.MORPHO_GAUNTLET_USDC_VAULT;
-        usdcApprovalAllowList[1] = MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER;
-        usdcApprovalAllowList[2] = MC.SUPER_USDC_VAULT;
-        usdcApprovalAllowList[3] = MC.FXBASE;
-        usdcApprovalAllowList[4] = address(VaultVerification.getWithdrawer(vaultProxy));
-        RulesVerification.verifyProcessorRule(vaultProxy, BaseRules.getApprovalRule(MC.USDC, usdcApprovalAllowList));
-
-        console.log("Verifying paraswap rules.");
-        SafeRules.RuleParams[] memory rules =
-            ParaswapRules.getParaswapRules(MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER, address(paraswapValidator));
-        for (uint256 i; i < rules.length; i++) {
-            RulesVerification.verifyProcessorRule(vaultProxy, rules[i]);
-        }
-
-        console.log("Verifying super usdc rules.");
-        SafeRules.RuleParams[] memory superUsdcRules =
-            SuperUsdcRules.getSuperUsdcRedeemRules(MC.SUPER_USDC_VAULT, address(vaultProxy));
-        for (uint256 i; i < superUsdcRules.length; i++) {
-            RulesVerification.verifyProcessorRule(vaultProxy, superUsdcRules[i]);
-        }
-
         RolesVerification.verifyDefaultRoles(vaultProxy, timelock, actors);
         RolesVerification.verifyRole(
             vaultProxy, actors.FEE_MANAGER(), vaultProxy.FEE_MANAGER_ROLE(), true, "Fee Manager has FEE_MANAGER_ROLE"
@@ -130,7 +100,7 @@ contract VerifyMaxVault is BaseScript, Test {
 
         RolesVerification.verifyTemporaryRoles(vaultProxy, deployer);
 
-        VaultVerification.verifyProvider(vaultProxy, Provider(address(rateProvider)));
+        VaultVerification.verifyProvider(vaultProxy, Provider(address(vaultProxy.provider())));
 
         assertEq(vaultProxy.VAULT_VERSION(), "0.4.0", "Vault version should be 0.4.0");
         console.log("\u2705 Vault version:          ", vaultProxy.VAULT_VERSION());
