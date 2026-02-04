@@ -30,6 +30,8 @@ contract DeployYnUSDx is BaseScript, MainnetActors {
     uint256 public constant MAX_SLIPPAGE = 20; // 0.2% in basis points
     uint256 public constant SLIPPAGE_PRECISION = 10000; // 100% in basis points
 
+    IProvider public rateProvider;
+
     error InvalidRateProvider();
     error InvalidTimelock();
 

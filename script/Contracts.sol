@@ -54,6 +54,9 @@ library MainnetContracts {
     address public constant FXUSD = 0x085780639CC2cACd35E474e71f4d000e2405d8f6;
 
     address public constant USDC_ARB1_STRATEGY = 0x360b2ba897dbEa77A39A93d9181597f9c2fdD9D3;
+
+    // EVK Vault eUSDC-95 - ERC4626 vault with 6 decimals, underlying USDC
+    address public constant EVK_VAULT_EUSDC_95 = 0x7fAb04FF2717d9A6B71A51c56c29697179597D40;
 }
 
 contract L1Contracts is IContracts {
