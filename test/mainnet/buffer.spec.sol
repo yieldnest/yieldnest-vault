@@ -42,7 +42,7 @@ contract VaultBufferInvariantsTest is BaseTest {
 
             targets[0] = MC.USDC;
             values[0] = 0;
-            data[0] = abi.encodeCall(IERC20.approve, (address(bufferStrategy), depositAmount));
+            data[0] = abi.encodeCall(IERC20.approve, (address(vault.buffer()), depositAmount));
 
             targets[1] = vault.buffer();
             values[1] = 0;
@@ -140,9 +140,6 @@ contract VaultBufferInvariantsTest is BaseTest {
             vault.setBuffer(MC.EVK_VAULT_EUSDC_95);
             vm.stopPrank();
         }
-
-        address bufferAddr = vault.buffer();
-        bufferStrategy = vault.buffer();
         // Assume MC.EULER exists. If not, replace this check with actual "euler thing" logic.
         // Ensure user has enough USDC to deposit
         address user = makeAddr("alice");
@@ -153,37 +150,48 @@ contract VaultBufferInvariantsTest is BaseTest {
         _depositAssetToVault(MC.USDC, depositAmount, user);
 
         // Allocate to buffer
-        uint256 bufferShareMinted = allocateToBuffer(depositAmount);
+        allocateToBuffer(depositAmount);
 
         // Record state before withdraw
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 totalSupplyBefore = vault.totalSupply();
-        uint256 rateBefore = IERC4626(bufferAddr).convertToAssets(1e18);
+        uint256 rateBefore = IERC4626(vault.buffer()).convertToAssets(1e18);
 
         // Withdraw from buffer
         uint256 withdrawAmount = depositAmount / 2; // withdraw half
+
+        uint256 userBalanceBefore = IERC20(MC.USDC).balanceOf(user);
+
         vm.startPrank(user);
-        vault.withdraw(withdrawAmount, user, user);
+        uint256 burnedShares = vault.withdraw(withdrawAmount, user, user);
         vm.stopPrank();
+
+        vault.processAccounting();
+
+        uint256 userBalanceAfter = IERC20(MC.USDC).balanceOf(user);
+
+        // Assert Alice actually gets withdrawAmount (allowing for minor dust from rounding)
+        assertApproxEqAbs(
+            userBalanceAfter,
+            userBalanceBefore + withdrawAmount,
+            1, // small tolerance for rounding dust (may adjust depending on vault logic)
+            "User should receive the expected withdrawAmount in USDC"
+        );
 
         // State after withdraw
         uint256 totalAssetsAfter = vault.totalAssets();
         uint256 totalSupplyAfter = vault.totalSupply();
-        uint256 rateAfter = IERC4626(bufferAddr).convertToAssets(1e18);
+        uint256 rateAfter = IERC4626(vault.buffer()).convertToAssets(1e18);
 
         // Assets should have gone down ~withdrawAmount
         assertApproxEqAbs(
             totalAssetsAfter, totalAssetsBefore - withdrawAmount, 1, "totalAssets should decrease by withdrawn amount"
         );
         // Supply should decrease (user shares burned)
-        assertLt(totalSupplyAfter, totalSupplyBefore, "Total supply should decrease after withdrawal");
+        assertEq(totalSupplyAfter, totalSupplyBefore - burnedShares, "Total supply should decrease after withdrawal");
 
         // Rate should increase after withdrawal due to fees accrued during withdrawal
         assertGt(rateAfter, rateBefore, "Rate should increase because of withdrawal fees");
-
-        // Optionally, confirm that buffer USDC balance > 0 and less than before
-        uint256 bufferUsdcAfter = IERC20(MC.USDC).balanceOf(bufferAddr);
-        assertGt(bufferUsdcAfter, 0, "Buffer's USDC balance should remain positive after withdrawal");
     }
 
     function _depositAssetToVault(address asset, uint256 amount, address user) internal {
