@@ -162,6 +162,9 @@ contract VaultBufferInvariantsTest is BaseTest {
 
         uint256 userBalanceBefore = IERC20(MC.USDC).balanceOf(user);
 
+        // Record buffer total assets before withdraw
+        uint256 bufferTotalAssetsBefore = IERC4626(vault.buffer()).totalAssets();
+
         vm.startPrank(user);
         uint256 burnedShares = vault.withdraw(withdrawAmount, user, user);
         vm.stopPrank();
@@ -185,7 +188,17 @@ contract VaultBufferInvariantsTest is BaseTest {
 
         // Assets should have gone down ~withdrawAmount
         assertApproxEqAbs(
-            totalAssetsAfter, totalAssetsBefore - withdrawAmount, 1, "totalAssets should decrease by withdrawn amount"
+            vault.totalAssets(),
+            totalAssetsBefore - withdrawAmount,
+            1,
+            "totalAssets should decrease by withdrawn amount"
+        );
+        // Buffer assets should have gone down ~withdrawAmount as well
+        assertApproxEqAbs(
+            IERC4626(vault.buffer()).totalAssets(),
+            bufferTotalAssetsBefore - withdrawAmount,
+            1,
+            "Buffer total assets should decrease by withdrawn amount"
         );
         // Supply should decrease (user shares burned)
         assertEq(totalSupplyAfter, totalSupplyBefore - burnedShares, "Total supply should decrease after withdrawal");
