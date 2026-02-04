@@ -111,6 +111,10 @@ contract ProviderTest is BaseTest {
         assertEq(
             provider.getRate(MC.EVK_VAULT_EUSDC_95), IERC4626(MC.EVK_VAULT_EUSDC_95).convertToAssets(oneShare * 1e12)
         );
+        // Assert that the rate is above 1e18 and below 2e18
+        uint256 rate = provider.getRate(MC.EVK_VAULT_EUSDC_95);
+        assertGt(rate, 1e18, "Rate should be greater than 1e18");
+        assertLt(rate, 2e18, "Rate should be less than 2e18");
     }
 
     function test_getRate_Of_Withdrawer() public view {
