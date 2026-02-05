@@ -42,9 +42,9 @@ contract VaultBufferInvariantsTest is BaseTest {
 
             targets[0] = MC.USDC;
             values[0] = 0;
-            data[0] = abi.encodeCall(IERC20.approve, (address(bufferStrategy), depositAmount));
+            data[0] = abi.encodeCall(IERC20.approve, (address(vault.buffer()), depositAmount));
 
-            targets[1] = address(bufferStrategy);
+            targets[1] = vault.buffer();
             values[1] = 0;
             data[1] = abi.encodeCall(IERC4626.deposit, (depositAmount, address(vault)));
 
@@ -124,6 +124,87 @@ contract VaultBufferInvariantsTest is BaseTest {
             "Vault total assets should be similar to before ignorning rounding errors"
         );
         totalSupplyInvariant(totalSupplyBefore);
+    }
+
+    function test_withdraw_Buffer_6Decimals() public {
+        if (vault.buffer() != MC.EVK_VAULT_EUSDC_95) {
+            // Give admin the BUFFER_MANAGER_ROLE and set the buffer to EVK_VAULT_EUSDC_95
+
+            // Grant BUFFER_MANAGER_ROLE to ADMIN (calling as TIMELOCK or whoever is the role admin)
+            vm.startPrank(ADMIN);
+            vault.grantRole(vault.BUFFER_MANAGER_ROLE(), ADMIN);
+            vm.stopPrank();
+
+            // Set buffer to EVK Vault (with the admin now able to set the buffer)
+            vm.startPrank(ADMIN);
+            vault.setBuffer(MC.EVK_VAULT_EUSDC_95);
+            vm.stopPrank();
+        }
+        // Assume MC.EULER exists. If not, replace this check with actual "euler thing" logic.
+        // Ensure user has enough USDC to deposit
+        address user = makeAddr("alice");
+        uint256 depositAmount = 100_000 * 1e6; // 100,000 USDC (6 decimals)
+        deal(MC.USDC, user, depositAmount);
+
+        // Deposit USDC into the vault
+        _depositAssetToVault(MC.USDC, depositAmount, user);
+
+        // Allocate to buffer
+        allocateToBuffer(depositAmount);
+
+        // Record state before withdraw
+        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 totalSupplyBefore = vault.totalSupply();
+        uint256 rateBefore = IERC4626(vault.buffer()).convertToAssets(1e18);
+
+        // Withdraw from buffer
+        uint256 withdrawAmount = depositAmount / 2; // withdraw half
+
+        uint256 userBalanceBefore = IERC20(MC.USDC).balanceOf(user);
+
+        // Record buffer total assets before withdraw
+        uint256 bufferTotalAssetsBefore = IERC4626(vault.buffer()).totalAssets();
+
+        vm.startPrank(user);
+        uint256 burnedShares = vault.withdraw(withdrawAmount, user, user);
+        vm.stopPrank();
+
+        vault.processAccounting();
+
+        uint256 userBalanceAfter = IERC20(MC.USDC).balanceOf(user);
+
+        // Assert Alice actually gets withdrawAmount (allowing for minor dust from rounding)
+        assertApproxEqAbs(
+            userBalanceAfter,
+            userBalanceBefore + withdrawAmount,
+            1, // small tolerance for rounding dust (may adjust depending on vault logic)
+            "User should receive the expected withdrawAmount in USDC"
+        );
+
+        // State after withdraw
+        uint256 totalAssetsAfter = vault.totalAssets();
+        uint256 totalSupplyAfter = vault.totalSupply();
+        uint256 rateAfter = IERC4626(vault.buffer()).convertToAssets(1e18);
+
+        // Assets should have gone down ~withdrawAmount
+        assertApproxEqAbs(
+            vault.totalAssets(),
+            totalAssetsBefore - withdrawAmount,
+            1,
+            "totalAssets should decrease by withdrawn amount"
+        );
+        // Buffer assets should have gone down ~withdrawAmount as well
+        assertApproxEqAbs(
+            IERC4626(vault.buffer()).totalAssets(),
+            bufferTotalAssetsBefore - withdrawAmount,
+            1,
+            "Buffer total assets should decrease by withdrawn amount"
+        );
+        // Supply should decrease (user shares burned)
+        assertEq(totalSupplyAfter, totalSupplyBefore - burnedShares, "Total supply should decrease after withdrawal");
+
+        // Rate should increase after withdrawal due to fees accrued during withdrawal
+        assertGt(rateAfter, rateBefore, "Rate should increase because of withdrawal fees");
     }
 
     function _depositAssetToVault(address asset, uint256 amount, address user) internal {
