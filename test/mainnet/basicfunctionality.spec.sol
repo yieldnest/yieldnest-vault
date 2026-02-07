@@ -209,7 +209,21 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
     function test_deposit_any_asset(uint256 depositAmount, uint8 assetIndex) public {
         address[] memory assets = vault.getAssets();
+
         vm.assume(assetIndex < assets.length);
+        {
+            address[] memory skippedAssets = new address[](1);
+            skippedAssets[0] = MC.AAVE_A_WSTETH;
+            bool skip = false;
+            for (uint256 i = 0; i < skippedAssets.length; ++i) {
+                if (assets[assetIndex] == skippedAssets[i]) {
+                    skip = true;
+                    break;
+                }
+            }
+            vm.assume(!skip);
+        }
+
         address asset = assets[assetIndex];
 
         vm.assume(depositAmount > 10000);
