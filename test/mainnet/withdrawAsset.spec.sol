@@ -114,7 +114,7 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
     ) internal {
         {
             // Enable selected asset deposits
-            vm.startPrank(ADMIN);
+            vm.startPrank(MC.TIMELOCK);
             vault.updateAsset(vault.getAsset(asset).index, IVault.AssetUpdateFields({active: true}));
             vm.stopPrank();
         }

@@ -189,7 +189,7 @@ contract VaultMainnetYnETHTest is BaseIntegrationTest {
 
         // Deactivate ynETH asset in the vault
         {
-            vm.startPrank(ADMIN);
+            vm.startPrank(address(MC.TIMELOCK));
             uint256 index = vault.getAsset(MC.YNETH).index;
             IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: false});
             vault.updateAsset(index, fields);
