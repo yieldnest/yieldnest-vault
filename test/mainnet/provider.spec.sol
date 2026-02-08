@@ -161,6 +161,37 @@ contract ProviderTest is BaseIntegrationTest, Etches {
         assertEq(rate, expectedRate, "Rate for EULER_WETH_22_VAULT should match the convertToAssets rate");
     }
 
+    function test_Provider_getRate_aEthwstETH() public view {
+        uint256 expectedRate = provider.getRate(MC.WSTETH);
+        uint256 rate = provider.getRate(MC.AAVE_A_WSTETH);
+        assertEq(rate, expectedRate, "Rate for AAVE_A_WSTETH should match the WSTETH rate");
+    }
+
+    function test_Provider_GetRateYnFlexWstETHYnETHxLVG1() public view {
+        uint256 expectedRate =
+            IStETH(MC.STETH).getPooledEthByShares(IERC4626(MC.YNFLEX_WSTETH_YNETHX_LVG1).convertToAssets(1e18));
+        uint256 rate = provider.getRate(MC.YNFLEX_WSTETH_YNETHX_LVG1);
+        assertEq(rate, expectedRate, "Rate for YNFLEX_WSTETH_YNETHX_LVG1 should match the combined rate");
+        assertGt(rate, 1e18, "Rate for YNFLEX_WSTETH_YNETHX_LVG1 should be greater than 1e18");
+        assertLt(rate, 1e18 ether, "Rate for YNFLEX_WSTETH_YNETHX_LVG1 should be less than 2 ether");
+
+        // Assert that the rate for YNFLEX_WSTETH_YNETHX_LVG1 is a combination of WSTETH rate and its own convertToAssets
+        uint256 expectedWstethRate = provider.getRate(MC.WSTETH);
+        uint256 stratConvertToAssets = IERC4626(MC.YNFLEX_WSTETH_YNETHX_LVG1).convertToAssets(1e18);
+        uint256 expectedCombinedRate = stratConvertToAssets * expectedWstethRate / 1e18;
+        assertApproxEqAbs(
+            rate,
+            expectedCombinedRate,
+            3 wei,
+            "LVG1 rate should equal StETH.getPooledEthByShares(strategy.convertToAssets(1e18))"
+        );
+        assertEq(
+            expectedWstethRate,
+            IStETH(MC.STETH).getPooledEthByShares(1e18),
+            "WSTETH rate should match StETH.getPooledEthByShares(1e18) via provider.getRate"
+        );
+    }
+
     function test_Provider_GetRateMockStrategy() public view {
         uint256 expectedRate = IERC4626(address(mockStrategy)).convertToAssets(1e18);
         uint256 rate = provider.getRate(address(mockStrategy));

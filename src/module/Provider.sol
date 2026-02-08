@@ -109,13 +109,18 @@ contract Provider is IProvider {
             return uint256(strategyRate);
         }
 
-        if (isETHStrategyVault(asset)) {
-            return IERC4626(asset).convertToAssets(1e18);
+        if (asset == MC.YNFLEX_WSTETH_YNETHX_LVG1) {
+            // the base asset of ynFlex-wstETH-ynETHx-LVG1 is wstETH
+            return IStETH(MC.STETH).getPooledEthByShares(IERC4626(asset).convertToAssets(1e18));
         }
 
         // Aave aWSTETH: same rate as wstETH since it's 1:1 with underlying
         if (asset == MC.AAVE_A_WSTETH) {
             return getRate(MC.WSTETH);
+        }
+
+        if (isETHStrategyVault(asset)) {
+            return IERC4626(asset).convertToAssets(1e18);
         }
 
         revert UnsupportedAsset(asset);

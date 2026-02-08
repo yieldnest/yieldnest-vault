@@ -75,6 +75,10 @@ library MainnetContracts {
     address public constant CURVE_LP_YNETH_YNLSDE_CONNECTOR = 0xe66E34F9E3116ce497Cbd15268f175eC711539d5;
     address public constant CURVE_LP_YNETH_YNLSDE_STRATEGY = 0x823976dA34aC45C23a8DfEa51B3Ff1Ae0D980213;
 
+    // ynFlex-wstETH-ynETHx-LVG1
+
+    address public constant YNFLEX_WSTETH_YNETHX_LVG1 = 0x115B50649e50c2b36B3D2Ec0928E72492c85dA7D;
+
     // Smokehouse WSTETH
     address public constant SMOKEHOUSE_WSTETH = 0x833AdaeF212c5cD3f78906B44bBfb18258F238F0;
     address public constant MORPHO_MEV_CAPITAL_WETH = 0x9a8bC3B04b7f3D87cfC09ba407dCED575f2d61D8;
