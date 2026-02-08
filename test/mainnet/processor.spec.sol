@@ -20,6 +20,7 @@ import {IVault} from "src/interface/IVault.sol";
 import {IynEigen} from "test/interface/external/yieldnest/IynEigen.sol";
 import {IWithdrawalsProcessor} from "test/interface/external/yieldnest/IWithdrawalsProcessor.sol";
 import {IWithdrawalQueueManager} from "src/interface/IWithdrawalQueueManager.sol";
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 contract ProcessorIntegrationTest is BaseIntegrationTest {
     Withdrawer public withdrawer;
@@ -108,6 +109,25 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
                 ERROR_MARGIN,
                 "Withdrawer total assets should increase by deposit amount in ETH terms"
             );
+        }
+
+        {
+            // If eigenStrategyManager does not have STAKING_NODES_WITHDRAWER_ROLE on queueManager, have eigenStrategyManager grant the role to queueManager
+            bytes32 STAKING_NODES_WITHDRAWER_ROLE = keccak256("STAKING_NODES_WITHDRAWER_ROLE");
+            address eigenStrategyManager = 0x92D904019A92B0Cafce3492Abb95577C285A68fC;
+
+            // Only grant the role if not already granted
+            if (
+                !IAccessControl(eigenStrategyManager).hasRole(
+                    STAKING_NODES_WITHDRAWER_ROLE, address(withdrawalsProcessor)
+                )
+            ) {
+                vm.startPrank(ADMIN); // Assume ADMIN/timelock can grant on eigenStrategyManager
+                IAccessControl(eigenStrategyManager).grantRole(
+                    STAKING_NODES_WITHDRAWER_ROLE, address(withdrawalsProcessor)
+                );
+                vm.stopPrank();
+            }
         }
 
         {
