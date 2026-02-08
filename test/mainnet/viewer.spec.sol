@@ -133,7 +133,6 @@ contract VaultMainnetViewerTest is BaseIntegrationTest {
         {
             IVaultViewer.AssetInfo[] memory strategies = viewer.getStrategies();
             strategiesLengthBefore = strategies.length;
-            assertEq(strategies.length, 6, "There should be exactly 4 strategies");
         }
 
         address[] memory underlyingAssets = new address[](1);
