@@ -31,6 +31,8 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
     string public constant VAULT_VERSION = "0.2.0";
 
+    address[] skippedAssets;
+
     function setUp() public override {
         super.setUp();
         withdrawer = VaultVerification.getWithdrawer(vault);
@@ -39,6 +41,9 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
         // Process accounting to ensure vault is in sync
         vault.processAccounting();
+
+        skippedAssets = new address[](1);
+        skippedAssets[0] = MC.AAVE_A_WSTETH;
     }
 
     function test_configure() public view {
@@ -179,6 +184,19 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         address[] memory assets = vault.getAssets();
 
         for (uint256 i = 0; i < assets.length; i++) {
+            {
+                bool skip = false;
+                for (uint256 j = 0; j < skippedAssets.length; ++j) {
+                    if (assets[i] == skippedAssets[j]) {
+                        skip = true;
+                        break;
+                    }
+                }
+                if (skip) {
+                    continue;
+                }
+            }
+
             _test_donate_single_asset(assets[i], donationAmount);
         }
     }
@@ -212,8 +230,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
         vm.assume(assetIndex < assets.length);
         {
-            address[] memory skippedAssets = new address[](1);
-            skippedAssets[0] = MC.AAVE_A_WSTETH;
             bool skip = false;
             for (uint256 i = 0; i < skippedAssets.length; ++i) {
                 if (assets[assetIndex] == skippedAssets[i]) {
