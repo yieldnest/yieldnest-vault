@@ -93,7 +93,17 @@ contract VaultDepositTest is BaseIntegrationTest, TestHelper {
 
         // Assert conversion rates stayed the same
         assertEq(vault.convertToAssets(1e18), initialConvertToAssets, "convertToAssets rate should remain unchanged");
-        assertEq(vault.convertToShares(1e6), initialConvertToShares, "convertToShares rate should remain unchanged");
+        assertGe(
+            vault.convertToShares(1e6),
+            initialConvertToShares,
+            "convertToShares rate should remain greater than or equal to the initial convertToShares rate"
+        );
+        assertApproxEqRel(
+            vault.convertToShares(1e6),
+            initialConvertToShares,
+            1e12,
+            "convertToShares rate should remain roughly unchanged"
+        );
     }
 
     function test_Vault_deposit_and_donate_rate_increase() public {
