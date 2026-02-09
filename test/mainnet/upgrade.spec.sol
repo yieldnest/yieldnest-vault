@@ -68,7 +68,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         assertEq(defaultAssetIndex, 1, "Default asset index should be 0 (USDC)");
 
         // Test the version function
-        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be 0.3.0");
+        assertEq(vault.VAULT_VERSION(), "0.4.2", "Vault version should be 0.4.2");
 
         // Test the provider function
         address provider = vault.provider();
@@ -111,15 +111,13 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         uint256 maxMint = vault.maxMint(address(this));
         assertGt(maxMint, 0, "Max mint should be greater than 0");
 
-        // Test the maxWithdraw function - reverts because there is no buffer
-        vm.expectRevert();
+        // Test the maxWithdraw function
         uint256 maxWithdraw = vault.maxWithdraw(address(this));
-        //assertEq(maxWithdraw, 0, "Max withdraw should be zero");
+        assertEq(maxWithdraw, 0, "Max withdraw should be zero");
 
         // Test the maxRedeem function
-        vm.expectRevert();
         uint256 maxRedeem = vault.maxRedeem(address(this));
-        //assertEq(maxRedeem, 0, "Max redeem should be zero");
+        assertEq(maxRedeem, 0, "Max redeem should be zero");
 
         // Test the getAssets function
         address[] memory assets = vault.getAssets();

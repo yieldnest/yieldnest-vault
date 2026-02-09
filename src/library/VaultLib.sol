@@ -5,6 +5,8 @@ import {IVault} from "src/interface/IVault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {Math, IERC20} from "src/Common.sol";
 import {Guard} from "src/module/Guard.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {HooksLib} from "src/library/HooksLib.sol";
 
 library VaultLib {
     using Math for uint256;
@@ -71,6 +73,44 @@ library VaultLib {
             // keccak256("yieldnest.storage.fees")
             $.slot := 0xde924653ae91bd33356774e603163bd5862c93462f31acccae5f965be6e6599b
         }
+    }
+
+    /**
+     * @notice Get the hooks storage.
+     * @return $ The hooks storage.
+     */
+    function getHooksStorage() public pure returns (IVault.HooksStorage storage $) {
+        assembly {
+            // keccak256("yieldnest.storage.hooks")
+            $.slot := 0x888cd7e3a42ecdcdcee277d5e88e97f4970beef9c0100f5a9297676fe5dfa12f
+        }
+    }
+
+    function initialize(
+        bool paused_,
+        uint8 decimals_,
+        bool countNativeAsset_,
+        bool alwaysComputeTotalAssets_,
+        uint256 defaultAssetIndex_
+    ) public {
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+        vaultStorage.paused = paused_;
+        if (decimals_ == 0) {
+            revert IVault.InvalidDecimals();
+        }
+        vaultStorage.decimals = decimals_;
+        vaultStorage.countNativeAsset = countNativeAsset_;
+        vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
+
+        // The defaultAssetIndex must be 0 or 1 because:
+        // 1. When an asset is deleted, it's replaced with the last asset in the array
+        // 2. The base asset (index 0) and default asset should never be deleted
+        // 3. Therefore, they must be the first two positions in the array
+        // 4. Or if defaultAssetIndex is 0, then the base asset is also the default asset
+        if (defaultAssetIndex_ > 1) {
+            revert IVault.InvalidDefaultAssetIndex(defaultAssetIndex_);
+        }
+        vaultStorage.defaultAssetIndex = defaultAssetIndex_;
     }
 
     /**
@@ -161,6 +201,8 @@ library VaultLib {
 
         // Update the index for the asset that was moved to the deleted position
         if (index < assetStorage.list.length) {
+            // index can never be the defaultAssetIndex, therefore defaultAssetIndex does not change.
+            // since defaultAssetIndex is always 0 or 1, and never deleted.
             address movedAsset = assetStorage.list[index];
             assetStorage.assets[movedAsset].index = index;
         }
@@ -170,26 +212,38 @@ library VaultLib {
 
     /**
      * @notice Converts an asset amount to base units.
+     * @dev SECURITY: computation assumes provider ensures rate is accurate and safeguards against manipulation.
      * @param asset_ The address of the asset.
      * @param assets The amount of the asset.
+     * @param rounding The rounding direction.
      * @return baseAssets The equivalent amount in base units.
      */
-    function convertAssetToBase(address asset_, uint256 assets) public view returns (uint256 baseAssets) {
+    function convertAssetToBase(address asset_, uint256 assets, Math.Rounding rounding)
+        public
+        view
+        returns (uint256 baseAssets)
+    {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
         uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
-        baseAssets = assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals), Math.Rounding.Floor);
+        baseAssets = assets.mulDiv(rate, 10 ** (getAssetStorage().assets[asset_].decimals), rounding);
     }
 
     /**
      * @notice Converts a base amount to asset units.
+     * @dev SECURITY: computation assumes provider ensures rate is accurate and safeguards against manipulation.
      * @param asset_ The address of the asset.
      * @param baseAssets The amount of the assets in base units.
+     * @param rounding The rounding direction.
      * @return assets The equivalent amount in asset units.
      */
-    function convertBaseToAsset(address asset_, uint256 baseAssets) public view returns (uint256 assets) {
+    function convertBaseToAsset(address asset_, uint256 baseAssets, Math.Rounding rounding)
+        public
+        view
+        returns (uint256 assets)
+    {
         if (asset_ == address(0)) revert IVault.ZeroAddress();
         uint256 rate = IProvider(getVaultStorage().provider).getRate(asset_);
-        assets = baseAssets.mulDiv(10 ** (getAssetStorage().assets[asset_].decimals), rate, Math.Rounding.Floor);
+        assets = baseAssets.mulDiv(10 ** (getAssetStorage().assets[asset_].decimals), rate, rounding);
     }
 
     /**
@@ -210,6 +264,8 @@ library VaultLib {
     function subTotalAssets(uint256 baseAssets) public {
         IVault.VaultStorage storage vaultStorage = getVaultStorage();
         if (!vaultStorage.alwaysComputeTotalAssets) {
+            // May revert on underflow when withdrawn assets are valued higher than stored total assets.
+            //Mitigated by seeding the vault to create enough of a buffer for error.
             vaultStorage.totalAssets -= baseAssets;
         }
     }
@@ -230,7 +286,7 @@ library VaultLib {
         uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
         baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
-        assets = convertBaseToAsset(asset_, baseAssets);
+        assets = convertBaseToAsset(asset_, baseAssets, rounding);
     }
 
     /**
@@ -238,18 +294,18 @@ library VaultLib {
      * @param asset_ The address of the asset.
      * @param assets The amount of assets to convert.
      * @param rounding The rounding direction.
-     * @return (shares, baseAssets) The equivalent amount of shares.
+     * @return shares The amount of shares.
+     * @return baseAssets The amount of base assets.
      */
     function convertToShares(address asset_, uint256 assets, Math.Rounding rounding)
         public
         view
-        returns (uint256, uint256)
+        returns (uint256 shares, uint256 baseAssets)
     {
         uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
-        uint256 baseAssets = convertAssetToBase(asset_, assets);
-        uint256 shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
-        return (shares, baseAssets);
+        baseAssets = convertAssetToBase(asset_, assets, rounding);
+        shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
     }
 
     /**
@@ -264,6 +320,26 @@ library VaultLib {
     }
 
     /**
+     * @notice Library version: Sets multiple processor rules for given contract addresses and function signatures.
+     * @param target Array of target contract addresses.
+     * @param functionSig Array of function signatures.
+     * @param rule Array of function rules.
+     */
+    function setProcessorRules(
+        address[] calldata target,
+        bytes4[] calldata functionSig,
+        IVault.FunctionRule[] calldata rule
+    ) public {
+        uint256 targetLength = target.length;
+        if (targetLength != functionSig.length || targetLength != rule.length) {
+            revert IVault.InvalidArray();
+        }
+        for (uint256 i = 0; i < targetLength; i++) {
+            setProcessorRule(target[i], functionSig[i], rule[i]);
+        }
+    }
+
+    /**
      * @notice Sets the provider.
      * @param provider_ The address of the provider.
      */
@@ -271,21 +347,20 @@ library VaultLib {
         if (provider_ == address(0)) {
             revert IVault.ZeroAddress();
         }
+        address previousProvider = getVaultStorage().provider;
         getVaultStorage().provider = provider_;
-        emit IVault.SetProvider(provider_);
+        emit IVault.SetProvider(previousProvider, provider_);
     }
 
     /**
      * @notice Sets the buffer strategy.
      * @param buffer_ The address of the buffer strategy.
+     * @dev SECURITY: buffer=address(0) allowed - disables ERC4626 redeem/withdraw calls.
      */
     function setBuffer(address buffer_) public {
-        if (buffer_ == address(0)) {
-            revert IVault.ZeroAddress();
-        }
-
+        address previousBuffer = getVaultStorage().buffer;
         getVaultStorage().buffer = buffer_;
-        emit IVault.SetBuffer(buffer_);
+        emit IVault.SetBuffer(previousBuffer, buffer_);
     }
 
     /**
@@ -305,8 +380,51 @@ library VaultLib {
         for (uint256 i = 0; i < assetListLength; i++) {
             uint256 balance = IERC20(assetList[i]).balanceOf(address(this));
             if (balance == 0) continue;
-            totalBaseBalance += convertAssetToBase(assetList[i], balance);
+            totalBaseBalance += convertAssetToBase(assetList[i], balance, Math.Rounding.Floor);
         }
+    }
+
+    /**
+     * @notice Processes the accounting of the vault by calculating the total base balance.
+     */
+    function processAccounting() public {
+        IVault _vault = IVault(address(this));
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+
+        uint256 totalAssetsBeforeAccounting = _vault.totalAssets();
+        uint256 totalSupplyBeforeAccounting = _vault.totalSupply();
+        uint256 totalBaseAssetsBeforeAccounting = vaultStorage.totalAssets;
+
+        // handle before hook call
+        IHooks hooks_ = _vault.hooks();
+        HooksLib.beforeProcessAccounting(
+            hooks_,
+            IHooks.BeforeProcessAccountingParams({
+                totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
+                totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
+                totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting
+            })
+        );
+
+        // update total base assets
+        uint256 totalBaseAssetsAfterAccounting = computeTotalAssets();
+        vaultStorage.totalAssets = totalBaseAssetsAfterAccounting;
+
+        // solhint-disable-next-line not-rely-on-time
+        emit IVault.ProcessAccounting(block.timestamp, totalBaseAssetsBeforeAccounting, totalBaseAssetsAfterAccounting);
+
+        // handle after hook call
+        HooksLib.afterProcessAccounting(
+            hooks_,
+            IHooks.AfterProcessAccountingParams({
+                totalAssetsBeforeAccounting: totalAssetsBeforeAccounting,
+                totalAssetsAfterAccounting: _vault.totalAssets(),
+                totalSupplyBeforeAccounting: totalSupplyBeforeAccounting,
+                totalSupplyAfterAccounting: _vault.totalSupply(),
+                totalBaseAssetsBeforeAccounting: totalBaseAssetsBeforeAccounting,
+                totalBaseAssetsAfterAccounting: totalBaseAssetsAfterAccounting
+            })
+        );
     }
 
     /**

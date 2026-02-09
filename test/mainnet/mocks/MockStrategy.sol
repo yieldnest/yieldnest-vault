@@ -16,11 +16,11 @@ contract MockStrategy is BaseStrategy {
         _initialize(admin, name, symbol, 18, false, true, alwaysComputeTotalAssets_, defaultAssetIndex_);
     }
 
-    function _feeOnRaw(uint256) public pure override returns (uint256) {
+    function _feeOnRaw(uint256, address) public pure override returns (uint256) {
         return 0;
     }
 
-    function _feeOnTotal(uint256) public pure override returns (uint256) {
+    function _feeOnTotal(uint256, address) public pure override returns (uint256) {
         return 0;
     }
 }

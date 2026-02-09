@@ -16,6 +16,11 @@ import {VaultLib} from "src/library/VaultLib.sol";
 
 import {IVault} from "src/interface/IVault.sol";
 import {IStrategy} from "src/interface/IStrategy.sol";
+import {FeeMath} from "src/module/FeeMath.sol";
+
+import {IHooks} from "src/interface/IHooks.sol";
+import {HooksLib} from "src/library/HooksLib.sol";
+import {IERC4626} from "src/Common.sol";
 
 /**
  * @title BaseVault
@@ -36,7 +41,7 @@ import {IStrategy} from "src/interface/IStrategy.sol";
  *       - Can be the same as base asset (defaultAssetIndex == 0)
  *    - Can be different from the base asset (defaultAssetIndex == 1)
  *
- *  REQUIREMENT: default Asset MUST be the underyling asset of Base Asset.
+ *  REQUIREMENT: default Asset MUST be the underlying asset of Base Asset.
  *               Example: Default Asset is USDC, Base Asset is Wrapped USDC.
  *
  * The vault maintains a list of supported assets, each with their own decimal precision.
@@ -55,6 +60,8 @@ import {IStrategy} from "src/interface/IStrategy.sol";
  *   despite the higher gas cost of querying external contracts on each totalAssets() call
  */
 abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+    using HooksLib for IHooks;
+
     /// INITIALIZATION
 
     /**
@@ -83,24 +90,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.paused = paused_;
-        if (decimals_ == 0) {
-            revert InvalidDecimals();
-        }
-        vaultStorage.decimals = decimals_;
-        vaultStorage.countNativeAsset = countNativeAsset_;
-        vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
-
-        // The defaultAssetIndex must be 0 or 1 because:
-        // 1. When an asset is deleted, it's replaced with the last asset in the array
-        // 2. The base asset (index 0) and default asset should never be deleted
-        // 3. Therefore, they must be the first two positions in the array
-        // 4. Or if defaultAssetIndex is 0, then the base asset is also the default asset
-        if (defaultAssetIndex_ > 1) {
-            revert InvalidDefaultAssetIndex(defaultAssetIndex_);
-        }
-        vaultStorage.defaultAssetIndex = defaultAssetIndex_;
+        VaultLib.initialize(paused_, decimals_, countNativeAsset_, alwaysComputeTotalAssets_, defaultAssetIndex_);
     }
 
     /**
@@ -122,11 +112,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Returns the total assets held by the vault denominated in the default asset.
-     * @dev The ERC4626 interface underyling asset is the default asset.
+     * @dev The ERC4626 interface underlying asset is the default asset.
      * @return uint256 The total assets.
      */
     function totalAssets() public view virtual returns (uint256) {
-        return VaultLib.convertBaseToAsset(asset(), totalBaseAssets());
+        return _convertBaseToAsset(asset(), totalBaseAssets(), Math.Rounding.Floor);
     }
 
     /**
@@ -160,6 +150,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Converts a given amount of assets to shares.
+     * @dev The computation rounds down to follow the ERC4626 convention.
      * @param assets The amount of assets to convert.
      * @return shares The equivalent amount of shares.
      */
@@ -169,6 +160,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Converts a given amount of shares to assets.
+     * @dev The computation rounds down to follow the ERC4626 convention.
      * @param shares The amount of shares to convert.
      * @return assets The equivalent amount of assets.
      */
@@ -187,6 +179,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Previews the amount of assets that would be required to mint a given amount of shares.
+     * @dev The computation rounds up to follow the ERC4626 convention.
      * @param shares The amount of shares to mint.
      * @return assets The equivalent amount of assets.
      */
@@ -196,22 +189,24 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Previews the amount of shares that would be required to withdraw a given amount of assets.
+     * @dev The computation rounds up to follow the ERC4626 convention.
      * @param assets The amount of assets to withdraw.
      * @return shares The equivalent amount of shares.
      */
     function previewWithdraw(uint256 assets) public view virtual returns (uint256 shares) {
-        uint256 fee = _feeOnRaw(assets);
+        uint256 fee = _feeOnRaw(assets, _msgSender());
         (shares,) = _convertToShares(asset(), assets + fee, Math.Rounding.Ceil);
     }
 
     /**
      * @notice Previews the amount of assets that would be received for a given amount of shares.
+     * @dev The computation rounds down to follow the ERC4626 convention.
      * @param shares The amount of shares to redeem.
      * @return assets The equivalent amount of assets.
      */
     function previewRedeem(uint256 shares) public view virtual returns (uint256 assets) {
         (assets,) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
-        return assets - _feeOnTotal(assets);
+        return assets - _feeOnTotal(assets, _msgSender());
     }
 
     /**
@@ -242,7 +237,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The maximum amount of assets.
      */
     function maxWithdraw(address owner) public view virtual returns (uint256) {
-        if (paused()) {
+        if (paused() || buffer() == address(0)) {
             return 0;
         }
 
@@ -263,7 +258,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @return uint256 The maximum amount of shares.
      */
     function maxRedeem(address owner) public view virtual returns (uint256) {
-        if (paused()) {
+        if (paused() || buffer() == address(0)) {
             return 0;
         }
 
@@ -286,9 +281,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (paused()) {
             revert Paused();
         }
-        (uint256 shares, uint256 baseAssets) = _convertToShares(asset(), assets, Math.Rounding.Floor);
-        _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
-        return shares;
+
+        return _depositAsset(asset(), assets, receiver);
     }
 
     /**
@@ -301,8 +295,24 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (paused()) {
             revert Paused();
         }
-        (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Floor);
+        // Rounds up to error on the side of more assets being deposited.
+        (uint256 assets, uint256 baseAssets) = _convertToAssets(asset(), shares, Math.Rounding.Ceil);
+
+        IHooks hooks_ = hooks();
+        IHooks.MintParams memory params = IHooks.MintParams({
+            asset: asset(),
+            shares: shares,
+            caller: _msgSender(),
+            receiver: receiver,
+            assets: assets,
+            baseAssets: baseAssets
+        });
+        HooksLib.beforeMint(hooks_, params);
+
         _deposit(asset(), _msgSender(), receiver, assets, shares, baseAssets);
+
+        HooksLib.afterMint(hooks_, params);
+
         return assets;
     }
 
@@ -328,7 +338,20 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         }
         shares = previewWithdraw(assets);
 
+        IHooks hooks_ = hooks();
+        IHooks.WithdrawParams memory params = IHooks.WithdrawParams({
+            asset: asset(),
+            assets: assets,
+            caller: _msgSender(),
+            receiver: receiver,
+            owner: owner,
+            shares: shares
+        });
+        HooksLib.beforeWithdraw(hooks_, params);
+
         _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        HooksLib.afterWithdraw(hooks_, params);
     }
 
     /**
@@ -352,7 +375,21 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert ExceededMaxRedeem(owner, shares, maxShares);
         }
         assets = previewRedeem(shares);
+
+        IHooks hooks_ = hooks();
+        IHooks.RedeemParams memory params = IHooks.RedeemParams({
+            asset: asset(),
+            shares: shares,
+            caller: _msgSender(),
+            receiver: receiver,
+            owner: owner,
+            assets: assets
+        });
+        HooksLib.beforeRedeem(hooks_, params);
+
         _withdraw(_msgSender(), receiver, owner, assets, shares);
+
+        HooksLib.afterRedeem(hooks_, params);
     }
 
     //// 4626-MAX ////
@@ -372,6 +409,16 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      */
     function getAsset(address asset_) public view virtual returns (AssetParams memory) {
         return _getAssetStorage().assets[asset_];
+    }
+
+    /**
+     * @notice Returns whether a given asset exists in the asset list of the vault.
+     * @param asset_ The address of the asset.
+     */
+    function hasAsset(address asset_) public view virtual returns (bool) {
+        AssetStorage storage assetStorage = _getAssetStorage();
+        AssetParams memory assetParams = assetStorage.assets[asset_];
+        return assetStorage.list[assetParams.index] == asset_;
     }
 
     /**
@@ -415,6 +462,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Previews the amount of shares that would be received for a given amount of assets for a specific asset.
+     * @dev the computation rounds down for deposits.
      * @param asset_ The address of the asset.
      * @param assets The amount of assets to deposit.
      * @return shares The equivalent amount of shares.
@@ -439,12 +487,41 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         if (paused()) {
             revert Paused();
         }
-        (uint256 shares, uint256 baseAssets) = _convertToShares(asset_, assets, Math.Rounding.Floor);
-        _deposit(asset_, _msgSender(), receiver, assets, shares, baseAssets);
-        return shares;
+
+        return _depositAsset(asset_, assets, receiver);
     }
 
     //// INTERNAL ////
+
+    /**
+     * @notice Internal function to handle deposits for specific assets.
+     * @param asset_ The address of the asset.
+     * @param assets The amount of assets to deposit.
+     * @param receiver The address of the receiver.
+     * @return uint256 The equivalent amount of shares.
+     */
+    function _depositAsset(address asset_, uint256 assets, address receiver) internal virtual returns (uint256) {
+        // shares is rounded down to error on the side of minting less shares
+        // baseAssets is rounded down to error on the side of undercounting total assets post deposit
+        (uint256 shares, uint256 baseAssets) = _convertToShares(asset_, assets, Math.Rounding.Floor);
+
+        IHooks hooks_ = hooks();
+        IHooks.DepositParams memory params = IHooks.DepositParams({
+            asset: asset_,
+            assets: assets,
+            caller: _msgSender(),
+            receiver: receiver,
+            shares: shares,
+            baseAssets: baseAssets
+        });
+        HooksLib.beforeDeposit(hooks_, params);
+
+        _deposit(asset_, _msgSender(), receiver, assets, shares, baseAssets);
+
+        HooksLib.afterDeposit(hooks_, params);
+
+        return shares;
+    }
 
     /**
      * @notice Internal function to handle deposits.
@@ -508,7 +585,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
     {
         VaultStorage storage vaultStorage = _getVaultStorage();
-        _subTotalAssets(VaultLib.convertAssetToBase(asset(), assets));
+
+        // baseAssets is rounded down to error on the side of undercounting the removed assets
+        // Rate may increase as a result of the rounding.
+        _subTotalAssets(_convertAssetToBase(asset(), assets, Math.Rounding.Floor));
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
         }
@@ -519,6 +599,68 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         IStrategy(vaultStorage.buffer).withdraw(assets, receiver, address(this));
 
         emit Withdraw(caller, receiver, owner, assets, shares);
+    }
+
+    /**
+     * @notice Withdraws a given amount of assets and transfers the equivalent amount of shares to the receiver.
+     * @dev This is a permissioned function that requires the ASSET_WITHDRAWER_ROLE.
+     * @param asset_ The address of the asset.
+     * @param assets The amount of assets to withdraw.
+     * @param receiver The address of the receiver.
+     * @param owner The address of the owner.
+     * @return shares The equivalent amount of shares.
+     */
+    function withdrawAsset(address asset_, uint256 assets, address receiver, address owner)
+        public
+        virtual
+        onlyRole(ASSET_WITHDRAWER_ROLE)
+        returns (uint256 shares)
+    {
+        if (paused()) {
+            revert Paused();
+        }
+        // Rounds up to error on the side of more shares being burned.
+        (shares,) = _convertToShares(asset_, assets, Math.Rounding.Ceil);
+        if (assets > IERC20(asset_).balanceOf(address(this)) || balanceOf(owner) < shares) {
+            revert ExceededMaxWithdraw(owner, assets, IERC20(asset_).balanceOf(address(this)));
+        }
+
+        _withdrawAsset(asset_, _msgSender(), receiver, owner, assets, shares);
+    }
+
+    /**
+     * @notice Internal function to handle withdrawals for specific assets.
+     * @param asset_ The address of the asset.
+     * @param caller The address of the caller.
+     * @param receiver The address of the receiver.
+     * @param owner The address of the owner.
+     * @param assets The amount of assets to withdraw.
+     * @param shares The equivalent amount of shares.
+     */
+    function _withdrawAsset(
+        address asset_,
+        address caller,
+        address receiver,
+        address owner,
+        uint256 assets,
+        uint256 shares
+    ) internal virtual {
+        if (!hasAsset(asset_)) revert InvalidAsset(asset_);
+
+        // baseAssets is rounded down to error on the side of undercounting the removed assets
+        // Rate may increase as a result of the rounding.
+        _subTotalAssets(_convertAssetToBase(asset_, assets, Math.Rounding.Floor));
+
+        if (caller != owner) {
+            _spendAllowance(owner, caller, shares);
+        }
+
+        // NOTE: burn shares before withdrawing the assets
+        _burn(owner, shares);
+
+        SafeERC20.safeTransfer(IERC20(asset_), receiver, assets);
+
+        emit WithdrawAsset(caller, receiver, owner, asset_, assets, shares);
     }
 
     /**
@@ -539,10 +681,11 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /**
      * @notice Internal function to convert assets to shares.
+     * @dev baseAssets is always rounded down, ignoring the rounding parameter.
      * @param asset_ The address of the asset.
      * @param assets The amount of assets to convert.
      * @param rounding The rounding direction.
-     * @return (uint256 shares, uint256 baseAssets) The equivalent amount of shares.
+     * @return (uint256 shares, uint256 baseAssets) The equivalent amount of shares and base assets.
      */
     function _convertToShares(address asset_, uint256 assets, Math.Rounding rounding)
         internal
@@ -557,21 +700,35 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @notice Internal function to convert an asset amount to base denomination.
      * @param asset_ The address of the asset.
      * @param assets The amount of the asset.
+     * @param rounding The rounding direction.
      * @return uint256 The equivalent amount in base denomination.
      */
-    function _convertAssetToBase(address asset_, uint256 assets) internal view virtual returns (uint256) {
-        return VaultLib.convertAssetToBase(asset_, assets);
+    function _convertAssetToBase(address asset_, uint256 assets, Math.Rounding rounding)
+        internal
+        view
+        virtual
+        returns (uint256)
+    {
+        return VaultLib.convertAssetToBase(asset_, assets, rounding);
     }
 
     /**
      * @notice Internal function to convert base denominated amount to asset value.
      * @param asset_ The address of the asset.
      * @param assets The amount of the asset.
+     * @param rounding The rounding direction.
      * @return uint256 The equivalent amount of assets.
      */
-    function _convertBaseToAsset(address asset_, uint256 assets) internal view virtual returns (uint256) {
-        return VaultLib.convertBaseToAsset(asset_, assets);
+    function _convertBaseToAsset(address asset_, uint256 assets, Math.Rounding rounding)
+        internal
+        view
+        virtual
+        returns (uint256)
+    {
+        return VaultLib.convertBaseToAsset(asset_, assets, rounding);
     }
+
+    /// STORAGE ///
 
     /**
      * @notice Internal function to get the vault storage.
@@ -597,6 +754,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         return VaultLib.getProcessorStorage();
     }
 
+    /**
+     * @notice Internal function to get the Hooks storage.
+     * @return $ The Hooks storage.
+     */
+    function _getHooksStorage() internal pure returns (HooksStorage storage) {
+        return VaultLib.getHooksStorage();
+    }
+
     //// ADMIN ////
 
     bytes32 public constant PROCESSOR_ROLE = keccak256("PROCESSOR_ROLE");
@@ -606,6 +771,8 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     bytes32 public constant BUFFER_MANAGER_ROLE = keccak256("BUFFER_MANAGER_ROLE");
     bytes32 public constant ASSET_MANAGER_ROLE = keccak256("ASSET_MANAGER_ROLE");
     bytes32 public constant PROCESSOR_MANAGER_ROLE = keccak256("PROCESSOR_MANAGER_ROLE");
+    bytes32 public constant HOOKS_MANAGER_ROLE = keccak256("HOOKS_MANAGER_ROLE");
+    bytes32 public constant ASSET_WITHDRAWER_ROLE = keccak256("ASSET_WITHDRAWER_ROLE");
 
     /**
      * @notice Sets the provider.
@@ -638,35 +805,27 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
-     * @notice Sets the processor rule for a given contract address and function signature.
+     * @notice Internal function to set the processor rule for a given contract address and function signature.
      * @param target The address of the target contract.
      * @param functionSig The function signature.
      * @param rule The function rule.
      */
     function _setProcessorRule(address target, bytes4 functionSig, FunctionRule calldata rule) internal virtual {
-        _getProcessorStorage().rules[target][functionSig] = rule;
-        emit SetProcessorRule(target, functionSig, rule);
+        VaultLib.setProcessorRule(target, functionSig, rule);
     }
 
     /**
-     * @notice Sets the processor rule for a given contract address and function signature.
-     * @param target The address of the target contract.
-     * @param functionSig The function signature.
-     * @param rule The function rule.
+     * @notice Sets multiple processor rules for given contract addresses and function signatures.
+     * @param target Array of target contract addresses.
+     * @param functionSig Array of function signatures.
+     * @param rule Array of function rules.
      */
     function setProcessorRules(address[] calldata target, bytes4[] calldata functionSig, FunctionRule[] calldata rule)
         public
         virtual
         onlyRole(PROCESSOR_MANAGER_ROLE)
     {
-        uint256 targetLength = target.length;
-        if (targetLength != functionSig.length || targetLength != rule.length) {
-            revert InvalidArray();
-        }
-
-        for (uint256 i = 0; i < targetLength; i++) {
-            _setProcessorRule(target[i], functionSig[i], rule[i]);
-        }
+        VaultLib.setProcessorRules(target, functionSig, rule);
     }
 
     /**
@@ -720,8 +879,9 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         onlyRole(ASSET_MANAGER_ROLE)
     {
+        bool previous = _getVaultStorage().alwaysComputeTotalAssets;
         _getVaultStorage().alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
-        emit SetAlwaysComputeTotalAssets(alwaysComputeTotalAssets_);
+        emit SetAlwaysComputeTotalAssets(previous, alwaysComputeTotalAssets_);
 
         if (!alwaysComputeTotalAssets_) {
             _processAccounting();
@@ -775,19 +935,15 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     function _processAccounting() internal virtual {
-        uint256 totalBaseBalance = computeTotalAssets();
-
-        _getVaultStorage().totalAssets = totalBaseBalance;
-        // solhint-disable-next-line not-rely-on-time
-        emit ProcessAccounting(block.timestamp, totalBaseBalance);
+        VaultLib.processAccounting();
     }
 
     /**
      * @notice Computes the total assets in the vault.
-     * @return totalBaseBalance The total assets in the vault.
+     * @return totalBaseAssets The total base assets in the vault.
      */
-    function computeTotalAssets() public view virtual returns (uint256 totalBaseBalance) {
-        totalBaseBalance = VaultLib.computeTotalAssets();
+    function computeTotalAssets() public view virtual returns (uint256) {
+        return VaultLib.computeTotalAssets();
     }
 
     /**
@@ -806,6 +962,44 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         return VaultLib.processor(targets, values, data);
     }
 
+    /**
+     * @notice Mints shares to a recipient. Can ONLY be called by the hooks() contract.
+     * @param recipient The address of the recipient.
+     * @param shares The amount of shares to mint.
+     */
+    function mintShares(address recipient, uint256 shares) external {
+        if (msg.sender != address(hooks())) {
+            revert CallerNotHooks();
+        }
+
+        _mint(recipient, shares);
+    }
+
+    /**
+     * @notice Sets the hooks contract.
+     * @param hooks_ The address of the hooks contract.
+     */
+    function setHooks(address hooks_) external onlyRole(HOOKS_MANAGER_ROLE) {
+        if (hooks_ != address(0) && address(IHooks(hooks_).VAULT()) != address(this)) {
+            revert InvalidHooks();
+        }
+        _setHooks(hooks_);
+    }
+
+    function _setHooks(address hooks_) internal virtual {
+        HooksStorage storage hooksStorage = _getHooksStorage();
+        emit SetHooks(address(hooksStorage.hooks), hooks_);
+        hooksStorage.hooks = IHooks(hooks_);
+    }
+
+    /**
+     * @notice Returns the hooks contract.
+     * @return IHooks The hooks contract.
+     */
+    function hooks() public view returns (IHooks) {
+        return _getHooksStorage().hooks;
+    }
+
     constructor() {
         _disableInitializers();
     }
@@ -819,16 +1013,18 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
     /// FEES ///
     /**
-     * @notice Returns the fee on raw assets where the fee would get added on top of the assets.
-     * @param assets The amount of assets.
-     * @return The fee on raw assets.
+     * @notice Returns the fee on amount where the fee would get added on top of the amount.
+     * @param amount The amount on which the fee would get added.
+     * @param user The address of the user.
+     * @return The fee amount.
      */
-    function _feeOnRaw(uint256 assets) public view virtual override returns (uint256);
+    function _feeOnRaw(uint256 amount, address user) public view virtual override returns (uint256);
 
     /**
-     * @notice Returns the fee on total assets where the fee is already included.
-     * @param assets The amount of assets.
-     * @return The fee on total assets.
+     * @notice Returns the fee amount where fee is already included in amount
+     * @param amount The amount on which the fee is already included.
+     * @param user The address of the user.
+     * @return The fee amount.
      */
-    function _feeOnTotal(uint256 assets) public view virtual override returns (uint256);
+    function _feeOnTotal(uint256 amount, address user) public view virtual override returns (uint256);
 }
