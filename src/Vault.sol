@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {BaseVault} from "src/BaseVault.sol";
 import {FeeMath} from "src/module/FeeMath.sol";
 import {VaultLib} from "src/library/VaultLib.sol";
+import {LinearWithdrawalFee} from "src/module/LinearWithdrawalFee.sol";
 
 /**
  * @title Vault
@@ -17,17 +18,9 @@ import {VaultLib} from "src/library/VaultLib.sol";
  * - Flexible accounting with real-time or cached asset valuation
  * - Role-based access control for administration and fee management
  */
-contract Vault is BaseVault {
-    string public constant VAULT_VERSION = "0.3.0";
+contract Vault is BaseVault, LinearWithdrawalFee {
+    string public constant VAULT_VERSION = "0.4.2";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
-
-    /**
-     * @notice Internal function to get the fee storage.
-     * @return $ The fee storage.
-     */
-    function _getFeeStorage() internal pure returns (FeeStorage storage) {
-        return VaultLib.getFeeStorage();
-    }
 
     /**
      * @notice Initializes the vault.
@@ -67,33 +60,25 @@ contract Vault is BaseVault {
     //// FEES ////
 
     /**
-     * @notice Returns the fee on raw assets where the fee would get added on top of the assets.
-     * @param assets The amount of assets.
-     * @return The fee on raw assets.
+     * @notice Returns the fee on amount where the fee would get added on top of the amount.
+     * @param amount The amount on which the fee would get added.
+     * @param user The address of the user.
+     * @return The fee amount.
      */
-    function _feeOnRaw(uint256 assets) public view override returns (uint256) {
-        FeeStorage storage fees = _getFeeStorage();
-        uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;
-        if (baseWithdrawalFee_ == 0) {
-            return 0;
-        }
-        return FeeMath.feeOnRaw(assets, baseWithdrawalFee_);
+    function _feeOnRaw(uint256 amount, address user) public view override returns (uint256) {
+        return __feeOnRaw(amount, user);
     }
 
     /**
-     * @notice Returns the fee on total assets where the fee is already included.
-     * @param assets The amount of assets.
-     * @return The fee on total assets.
-     * @dev Calculates the fee part of an amount `assets` that already includes fees.
+     * @notice Returns the fee amount where fee is already included in amount
+     * @param amount The amount on which the fee is already included.
+     * @param user The address of the user.
+     * @return The fee amount.
+     * @dev Calculates the fee part of an amount `amount` that already includes fees.
      * Used in {IERC4626-deposit} and {IERC4626-redeem} operations.
      */
-    function _feeOnTotal(uint256 assets) public view override returns (uint256) {
-        FeeStorage storage fees = _getFeeStorage();
-        uint256 baseWithdrawalFee_ = fees.baseWithdrawalFee;
-        if (baseWithdrawalFee_ == 0) {
-            return 0;
-        }
-        return FeeMath.feeOnTotal(assets, baseWithdrawalFee_);
+    function _feeOnTotal(uint256 amount, address user) public view override returns (uint256) {
+        return __feeOnTotal(amount, user);
     }
 
     //// FEES ADMIN ////
@@ -108,22 +93,17 @@ contract Vault is BaseVault {
     }
 
     /**
-     * @dev Internal implementation of setBaseWithdrawalFee
-     * @param baseWithdrawalFee_ The new base withdrawal fee in basis points (1/10000)
+     * @notice Sets whether the withdrawal fee is exempted for a user
+     * @param user_ The address of the user
+     * @param baseWithdrawalFee_ The overridden base withdrawal fee in basis points (1/10000)
+     * @param toOverride_ Whether to override the withdrawal fee for the user
+     * @dev Only callable by accounts with FEE_MANAGER_ROLE
      */
-    function _setBaseWithdrawalFee(uint64 baseWithdrawalFee_) internal virtual {
-        if (baseWithdrawalFee_ > FeeMath.BASIS_POINT_SCALE) revert ExceedsMaxBasisPoints(baseWithdrawalFee_);
-        FeeStorage storage fees = _getFeeStorage();
-        uint64 oldFee = fees.baseWithdrawalFee;
-        fees.baseWithdrawalFee = baseWithdrawalFee_;
-        emit SetBaseWithdrawalFee(oldFee, baseWithdrawalFee_);
-    }
-
-    /**
-     * @notice Returns the base withdrawal fee
-     * @return uint64 The base withdrawal fee in basis points (1/10000)
-     */
-    function baseWithdrawalFee() external view returns (uint64) {
-        return _getFeeStorage().baseWithdrawalFee;
+    function overrideBaseWithdrawalFee(address user_, uint64 baseWithdrawalFee_, bool toOverride_)
+        external
+        virtual
+        onlyRole(FEE_MANAGER_ROLE)
+    {
+        _overrideBaseWithdrawalFee(user_, baseWithdrawalFee_, toOverride_);
     }
 }
