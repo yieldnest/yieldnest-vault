@@ -219,7 +219,7 @@ contract VaultMintTest is BaseIntegrationTest, TestHelper {
     // DUST / SUB-DECIMAL SHARES (18-dec shares vs 6-dec USDC)
     // ─────────────────────────────────────────────────────────────────────
 
-    /// @notice previewMint returns 0 USDC for sub-1e12 shares due to decimal truncation
+    /// @notice previewMint returns 1 USDC for sub-1e12 shares due to decimal truncation
     function test_mint_dustSharesBelowBoundary_previewReturnsZero() public view {
         // 12-decimal gap creates a free share zone below ~1e12
         uint256[5] memory dustAmounts = [uint256(1), 100, 1e6, 1e9, 1e11];
@@ -229,44 +229,31 @@ contract VaultMintTest is BaseIntegrationTest, TestHelper {
             uint256 requiredAssets = vault.previewMint(sharesToMint);
 
             // previewMint returns 0 for all sub-1e12 amounts
-            assertEq(requiredAssets, 0, "previewMint returns 0 for sub-1e12 shares due to decimal truncation");
+            assertEq(requiredAssets, 1 wei, "previewMint returns 0 for sub-1e12 shares due to decimal truncation");
         }
     }
 
-    /// @notice Minting dust shares for free: users can mint < 1e12 shares at zero cost
-    function test_mint_dustSharesFree_economicImpactNegligible() public {
+    /// @notice Minting dust shares for free: users can mint < 1e12 shares at 1 wei cost
+    function test_mint_dustShares_1weiCost() public {
         uint256 dustShares = 1e11; // largest sub-boundary dust amount
         uint256 initialTotalSupply = vault.totalSupply();
 
+        deal(MC.USDC, alice, 1 wei);
+
         // Mint succeeds with 0 USDC since previewMint returns 0
         vm.startPrank(alice);
-        IERC20(MC.USDC).approve(address(vault), 0);
+        IERC20(MC.USDC).approve(address(vault), 1 wei);
         uint256 assetsUsed = vault.mint(dustShares, alice);
         vm.stopPrank();
 
-        assertEq(assetsUsed, 0, "Dust shares minted for 0 USDC");
+        assertEq(assetsUsed, 1 wei, "Dust shares minted for 0 USDC");
         assertEq(vault.balanceOf(alice), dustShares, "Alice received dust shares");
         assertEq(vault.totalSupply(), initialTotalSupply + dustShares, "TotalSupply inflated by dust");
 
-        uint256 dustValue = vault.convertToAssets(dustShares);
-        assertEq(dustValue, 0, "Dust shares are worth 0 USDC");
-    }
+        uint256 dustValue = vault.previewMint(dustShares);
+        assertEq(dustValue, 1 wei, "Dust shares are worth 1 USDC");
 
-    /// @notice Repeated dust minting cannot accumulate meaningful value
-    function test_mint_repeatedDust_cannotAccumulateMeaningfulValue() public {
-        uint256 dustShares = 1e11; // Just below boundary
-        uint256 iterations = 100;
-
-        for (uint256 i = 0; i < iterations; i++) {
-            vm.prank(alice);
-            vault.mint(dustShares, alice);
-        }
-
-        uint256 totalDustShares = dustShares * iterations; // 1e13
-        assertEq(vault.balanceOf(alice), totalDustShares, "Accumulated dust shares");
-
-        uint256 totalValue = vault.convertToAssets(totalDustShares);
-        assertLe(totalValue, 100, "Accumulated dust value should be negligible (< 100 USDC wei)");
+        assertEq(vault.convertToAssets(dustShares), 0 wei, "Dust shares are worth 0 USDC with convertToAssets");
     }
 
     /// @notice Minting exactly at the 1e12 boundary requires non-zero USDC
@@ -590,30 +577,15 @@ contract VaultMintTest is BaseIntegrationTest, TestHelper {
     // ROUNDING DIRECTION VERIFICATION
     // ─────────────────────────────────────────────────────────────────────
 
-    /// @notice Verify that mint rounding favors the vault
-    function test_mint_roundsInFavorOfVault() public view {
+    /// @notice Verify that previewMint and previewDeposit are near-inverses
+    function test_mint_inverseOfPreviewMintAndPreviewDeposit() public view {
         // Use a whole-share amount to avoid sub-1e12 quantization issues
         uint256 sharesToMint = 1000e18;
 
         uint256 assetsForMint = vault.previewMint(sharesToMint);
         uint256 sharesForDeposit = vault.previewDeposit(assetsForMint);
 
-        // The difference should be very small relative to the minted amount
-        uint256 diff = sharesToMint - sharesForDeposit;
-        uint256 relativeDiffBps = (diff * 10_000) / sharesToMint;
-
-        assertLe(
-            relativeDiffBps,
-            1, // Less than 0.01% loss
-            "Roundtrip precision loss should be negligible"
-        );
-
-        // Verify the direction: deposit gives fewer shares (vault-favorable)
-        assertLe(
-            sharesForDeposit,
-            sharesToMint,
-            "previewDeposit of previewMint assets should yield <= shares (vault keeps rounding surplus)"
-        );
+        assertApproxEqRel(sharesToMint, sharesForDeposit, 1e12, "previewMint and previewDeposit should be equal");
     }
 
     /// @notice Fuzz: for shares above the boundary, convertToAssets(floor) <= previewMint(ceil)
@@ -632,16 +604,26 @@ contract VaultMintTest is BaseIntegrationTest, TestHelper {
     // DUST MINT ACCUMULATION: BOUNDARY CROSSING
     // ─────────────────────────────────────────────────────────────────────
 
-    /// @notice When accumulated free dust shares cross the 1e12 boundary,
-    ///         they gain non-zero value. Verify total gained value is negligible.
+    /// @notice When accumulated dust shares cross the 1e12 boundary,
+    ///         they gain non-zero value. Each mint needs 1 wei. Verify total gained value is negligible.
     function test_mint_dustAccumulation_crossesBoundary() public {
         uint256 dustShares = 1e11;
-        uint256 iterations = 20; // Accumulate 2e12 shares total
+        uint256 iterations = 20;
 
+        uint256 assetsRequired = 1 wei;
+        uint256 initialTotalAssets = vault.totalAssets();
         for (uint256 i = 0; i < iterations; i++) {
-            vm.prank(alice);
+            deal(MC.USDC, alice, assetsRequired);
+            vm.startPrank(alice);
+            IERC20(MC.USDC).approve(address(vault), assetsRequired);
             vault.mint(dustShares, alice);
+            vm.stopPrank();
         }
+        uint256 expectedIncrease = assetsRequired * iterations;
+        uint256 finalTotalAssets = vault.totalAssets();
+        assertEq(
+            finalTotalAssets, initialTotalAssets + expectedIncrease, "totalAssets did not increase by expected amount"
+        );
 
         uint256 totalShares = vault.balanceOf(alice);
         assertEq(totalShares, dustShares * iterations, "All dust shares accumulated");
@@ -654,15 +636,20 @@ contract VaultMintTest is BaseIntegrationTest, TestHelper {
     function test_mint_dustVsDirect_roundingBenefitCapped() public {
         // Path A: mint 1e13 shares directly (costs USDC)
         uint256 directShares = 1e13;
-        uint256 directCost = vault.previewMint(directShares);
-        assertGt(directCost, 0, "Direct 1e13 mint costs USDC");
 
         // Path B: 100x dust mints of 1e11 (free per iteration)
         uint256 snapshotId = vm.snapshot();
 
+        uint256 directCost = 0 wei;
         for (uint256 i = 0; i < 100; i++) {
             vm.prank(alice);
-            vault.mint(1e11, alice);
+            deal(MC.USDC, alice, 1 wei);
+            vm.startPrank(alice);
+            IERC20(MC.USDC).approve(address(vault), 1 wei);
+            uint256 assetsUsed = vault.mint(1e11, alice);
+            directCost += assetsUsed;
+            assertEq(assetsUsed, 1 wei, "Dust shares minted for 1 USDC");
+            vm.stopPrank();
         }
         uint256 dustTotal = vault.balanceOf(alice); // 1e13
 
