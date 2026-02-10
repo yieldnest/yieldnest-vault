@@ -220,7 +220,7 @@ contract VaultMintTest is BaseIntegrationTest, TestHelper {
     // ─────────────────────────────────────────────────────────────────────
 
     /// @notice previewMint returns 0 USDC for sub-1e12 shares due to decimal truncation
-    function test_mint_dustSharesBelowBoundary_previewReturnsZero() public {
+    function test_mint_dustSharesBelowBoundary_previewReturnsZero() public view {
         // 12-decimal gap creates a free share zone below ~1e12
         uint256[5] memory dustAmounts = [uint256(1), 100, 1e6, 1e9, 1e11];
 
@@ -453,7 +453,7 @@ contract VaultMintTest is BaseIntegrationTest, TestHelper {
     }
 
     /// @notice maxMint should return type(uint256).max when not paused
-    function test_maxMint_returnsMaxWhenNotPaused() public {
+    function test_maxMint_returnsMaxWhenNotPaused() public view {
         assertEq(vault.maxMint(alice), type(uint256).max, "maxMint should return max uint256 when not paused");
     }
 
@@ -512,7 +512,7 @@ contract VaultMintTest is BaseIntegrationTest, TestHelper {
     /// @notice previewMint and previewDeposit should be near-inverses for meaningful amounts.
     ///         Due to Ceil/Floor rounding + the 12-decimal gap, there is quantization error
     ///         of up to 1e12 shares (= 1 USDC wei worth of shares).
-    function test_mint_previewMint_previewDeposit_nearInverse() public {
+    function test_mint_previewMint_previewDeposit_nearInverse() public view {
         uint256 sharesToMint = 5000e18;
 
         // previewMint: shares -> required assets
@@ -591,7 +591,7 @@ contract VaultMintTest is BaseIntegrationTest, TestHelper {
     // ─────────────────────────────────────────────────────────────────────
 
     /// @notice Verify that mint rounding favors the vault
-    function test_mint_roundsInFavorOfVault() public {
+    function test_mint_roundsInFavorOfVault() public view {
         // Use a whole-share amount to avoid sub-1e12 quantization issues
         uint256 sharesToMint = 1000e18;
 
@@ -617,7 +617,7 @@ contract VaultMintTest is BaseIntegrationTest, TestHelper {
     }
 
     /// @notice Fuzz: for shares above the boundary, convertToAssets(floor) <= previewMint(ceil)
-    function test_mint_fuzz_roundingConsistency(uint256 sharesToMint) public {
+    function test_mint_fuzz_roundingConsistency(uint256 sharesToMint) public view {
         sharesToMint = bound(sharesToMint, 1e12, 100_000_000e18);
 
         uint256 assetsRequired = vault.previewMint(sharesToMint);
