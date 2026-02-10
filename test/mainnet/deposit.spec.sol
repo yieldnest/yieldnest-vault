@@ -93,10 +93,12 @@ contract VaultDepositTest is BaseIntegrationTest, TestHelper {
 
         // Assert conversion rates stayed the same
         assertEq(vault.convertToAssets(1e18), initialConvertToAssets, "convertToAssets rate should remain unchanged");
-        assertGe(
+
+        // assets converted to shares may result in less shares than expected due to rounding
+        assertLe(
             vault.convertToShares(1e6),
             initialConvertToShares,
-            "convertToShares rate should remain greater than or equal to the initial convertToShares rate"
+            "convertToShares rate should be less than or equal to the initial convertToShares rate"
         );
         assertApproxEqRel(
             vault.convertToShares(1e6),

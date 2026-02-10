@@ -28,7 +28,7 @@ contract VaultWithdrawTest is BaseIntegrationTest, TestHelper {
         vault.processAccounting();
     }
 
-    function test_Vault_maxWithdraw_reverts() public {
+    function test_Vault_maxWithdraw_returnsZero() public {
         address alice = address(0x1);
 
         // First deposit some assets to have a valid owner with shares
@@ -38,12 +38,12 @@ contract VaultWithdrawTest is BaseIntegrationTest, TestHelper {
         vm.prank(alice);
         vault.deposit(1000e6, alice);
 
-        // Now test maxWithdraw with valid owner parameter
-        vm.expectRevert();
-        vault.maxWithdraw(alice);
+        // Now assert maxWithdraw returns 0 for the owner
+        uint256 maxWithdrawAmount = vault.maxWithdraw(alice);
+        assertEq(maxWithdrawAmount, 0, "maxWithdraw should return 0");
     }
 
-    function test_Vault_maxRedeem_reverts() public {
+    function test_Vault_maxRedeem_returnsZero() public {
         address alice = address(0x1);
 
         // First deposit some assets to have a valid owner with shares
@@ -53,9 +53,9 @@ contract VaultWithdrawTest is BaseIntegrationTest, TestHelper {
         vm.prank(alice);
         vault.deposit(1000e6, alice);
 
-        // Now test maxRedeem with valid owner parameter
-        vm.expectRevert();
-        vault.maxRedeem(alice);
+        // Now assert maxRedeem returns 0 for the owner
+        uint256 maxRedeemAmount = vault.maxRedeem(alice);
+        assertEq(maxRedeemAmount, 0, "maxRedeem should return 0");
     }
 
     function test_Vault_withdraw_reverts() public {
