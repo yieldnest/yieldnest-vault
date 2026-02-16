@@ -7,11 +7,6 @@ interface IBaseStrategy {
         mapping(address => bool) isAssetWithdrawable;
     }
 
-    struct SyncStrategyStorage {
-        bool syncDeposit;
-        bool syncWithdraw;
-    }
-
     event SetHasAllocator(bool previous, bool hasAllocator);
     event SetAssetWithdrawable(address asset, bool previous, bool isWithdrawable);
 

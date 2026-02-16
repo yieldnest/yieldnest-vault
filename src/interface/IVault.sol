@@ -138,6 +138,8 @@ interface IVault is IERC4626 {
     event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
     event WithdrawalFeeOverridden(address indexed user, uint64 baseWithdrawalFee, bool isOverridden);
     event SetHooks(address indexed oldHooks, address indexed newHooks);
+    event TotalAssetsAdded(uint256 previousTotal, uint256 baseAssets);
+    event TotalAssetsSubtracted(uint256 previousTotal, uint256 baseAssets);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);
