@@ -253,7 +253,9 @@ library VaultLib {
     function addTotalAssets(uint256 baseAssets) public {
         IVault.VaultStorage storage vaultStorage = getVaultStorage();
         if (!vaultStorage.alwaysComputeTotalAssets) {
-            vaultStorage.totalAssets += baseAssets;
+            uint256 previousTotal = vaultStorage.totalAssets;
+            vaultStorage.totalAssets = previousTotal + baseAssets;
+            emit IVault.TotalAssetsAdded(previousTotal, baseAssets);
         }
     }
 
@@ -266,7 +268,9 @@ library VaultLib {
         if (!vaultStorage.alwaysComputeTotalAssets) {
             // May revert on underflow when withdrawn assets are valued higher than stored total assets.
             //Mitigated by seeding the vault to create enough of a buffer for error.
-            vaultStorage.totalAssets -= baseAssets;
+            uint256 previousTotal = vaultStorage.totalAssets;
+            vaultStorage.totalAssets = previousTotal - baseAssets;
+            emit IVault.TotalAssetsSubtracted(previousTotal, baseAssets);
         }
     }
 
