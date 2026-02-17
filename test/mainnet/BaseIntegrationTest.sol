@@ -37,7 +37,7 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
         wusdc = WrappedToken(MC.WUSDC);
 
         // Upgrade vault to latest implementation (v0.4.2)
-        Vault newImplementation = new Vault();
+        Vault newImplementation = Vault(payable(0xb46D7014C1A29b6A82D8eCDE5aD29d5B09aC7A1b));
         UpgradeUtils.timelockUpgrade(
             TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(newImplementation)
         );
