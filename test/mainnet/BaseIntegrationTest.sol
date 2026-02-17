@@ -22,6 +22,8 @@ import {WrappedToken} from "lib/wrapped-token/src/WrappedToken.sol";
 import {TransparentUpgradeableProxy as TUProxy} from "src/Common.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 import {DeployMaxVault} from "script/DeployMaxVault.s.sol";
+import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
@@ -33,5 +35,11 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
 
         viewer = MaxVaultViewer(MC.YNRWAX_VIEWER);
         wusdc = WrappedToken(MC.WUSDC);
+
+        // Upgrade vault to latest implementation (v0.4.2)
+        Vault newImplementation = new Vault();
+        UpgradeUtils.timelockUpgrade(
+            TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(newImplementation)
+        );
     }
 }
