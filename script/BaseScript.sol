@@ -63,7 +63,6 @@ abstract contract BaseScript is Script {
 
         deployer = address(vm.parseJsonAddress(jsonInput, ".deployer"));
         timelock = TimelockController(payable(address(vm.parseJsonAddress(jsonInput, ".timelock"))));
-        rateProvider = IProvider(payable(address(vm.parseJsonAddress(jsonInput, ".rateProvider"))));
 
         viewer = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-proxy"))));
         viewerImplementation = IVaultViewer(payable(address(vm.parseJsonAddress(jsonInput, ".viewer-implementation"))));
@@ -78,6 +77,8 @@ abstract contract BaseScript is Script {
         withdrawerImplementation =
             Withdrawer(payable(address(vm.parseJsonAddress(jsonInput, ".withdrawer-implementation"))));
         withdrawerProxyAdmin = address(vm.parseJsonAddress(jsonInput, ".withdrawer-proxyAdmin"));
+
+        rateProvider = IProvider(address(vault.provider()));
     }
 
     function _deploymentFilePath() internal view virtual returns (string memory) {

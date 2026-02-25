@@ -171,6 +171,16 @@ contract VerifyMaxVault is BaseScript, Test {
         uint256 oneShare = 1e18;
         uint256 assetAmount = vault.convertToAssets(oneShare);
         console.log("Vault rate (1 share in assets):", assetAmount);
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            address asset = assets[i];
+            uint256 rate = rateProvider.getRate(asset);
+            console.log("Asset:", asset, "has rate:", rate);
+            // this is just a sanity heuristic, in theory it can be lower, in practice strats are at >= 1.0
+            require(rate >= 1e18, "Asset in getAssets does not have a getRate() greater than 1e18");
+            // This is just a sanity heuristic, in theory it can be higher, in practice nothing is there yet at 300% gains.
+            require(rate < 3 ether, "Asset in getAssets does not have a getRate() lower than 3 ether");
+        }
     }
 
     function _checkForAsset(address asset) internal view returns (bool isIncluded, uint256 index) {

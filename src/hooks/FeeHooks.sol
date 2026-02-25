@@ -217,7 +217,9 @@ contract FeeHooks is Ownable, IHooks, IFeeHooks {
      * @param config_ The config struct
      */
     function setConfig(Config memory config_) external virtual onlyOwner {
+        Config memory oldConfig = config;
         config = config_;
+        emit SetConfig(oldConfig, config_);
     }
 
     /**

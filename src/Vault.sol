@@ -19,7 +19,7 @@ import {LinearWithdrawalFee} from "src/module/LinearWithdrawalFee.sol";
  * - Role-based access control for administration and fee management
  */
 contract Vault is BaseVault, LinearWithdrawalFee {
-    string public constant VAULT_VERSION = "0.4.1";
+    string public constant VAULT_VERSION = "0.4.2";
     bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
     /**

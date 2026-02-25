@@ -108,6 +108,7 @@ contract SetupBase6DecimalsVault is SetupVault {
 
         vault.addAsset(address(wusdc), true);
         vault.addAsset(MC.USDC, true); // USDC mocked at WETH address
+        vault.addAsset(MC.USDT, true); // USDT mocked at WETH address
         vault.addAsset(MC.BUFFER, false);
         vault.addAsset(MC.WBTC, true);
         vault.addAsset(MC.STETH, true); // 18 decimals asset
@@ -117,6 +118,7 @@ contract SetupBase6DecimalsVault is SetupVault {
         // Set rates in provider
         mock6DecimalsProvider.setRate(address(wusdc), 1e18); // 1 USD USDC
         mock6DecimalsProvider.setRate(MC.USDC, 1e18); // 1 USD USDC
+        mock6DecimalsProvider.setRate(MC.USDT, 1e18); // 1 USD USDT
         mock6DecimalsProvider.setRate(MC.USDE, 1e18); // 1 USD USDE
         mock6DecimalsProvider.setRate(MC.WBTC, 100_000e18); // 100k USD bitcoin
         mock6DecimalsProvider.setRate(MC.STETH, 10_000e18); // 10k USD steth

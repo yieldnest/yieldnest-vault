@@ -124,9 +124,9 @@ interface IVault is IERC4626 {
         uint256 shares
     );
 
-    event SetProvider(address indexed provider);
-    event SetBuffer(address indexed buffer);
-    event SetAlwaysComputeTotalAssets(bool alwaysComputeTotalAssets);
+    event SetProvider(address indexed previousProvider, address indexed provider);
+    event SetBuffer(address indexed previousBuffer, address indexed buffer);
+    event SetAlwaysComputeTotalAssets(bool previous, bool alwaysComputeTotalAssets);
     event NewAsset(address indexed asset, uint256 decimals, uint256 index);
     event ProcessSuccess(address[] targets, uint256[] values, bytes[] data);
     event Pause(bool paused);
@@ -138,6 +138,8 @@ interface IVault is IERC4626 {
     event SetBaseWithdrawalFee(uint64 oldFee, uint64 newFee);
     event WithdrawalFeeOverridden(address indexed user, uint64 baseWithdrawalFee, bool isOverridden);
     event SetHooks(address indexed oldHooks, address indexed newHooks);
+    event TotalAssetsAdded(uint256 previousTotal, uint256 baseAssets);
+    event TotalAssetsSubtracted(uint256 previousTotal, uint256 baseAssets);
 
     // 4626-MAX
     function getAssets() external view returns (address[] memory list);

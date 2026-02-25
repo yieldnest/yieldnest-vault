@@ -9,6 +9,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {IERC20Metadata} from "src/Common.sol";
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {ViewUtils} from "test/utils/ViewUtils.sol";
+import {Ownable} from "src/Common.sol";
 
 interface IProcessAccountingGuardHook {
     function setMaxTotalAssetsDecreaseRatio(uint256 _maxTotalAssetsDecreaseRatio) external;
@@ -76,4 +77,16 @@ library HooksUtils {
         vm.stopPrank();
     }
 
+    /**
+     * @notice Set the performance fee on the ProcessAccountingGuardHook for the given vault
+     * @param vault The vault to target
+     * @param _performanceFee The new performance fee
+     */
+    function setPerformanceFee(IVault vault, uint256 _performanceFee) internal {
+        address hook = ViewUtils.getHooks(vault, "PerformanceFeeHooks");
+        address owner = Ownable(hook).owner();
+        vm.startPrank(owner);
+        IFeeHooks(hook).setPerformanceFee(_performanceFee);
+        vm.stopPrank();
+    }
 }

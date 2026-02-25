@@ -200,8 +200,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 donationAmount = 10 ether;
 
         // Increase thresholds to accommodate donations
-        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 0.01 ether);
-        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 0.01 ether);
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 0.03 ether);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 0.03 ether);
 
         // Deposit into the vault
         deal(MC.WETH, address(this), depositAmount);

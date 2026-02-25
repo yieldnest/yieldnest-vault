@@ -17,7 +17,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
     using HooksLib for IHooks;
 
     /// @notice The version of the strategy contract.
-    string public constant STRATEGY_VERSION = "0.3.0";
+    string public constant STRATEGY_VERSION = "0.3.1";
     /// @notice Role for allocator permissions
     bytes32 public constant ALLOCATOR_ROLE = keccak256("ALLOCATOR_ROLE");
     /// @notice Role for allocator manager permissions
@@ -45,9 +45,10 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
      */
     function _setHasAllocator(bool hasAllocators_) internal {
         BaseStrategyStorage storage strategyStorage = _getBaseStrategyStorage();
+        bool previous = strategyStorage.hasAllocators;
         strategyStorage.hasAllocators = hasAllocators_;
 
-        emit SetHasAllocator(hasAllocators_);
+        emit SetHasAllocator(previous, hasAllocators_);
     }
 
     /**
@@ -61,6 +62,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Sets whether the asset is withdrawable.
+     * @dev This function can be called even if the asset is not added to the vault.
      * @param asset_ The address of the asset.
      * @param withdrawable_ The new value for the withdrawable flag.
      */
@@ -70,14 +72,16 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Internal function to set whether the asset is withdrawable.
+     * @dev This function can be called even if the asset is not added to the vault.
      * @param asset_ The address of the asset.
      * @param withdrawable_ The new value for the withdrawable flag.
      */
     function _setAssetWithdrawable(address asset_, bool withdrawable_) internal {
         BaseStrategyStorage storage strategyStorage = _getBaseStrategyStorage();
+        bool previous = strategyStorage.isAssetWithdrawable[asset_];
         strategyStorage.isAssetWithdrawable[asset_] = withdrawable_;
 
-        emit SetAssetWithdrawable(asset_, withdrawable_);
+        emit SetAssetWithdrawable(asset_, previous, withdrawable_);
     }
 
     /**
@@ -168,6 +172,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Previews the amount of assets that would be required to mint a given amount of shares.
+     * @dev The computation rounds up to error on the side of more assets being deposited.
      * @param asset_ The address of the asset.
      * @param shares The amount of shares to mint.
      * @return assets The equivalent amount of assets.
@@ -178,6 +183,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
 
     /**
      * @notice Previews the amount of assets that would be received for a given amount of shares.
+     * @dev The computation rounds down to error on the side of less assets being received.
      * @param asset_ The address of the asset.
      * @param shares The amount of shares to redeem.
      * @return assets The equivalent amount of assets.

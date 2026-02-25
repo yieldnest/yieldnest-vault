@@ -83,6 +83,7 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         // Add assets: Base asset always first
         vault.addAsset(MC.WETH, true);
+        vault.addAsset(MC.USDT, true);
         vault.addAsset(MC.BUFFER, false);
         vault.addAsset(MC.STETH, true);
         vault.addAsset(MC.WBTC, true);
@@ -105,6 +106,8 @@ contract SetupVault is Test, Etches, MainnetActors {
         MockProvider(MC.PROVIDER).setRate(MC.WBTC, 20e18);
         // Set METH rate to 1.2 ETH
         MockProvider(MC.PROVIDER).setRate(MC.METH, 1.2e18);
+
+        MockProvider(MC.PROVIDER).setRate(MC.USDT, 0.001e18);
 
         // Unpause the vault
         vault.unpause();

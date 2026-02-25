@@ -30,6 +30,7 @@ contract Etches is Test {
         mockCL_STETH();
         mockWBTC();
         mockUSDC();
+        mockUSDT();
         mockUSDE();
         mockSUSDE();
         mockProvider();
@@ -95,6 +96,12 @@ contract Etches is Test {
         MockERC20CustomDecimals usdc = new MockERC20CustomDecimals("USD Coin", "USDC", 6);
         bytes memory code = address(usdc).code;
         vm.etch(MainnetContracts.USDC, code);
+    }
+
+    function mockUSDT() public {
+        MockERC20CustomDecimals usdt = new MockERC20CustomDecimals("Tether USD", "USDT", 6);
+        bytes memory code = address(usdt).code;
+        vm.etch(MainnetContracts.USDT, code);
     }
 
     function mockUSDE() public {

@@ -188,13 +188,13 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.addAsset(address(asset2), true);
         vm.stopPrank();
 
-        assertEq(vault.getAssets().length, 7);
+        assertEq(vault.getAssets().length, 8);
 
         vm.startPrank(ASSET_MANAGER);
         vault.deleteAsset(1);
         vm.stopPrank();
 
-        assertEq(vault.getAssets().length, 6);
+        assertEq(vault.getAssets().length, 7);
     }
 
     function test_Vault_deleteAsset_updatesIndex() public {
@@ -305,12 +305,12 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vault.addAsset(address(asset2), true);
         vm.stopPrank();
 
-        assertEq(vault.getAssets().length, 7);
+        assertEq(vault.getAssets().length, 8);
 
         deal(address(asset2), address(vault), 100);
         vm.startPrank(ASSET_MANAGER);
         vm.expectRevert(abi.encodeWithSelector(IVault.AssetNotEmpty.selector, address(asset2)));
-        vault.deleteAsset(6);
+        vault.deleteAsset(7);
         vm.stopPrank();
     }
 
@@ -329,8 +329,23 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
 
     function test_Vault_setBuffer_nullAddress() public {
         vm.prank(ADMIN);
-        vm.expectRevert();
         vault.setBuffer(address(0));
+
+        assertEq(vault.buffer(), address(0));
+    }
+
+    function test_Vault_setBuffer_toggle() public {
+        address originalBuffer = vault.buffer();
+
+        // Set buffer to address(0)
+        vm.prank(ADMIN);
+        vault.setBuffer(address(0));
+        assertEq(vault.buffer(), address(0), "Buffer should be set to zero address");
+
+        // Set buffer back to previous/original buffer
+        vm.prank(ADMIN);
+        vault.setBuffer(originalBuffer);
+        assertEq(vault.buffer(), originalBuffer, "Buffer should be set back to original value");
     }
 
     function test_Vault_pause_whenPaused() public {
@@ -345,6 +360,111 @@ contract VaultAdminUintTest is Test, MainnetActors, Etches {
         vm.prank(UNPAUSER);
         vm.expectRevert();
         vault.unpause();
+    }
+
+    function test_Vault_unpause_revertsWhenProviderNotSet() public {
+        // Create a new vault without provider
+        Vault implementation = new Vault();
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), "");
+        Vault newVault = Vault(payable(address(proxy)));
+        newVault.initialize(address(this), "Test", "TST", 18, 0, false, false, 0);
+
+        // Grant unpauser role
+        newVault.grantRole(newVault.UNPAUSER_ROLE(), address(this));
+
+        // Try to unpause without provider - should revert
+        vm.expectRevert(IVault.ProviderNotSet.selector);
+        newVault.unpause();
+    }
+
+    function test_Vault_unpause_succeedsWhenProviderSet() public {
+        vm.prank(PAUSER);
+        vault.pause();
+
+        vm.prank(UNPAUSER);
+        vault.unpause();
+
+        assertFalse(vault.paused(), "Vault should be unpaused");
+    }
+
+    function test_Vault_pause_whenAlreadyPaused() public {
+        vm.prank(PAUSER);
+        vault.pause();
+
+        vm.expectRevert(IVault.Paused.selector);
+        vm.prank(PAUSER);
+        vault.pause();
+    }
+
+    function test_Vault_setAlwaysComputeTotalAssets_callsProcessAccountingWhenDisabling() public {
+        vm.prank(alice);
+        vault.deposit(1 ether, alice);
+
+        // Enable always compute
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(true);
+        assertTrue(vault.alwaysComputeTotalAssets());
+
+        // Add some yield
+        deal(address(weth), address(this), 0.1 ether);
+        weth.transfer(address(vault), 0.1 ether);
+
+        // Disable always compute - should call processAccounting
+        uint256 totalAssetsBefore = vault.totalAssets();
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(false);
+
+        // Total assets should be updated after processAccounting
+        assertFalse(vault.alwaysComputeTotalAssets());
+        assertGe(vault.totalAssets(), totalAssetsBefore, "Total assets should be updated");
+    }
+
+    function test_Vault_setAlwaysComputeTotalAssets_emitsEvent() public {
+        bool previous = vault.alwaysComputeTotalAssets();
+        vm.expectEmit(true, false, false, false);
+        emit IVault.SetAlwaysComputeTotalAssets(previous, true);
+
+        vm.prank(ASSET_MANAGER);
+        vault.setAlwaysComputeTotalAssets(true);
+    }
+
+    function test_Vault_setAlwaysComputeTotalAssets_unauthorized() public {
+        vm.expectRevert();
+        vault.setAlwaysComputeTotalAssets(true);
+    }
+
+    function test_Vault_setProvider_emitsEvent() public {
+        address oldProvider = vault.provider();
+        address newProvider = address(0x123);
+
+        vm.expectEmit(true, true, false, false);
+        emit IVault.SetProvider(oldProvider, newProvider);
+
+        vm.prank(PROVIDER_MANAGER);
+        vault.setProvider(newProvider);
+
+        assertEq(vault.provider(), newProvider, "Provider should be set");
+    }
+
+    function test_Vault_setProvider_unauthorized() public {
+        vm.expectRevert();
+        vault.setProvider(address(0x123));
+    }
+
+    function test_Vault_setBuffer_emitsEvent() public {
+        address newBuffer = address(0x456);
+        address oldBuffer = vault.buffer();
+
+        vm.expectEmit(true, true, false, false);
+        emit IVault.SetBuffer(oldBuffer, newBuffer);
+
+        vm.prank(BUFFER_MANAGER);
+        vault.setBuffer(newBuffer);
+    }
+
+    function test_Vault_setBuffer_unauthorized() public {
+        vm.expectRevert();
+        vault.setBuffer(address(0x456));
     }
 
     function test_Vault_addAsset_firstAssetWithDifferentDecimals() public {

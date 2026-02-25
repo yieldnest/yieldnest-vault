@@ -67,6 +67,7 @@ library MainnetContracts {
 
     address public constant WBTC = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
     address public constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address public constant USDE = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
     address public constant SUSDE = 0x9D39A5DE30e57443BfF2A8307A4256c8797A3497;
 
@@ -74,9 +75,23 @@ library MainnetContracts {
     address public constant CURVE_LP_YNETH_YNLSDE_CONNECTOR = 0xe66E34F9E3116ce497Cbd15268f175eC711539d5;
     address public constant CURVE_LP_YNETH_YNLSDE_STRATEGY = 0x823976dA34aC45C23a8DfEa51B3Ff1Ae0D980213;
 
+    // ynFlex-wstETH-ynETHx-LVG1
+
+    address public constant YNFLEX_WSTETH_YNETHX_LVG1 = 0x115B50649e50c2b36B3D2Ec0928E72492c85dA7D;
+
     // Smokehouse WSTETH
     address public constant SMOKEHOUSE_WSTETH = 0x833AdaeF212c5cD3f78906B44bBfb18258F238F0;
     address public constant MORPHO_MEV_CAPITAL_WETH = 0x9a8bC3B04b7f3D87cfC09ba407dCED575f2d61D8;
+
+    // Aave V3
+    address public constant AAVE_V3_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
+    address public constant AAVE_V3_ORACLE = 0x54586bE62E3c3580375aE3723C145253060Ca0C2;
+    address public constant AAVE_A_WSTETH = 0x0B925eD163218f6662a35e0f0371Ac234f9E9371; // aEthwstETH
+    address public constant AAVE_VARIABLE_DEBT_USDC = 0x72E95b8931767C79bA4EeE721354d6E99a61D004; // variableDebtEthUSDC
+
+    // Chainlink Price Feeds
+    address public constant CL_ETH_USD_FEED = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address public constant CL_USDC_USD_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
 }
 
 contract L1Contracts is IContracts {

@@ -78,6 +78,20 @@ contract StrategAdminUnitTest is Test, Etches, MainnetActors {
         assertEq(strategy.getAssetWithdrawable(address(asset)), false, "asset should not be withdrawable");
     }
 
+    function test_Strategy_setAssetWithdrawable_assetNotAdded() public {
+        assertEq(strategy.getAssetWithdrawable(address(asset)), false, "asset should not be withdrawable");
+
+        vm.prank(ASSET_MANAGER);
+        strategy.setAssetWithdrawable(address(asset), true);
+
+        assertEq(strategy.getAssetWithdrawable(address(asset)), true, "asset should be withdrawable");
+
+        vm.prank(ASSET_MANAGER);
+        strategy.setAssetWithdrawable(address(asset), false);
+
+        assertEq(strategy.getAssetWithdrawable(address(asset)), false, "asset should not be withdrawable");
+    }
+
     function test_Strategy_setAssetWithdrawable_unauthorized() public {
         bytes memory error = abi.encodeWithSelector(
             IAccessControl.AccessControlUnauthorizedAccount.selector, UNAUTHORIZED, strategy.ASSET_MANAGER_ROLE()

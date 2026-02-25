@@ -209,6 +209,33 @@ library BaseRules {
         return SafeRules.RuleParams({contractAddress: weth_, funcSig: funcSig, rule: rule});
     }
 
+    function getTransferRule(address token, address recipient) internal pure returns (SafeRules.RuleParams memory) {
+        address[] memory allowList = new address[](1);
+        allowList[0] = recipient;
+
+        return getTransferRule(token, allowList);
+    }
+
+    function getTransferRule(address token, address[] memory allowList)
+        internal
+        pure
+        returns (SafeRules.RuleParams memory)
+    {
+        bytes4 funcSig = bytes4(keccak256("transfer(address,uint256)"));
+
+        IVault.ParamRule[] memory paramRules = new IVault.ParamRule[](2);
+
+        paramRules[0] = IVault.ParamRule({paramType: IVault.ParamType.ADDRESS, isArray: false, allowList: allowList});
+
+        paramRules[1] =
+            IVault.ParamRule({paramType: IVault.ParamType.UINT256, isArray: false, allowList: new address[](0)});
+
+        IVault.FunctionRule memory rule =
+            IVault.FunctionRule({isActive: true, paramRules: paramRules, validator: IValidator(address(0))});
+
+        return SafeRules.RuleParams({contractAddress: token, funcSig: funcSig, rule: rule});
+    }
+
     /**
      * @notice Get an approval rule for an asset with a spender appended to the *Existing* allowlist
      * @param asset The asset to approve
