@@ -30,10 +30,12 @@ library FeeMath {
     }
 
     function feeOnRaw(uint256 amount, uint256 fee) internal pure returns (uint256) {
+        // Round up to avoid undercharging
         return amount.mulDiv(fee, BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
 
     function feeOnTotal(uint256 amount, uint256 fee) internal pure returns (uint256) {
+        // Round up to avoid undercharging
         return amount.mulDiv(fee, fee + BASIS_POINT_SCALE, Math.Rounding.Ceil);
     }
 }

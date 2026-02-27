@@ -172,21 +172,21 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 assets = vault.convertToAssets(shares);
         assertGt(assets, 0, "Assets should be greater than 0");
 
-        // Test the previewMint function
+        // Test the previewMint function (rounds Ceil, convertToAssets rounds Floor)
         uint256 previewedAssets = vault.previewMint(shares);
         assertApproxEqAbs(previewedAssets, assets, 3, "Previewed assets should equal the converted assets");
 
-        // Test the mint function
-        deal(MC.USDC, alice, assets);
+        // Test the mint function — use previewedAssets (Ceil) for deal and approve
+        deal(MC.USDC, alice, previewedAssets);
         vm.startPrank(alice);
-        IERC20(MC.USDC).approve(address(vault), assets);
+        IERC20(MC.USDC).approve(address(vault), previewedAssets);
 
         uint256 mintedAssets = vault.mint(shares, alice);
-        assertEq(mintedAssets, assets, "Minted assets should equal the converted assets");
+        assertLe(mintedAssets, previewedAssets, "Minted assets should not exceed previewed assets");
         vm.stopPrank();
 
         totalSupplyInvariant(initialSupply + shares);
-        totalAssetsInvariant(initialAssets + assets);
+        totalAssetsInvariant(initialAssets + mintedAssets);
     }
 
     function _process(address target, uint256 value, bytes memory data) internal returns (bytes memory returnData) {
@@ -268,9 +268,11 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         }
     }
 
-    function test_Vault_4626Invariants_USDC_Deposit(uint256 amount, bool processAfterDeposit, bool processAfterWithdraw)
-        public
-    {
+    function test_Vault_4626Invariants_USDC_Deposit(
+        uint256 amount,
+        bool processAfterDeposit,
+        bool /* processAfterWithdraw */
+    ) public {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 * 1e6); // USDC has 6 decimals
 

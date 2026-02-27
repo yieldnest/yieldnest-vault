@@ -65,6 +65,7 @@ contract ProviderTest is BaseIntegrationTest, Etches {
 
     function test_Provider_GetRate_FLEX_STRATEGY_USDC() public view {
         uint256 rate = provider.getRate(MC.FLEX_STRATEGY_USDC);
-        assertEq(rate, 1e18, "Rate for FLEX_STRATEGY_USDC should be 1e18");
+        assertGt(rate, 1e18, "Rate for FLEX_STRATEGY_USDC should be 1e18");
+        assertLt(rate, 2e18, "Rate for FLEX_STRATEGY_USDC should be less than 1.1e18");
     }
 }

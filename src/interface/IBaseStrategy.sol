@@ -7,22 +7,8 @@ interface IBaseStrategy {
         mapping(address => bool) isAssetWithdrawable;
     }
 
-    struct SyncStrategyStorage {
-        bool syncDeposit;
-        bool syncWithdraw;
-    }
-
-    event WithdrawAsset(
-        address indexed sender,
-        address indexed receiver,
-        address indexed owner,
-        address asset,
-        uint256 assets,
-        uint256 shares
-    );
-
-    event SetHasAllocator(bool hasAllocator);
-    event SetAssetWithdrawable(address asset, bool isWithdrawable);
+    event SetHasAllocator(bool previous, bool hasAllocator);
+    event SetAssetWithdrawable(address asset, bool previous, bool isWithdrawable);
 
     error AssetNotWithdrawable();
 
