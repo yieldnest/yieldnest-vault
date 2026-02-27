@@ -35,11 +35,5 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
 
         viewer = MaxVaultViewer(MC.YNRWAX_VIEWER);
         wusdc = WrappedToken(MC.WUSDC);
-
-        // Upgrade vault to latest implementation (v0.4.2)
-        Vault newImplementation = new Vault();
-        UpgradeUtils.timelockUpgrade(
-            TimelockController(payable(TIMELOCK)), ADMIN, address(vault), address(newImplementation)
-        );
     }
 }
