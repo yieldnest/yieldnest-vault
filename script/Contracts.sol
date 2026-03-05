@@ -136,11 +136,11 @@ contract BscContracts is IContracts {
         return MainnetContracts.WBNB;
     }
 
-    function VBNB() external pure override returns (address) {
+    function VBNB() external pure returns (address) {
         return MainnetContracts.VBNB;
     }
 
-    function VENUS_BNB_VAULT() external pure override returns (address) {
+    function VENUS_BNB_VAULT() external pure returns (address) {
         return MainnetContracts.VENUS_BNB_VAULT;
     }
 
