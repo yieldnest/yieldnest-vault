@@ -76,6 +76,9 @@ contract FXSaveTest is BaseTest {
     }
 
     function requestRedeemForFxBase(uint256 fxBaseShares) internal {
+        // Record withdrawer's fxBASE balance before
+        uint256 fxBaseBalanceBefore = IERC20(MC.FXBASE).balanceOf(address(withdrawer));
+
         // Prepare calldata for Withdrawer.requestRedeem(uint256 shares)
         bytes memory withdrawerRequestRedeemCalldata =
             abi.encodeWithSelector(IFxUSDBasePool.requestRedeem.selector, fxBaseShares);
@@ -95,6 +98,17 @@ contract FXSaveTest is BaseTest {
 
         withdrawer.processAccounting();
         vault.processAccounting();
+
+        // Record withdrawer's fxBASE balance after
+        uint256 fxBaseBalanceAfter = IERC20(MC.FXBASE).balanceOf(address(withdrawer));
+
+        // Assert that fxBASE shares are the same after only requesting.
+        assertApproxEqAbs(
+            fxBaseBalanceBefore,
+            fxBaseBalanceAfter,
+            0,
+            "Withdrawer's fxBASE balance should decrease by fxBaseShares after requestRedeem"
+        );
     }
 
     function redeemFromFxBase(uint256 fxBaseShares) internal {
@@ -303,7 +317,11 @@ contract FXSaveTest is BaseTest {
 
         uint256 withdrawerTotalBaseAssetsBefore = withdrawer.totalBaseAssets();
 
-        requestRedeemForFxBase(fxBaseObtained);
+        {
+            
+            requestRedeemForFxBase(fxBaseObtained);
+        }
+
 
         vm.assertApproxEqAbs(
             withdrawer.totalBaseAssets(),
