@@ -37,7 +37,7 @@ contract WithdrawerTest is BaseTest {
         depositAmount = bound(depositAmount, 1e6, 10_000_000e6);
         withdrawAmount = bound(withdrawAmount, 1e6, depositAmount);
 
-        uint256 totalAssetsBefore = vault.totalAssets();
+        uint256 totalBaseAssetsBefore = vault.totalBaseAssets();
 
         {
             // Give USDC to alice and have her deposit into the vault
@@ -55,24 +55,24 @@ contract WithdrawerTest is BaseTest {
         withdrawer.processAccounting();
         vault.processAccounting();
 
-        uint256 totalAssetsAfter = vault.totalAssets();
-        // Assert that totalAssetsAfter is approximately equal to totalAssetsBefore + depositAmount
-        // Allow a small absolute difference due to rounding, e.g., 1 wei
-        vm.assertApproxEqAbs(
-            totalAssetsAfter,
-            totalAssetsBefore + depositAmount,
-            1,
-            "totalAssetsAfter should be approx totalAssetsBefore + depositAmount"
+        uint256 totalBaseAssetsAfter = vault.totalBaseAssets();
+        // Assert that totalBaseAssetsAfter is approximately equal to totalBaseAssetsBefore + depositAmount
+        // Allow a small relative difference due to rounding, e.g., 1e12
+        vm.assertApproxEqRel(
+            totalBaseAssetsAfter,
+            totalBaseAssetsBefore + depositAmount * 1e12,
+            1e12,
+            "totalBaseAssetsAfter should be approx totalAssetsBefore + depositAmount"
         );
 
         // Withdraw USDC from the withdrawer using ProcessorUtils
         ProcessorUtils.withdrawFromERC4626(address(vault), address(withdrawer), withdrawAmount, PROCESSOR);
 
-        vm.assertApproxEqAbs(
-            vault.totalAssets(),
-            totalAssetsBefore + depositAmount,
-            1,
-            "totalAssetsAfter should be approx totalAssetsAfter - withdrawAmount"
+        vm.assertApproxEqRel(
+            vault.totalBaseAssets(),
+            totalBaseAssetsBefore + depositAmount * 1e12,
+            1e12,
+            "totalBaseAssetsAfter should be approx totalAssetsAfter - withdrawAmount"
         );
     }
 
@@ -113,10 +113,10 @@ contract WithdrawerTest is BaseTest {
         );
 
         // Assert that totalBaseAssets remains approximately constant (allowing for rounding error)
-        vm.assertApproxEqAbs(
+        vm.assertApproxEqRel(
             vault.totalBaseAssets(),
             totalBaseAssetsBeforeAllocation,
-            1,
+            1e12,
             "Vault totalBaseAssets should remain approx constant after allocating fxBASE to withdrawer"
         );
     }

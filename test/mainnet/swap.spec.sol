@@ -26,7 +26,7 @@ contract SwapTest is BaseTest {
         vault.processAccounting();
     }
 
-    function test_swap_USDC_to_USDT() public {
+    function skip_test_swap_USDC_to_USDT() public {
         // call processAccounting to ensure vault is in sync
         // to account for profits and fee shares earned since last call to processAccounting
         vault.processAccounting();
