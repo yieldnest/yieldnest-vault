@@ -103,6 +103,16 @@ contract ProviderTest is BaseTest {
         );
     }
 
+    function test_getRate_Of_YNUSDC() public view {
+        uint256 rate = provider.getRate(MC.YNUSDC);
+        // ynUSDC is an ERC4626 vault with 18 decimal shares and USDC (6 decimal) underlying
+        // convertToAssets(1e18) returns USDC amount (6 decimals), scaled by 1e12 to 18 decimals
+        assertEq(rate, IERC4626(MC.YNUSDC).convertToAssets(1e18) * 1e12);
+        // Rate should be >= 1e18 (1 share worth at least 1 USDC) and < 2e18
+        assertGe(rate, 1e18, "Rate should be greater than or equal to 1e18");
+        assertLt(rate, 2e18, "Rate should be less than 2e18");
+    }
+
     function test_getRate_Of_EVKVaultEUSDC95() public view {
         // Calculate one share using the decimals of the vault
         uint8 decimals = IERC4626(MC.EVK_VAULT_EUSDC_95).decimals();

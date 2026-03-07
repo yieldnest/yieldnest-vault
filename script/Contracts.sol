@@ -57,6 +57,9 @@ library MainnetContracts {
 
     // EVK Vault eUSDC-95 - ERC4626 vault with 6 decimals, underlying USDC
     address public constant EVK_VAULT_EUSDC_95 = 0x7fAb04FF2717d9A6B71A51c56c29697179597D40;
+
+    // ynUSDC - YieldNest RWA vault, ERC4626 with 18 decimals, underlying USDC
+    address public constant YNUSDC = 0xA1B096268D200d0ecFD57015700F6a0DA9c494e2;
 }
 
 contract L1Contracts is IContracts {

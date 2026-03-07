@@ -131,6 +131,12 @@ contract Provider is IProvider {
             return IERC4626(asset).convertToAssets(1e18) * 1e12;
         }
 
+        // ynUSDC - ERC4626 vault with 18 decimals, underlying USDC (6 decimals)
+        if (asset == MC.YNUSDC) {
+            // base asset is USDC with 6 decimals. we scale it to 18 decimals
+            return IERC4626(asset).convertToAssets(1e18) * 1e12;
+        }
+
         // EVK Vault eUSDC-95 - ERC4626 vault with 6 decimals, underlying USDC
         if (asset == MC.EVK_VAULT_EUSDC_95) {
             // base asset is USDC with 6 decimals. we scale it to 18 decimals to convert to Wrapped USDC
