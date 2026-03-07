@@ -318,10 +318,8 @@ contract FXSaveTest is BaseTest {
         uint256 withdrawerTotalBaseAssetsBefore = withdrawer.totalBaseAssets();
 
         {
-            
             requestRedeemForFxBase(fxBaseObtained);
         }
-
 
         vm.assertApproxEqAbs(
             withdrawer.totalBaseAssets(),

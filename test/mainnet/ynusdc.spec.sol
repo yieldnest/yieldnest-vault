@@ -116,10 +116,7 @@ contract YnUSDCTest is BaseTest {
             "Vault total supply should be similar after ynUSDC allocation"
         );
         assertApproxEqAbs(
-            vault.totalAssets(),
-            vaultAssetsBefore,
-            1e7,
-            "Vault total assets should be similar after ynUSDC allocation"
+            vault.totalAssets(), vaultAssetsBefore, 1e7, "Vault total assets should be similar after ynUSDC allocation"
         );
 
         assertTrue(
