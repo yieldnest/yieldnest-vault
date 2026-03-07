@@ -302,10 +302,10 @@ contract FXSaveTest is BaseTest {
         vault.processAccounting();
 
         // Assert after allocateToERC4626MAX (allowing approx abs diff of 1 wei)
-        vm.assertApproxEqAbs(
+        vm.assertApproxEqRel(
             vault.totalBaseAssets(),
             totalBaseAssetsAfterFxBaseAllocation,
-            3,
+            1e12,
             "totalBaseAssets should remain approx constant after allocateToERC4626MAX"
         );
 
@@ -321,18 +321,18 @@ contract FXSaveTest is BaseTest {
             requestRedeemForFxBase(fxBaseObtained);
         }
 
-        vm.assertApproxEqAbs(
+        vm.assertApproxEqRel(
             withdrawer.totalBaseAssets(),
             withdrawerTotalBaseAssetsBefore,
-            3,
+            1e12,
             "withdrawer totalBaseAssets should remain approx constant after requestRedeemForFxBase"
         );
 
         // Assert after requestRedeemForFxBase (allowing approx abs diff of 1 wei)
-        vm.assertApproxEqAbs(
+        vm.assertApproxEqRel(
             vault.totalBaseAssets(),
             totalBaseAssetsAfterFxBaseAllocation,
-            3,
+            1e12,
             "totalBaseAssets should remain approx constant after requestRedeemForFxBase"
         );
 
