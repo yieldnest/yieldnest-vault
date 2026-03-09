@@ -57,10 +57,6 @@ contract Provider is IProvider {
             return 1e18;
         }
 
-        if (asset == MC.VBNB) {
-            return IVBNB(asset).exchangeRateStored() / 1e28;
-        }
-
         if (asset == MC.BNBX) {
             return IBNBXStakeManagerV2(MC.BNBX_STAKE_MANAGER).convertBnbXToBnb(1e18);
         }
@@ -73,6 +69,11 @@ contract Provider is IProvider {
             return ISlisBnbStakeManager(MC.SLIS_BNB_STAKE_MANAGER).convertSnBnbToBnb(
                 IAsBnbMinter(MC.AS_BNB_MINTER).convertToTokens(1e18)
             );
+        }
+
+        // Same rate as the underlying
+        if (asset == MC.AAVE_A_WBNB) {
+            return getRate(MC.WBNB);
         }
 
         if (isBNBStrategyVault(asset)) {

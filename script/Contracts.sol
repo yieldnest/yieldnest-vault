@@ -26,9 +26,6 @@ library MainnetContracts {
     address public constant ASBNB = 0x77734e70b6E88b4d82fE632a168EDf6e700912b6;
     address public constant VBNB = 0xA07c5b74C9B40447a954e1466938b865b6BBea36;
 
-    // venus protocol
-    address public constant VENUS_BNB_VAULT = 0xfD36E2c2a6789Db23113685031d7F16329158384;
-
     // stake managers
     address public constant BNBX_STAKE_MANAGER = 0x3b961e83400D51e6E1AF5c450d3C7d7b80588d28;
     address public constant SLIS_BNB_STAKE_HUB = 0x0000000000000000000000000000000000002002;
@@ -53,7 +50,11 @@ library MainnetContracts {
     address public constant KERNEL_CONFIG = 0x45d7Bb73253A908E6160aa5FD9DA083F7Bc6faf5;
     address public constant KERNEL_CONFIG_ADMIN = 0x40f5f0f5E78289B33E450fBCA1cbD8700098cd23;
 
-    // euler
+    // Aave V3 BSC
+    address public constant AAVE_V3_POOL = 0x6807dc923806fE8Fd134338EABCA509979a7e0cB;
+    address public constant AAVE_V3_ORACLE = 0x39bc1bfDa2130d6Bb6DBEfd366939b4c7aa7C697;
+    address public constant AAVE_A_WBNB = 0x9B00a09492a626678E5A3009982191586C444Df9; // aBnbWBNB
+    address public constant AAVE_VARIABLE_DEBT_USDC = 0xcDBBEd5606d9c5C98eEedd67933991dC17F0c68d; // variableDebtBnbUSDC
 
     // EVK Vault eWETH-22 is used as the buffer for ynETHx
     address public constant EULER_EWBNB_6_VAULT = address(0x8E01DB38a409D6E6B8A81fd21d84E05912e8730A);
@@ -138,10 +139,6 @@ contract BscContracts is IContracts {
 
     function VBNB() external pure returns (address) {
         return MainnetContracts.VBNB;
-    }
-
-    function VENUS_BNB_VAULT() external pure returns (address) {
-        return MainnetContracts.VENUS_BNB_VAULT;
     }
 
     function SLISBNB() external pure override returns (address) {
