@@ -24,7 +24,6 @@ library MainnetContracts {
     address public constant BNBX = 0x1bdd3Cf7F79cfB8EdbB955f20ad99211551BA275;
     address public constant CLISBNB = 0x4b30fcAA7945fE9fDEFD2895aae539ba102Ed6F6;
     address public constant ASBNB = 0x77734e70b6E88b4d82fE632a168EDf6e700912b6;
-    address public constant VBNB = 0xA07c5b74C9B40447a954e1466938b865b6BBea36;
 
     // stake managers
     address public constant BNBX_STAKE_MANAGER = 0x3b961e83400D51e6E1AF5c450d3C7d7b80588d28;
