@@ -48,7 +48,7 @@ contract Provider is IProvider {
     function getRate(address asset) public view virtual override returns (uint256) {
         if (
             asset == MC.YNWBNBK || asset == MC.YNBNBK || asset == MC.YNCLISBNBK || asset == MC.YNASBNBK
-                || asset == MC.EULER_EWBNB_6_VAULT
+                || asset == MC.EULER_EWBNB_6_VAULT || asset == MC.AAVE_A_WBNB
         ) {
             return IERC4626(asset).convertToAssets(1e18);
         }
@@ -69,11 +69,6 @@ contract Provider is IProvider {
             return ISlisBnbStakeManager(MC.SLIS_BNB_STAKE_MANAGER).convertSnBnbToBnb(
                 IAsBnbMinter(MC.AS_BNB_MINTER).convertToTokens(1e18)
             );
-        }
-
-        // Same rate as the underlying
-        if (asset == MC.AAVE_A_WBNB) {
-            return getRate(MC.WBNB);
         }
 
         if (isBNBStrategyVault(asset)) {
