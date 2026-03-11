@@ -7,7 +7,6 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IBNBXStakeManagerV2} from "src/interface/external/stader/IBNBXStakeManagerV2.sol";
 import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
 import {IAsBnbMinter} from "src/interface/external/astherus/IAsBnbMinter.sol";
-import {IVBNB} from "src/interface/external/venus/IVBNB.sol";
 import {IVault} from "src/interface/IVault.sol";
 
 interface IBaseStrategy {
