@@ -98,4 +98,12 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
 
         assertEq(IKernelVault(kernelVault).getDepositLimit(), type(uint256).max, "Deposit limit should be max");
     }
+
+    function unpauseKernelVaultsDeposit(address asset) public {
+        address kernelVault = IStakerGateway(MC.STAKER_GATEWAY).getVault(asset);
+        address config = IKernelVault(kernelVault).getConfig();
+
+        vm.prank(MC.KERNEL_CONFIG_ADMIN);
+        IKernelConfig(config).unpauseFunctionality("VAULTS_DEPOSIT");
+    }
 }

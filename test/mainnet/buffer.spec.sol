@@ -16,6 +16,7 @@ import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract VaultBufferInvariantsTest is BaseIntegrationTest {
     function setUp() public override {
@@ -121,6 +122,10 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
     function testDonationToBuffer_withoutBufferAllocation() public {
         uint256 assets = 1 ether;
         uint256 bufferAmount = 0.5 ether;
+
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 1 ether);
+        HooksUtils.setMaxTotalAssetsDecreaseRatio(vault, 1 ether);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 1 ether);
 
         setMockBuffer();
 
