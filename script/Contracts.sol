@@ -50,11 +50,7 @@ library MainnetContracts {
     address public constant KERNEL_CONFIG_ADMIN = 0x40f5f0f5E78289B33E450fBCA1cbD8700098cd23;
 
     // Aave V3 BSC
-    //address public constant AAVE_V3_POOL = 0x6807dc923806fE8Fd134338EABCA509979a7e0cB;
-    //address public constant AAVE_V3_ORACLE = 0x39bc1bfDa2130d6Bb6DBEfd366939b4c7aa7C697;
-    //address public constant AAVE_A_WBNB = 0x9B00a09492a626678E5A3009982191586C444Df9; // aBnbWBNB
     address public constant AAVE_A_WBNB = 0x436baCb4C66583de4Cb16e13a1A0D9A3075DE425; // stataBnbWBNB 4626
-    //address public constant AAVE_VARIABLE_DEBT_USDC = 0xcDBBEd5606d9c5C98eEedd67933991dC17F0c68d; // variableDebtBnbUSDC
 
     // EVK Vault eWETH-22 is used as the buffer for ynETHx
     address public constant EULER_EWBNB_6_VAULT = address(0x8E01DB38a409D6E6B8A81fd21d84E05912e8730A);
