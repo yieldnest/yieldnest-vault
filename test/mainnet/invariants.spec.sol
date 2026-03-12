@@ -270,27 +270,31 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         uint256 shares = vault.convertToShares(assets);
         assertGe(shares, 0, "Shares should be greater than 0");
 
-        // Test the convertToAssets function
-        uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        {
+            // Test the convertToAssets function
+            uint256 convertedAssets = vault.convertToAssets(shares);
+            assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        }
 
         address baseAsset = vault.asset();
 
-        vm.startPrank(alice);
-        (bool success,) = MC.WETH.call{value: assets}("");
-        if (!success) revert("Weth deposit failed");
-        IERC20(baseAsset).approve(address(vault), assets);
-        uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
-        assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
-        vm.stopPrank();
+        {
+            vm.startPrank(alice);
+            (bool success,) = MC.WETH.call{value: assets}("");
+            if (!success) revert("Weth deposit failed");
+            IERC20(baseAsset).approve(address(vault), assets);
+            uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
+            assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
+            vm.stopPrank();
+        }
 
         // hypothetically allocated 100% to the buffer using ProcessorUtils
         ProcessorUtils.allocateToBuffer(vault, IERC20(baseAsset).balanceOf(address(vault)), PROCESSOR);
 
         // Test the previewWithdraw function
-        uint256 previewedWithdrawShares = vault.previewWithdraw(assets);
-        uint256 expectedPreviewedWithdrawShares = shares * 1e8 / (1e8 - vault.baseWithdrawalFee());
         {
+            uint256 previewedWithdrawShares = vault.previewWithdraw(assets);
+            uint256 expectedPreviewedWithdrawShares = shares * 1e8 / (1e8 - vault.baseWithdrawalFee());
             if (assets < 1e14) {
                 assertApproxEqAbs(
                     previewedWithdrawShares,
@@ -308,16 +312,25 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
             }
         }
 
-        vm.startPrank(alice);
+        uint256 withdrawableAssets;
+        {
+            vm.startPrank(alice);
 
-        uint256 withdrawableAssets = vault.maxWithdraw(alice);
+            withdrawableAssets = vault.maxWithdraw(alice);
 
-        uint256 withdrawnShares = vault.withdraw(withdrawableAssets, alice, alice);
-        assertApproxEqAbs(withdrawnShares, shares, 1, "Withdrawn shares should equal previous shares");
-        vm.stopPrank();
+            uint256 initialBalance = IERC20(baseAsset).balanceOf(alice);
+            uint256 withdrawnShares = vault.withdraw(withdrawableAssets, alice, alice);
+            assertApproxEqAbs(withdrawnShares, shares, 1, "Withdrawn shares should equal previous shares");
+            vm.stopPrank();
 
-        uint256 finalBalance = IERC20(baseAsset).balanceOf(alice);
-        assertApproxEqAbs(finalBalance, withdrawableAssets, 3, "Final balance should reflect the withdrawn assets");
+            uint256 finalBalance = IERC20(baseAsset).balanceOf(alice);
+            assertApproxEqAbs(
+                finalBalance - initialBalance,
+                withdrawableAssets,
+                3,
+                "Final balance should reflect the withdrawn assets"
+            );
+        }
 
         totalSupplyInvariant(initialSupply);
         totalAssetsInvariantRel(initialAssets + (assets - withdrawableAssets), 1e18);

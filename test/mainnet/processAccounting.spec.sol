@@ -193,6 +193,9 @@ contract ProcessAccountingTest is BaseIntegrationTest {
         uint256 depositAmount = 100 ether;
         uint256 donationAmount = 10 ether;
 
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 1 ether);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 1 ether);
+
         // Deposit into the vault
         deal(MC.WBNB, address(this), depositAmount);
         IERC20(MC.WBNB).approve(address(vault), depositAmount);
