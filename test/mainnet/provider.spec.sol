@@ -57,9 +57,11 @@ contract ProviderTest is BaseIntegrationTest, Etches {
     }
 
     function test_Provider_getRate_aBnbWBNB() public view {
-        uint256 expectedRate = provider.getRate(MC.WBNB);
+        uint256 expectedRate = IERC4626(MC.AAVE_A_WBNB).convertToAssets(1e18);
         uint256 rate = provider.getRate(MC.AAVE_A_WBNB);
-        assertEq(rate, expectedRate, "Rate for AAVE_A_WBNB should match the WBNB rate");
+        assertEq(rate, expectedRate, "Rate for AAVE_A_WBNB should match the convertToAssets rate");
+        assertGe(rate, 1e18, "Rate for AAVE_A_WBNB should be >= 1e18");
+        assertLe(rate, 2e18, "Rate for AAVE_A_WBNB should be <= 2e18");
     }
 
     function test_Provider_UnsupportedAsset() public {
