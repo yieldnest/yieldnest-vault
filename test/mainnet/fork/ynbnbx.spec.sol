@@ -17,6 +17,7 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 import {ViewUtils} from "test/utils/ViewUtils.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract YnBNBxForkTest is BaseIntegrationTest {
     IERC20 public wbnb;
@@ -27,6 +28,8 @@ contract YnBNBxForkTest is BaseIntegrationTest {
     }
 
     function testDepositAndStake() public {
+        unpauseKernelVaultsDeposit(MainnetContracts.CLISBNB);
+
         address alice = address(0xABCD);
         uint256 depositAmount = 1000 ether;
 
@@ -347,6 +350,9 @@ contract YnBNBxForkTest is BaseIntegrationTest {
     }
 
     function testDonateToVault() public {
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 1 ether);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 1 ether);
+
         address alice = makeAddr("alice");
         uint256 depositAmount = 100 ether;
         uint256 donationAmount = 10 ether;
@@ -420,6 +426,9 @@ contract YnBNBxForkTest is BaseIntegrationTest {
     }
 
     function testDonateToBufferWithoutWithdrawal() public {
+        unpauseKernelVaultsDeposit(MainnetContracts.WBNB);
+        unpauseKernelVaultsDeposit(MainnetContracts.CLISBNB);
+
         address alice = makeAddr("alice");
         uint256 depositAmount = 100 ether;
         uint256 bufferAmount = depositAmount / 10; // 10% to buffer
