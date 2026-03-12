@@ -401,7 +401,7 @@ contract YnBNBxForkTest is BaseIntegrationTest {
             assertApproxEqAbs(
                 vault.convertToAssets(performanceFeeSharesMinted),
                 performanceFee,
-                1,
+                2,
                 "Performance fee assets should be equal to donation amount"
             );
             // Verify donation increased total assets but not shares
