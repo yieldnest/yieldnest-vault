@@ -325,7 +325,10 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
 
             uint256 finalBalance = IERC20(baseAsset).balanceOf(alice);
             assertApproxEqAbs(
-                finalBalance - initialBalance, withdrawableAssets, 3, "Final balance should reflect the withdrawn assets"
+                finalBalance - initialBalance,
+                withdrawableAssets,
+                3,
+                "Final balance should reflect the withdrawn assets"
             );
         }
 
