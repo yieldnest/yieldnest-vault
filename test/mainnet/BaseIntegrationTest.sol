@@ -28,12 +28,6 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     function setUp() public virtual {
         vault = Vault(payable(MC.YNBNBX));
 
-
-        // Set the provider in the vault
-        vm.startPrank(MC.TIMELOCK);
-        vault.setProvider(address(new Provider()));
-        vm.stopPrank();
-
         runCustomUpgrade();
 
         mockKernelVaultDepositLimit(MC.WBNB);
