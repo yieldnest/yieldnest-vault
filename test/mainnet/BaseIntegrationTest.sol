@@ -21,7 +21,6 @@ import {BaseRules} from "script/rules/BaseRules.sol";
 import {FeeHooks} from "src/hooks/FeeHooks.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
-import {IVault} from "src/interface/IVault.sol";
 
 contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
@@ -29,60 +28,11 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     function setUp() public virtual {
         vault = Vault(payable(MC.YNBNBX));
 
-        // Set the provider in the vault
-        vm.startPrank(MC.TIMELOCK);
-        vault.setProvider(address(new Provider()));
-        vm.stopPrank();
-
         runCustomUpgrade();
-
-        configureAaveBuffer();
 
         mockKernelVaultDepositLimit(MC.WBNB);
         mockKernelVaultDepositLimit(MC.CLISBNB);
         mockKernelVaultDepositLimit(MC.SLISBNB);
-    }
-
-    function configureAaveBuffer() public {
-        vm.startPrank(ADMIN);
-
-        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ADMIN);
-        vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), ADMIN);
-        vault.grantRole(vault.BUFFER_MANAGER_ROLE(), ADMIN);
-
-        // Add AAVE_A_WBNB as an asset
-        vault.addAsset(MC.AAVE_A_WBNB, true);
-
-        // Set deposit and withdraw rules for AAVE_A_WBNB
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](4);
-        rules[0] = BaseRules.getDepositRule(MC.AAVE_A_WBNB, address(vault));
-        rules[1] = BaseRules.getWithdrawRule(MC.AAVE_A_WBNB, address(vault));
-
-        // WBNB approval rule with broad allowlist to cover all strategies
-        address[] memory wbnbSpenders = new address[](5);
-        wbnbSpenders[0] = MC.AAVE_A_WBNB;
-        wbnbSpenders[1] = MC.YNWBNBK;
-        wbnbSpenders[2] = MC.YNBNBK;
-        wbnbSpenders[3] = MC.YNCLISBNBK;
-        wbnbSpenders[4] = MC.EULER_EWBNB_6_VAULT;
-        rules[2] = BaseRules.getApprovalRule(MC.WBNB, wbnbSpenders);
-
-        // SLISBNB approval rule to cover clisBNB strategies
-        address[] memory slisSpenders = new address[](2);
-        slisSpenders[0] = MC.YNCLISBNBK;
-        slisSpenders[1] = MC.YNBNBK;
-        rules[3] = BaseRules.getApprovalRule(MC.SLISBNB, slisSpenders);
-
-        SafeRules.setProcessorRules(IVault(address(vault)), rules, true);
-
-        // Set AAVE_A_WBNB as the buffer
-        vault.setBuffer(MC.AAVE_A_WBNB);
-
-        vault.renounceRole(vault.ASSET_MANAGER_ROLE(), ADMIN);
-        vault.renounceRole(vault.PROCESSOR_MANAGER_ROLE(), ADMIN);
-        vault.renounceRole(vault.BUFFER_MANAGER_ROLE(), ADMIN);
-
-        vm.stopPrank();
     }
 
     function upgradeVaults() public {
