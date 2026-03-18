@@ -12,6 +12,8 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
 
 contract SetupVault is Test, Etches, MainnetActors {
     error InvalidRules();
@@ -31,8 +33,27 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault = Vault(payable(address(vaultProxy)));
         weth = WETH9(payable(MC.WETH));
 
+        FeeHooks feeHooks = new FeeHooks(
+            address(vault),
+            ADMIN,
+            1e17, // 10% performance fee
+            ADMIN,
+            IHooks.Config({
+                beforeDeposit: false,
+                afterDeposit: false,
+                beforeMint: false,
+                afterMint: false,
+                beforeRedeem: false,
+                afterRedeem: false,
+                beforeWithdraw: false,
+                afterWithdraw: false,
+                beforeProcessAccounting: false,
+                afterProcessAccounting: true
+            })
+        );
+
         if (block.chainid == 31337) {
-            configureLocal(vault);
+            configureLocal(vault, feeHooks);
         }
 
         if (block.chainid == 1) {
@@ -40,7 +61,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         }
     }
 
-    function configureLocal(Vault vault) internal {
+    function configureLocal(Vault vault, FeeHooks feeHooks) internal {
         // etch to mock the mainnet contracts
         mockAll();
 
@@ -54,6 +75,7 @@ contract SetupVault is Test, Etches, MainnetActors {
         vault.grantRole(vault.PROCESSOR_MANAGER_ROLE(), PROCESSOR_MANAGER);
         vault.grantRole(vault.PAUSER_ROLE(), PAUSER);
         vault.grantRole(vault.UNPAUSER_ROLE(), UNPAUSER);
+        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), HOOKS_MANAGER);
 
         // test cannot unpause vault without buffer
         vm.expectRevert();
@@ -89,6 +111,10 @@ contract SetupVault is Test, Etches, MainnetActors {
 
         // Unpause the vault
         vault.unpause();
+        vm.stopPrank();
+
+        vm.startPrank(HOOKS_MANAGER);
+        vault.setHooks(address(feeHooks));
         vm.stopPrank();
     }
 

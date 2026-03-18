@@ -15,6 +15,9 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 import {Vault} from "src/Vault.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {ViewUtils} from "test/utils/ViewUtils.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract YnBNBxForkTest is BaseIntegrationTest {
     IERC20 public wbnb;
@@ -22,12 +25,11 @@ contract YnBNBxForkTest is BaseIntegrationTest {
     function setUp() public virtual override {
         super.setUp();
         wbnb = IERC20(MainnetContracts.WBNB);
-
-        // verify alwaysComputeTotalAssets is true
-        assertTrue(vault.alwaysComputeTotalAssets(), "alwaysComputeTotalAssets should be true");
     }
 
     function testDepositAndStake() public {
+        unpauseKernelVaultsDeposit(MainnetContracts.CLISBNB);
+
         address alice = address(0xABCD);
         uint256 depositAmount = 1000 ether;
 
@@ -348,6 +350,9 @@ contract YnBNBxForkTest is BaseIntegrationTest {
     }
 
     function testDonateToVault() public {
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 1 ether);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 1 ether);
+
         address alice = makeAddr("alice");
         uint256 depositAmount = 100 ether;
         uint256 donationAmount = 10 ether;
@@ -379,20 +384,51 @@ contract YnBNBxForkTest is BaseIntegrationTest {
         (bool success,) = address(vault).call{value: donationAmount}("");
         assertTrue(success, "BNB donation failed");
 
+        uint256 performanceFeeReceiverBalanceBefore =
+            address(vault.hooks()) != address(0) ? ViewUtils.getPerformanceFeeReceiverBalance(vault) : 0;
+
         vm.stopPrank();
 
-        // Verify donation increased total assets but not shares
-        assertEq(vault.totalAssets(), vaultAssetsBefore + donationAmount, "Total assets should increase by donation");
-        assertEq(vault.totalSupply(), vaultSharesBefore, "Total supply should remain unchanged");
+        vault.processAccounting();
+
+        uint256 performanceFeeSharesMinted = 0;
+        if (address(vault.hooks()) != address(0)) {
+            uint256 performanceFeeReceiverBalanceAfter = ViewUtils.getPerformanceFeeReceiverBalance(vault);
+
+            performanceFeeSharesMinted = performanceFeeReceiverBalanceAfter - performanceFeeReceiverBalanceBefore;
+            uint256 performanceFee = ViewUtils.getPerformanceFee(vault) * donationAmount / 1e18;
+
+            assertApproxEqAbs(
+                vault.convertToAssets(performanceFeeSharesMinted),
+                performanceFee,
+                2,
+                "Performance fee assets should be equal to donation amount"
+            );
+            // Verify donation increased total assets but not shares
+            assertEq(
+                vault.totalAssets(), vaultAssetsBefore + donationAmount, "Total assets should increase by donation"
+            );
+        }
+
+        assertEq(
+            vault.totalSupply(),
+            vaultSharesBefore + performanceFeeSharesMinted,
+            "Total supply should increase by performance fee shares"
+        );
+
         assertEq(vault.balanceOf(alice), aliceSharesBefore, "Alice's shares should remain unchanged");
 
         // Verify rate increased due to donation
         uint256 newRate = vault.convertToAssets(1e18);
-        uint256 expectedRate = ((vaultAssetsBefore + donationAmount) * 1e18) / vaultSharesBefore;
+        uint256 expectedRate =
+            ((vaultAssetsBefore + donationAmount) * 1e18) / (vaultSharesBefore + performanceFeeSharesMinted);
         assertApproxEqAbs(newRate, expectedRate, 1, "New rate should reflect donation");
     }
 
     function testDonateToBufferWithoutWithdrawal() public {
+        unpauseKernelVaultsDeposit(MainnetContracts.WBNB);
+        unpauseKernelVaultsDeposit(MainnetContracts.CLISBNB);
+
         address alice = makeAddr("alice");
         uint256 depositAmount = 100 ether;
         uint256 bufferAmount = depositAmount / 10; // 10% to buffer

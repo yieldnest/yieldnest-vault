@@ -7,7 +7,7 @@ import {MockSTETH} from "test/unit/mocks/MockST_ETH.sol";
 import {MockYNETH} from "test/unit/mocks/MockYNETH.sol";
 import {MockCL_STETH} from "test/unit/mocks/MockCL_STETH.sol";
 import {MockYNLSDE} from "test/unit/mocks/MockYNLSDE.sol";
-import {Provider} from "src/module/Provider.sol";
+import {MockProvider} from "test/unit/mocks/MockProvider.sol";
 import {MockBuffer} from "test/unit/mocks/MockBuffer.sol";
 import {MockBNBxStakeManagerV2} from "test/unit/mocks/MockBNBxStakeManagerV2.sol";
 import {MockSlisBnbStakeManager} from "test/unit/mocks/MockSlisBnbStakeManager.sol";
@@ -51,7 +51,7 @@ contract Etches is Test {
     }
 
     function mockProvider() public {
-        Provider provider = new Provider();
+        MockProvider provider = new MockProvider();
         bytes memory code = address(provider).code;
         vm.etch(MainnetContracts.PROVIDER, code);
     }

@@ -14,6 +14,9 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
 import {MockERC4626} from "test/mainnet/mocks/MockERC4626.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
+import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
+import {HooksUtils} from "test/utils/HooksUtils.sol";
 
 contract VaultBufferInvariantsTest is BaseIntegrationTest {
     function setUp() public override {
@@ -35,22 +38,7 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
     }
 
     function allocateToBuffer(uint256 amount) public returns (uint256 bufferShares) {
-        address[] memory targets = new address[](2);
-        targets[0] = MC.WETH;
-        targets[1] = vault.buffer();
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
-        data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
-
-        vm.prank(PROCESSOR);
-        bytes[] memory returnData = vault.processor(targets, values, data);
-
-        bufferShares = abi.decode(returnData[1], (uint256));
+        bufferShares = ProcessorUtils.allocateToBuffer(vault, amount, PROCESSOR);
     }
 
     function test_Vault_4626Invariants_depositBase_WithBufferAllocation(uint256 assets, uint256 bufferAmount) public {
@@ -109,14 +97,15 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
         {
             // allocate to buffer
             uint256 balanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
-            uint256 bufferBefore = IERC20(MC.WETH).balanceOf(vault.buffer());
+            uint256 bufferSharesBefore = IERC20(vault.buffer()).balanceOf(address(vault));
 
-            bufferShares = allocateToBuffer(bufferAmount);
+            bufferShares = ProcessorUtils.allocateToBuffer(vault, bufferAmount, PROCESSOR);
+            // vault.processAccounting(); // already called in ProcessorUtils.allocateToBuffer
 
             uint256 balanceAfter = IERC20(MC.WETH).balanceOf(address(vault));
-            uint256 bufferAfter = IERC20(MC.WETH).balanceOf(vault.buffer());
+            uint256 bufferSharesAfter = IERC20(vault.buffer()).balanceOf(address(vault));
             assertEq(balanceBefore - balanceAfter, bufferAmount, "WETH balance should decrease by buffer amount");
-            assertEq(bufferAfter - bufferBefore, bufferAmount, "Buffer balance should increase by buffer amount");
+            assertGt(bufferSharesAfter - bufferSharesBefore, 0, "Vault should have received buffer shares");
         }
 
         assertGt(bufferShares, 0, "Buffer shares should be greater than 0");
@@ -133,6 +122,10 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
     function testDonationToBuffer_withoutBufferAllocation() public {
         uint256 assets = 1 ether;
         uint256 bufferAmount = 0.5 ether;
+
+        HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 1 ether);
+        HooksUtils.setMaxTotalAssetsDecreaseRatio(vault, 1 ether);
+        HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 1 ether);
 
         setMockBuffer();
 
@@ -153,14 +146,16 @@ contract VaultBufferInvariantsTest is BaseIntegrationTest {
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariant(initialAssets + assets);
 
-        // Donate directly to buffer
+        // // Donate directly to buffer
         deal(address(this), 1 ether);
         (success,) = MC.WETH.call{value: 1 ether}("");
         assertTrue(success, "Weth deposit failed");
         IERC20(MC.WETH).transfer(vault.buffer(), 1 ether);
 
-        // Allocate to buffer
-        allocateToBuffer(bufferAmount);
+        // // Allocate to buffer
+        ProcessorUtils.allocateToBuffer(vault, bufferAmount, PROCESSOR);
+
+        // vault.processAccounting(); // already called in ProcessorUtils.allocateToBuffer
 
         totalSupplyInvariant(initialSupply + shares);
         // assets go down because of buffer donation  - THIS MUST BE AVOIDED

@@ -41,7 +41,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
         assertEq(Provider(vault.provider()).getRate(MC.WBNB), 1e18, "Provider rate for WBNB should be 1e18");
 
         // Test the version function
-        assertEq(vault.VAULT_VERSION(), "0.3.0", "Vault version should be '0.3.0'");
+        assertEq(vault.VAULT_VERSION(), "0.4.0", "Vault version should be '0.4.0'");
     }
 
     function test_Vault_Upgrade_ERC4626_view_functions() public view {
@@ -83,7 +83,7 @@ contract VaultMainnetUpgradeTest is BaseIntegrationTest {
 
         // Test the getAssets function
         address[] memory assets = vault.getAssets();
-        assertEq(assets.length, 8, "There should be 8 assets in the vault");
+        assertEq(assets.length, 9, "There should be 9 assets in the vault");
     }
 
     function test_Vault_Upgrade_totalAssets_unchanged(bool processAccountingBeforeCheck) public {

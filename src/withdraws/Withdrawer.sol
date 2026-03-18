@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {BaseWithdrawer} from "src/withdraws/BaseWithdrawer.sol";
-import {AsyncWithdrawalLib} from "src/library/AsyncWithdrawalLib.sol";
+import {AsyncWithdrawalLib} from "src/withdraws/library/AsyncWithdrawalLib.sol";
 
 contract Withdrawer is BaseWithdrawer {
     /**

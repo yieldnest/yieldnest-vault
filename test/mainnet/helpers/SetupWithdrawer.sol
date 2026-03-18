@@ -29,5 +29,9 @@ contract SetupWithdrawer is Test, MainnetActors, Etches {
 
         WithdrawerConfigurer configurer = new WithdrawerConfigurer();
         configurer.configure(vault, address(provider), MC.TIMELOCK, IActors(address(this)));
+
+        vm.startPrank(ADMIN);
+        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), MC.TIMELOCK);
+        vm.stopPrank();
     }
 }

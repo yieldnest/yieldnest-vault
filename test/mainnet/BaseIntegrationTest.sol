@@ -18,12 +18,17 @@ import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transp
 import {ProxyUtils} from "script/ProxyUtils.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
+import {FeeHooks} from "src/hooks/FeeHooks.sol";
+import {IHooks} from "src/interface/IHooks.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
     Vault public vault;
 
     function setUp() public virtual {
         vault = Vault(payable(MC.YNBNBX));
+
+        runCustomUpgrade();
 
         mockKernelVaultDepositLimit(MC.WBNB);
         mockKernelVaultDepositLimit(MC.CLISBNB);
@@ -57,6 +62,30 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         assertEq(vault.totalSupply(), initialTotalSupply, "Total supply should remain unchanged after upgrade");
     }
 
+    function runCustomUpgrade() public {
+        // Get initial values to verify after upgrade
+        uint256 initialTotalAssets = vault.totalAssets();
+        uint256 initialTotalSupply = vault.totalSupply();
+
+        vm.startPrank(ADMIN);
+
+        vault.grantRole(vault.ASSET_MANAGER_ROLE(), ADMIN);
+
+        vault.setAlwaysComputeTotalAssets(false);
+
+        vault.grantRole(vault.HOOKS_MANAGER_ROLE(), ADMIN);
+
+        address metahooks = 0xE414ae862DD848DAdfea633d2BE5db4a369E2695;
+        vault.setHooks(metahooks);
+
+        vault.renounceRole(vault.ASSET_MANAGER_ROLE(), ADMIN);
+        vm.stopPrank();
+
+        // Assert that totalAssets and totalSupply stayed the same after upgrade
+        assertEq(vault.totalAssets(), initialTotalAssets, "Total assets should remain unchanged after upgrade");
+        assertEq(vault.totalSupply(), initialTotalSupply, "Total supply should remain unchanged after upgrade");
+    }
+
     function mockKernelVaultDepositLimit(address asset) public {
         address kernelVault = IStakerGateway(MC.STAKER_GATEWAY).getVault(asset);
         address config = IKernelVault(kernelVault).getConfig();
@@ -68,5 +97,13 @@ contract BaseIntegrationTest is Test, AssertUtils, MainnetActors {
         IKernelVault(kernelVault).setDepositLimit(type(uint256).max);
 
         assertEq(IKernelVault(kernelVault).getDepositLimit(), type(uint256).max, "Deposit limit should be max");
+    }
+
+    function unpauseKernelVaultsDeposit(address asset) public {
+        address kernelVault = IStakerGateway(MC.STAKER_GATEWAY).getVault(asset);
+        address config = IKernelVault(kernelVault).getConfig();
+
+        vm.prank(MC.KERNEL_CONFIG_ADMIN);
+        IKernelConfig(config).unpauseFunctionality("VAULTS_DEPOSIT");
     }
 }

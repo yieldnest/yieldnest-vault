@@ -10,6 +10,7 @@ import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {MainnetContracts} from "script/Contracts.sol";
 import {BaseIntegrationTest} from "test/mainnet/BaseIntegrationTest.sol";
+import {ProcessorUtils} from "test/utils/ProcessorUtils.sol";
 
 contract VaultMainnetInvariantsTest is BaseIntegrationTest {
     function setUp() public virtual override {
@@ -40,23 +41,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         );
     }
 
+    // Use ProcessorUtils for buffer allocation
     function allocateToBuffer(uint256 amount) public {
-        address[] memory targets = new address[](2);
-        targets[0] = MC.WBNB;
-        targets[1] = vault.buffer();
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", vault.buffer(), amount);
-        data[1] = abi.encodeWithSignature("deposit(uint256,address)", amount, address(vault));
-
-        vm.prank(PROCESSOR);
-        vault.processor(targets, values, data);
-
-        vault.processAccounting();
+        ProcessorUtils.allocateToBuffer(vault, amount, PROCESSOR);
     }
 
     function test_Vault_4626Invariants_depositBase(uint256 assets) public {
@@ -195,7 +182,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         assertEq(mintedAssets, assets, "Minted assets should equal the converted assets");
         vm.stopPrank();
 
-        allocateToBuffer(assets);
+        // Use ProcessorUtils for buffer allocation
+        ProcessorUtils.allocateToBuffer(vault, assets, PROCESSOR);
 
         totalSupplyInvariant(initialSupply + shares);
         totalAssetsInvariantRel(initialAssets + assets, 1e18);
@@ -229,8 +217,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
             vm.stopPrank();
         }
 
-        // hypothetically allocated 100% to the buffer
-        allocateToBuffer(assets);
+        // hypothetically allocated 100% to the buffer using ProcessorUtils
+        ProcessorUtils.allocateToBuffer(vault, assets, PROCESSOR);
 
         uint256 previewedAssets = vault.previewRedeem(shares);
         uint256 expectedAssets = assets * (1e8 - vault.baseWithdrawalFee()) / 1e8;
@@ -282,27 +270,31 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
         uint256 shares = vault.convertToShares(assets);
         assertGe(shares, 0, "Shares should be greater than 0");
 
-        // Test the convertToAssets function
-        uint256 convertedAssets = vault.convertToAssets(shares);
-        assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        {
+            // Test the convertToAssets function
+            uint256 convertedAssets = vault.convertToAssets(shares);
+            assertEqThreshold(convertedAssets, assets, 3, "Converted assets should equal the original assets");
+        }
 
         address baseAsset = vault.asset();
 
-        vm.startPrank(alice);
-        (bool success,) = MC.WETH.call{value: assets}("");
-        if (!success) revert("Weth deposit failed");
-        IERC20(baseAsset).approve(address(vault), assets);
-        uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
-        assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
-        vm.stopPrank();
+        {
+            vm.startPrank(alice);
+            (bool success,) = MC.WETH.call{value: assets}("");
+            if (!success) revert("Weth deposit failed");
+            IERC20(baseAsset).approve(address(vault), assets);
+            uint256 depositedShares = vault.depositAsset(baseAsset, assets, alice);
+            assertEqThreshold(depositedShares, shares, 3, "Deposited shares should equal the converted shares");
+            vm.stopPrank();
+        }
 
-        // hypothetically allocated 100% to the buffer
-        allocateToBuffer(IERC20(baseAsset).balanceOf(address(vault)));
+        // hypothetically allocated 100% to the buffer using ProcessorUtils
+        ProcessorUtils.allocateToBuffer(vault, IERC20(baseAsset).balanceOf(address(vault)), PROCESSOR);
 
         // Test the previewWithdraw function
-        uint256 previewedWithdrawShares = vault.previewWithdraw(assets);
-        uint256 expectedPreviewedWithdrawShares = shares * 1e8 / (1e8 - vault.baseWithdrawalFee());
         {
+            uint256 previewedWithdrawShares = vault.previewWithdraw(assets);
+            uint256 expectedPreviewedWithdrawShares = shares * 1e8 / (1e8 - vault.baseWithdrawalFee());
             if (assets < 1e14) {
                 assertApproxEqAbs(
                     previewedWithdrawShares,
@@ -320,16 +312,25 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest {
             }
         }
 
-        vm.startPrank(alice);
+        uint256 withdrawableAssets;
+        {
+            vm.startPrank(alice);
 
-        uint256 withdrawableAssets = vault.maxWithdraw(alice);
+            withdrawableAssets = vault.maxWithdraw(alice);
 
-        uint256 withdrawnShares = vault.withdraw(withdrawableAssets, alice, alice);
-        assertApproxEqAbs(withdrawnShares, shares, 1, "Withdrawn shares should equal previous shares");
-        vm.stopPrank();
+            uint256 initialBalance = IERC20(baseAsset).balanceOf(alice);
+            uint256 withdrawnShares = vault.withdraw(withdrawableAssets, alice, alice);
+            assertApproxEqAbs(withdrawnShares, shares, 1, "Withdrawn shares should equal previous shares");
+            vm.stopPrank();
 
-        uint256 finalBalance = IERC20(baseAsset).balanceOf(alice);
-        assertApproxEqAbs(finalBalance, withdrawableAssets, 3, "Final balance should reflect the withdrawn assets");
+            uint256 finalBalance = IERC20(baseAsset).balanceOf(alice);
+            assertApproxEqAbs(
+                finalBalance - initialBalance,
+                withdrawableAssets,
+                3,
+                "Final balance should reflect the withdrawn assets"
+            );
+        }
 
         totalSupplyInvariant(initialSupply);
         totalAssetsInvariantRel(initialAssets + (assets - withdrawableAssets), 1e18);

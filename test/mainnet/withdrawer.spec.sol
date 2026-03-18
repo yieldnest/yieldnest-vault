@@ -12,7 +12,7 @@ import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {ISlisBnbStakeManager} from "src/interface/external/lista/ISlisBnbStakeManager.sol";
 import {MockStakeHub} from "test/mainnet/mocks/MockStakeHub.sol";
-
+import {IAccessControl, IERC20} from "src/Common.sol";
 import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 
 contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
@@ -45,6 +45,15 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
         _mockSlisValidator();
     }
 
+    function test_Withdrawer_views() public view {
+        assertTrue(vault.getHasAllocator(), "Withdrawer should have allocators");
+        assertEq(vault.asset(), MC.WBNB, "Withdrawer should have WBNB as the main asset");
+        assertFalse(vault.alwaysComputeTotalAssets(), "Withdrawer should not always compute total assets");
+        assertTrue(vault.countNativeAsset(), "Withdrawer should count native asset");
+        assertEq(vault.defaultAssetIndex(), 0, "Withdrawer should have WBNB as the default asset");
+        assertEq(vault.decimals(), 18, "Withdrawer should have 18 decimals");
+    }
+
     function _mockSlisValidator() internal {
         ISlisBnbStakeManager stakeManager = ISlisBnbStakeManager(MC.SLIS_BNB_STAKE_MANAGER);
         bytes32 botRole = stakeManager.BOT();
@@ -63,6 +72,10 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
     function _convertBaseToAsset(address asset_, uint256 assets) internal view returns (uint256) {
         uint256 rate = provider.getRate(asset_);
         return assets.mulDiv(10 ** 18, rate, Math.Rounding.Floor);
+    }
+
+    function test_Withdrawer_Version() public view {
+        assertEq(vault.STRATEGY_VERSION(), "0.3.0", "Withdrawer should have version 0.3.0");
     }
 
     function test_Vault_views() public {
@@ -90,6 +103,20 @@ contract WithdrawerMainnetTest is Test, AssertUtils, MainnetActors {
         uint256 tokenId = _requestWithdrawal(amount);
 
         _claimWithdrawal(tokenId);
+    }
+
+    function test_withdrawer_arbitrary_address_deposit_reverts() public {
+        address arbitraryUser = makeAddr("arbitraryUser");
+        deal(MC.WBNB, arbitraryUser, 1e18);
+        vm.startPrank(arbitraryUser);
+        IERC20(MC.WBNB).approve(address(vault), 1e18);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector, address(arbitraryUser), vault.ALLOCATOR_ROLE()
+            )
+        );
+        vault.depositAsset(MC.WBNB, 1e18, arbitraryUser);
+        vm.stopPrank();
     }
 
     function _requestWithdrawal(uint256 amount) internal returns (uint256 tokenId) {

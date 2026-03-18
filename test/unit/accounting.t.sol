@@ -12,6 +12,7 @@ import {IERC20} from "src/Common.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 import {console} from "lib/forge-std/src/console.sol";
+import {IFeeHooks} from "src/interface/IFeeHooks.sol";
 
 contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
     Vault public vaultImplementation;
@@ -227,12 +228,15 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
         console.log("expectedTotalAssets:", expectedTotalAssets);
         console.log("expectedTotalSupply:", expectedTotalSupply);
 
+        uint256 donationAmount = 0;
+
         // Direct transfer of WETH to the vault
         deal(alice, depositAmountWETH);
         (success,) = MC.WETH.call{value: depositAmountWETH}("");
         require(success, "Weth transfer failed");
         IERC20(MC.WETH).transfer(address(vault), depositAmountWETH);
         expectedTotalAssets += depositAmountWETH;
+        donationAmount += depositAmountWETH;
 
         // Direct transfer of STETH to the vault
         deal(alice, depositAmountSTETH);
@@ -242,15 +246,31 @@ contract VaultAccountingUnitTest is Test, AssertUtils, MainnetActors, Etches {
 
         uint256 rate = IProvider(MC.PROVIDER).getRate(MC.STETH);
         expectedTotalAssets += (aliceStEthDonateAmount * rate) / (10 ** 18);
+        donationAmount += aliceStEthDonateAmount * rate / (10 ** 18);
 
         IERC20(steth).transfer(address(vault), aliceStEthDonateAmount);
 
+        uint256 totalSupplyBefore = vault.totalSupply();
         vault.processAccounting();
+        uint256 sharesMinted = vault.totalSupply() - totalSupplyBefore;
+
+        assertEq(vault.balanceOf(IFeeHooks(address(vault.hooks())).performanceFeeRecipient()), sharesMinted);
 
         uint256 totalAssets = vault.totalAssets();
         uint256 totalSupply = vault.totalSupply();
 
-        assertEqThreshold(totalAssets, expectedTotalAssets, 5000, "totalAssets should be expectedAssets");
-        assertEqThreshold(totalSupply, expectedTotalSupply, 5000, "totalSupply should be expectedSupply");
+        assertEqThreshold(totalAssets, expectedTotalAssets, 1, "totalAssets should be expectedAssets");
+        assertGe(totalSupply, expectedTotalSupply, "totalSupply should be expectedSupply");
+
+        uint256 performanceFee = donationAmount * IFeeHooks(address(vault.hooks())).performanceFee() / (10 ** 18);
+
+        assertGe(
+            performanceFee,
+            vault.convertToAssets(sharesMinted),
+            "performanceFee should be greater than or equal to the converted assets"
+        );
+        assertApproxEqAbs(
+            performanceFee, vault.convertToAssets(sharesMinted), 3, "performanceFee should be expectedPerformanceFee"
+        );
     }
 }

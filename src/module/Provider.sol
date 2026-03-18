@@ -25,6 +25,7 @@ contract Provider is IProvider {
             return (
                 keccak256(bytes(version)) == keccak256(bytes("0.1.0"))
                     || keccak256(bytes(version)) == keccak256(bytes("0.2.0"))
+                    || keccak256(bytes(version)) == keccak256(bytes("0.3.0"))
             ) && vaultAsset == MC.WBNB;
         } catch {
             return false;
@@ -34,7 +35,10 @@ contract Provider is IProvider {
     function isClisBnbStrategyVault(address asset) public view returns (bool) {
         try IBaseStrategy(asset).STRATEGY_VERSION() returns (string memory version) {
             address vaultAsset = IVault(asset).asset();
-            return keccak256(bytes(version)) == keccak256(bytes("0.2.0")) && vaultAsset == MC.SLISBNB;
+            return (
+                keccak256(bytes(version)) == keccak256(bytes("0.2.0"))
+                    || keccak256(bytes(version)) == keccak256(bytes("0.3.0"))
+            ) && vaultAsset == MC.SLISBNB;
         } catch {
             return false;
         }
@@ -43,7 +47,7 @@ contract Provider is IProvider {
     function getRate(address asset) public view virtual override returns (uint256) {
         if (
             asset == MC.YNWBNBK || asset == MC.YNBNBK || asset == MC.YNCLISBNBK || asset == MC.YNASBNBK
-                || asset == MC.EULER_EWBNB_6_VAULT
+                || asset == MC.EULER_EWBNB_6_VAULT || asset == MC.AAVE_A_WBNB
         ) {
             return IERC4626(asset).convertToAssets(1e18);
         }
