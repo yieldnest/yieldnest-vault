@@ -21,42 +21,8 @@ contract YnUSDCTest is BaseTest {
     function setUp() public {
         (vault, provider) = BaseTest.deploy();
         vm.stopPrank();
-
-        // ynUSDC-specific setup: add asset, upgrade provider, configure rules
-        configureYnUSDC(vault);
     }
 
-    /// @notice Adds ynUSDC as an asset, deploys a provider that supports it,
-    ///         and sets processor rules for deposit/redeem.
-    ///         Can be removed once ynUSDC is part of the production deployment.
-    function configureYnUSDC(Vault vault_) internal {
-        // 1. Add ynUSDC as a vault asset
-        // vm.startPrank(TIMELOCK);
-        // vault_.addAsset(MC.YNUSDC, false);
-        // vm.stopPrank();
-
-        // 2. Deploy a new Provider that includes ynUSDC rate support
-        // Provider newProvider = new Provider(address(wrappedUSDC));
-        // vm.startPrank(TIMELOCK);
-        // vault_.setProvider(address(newProvider));
-        // vm.stopPrank();
-        provider = Provider(vault_.provider());
-
-        vault_.processAccounting();
-
-        // 3. Configure processor rules for ynUSDC
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](3);
-        uint256 i = 0;
-
-        address[] memory ynusdcSpender = new address[](1);
-        ynusdcSpender[0] = MC.YNUSDC;
-        rules[i++] = BaseRules.getAppendApprovalRule(MC.USDC, ynusdcSpender, IVault(address(vault_)));
-        rules[i++] = BaseRules.getRedeemRule(MC.YNUSDC, address(vault_));
-
-        vm.startPrank(TIMELOCK);
-        SafeRules.setProcessorRules(IVault(address(vault_)), rules, true);
-        vm.stopPrank();
-    }
 
     function test_deposit_fully_to_ynusdc(uint256 depositAmount) public {
         depositAmount = bound(depositAmount, 1000, 1_000_000 * 1e6);
