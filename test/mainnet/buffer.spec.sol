@@ -85,15 +85,12 @@ contract VaultBufferInvariantsTest is BaseTest {
         totalSupplyBefore = vault.totalSupply();
 
         uint256 bufferStrategySharesMinted;
-        uint256 expectedShareBalanceOfMorphoGauntletUsdcVault;
+        uint256 expectedBufferStrategyShares;
         uint256 bufferStrategyBalanceOfVaultBefore = IERC20(bufferStrategy).balanceOf(address(vault));
-        uint256 initialSharesOfMorphoGauntletUsdcVault;
         {
             // allocate to buffer
             uint256 usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
-            initialSharesOfMorphoGauntletUsdcVault = IERC20(MC.MORPHO_GAUNTLET_USDC_VAULT).balanceOf(address(vault));
-            expectedShareBalanceOfMorphoGauntletUsdcVault =
-                IERC4626(MC.MORPHO_GAUNTLET_USDC_VAULT).previewDeposit(bufferDepositAmount);
+            expectedBufferStrategyShares = IERC4626(bufferStrategy).previewDeposit(bufferDepositAmount);
 
             bufferStrategySharesMinted = allocateToBuffer(bufferDepositAmount);
 
@@ -108,9 +105,7 @@ contract VaultBufferInvariantsTest is BaseTest {
 
         assertGt(bufferStrategySharesMinted, 0, "Buffer shares should be greater than 0");
         assertEq(
-            IERC20(MC.MORPHO_GAUNTLET_USDC_VAULT).balanceOf(address(vault)),
-            expectedShareBalanceOfMorphoGauntletUsdcVault + initialSharesOfMorphoGauntletUsdcVault,
-            "Incorrect gauntlet usdc vault balance in buffer strategy"
+            bufferStrategySharesMinted, expectedBufferStrategyShares, "Minted buffer shares should match previewDeposit"
         );
         assertEq(
             IERC20(bufferStrategy).balanceOf(address(vault)),

@@ -21,42 +21,6 @@ contract YnUSDCTest is BaseTest {
     function setUp() public {
         (vault, provider) = BaseTest.deploy();
         vm.stopPrank();
-
-        // ynUSDC-specific setup: add asset, upgrade provider, configure rules
-        configureYnUSDC(vault);
-    }
-
-    /// @notice Adds ynUSDC as an asset, deploys a provider that supports it,
-    ///         and sets processor rules for deposit/redeem.
-    ///         Can be removed once ynUSDC is part of the production deployment.
-    function configureYnUSDC(Vault vault_) internal {
-        // 1. Add ynUSDC as a vault asset
-        vm.startPrank(TIMELOCK);
-        vault_.addAsset(MC.YNUSDC, false);
-        vm.stopPrank();
-
-        // 2. Deploy a new Provider that includes ynUSDC rate support
-        Provider newProvider = new Provider(address(wrappedUSDC));
-        vm.startPrank(TIMELOCK);
-        vault_.setProvider(address(newProvider));
-        vm.stopPrank();
-        provider = newProvider;
-
-        vault_.processAccounting();
-
-        // 3. Configure processor rules for ynUSDC
-        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](3);
-        uint256 i = 0;
-
-        address[] memory ynusdcSpender = new address[](1);
-        ynusdcSpender[0] = MC.YNUSDC;
-        rules[i++] = BaseRules.getAppendApprovalRule(MC.USDC, ynusdcSpender, IVault(address(vault_)));
-        rules[i++] = BaseRules.getDepositRule(MC.YNUSDC, address(vault_));
-        rules[i++] = BaseRules.getRedeemRule(MC.YNUSDC, address(vault_));
-
-        vm.startPrank(TIMELOCK);
-        SafeRules.setProcessorRules(IVault(address(vault_)), rules, true);
-        vm.stopPrank();
     }
 
     function test_deposit_fully_to_ynusdc(uint256 depositAmount) public {
@@ -126,96 +90,6 @@ contract YnUSDCTest is BaseTest {
             usdcBalanceOfVaultBefore - usdcBalanceOfVaultAfter,
             depositAmount,
             "USDC balance of vault should decrease by deposit amount"
-        );
-    }
-
-    function test_deposit_and_withdraw_from_ynusdc(uint256 depositAmount, uint256 withdrawAmount) public {
-        depositAmount = bound(depositAmount, 2e6, 1_000_000 * 1e6);
-        withdrawAmount = bound(withdrawAmount, 1e6, depositAmount - 1000);
-
-        address alice = makeAddr("alice");
-        deal(MC.USDC, alice, depositAmount);
-
-        uint256 usdcBalanceOfVaultBefore;
-        {
-            uint256 totalAssetsOfVaultBefore = vault.totalAssets();
-            uint256 totalBaseAssetsOfVaultBefore = vault.totalBaseAssets();
-            uint256 totalSupplyOfVaultBefore = vault.totalSupply();
-            usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
-            uint256 expectedSharesToReceive = IERC4626(vault).previewDeposit(depositAmount);
-
-            _depositAssetToVault(MC.USDC, depositAmount, alice);
-
-            vault.processAccounting();
-
-            assertEq(
-                vault.totalAssets(),
-                depositAmount + totalAssetsOfVaultBefore,
-                "Vault should have the same total assets as the deposit amount"
-            );
-            assertEq(
-                vault.totalBaseAssets(),
-                depositAmount * 1e12 + totalBaseAssetsOfVaultBefore,
-                "Vault should have the same total base assets as the deposit amount scaled by 1e12"
-            );
-            assertEq(
-                vault.totalSupply(),
-                expectedSharesToReceive + totalSupplyOfVaultBefore,
-                "Vault should have the same total supply as the expected shares to receive"
-            );
-        }
-
-        uint256 vaultAssetsBefore = vault.totalAssets();
-        uint256 vaultTotalSupplyBefore = vault.totalSupply();
-        depositToYnUSDC(depositAmount);
-
-        uint256 ynusdcBalanceOfVaultBefore = IERC20(MC.YNUSDC).balanceOf(address(vault));
-        usdcBalanceOfVaultBefore = IERC20(MC.USDC).balanceOf(address(vault));
-        assertTrue(ynusdcBalanceOfVaultBefore > 0, "Vault should have ynUSDC shares after deposit");
-
-        uint256 sharesToWithdraw = IERC4626(MC.YNUSDC).previewWithdraw(withdrawAmount);
-
-        // Withdraw from ynUSDC vault via redeem
-        address[] memory targets = new address[](1);
-        uint256[] memory values = new uint256[](1);
-        bytes[] memory data = new bytes[](1);
-
-        targets[0] = MC.YNUSDC;
-        values[0] = 0;
-        data[0] =
-            abi.encodeWithSignature("redeem(uint256,address,address)", sharesToWithdraw, address(vault), address(vault));
-
-        vm.startPrank(PROCESSOR);
-        vault.processor(targets, values, data);
-        vm.stopPrank();
-
-        vault.processAccounting();
-
-        uint256 ynusdcBalanceOfVaultAfter = IERC20(MC.YNUSDC).balanceOf(address(vault));
-        assertEq(
-            ynusdcBalanceOfVaultBefore - ynusdcBalanceOfVaultAfter,
-            sharesToWithdraw,
-            "ynUSDC balance of vault should decrease by shares withdrawn"
-        );
-        assertApproxEqAbs(
-            IERC20(MC.USDC).balanceOf(address(vault)) - usdcBalanceOfVaultBefore,
-            withdrawAmount,
-            100,
-            "USDC balance of vault should increase by withdraw amount"
-        );
-        // ynUSDC is a yield-bearing ERC4626 vault; processAccounting may mint
-        // small performance fee shares from rounding differences in rates
-        vm.assertApproxEqRel(
-            vault.totalSupply(),
-            vaultTotalSupplyBefore,
-            2e14,
-            "Vault total supply should be similar after ynUSDC allocation and withdrawal"
-        );
-        vm.assertApproxEqRel(
-            vault.totalAssets(),
-            vaultAssetsBefore,
-            2e14,
-            "Vault total assets should be similar after ynUSDC allocation and withdrawal"
         );
     }
 

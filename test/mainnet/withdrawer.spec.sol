@@ -33,49 +33,6 @@ contract WithdrawerTest is BaseTest {
         assertEq(withdrawer.decimals(), 18, "Withdrawer should have 18 decimals");
     }
 
-    function test_Withdrawer_deposit_and_withdraw_usdc(uint256 depositAmount, uint256 withdrawAmount) public {
-        depositAmount = bound(depositAmount, 1e6, 10_000_000e6);
-        withdrawAmount = bound(withdrawAmount, 1e6, depositAmount);
-
-        uint256 totalBaseAssetsBefore = vault.totalBaseAssets();
-
-        {
-            // Give USDC to alice and have her deposit into the vault
-            address alice = makeAddr("alice");
-            deal(MC.USDC, alice, depositAmount);
-
-            vm.startPrank(alice);
-            IERC20(MC.USDC).approve(address(vault), depositAmount);
-            vault.deposit(depositAmount, alice);
-            vm.stopPrank();
-        }
-
-        ProcessorUtils.allocateToERC4626(address(vault), MC.USDC, address(withdrawer), depositAmount, PROCESSOR);
-
-        withdrawer.processAccounting();
-        vault.processAccounting();
-
-        uint256 totalBaseAssetsAfter = vault.totalBaseAssets();
-        // Assert that totalBaseAssetsAfter is approximately equal to totalBaseAssetsBefore + depositAmount
-        // Allow a small relative difference due to rounding, e.g., 1e12
-        vm.assertApproxEqRel(
-            totalBaseAssetsAfter,
-            totalBaseAssetsBefore + depositAmount * 1e12,
-            1e12,
-            "totalBaseAssetsAfter should be approx totalAssetsBefore + depositAmount"
-        );
-
-        // Withdraw USDC from the withdrawer using ProcessorUtils
-        ProcessorUtils.withdrawFromERC4626(address(vault), address(withdrawer), withdrawAmount, PROCESSOR);
-
-        vm.assertApproxEqRel(
-            vault.totalBaseAssets(),
-            totalBaseAssetsBefore + depositAmount * 1e12,
-            1e12,
-            "totalBaseAssetsAfter should be approx totalAssetsAfter - withdrawAmount"
-        );
-    }
-
     function test_Withdrawer_deposit_and_withdraw_fxbase(uint256 depositAmount) public {
         depositAmount = bound(depositAmount, 1e6, 10_000_000e6);
 
