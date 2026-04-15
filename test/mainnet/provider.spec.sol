@@ -127,6 +127,10 @@ contract ProviderTest is BaseTest {
         assertLt(rate, 2e18, "Rate should be less than 2e18");
     }
 
+    function test_getRate_Of_AaveEthereumUSDC() public view {
+        assertEq(provider.getRate(MC.AAVE_ETHEREUM_USDC), 1e18);
+    }
+
     function test_getRate_Of_Withdrawer() public view {
         // The provider should return the result of IERC4626(withdrawer).convertToAssets(1e18)
         assertEq(provider.getRate(address(withdrawer)), IERC4626(address(withdrawer)).convertToAssets(1e18) * 1e12);

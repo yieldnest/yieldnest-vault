@@ -144,6 +144,11 @@ contract Provider is IProvider {
             return IERC4626(asset).convertToAssets(1e18);
         }
 
+        if (asset == MC.AAVE_ETHEREUM_USDC) {
+            // 1 AAVE_ETHEREUM_USDC = 1 USDC (rebasing)
+            return getRate(MC.WRAPPED_USDC);
+        }
+
         if (isUSDCStrategyVault(asset)) {
             // base asset is USDC with 6 decimals. we scale it to 18 decimals to convert to Wrapped USDC
             return IERC4626(asset).convertToAssets(10 ** IERC4626(asset).decimals()) * 1e12;
