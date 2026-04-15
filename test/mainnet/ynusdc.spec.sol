@@ -31,16 +31,16 @@ contract YnUSDCTest is BaseTest {
     ///         Can be removed once ynUSDC is part of the production deployment.
     function configureYnUSDC(Vault vault_) internal {
         // 1. Add ynUSDC as a vault asset
-        vm.startPrank(TIMELOCK);
-        vault_.addAsset(MC.YNUSDC, false);
-        vm.stopPrank();
+        // vm.startPrank(TIMELOCK);
+        // vault_.addAsset(MC.YNUSDC, false);
+        // vm.stopPrank();
 
         // 2. Deploy a new Provider that includes ynUSDC rate support
-        Provider newProvider = new Provider(address(wrappedUSDC));
-        vm.startPrank(TIMELOCK);
-        vault_.setProvider(address(newProvider));
-        vm.stopPrank();
-        provider = newProvider;
+        // Provider newProvider = new Provider(address(wrappedUSDC));
+        // vm.startPrank(TIMELOCK);
+        // vault_.setProvider(address(newProvider));
+        // vm.stopPrank();
+        provider = Provider(vault_.provider());
 
         vault_.processAccounting();
 
@@ -51,7 +51,6 @@ contract YnUSDCTest is BaseTest {
         address[] memory ynusdcSpender = new address[](1);
         ynusdcSpender[0] = MC.YNUSDC;
         rules[i++] = BaseRules.getAppendApprovalRule(MC.USDC, ynusdcSpender, IVault(address(vault_)));
-        rules[i++] = BaseRules.getDepositRule(MC.YNUSDC, address(vault_));
         rules[i++] = BaseRules.getRedeemRule(MC.YNUSDC, address(vault_));
 
         vm.startPrank(TIMELOCK);
