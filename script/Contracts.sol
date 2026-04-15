@@ -60,6 +60,8 @@ library MainnetContracts {
 
     // ynUSDC - Morpho market managed by Edge, denominated in USDC, ERC4626 with 18 decimals
     address public constant YNUSDC = 0xA1B096268D200d0ecFD57015700F6a0DA9c494e2;
+
+    address public constant AAVE_ETHEREUM_USDC = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
 }
 
 contract L1Contracts is IContracts {
