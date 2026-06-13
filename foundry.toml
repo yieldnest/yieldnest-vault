@@ -2,7 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-test = "test"
+test = "test/unit"
 evm_version = "cancun"
 optimizer = true
 optimizer-runs = 200
