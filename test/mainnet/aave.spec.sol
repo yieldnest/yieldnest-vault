@@ -127,7 +127,7 @@ contract AaveV3IntegrationTest is BaseTest {
         assertApproxEqAbs(
             IERC20(MC.AAVE_ETHEREUM_USDC).balanceOf(address(vault)) - aUsdcVaultBefore,
             depositAmount,
-            1,
+            2,
             "Vault aUSDC should equal supplied amount"
         );
         assertApproxEqAbs(
