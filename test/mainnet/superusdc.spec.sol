@@ -214,8 +214,9 @@ contract SuperUSDCTest is BaseTest {
 
         targets[0] = MC.SUPER_USDC_VAULT;
         values[0] = 0;
-        data[0] =
-            abi.encodeWithSignature("redeem(uint256,address,address)", sharesToWithdraw, address(vault), address(vault));
+        data[0] = abi.encodeWithSignature(
+            "redeem(uint256,address,address)", sharesToWithdraw, address(vault), address(vault)
+        );
 
         vm.startPrank(PROCESSOR);
         vault.processor(targets, values, data);
