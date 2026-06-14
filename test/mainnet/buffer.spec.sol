@@ -95,7 +95,6 @@ contract VaultBufferInvariantsTest is BaseTest {
             bufferStrategySharesMinted = allocateToBuffer(bufferDepositAmount);
 
             uint256 usdcBalanceOfVaultAfter = IERC20(MC.USDC).balanceOf(address(vault));
-            uint256 usdcBalanceOfBufferAfter = IERC20(MC.USDC).balanceOf(vault.buffer());
             assertEq(
                 usdcBalanceOfVaultBefore - usdcBalanceOfVaultAfter,
                 bufferDepositAmount,
@@ -177,7 +176,6 @@ contract VaultBufferInvariantsTest is BaseTest {
         );
 
         // State after withdraw
-        uint256 totalAssetsAfter = vault.totalAssets();
         uint256 totalSupplyAfter = vault.totalSupply();
         uint256 rateAfter = IERC4626(vault.buffer()).convertToAssets(1e18);
 

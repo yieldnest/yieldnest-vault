@@ -11,7 +11,7 @@ contract MockStrategy is BaseStrategy {
         string memory name,
         string memory symbol,
         uint8 decimals_,
-        uint64 baseWithdrawalFee_,
+        uint64,
         bool countNativeAsset_,
         bool alwaysComputeTotalAssets_,
         uint256 defaultAssetIndex_

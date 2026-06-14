@@ -40,7 +40,6 @@ contract SwapTest is BaseTest {
 
         uint256 usdtBalanceBefore = IERC20(MC.USDT).balanceOf(address(vault));
         uint256 vaultTotalAssetsBefore = vault.totalAssets();
-        uint256 vaultTotalSupplyBefore = vault.totalSupply();
 
         PsPResponse memory response = BaseTest._fetchPSPRoute(MC.USDC, MC.USDT, depositAmount, address(vault));
         processSwap(response);
