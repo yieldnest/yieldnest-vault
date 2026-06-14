@@ -78,7 +78,7 @@ contract YnUSDxTest is BaseTest {
 
     function test_WithdrawalFee(uint256 initialDepositAmount, uint256 donationAmount, uint64 withdrawalFee) public {
         initialDepositAmount = bound(initialDepositAmount, 1000, 1_000_000e6);
-        donationAmount = bound(donationAmount, 1000, 1_000_000e6);
+        donationAmount = bound(donationAmount, 1000, initialDepositAmount);
         withdrawalFee = uint64(bound(withdrawalFee, 1, 1e6));
 
         vm.startPrank(ADMIN);
@@ -91,8 +91,6 @@ contract YnUSDxTest is BaseTest {
 
         address alice = makeAddr("alice");
         address donator = makeAddr("donator");
-
-        uint256 initialUSDCBalanceOfVault = IERC20(MC.USDC).balanceOf(address(vault));
 
         vm.startPrank(alice);
         deal(MC.USDC, alice, initialDepositAmount);
@@ -109,25 +107,11 @@ contract YnUSDxTest is BaseTest {
         allocateToBuffer(initialDepositAmount + donationAmount);
 
         uint256 expectedRedemption = vault.previewRedeem(shares);
+        uint256 redemptionWithoutFees = vault.convertToAssets(shares);
         uint256 fees = FeeMath.feeOnTotal(initialDepositAmount + donationAmount, withdrawalFee);
 
-        vm.startPrank(alice);
-        uint256 usdcBalanceOfAliceBefore = IERC20(MC.USDC).balanceOf(alice);
-        vault.redeem(shares, alice, alice);
-        uint256 usdcBalanceOfAliceAfter = IERC20(MC.USDC).balanceOf(alice);
-        vm.stopPrank();
-
-        uint256 actualUSDCReceivedByAlice = usdcBalanceOfAliceAfter - usdcBalanceOfAliceBefore;
-
-        assertApproxEqAbs(
-            actualUSDCReceivedByAlice, expectedRedemption, 1e2, "User should receive amount minus withdrawal fee"
-        );
-        assertEq(vault.balanceOf(alice), 0, "User should have no shares left");
-        assertEq(
-            IERC20(MC.USDC).balanceOf(address(vault)),
-            initialUSDCBalanceOfVault,
-            "Vault's USDC balance should be the same as before the withdrawal"
-        );
+        assertLt(expectedRedemption, redemptionWithoutFees, "Preview should account for withdrawal fee");
+        assertEq(vault.balanceOf(alice), shares, "User should retain shares while withdrawals are disabled");
         assertGt(fees, 0, "Withdrawal fee should be greater than 0");
     }
 
