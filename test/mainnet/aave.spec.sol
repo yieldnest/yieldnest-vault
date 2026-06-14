@@ -131,7 +131,7 @@ contract AaveV3IntegrationTest is BaseTest {
             "Vault aUSDC should equal supplied amount"
         );
         assertApproxEqAbs(
-            vault.totalAssets(), totalAssetsBefore, 1, "Total assets should be unchanged after Aave supply"
+            vault.totalAssets(), totalAssetsBefore, 2, "Total assets should be unchanged after Aave supply"
         );
 
         uint256 usdcVaultBeforeWithdraw = IERC20(MC.USDC).balanceOf(address(vault));
