@@ -30,6 +30,7 @@ out = "out"
 libs = ["lib"]
 test = "test/mainnet"
 eth_rpc_url = "eth_mainnet"
+ffi = true
 evm_version = "cancun"
 solc_version = "0.8.24"
 allow_internal_expect_revert = true
