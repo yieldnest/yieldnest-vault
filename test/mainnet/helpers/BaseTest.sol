@@ -18,12 +18,8 @@ import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {ParaswapRules} from "script/rules/ParaswapRules.sol";
 import {SuperUsdcRules} from "script/rules/SuperUsdcRules.sol";
-import {FxProtocolRules} from "script/rules/FxProtocolRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
-import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {console} from "lib/forge-std/src/console.sol";
-import {WithdrawerConfigurator} from "script/config/WithdrawerConfigurator.sol";
-import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
@@ -46,12 +42,9 @@ contract BaseTest is Test, MainnetActors, TestHelper {
     uint256 public constant SLIPPAGE_PRECISION = 10000; // 10000 = 100%
     WrappedToken public wrappedUSDC;
 
-    Withdrawer public withdrawer;
-
     function deploy() public returns (Vault, Provider) {
         Vault vault = Vault(payable(MC.YNUSDx));
         wrappedUSDC = WrappedToken(MC.WRAPPED_USDC);
-        withdrawer = VaultVerification.getWithdrawer(IVault(MC.YNUSDx));
 
         TestHelper._initVault(vault);
 
@@ -62,26 +55,68 @@ contract BaseTest is Test, MainnetActors, TestHelper {
 
     function configureMainnet(Vault vault) internal {
         vm.startPrank(TIMELOCK);
-        vault.addAsset(MC.GHO, false);
-        vault.addAsset(MC.USDE, false);
-        vault.addAsset(MC.SUSDE, false);
-        vault.addAsset(MC.SCRVUSD, false);
-        vault.addAsset(MC.CRVUSD, false);
-        vault.addAsset(MC.USDS, false);
-        vault.addAsset(MC.SUSDS, false);
-        vault.addAsset(MC.SFRAX, false);
-        vault.addAsset(MC.FRAX, false);
+        _addAssetIfMissing(vault, MC.GHO, false);
+        _addAssetIfMissing(vault, MC.USDE, false);
+        _addAssetIfMissing(vault, MC.SUSDE, false);
+        _addAssetIfMissing(vault, MC.SCRVUSD, false);
+        _addAssetIfMissing(vault, MC.CRVUSD, false);
+        _addAssetIfMissing(vault, MC.USDS, false);
+        _addAssetIfMissing(vault, MC.SUSDS, false);
+        _addAssetIfMissing(vault, MC.SFRAX, false);
+        _addAssetIfMissing(vault, MC.FRAX, false);
+        _addAssetIfMissing(vault, MC.YNUSDC, false);
+        _addAssetIfMissing(vault, MC.EVK_VAULT_EUSDC_95, false);
+
+        configureMainnetProcessorRules(vault);
 
         vm.stopPrank();
 
         vault.processAccounting();
+    }
 
-        // TODO: remove whe withdrawer unpaused
-        if (withdrawer.paused()) {
-            vm.startPrank(ADMIN);
-            withdrawer.unpause();
-            vm.stopPrank();
+    function _addAssetIfMissing(Vault vault, address asset, bool active) internal {
+        if (!_hasAsset(vault, asset)) {
+            vault.addAsset(asset, active);
         }
+    }
+
+    function _hasAsset(Vault vault, address asset) internal view returns (bool) {
+        address[] memory assets = vault.getAssets();
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (assets[i] == asset) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function configureMainnetProcessorRules(Vault vault) internal {
+        SafeRules.RuleParams[] memory rules = new SafeRules.RuleParams[](5);
+        uint256 i = 0;
+
+        address[] memory usdcApprovalAllowList = new address[](5);
+        usdcApprovalAllowList[0] = MC.MORPHO_GAUNTLET_USDC_VAULT;
+        usdcApprovalAllowList[1] = MC.PARASWAP_AUGUSTUS_SWAPPER_ROUTER;
+        usdcApprovalAllowList[2] = MC.SUPER_USDC_VAULT;
+        usdcApprovalAllowList[3] = MC.YNUSDC;
+        usdcApprovalAllowList[4] = MC.EVK_VAULT_EUSDC_95;
+
+        rules[i++] = BaseRules.getApprovalRule(MC.USDC, usdcApprovalAllowList);
+        rules[i++] = BaseRules.getDepositRule(MC.YNUSDC, address(vault));
+        rules[i++] = BaseRules.getDepositRule(MC.EVK_VAULT_EUSDC_95, address(vault));
+        rules[i++] = BaseRules.getDepositRule(MC.SUPER_USDC_VAULT, address(vault));
+
+        SafeRules.RuleParams[] memory superUsdcRules =
+            SuperUsdcRules.getSuperUsdcRedeemRules(MC.SUPER_USDC_VAULT, address(vault));
+        for (uint256 j = 0; j < superUsdcRules.length; j++) {
+            rules[i++] = superUsdcRules[j];
+        }
+
+        if (i != rules.length) {
+            revert("rules length mismatch");
+        }
+
+        SafeRules.setProcessorRules(vault, rules, true);
     }
 
     function configureVaultRules(Vault vault) internal {

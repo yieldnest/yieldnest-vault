@@ -52,6 +52,18 @@ library MainnetContracts {
     address public constant FXBASE = 0x65C9A641afCEB9C0E6034e558A319488FA0FA3be;
 
     address public constant FXUSD = 0x085780639CC2cACd35E474e71f4d000e2405d8f6;
+
+    address public constant USDC_ARB1_STRATEGY = 0x360b2ba897dbEa77A39A93d9181597f9c2fdD9D3;
+
+    // EVK Vault eUSDC-95 - ERC4626 vault with 6 decimals, underlying USDC
+    address public constant EVK_VAULT_EUSDC_95 = 0x7fAb04FF2717d9A6B71A51c56c29697179597D40;
+
+    // ynUSDC - Morpho market managed by Edge, denominated in USDC, ERC4626 with 18 decimals
+    address public constant YNUSDC = 0xA1B096268D200d0ecFD57015700F6a0DA9c494e2;
+
+    address public constant AAVE_ETHEREUM_USDC = 0x98C23E9d8f34FEFb1B7BD6a91B7FF122F4e16F5c;
+
+    address public constant AAVE_V3_POOL = 0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2;
 }
 
 contract L1Contracts is IContracts {

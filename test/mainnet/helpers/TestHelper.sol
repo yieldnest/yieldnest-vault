@@ -95,8 +95,8 @@ contract TestHelper is Test, AssertUtils {
     function totalSupplyInvariant(uint256 expectedTotalSupply) public view {
         uint256 finalVaultTotalSupply = _vault.totalSupply();
         assertEqThreshold(
-            expectedTotalSupply,
             finalVaultTotalSupply,
+            expectedTotalSupply,
             10,
             "Vault totalSupply should be original totalSupply plus additional"
         );
