@@ -157,7 +157,9 @@ contract SuperUSDCTest is BaseTest {
         );
     }
 
-    function skip_test_deposit_and_withdraw_from_superusdc_vault(uint256 depositAmount, uint256 withdrawAmount) public {
+    function skip_test_deposit_and_withdraw_from_superusdc_vault(uint256 depositAmount, uint256 withdrawAmount)
+        public
+    {
         depositAmount = bound(depositAmount, 2e6, 25_00_000 * 1e6);
         withdrawAmount = bound(withdrawAmount, 1e6, depositAmount - 1000);
 
@@ -214,9 +216,8 @@ contract SuperUSDCTest is BaseTest {
 
         targets[0] = MC.SUPER_USDC_VAULT;
         values[0] = 0;
-        data[0] = abi.encodeWithSignature(
-            "redeem(uint256,address,address)", sharesToWithdraw, address(vault), address(vault)
-        );
+        data[0] =
+            abi.encodeWithSignature("redeem(uint256,address,address)", sharesToWithdraw, address(vault), address(vault));
 
         vm.startPrank(PROCESSOR);
         vault.processor(targets, values, data);
