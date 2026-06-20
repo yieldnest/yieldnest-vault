@@ -158,16 +158,19 @@ Parameter meanings and validation:
 After initialization, a vault must be configured in this order unless the deployment script proves an equivalent safe
 ordering:
 
-1. Grant final roles and temporary deployer roles.
+1. Grant final roles and temporary deployer roles. Do not assume the helper grants every role needed by later steps:
+   explicitly grant `HOOKS_MANAGER_ROLE` before `setHooks(...)` and `FEE_MANAGER_ROLE` before fee configuration if
+   those features are used.
 2. Set the provider with `setProvider(provider)`.
 3. Add assets with `addAsset(asset, active)`.
 4. Set the buffer with `setBuffer(buffer)` if ERC4626 `withdraw`/`redeem` should be enabled.
 5. Set processor rules with `setProcessorRule` or `setProcessorRules`.
-6. Set hooks with `setHooks(hooks)` only if hooks are intended and `IHooks(hooks).VAULT() == vault`.
-7. Configure withdrawal fees and fee overrides if applicable.
+6. Set hooks with `setHooks(hooks)` only if hooks are intended and `IHooks(hooks).VAULT() == vault`; for composed
+   hook deployments this should usually be the periphery `MetaHooks` contract.
+7. Configure withdrawal fees and fee overrides if applicable; this requires `FEE_MANAGER_ROLE`.
 8. Call `processAccounting()` when cached accounting is used and the initial state needs synchronization.
 9. Unpause only after provider, assets, buffer/rules/hooks, roles, and accounting are verified.
-10. Renounce all temporary deployer roles.
+10. Renounce all temporary deployer roles, including any temporary `HOOKS_MANAGER_ROLE` or `FEE_MANAGER_ROLE` grants.
 
 ## Base Strategy Configuration
 
@@ -214,7 +217,8 @@ Concrete strategy configuration sequence:
 1. Deploy the concrete implementation, not `BaseStrategy`.
 2. Deploy a proxy for the concrete implementation.
 3. Call the concrete initializer on the proxy exactly once.
-4. Grant final roles, including `ALLOCATOR_MANAGER_ROLE` and any needed `ALLOCATOR_ROLE`.
+4. Grant final roles, including `ALLOCATOR_MANAGER_ROLE` and any needed `ALLOCATOR_ROLE`. `BaseRoles` does not grant
+   `ALLOCATOR_MANAGER_ROLE`; strategy deployments must grant it explicitly.
 5. Set provider.
 6. Add assets using the concrete strategy's asset function. For `BaseStrategy`, prefer
    `addAsset(asset, decimals, depositable, withdrawable)` when decimals must be explicit.
@@ -222,7 +226,8 @@ Concrete strategy configuration sequence:
 8. Set processor rules for every external protocol action the strategy may execute.
 9. Configure hooks and fees only if the concrete child supports them.
 10. Unpause only after role, asset, provider, processor, accounting, and allocator checks pass.
-11. Renounce temporary deployer roles.
+11. Renounce temporary deployer roles, including any temporary `ALLOCATOR_MANAGER_ROLE`, `HOOKS_MANAGER_ROLE`, or
+    `FEE_MANAGER_ROLE` grants made for setup.
 
 ## Asset Configuration Rules
 
@@ -304,8 +309,75 @@ Hooks are optional and can intercept deposit, withdraw, redeem, and accounting f
 - Nonzero hooks must return this vault from `IHooks(hooks).VAULT()`.
 - Only the hooks contract can call `mintShares`.
 
-Hooks can change accounting and share supply behavior. A validator must treat nonzero hooks as a high-risk extension and
-review the hook contract and configuration before unpause.
+Hooks can change accounting and share supply behavior. A validator must treat nonzero hooks as a high-risk extension.
+
+YieldNest hook composition lives in the periphery repo:
+
+- Source: <https://github.com/yieldnest/yieldnest-vault-periphery>
+- Current hooks branch observed for this guide: `eth-max-vault`
+- Relevant contracts:
+  - `src/hooks/MetaHooks.sol`
+  - `src/hooks/ProcessAccountingGuardHook.sol`
+  - `script/factory/HooksFactory.sol`
+  - `script/deploy/DeployMetaHooks.s.sol`
+  - `script/deploy/VerifyMetaHooks.s.sol`
+
+Periphery `MetaHooks` pattern:
+
+- The vault's `setHooks(...)` should point at `MetaHooks` when multiple hooks are composed.
+- `MetaHooks.VAULT()` must equal the core vault address, otherwise core `setHooks(...)` reverts.
+- Sub-hooks managed by `MetaHooks` are normally constructed with their `VAULT` set to `address(metaHooks)`, not the core
+  vault, because `MetaHooks` calls them and proxies selected vault reads/mints.
+- `MetaHooks` dispatches hooks in the exact order configured by `MetaHooks.setHooks(IHooks[] hooks_)`; order is
+  security-critical. For example, if one hook mints fee shares and another hook checks the resulting supply change, the
+  checker must run after the minter.
+- `MetaHooks` supports up to 16 hooks because it stores hook enablement in `uint16` bitmaps.
+- `MetaHooks.setHooks(...)` rejects an empty array, duplicate hooks, and more than 16 hooks.
+- `MetaHooks.syncConfigBitmap()` must be called after any child hook's `getConfig()` output changes.
+- `MetaHooks.setConfig(...)` is unsupported; configure child hooks directly and then sync the bitmap.
+- `MetaHooks.mintShares(...)` can call the core vault's `mintShares(...)`, but only registered child hooks can call
+  `MetaHooks.mintShares(...)`.
+
+Periphery roles are separate from core vault roles:
+
+- Core vault `HOOKS_MANAGER_ROLE` is needed to call `vault.setHooks(address(metaHooks))`.
+- Periphery `MetaHooks.HOOK_MANAGER_ROLE` is needed to call `metaHooks.setHooks(...)` and
+  `metaHooks.syncConfigBitmap()`.
+- These roles may be assigned to the same actor, but they are different roles on different contracts.
+- `BaseRoles.configureDefaultRoles` and `BaseRoles.configureTemporaryRoles` in this repo do not grant core
+  `HOOKS_MANAGER_ROLE`; grant it explicitly when hooks are part of the deployment.
+
+Common periphery hook instances:
+
+- `FeeHooks`
+  - Imported by the periphery from `yieldnest-vault`.
+  - Mints performance-fee shares in `afterProcessAccounting`.
+  - Requires `alwaysComputeTotalAssets() == false`; otherwise it reverts to avoid charging fees on undefined cached
+    accounting deltas.
+  - Configured with `performanceFee`, `performanceFeeRecipient`, owner, and an `IHooks.Config`.
+  - The periphery `DeployMetaHooks.s.sol` example uses `afterProcessAccounting: true`.
+
+- `ProcessAccountingGuardHook`
+  - Checks `afterProcessAccounting` changes in total assets and total supply.
+  - Requires `alwaysComputeTotalAssets() == false`.
+  - Configured with owner, `maxTotalAssetsDecreaseRatio`, `maxTotalAssetsIncreaseRatio`,
+    `maxTotalSupplyIncreaseRatio`, and `expectedPerformanceFee`.
+  - Its `expectedPerformanceFee` should match the fee hook's performance fee when both are used.
+
+Hook deployment/config validation should verify:
+
+- `vault.hooks() == address(metaHooks)` when MetaHooks is intended.
+- `metaHooks.VAULT() == address(vault)`.
+- `metaHooks.DEFAULT_ADMIN_ROLE()` is held by the intended admin.
+- `metaHooks.HOOK_MANAGER_ROLE()` is held by the intended hooks manager.
+- deployer no longer has MetaHooks admin or hook-manager roles.
+- `metaHooks.getHooks()` contains the intended child hooks in the intended order.
+- every child hook's `VAULT()` is `address(metaHooks)` when it is intended to be called through MetaHooks.
+- each child hook's `getConfig()` matches the intended hook points.
+- `metaHooks.getConfig()` is the expected aggregate of child-hook configs.
+- fee-hook owner, performance fee, and recipient match the deployment spec.
+- accounting-guard thresholds and expected performance fee match the deployment spec.
+- `alwaysComputeTotalAssets == false` before enabling accounting hooks that depend on cached accounting deltas.
 
 ## Roles
 
@@ -383,8 +455,16 @@ Script helper expectations:
   - `UNPAUSER_ROLE` to `actors.UNPAUSER()`
   - `PROVIDER_MANAGER_ROLE`, `ASSET_MANAGER_ROLE`, `BUFFER_MANAGER_ROLE`, and `PROCESSOR_MANAGER_ROLE` to timelock
 - `BaseRoles.configureTemporaryRoles` grants deployer temporary setup roles.
+- Neither helper grants `HOOKS_MANAGER_ROLE`, `FEE_MANAGER_ROLE`, or `ALLOCATOR_MANAGER_ROLE`.
+- `BaseRoles.configureTemporaryRolesForMaxVault` adds temporary `FEE_MANAGER_ROLE` for a `Vault`, but it still does not
+  add `HOOKS_MANAGER_ROLE` or strategy `ALLOCATOR_MANAGER_ROLE`.
+- Do not trust helper names as proof of cleanup. Verify the exact temporary account no longer has every role it was
+  granted, especially explicit grants and `FEE_MANAGER_ROLE`.
+- Any deployment that sets hooks, configures fees, or configures strategy allocator management must explicitly grant the
+  corresponding role to the final actor and, if needed, temporarily to the deployer.
 - `BaseRoles.renounceTemporaryRoles` must be called before finalization.
-- Verification should prove deployer no longer has temporary roles.
+- Verification should prove deployer no longer has temporary roles, including any explicit temporary grants outside
+  `BaseRoles`.
 
 ## Final Configuration Checklist
 
