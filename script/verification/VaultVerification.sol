@@ -10,8 +10,6 @@ import {MainnetContracts as MC} from "script/Contracts.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {WithdrawerConfig} from "script/config/WithdrawerConfig.sol";
 import {WithdrawerRules} from "script/rules/WithdrawerRules.sol";
-import {ConnectorRules} from "script/rules/ConnectorRules.sol";
-import {YieldNestRules} from "script/rules/YieldNestRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {OriginRules} from "script/rules/OriginRules.sol";
 import {StakedEtherRules} from "script/rules/StakedEtherRules.sol";
@@ -42,23 +40,16 @@ library VaultVerification {
             vm.assertEq(asset.decimals, 18);
         }
 
-        address[] memory inactiveAssets = new address[](11);
+        address[] memory inactiveAssets = new address[](7);
         inactiveAssets[0] = MC.EULER_WETH_22_VAULT;
-        inactiveAssets[1] = MC.CURVE_LP_YNETH_YNLSDE_STRATEGY;
-        inactiveAssets[2] = address(withdrawer);
-        inactiveAssets[3] = MC.WSTETH;
-        inactiveAssets[4] = MC.WOETH;
-        inactiveAssets[5] = MC.STETH;
-        inactiveAssets[6] = MC.OETH;
-        inactiveAssets[7] = MC.SMOKEHOUSE_WSTETH;
-        inactiveAssets[8] = MC.MORPHO_MEV_CAPITAL_WETH;
-        inactiveAssets[9] = MC.YNETH;
-        inactiveAssets[10] = MC.YNLSDE;
+        inactiveAssets[1] = address(withdrawer);
+        inactiveAssets[2] = MC.WSTETH;
+        inactiveAssets[3] = MC.WOETH;
+        inactiveAssets[4] = MC.STETH;
+        inactiveAssets[5] = MC.OETH;
+        inactiveAssets[6] = MC.MORPHO_MEV_CAPITAL_WETH;
 
         for (uint256 i = 0; i < inactiveAssets.length; i++) {
-            if (!vault.hasAsset(inactiveAssets[i])) {
-                continue;
-            }
             IVault.AssetParams memory asset = vault.getAsset(inactiveAssets[i]);
             vm.assertFalse(asset.active);
             vm.assertEq(asset.decimals, 18);
@@ -129,22 +120,17 @@ library VaultVerification {
             vm.assertEq(asset.decimals, 18);
             vm.assertTrue(Withdrawer(withdrawer).getAssetWithdrawable(MC.WETH));
         }
-        address[] memory assets = new address[](9);
-        assets[0] = MC.YNETH;
-        assets[1] = MC.YNLSDE;
-        assets[2] = MC.WOETH;
-        assets[3] = MC.OETH;
-        assets[4] = MC.WSTETH;
-        assets[5] = MC.STETH;
-        assets[6] = MC.METH;
-        assets[7] = MC.SFRXETH;
-        assets[8] = MC.WETH;
+        address[] memory assets = new address[](7);
+        assets[0] = MC.WOETH;
+        assets[1] = MC.OETH;
+        assets[2] = MC.WSTETH;
+        assets[3] = MC.STETH;
+        assets[4] = MC.METH;
+        assets[5] = MC.SFRXETH;
+        assets[6] = MC.WETH;
 
         for (uint256 i = 0; i < assets.length; i++) {
             IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(assets[i]);
-            if (asset.decimals == 0) {
-                continue;
-            }
             vm.assertTrue(asset.active);
             vm.assertEq(asset.decimals, 18);
             if (assets[i] == MC.WETH || assets[i] == MC.WOETH || assets[i] == MC.WSTETH) {
@@ -156,36 +142,6 @@ library VaultVerification {
     }
 
     function verifyWithdrawerRules(Withdrawer withdrawer) internal view {
-        {
-            // ynETH withdrawal queue
-            RulesVerification.verifyProcessorRule(
-                withdrawer, BaseRules.getApprovalRule(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER)
-            );
-            RulesVerification.verifyProcessorRule(
-                withdrawer, WithdrawerRules.getRequestWithdrawalRule(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER)
-            );
-
-            RulesVerification.verifyProcessorRule(
-                withdrawer,
-                WithdrawerRules.getClaimWithdrawalRule(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, address(withdrawer))
-            );
-        }
-
-        {
-            // ynLSDe withdrawal queue
-            RulesVerification.verifyProcessorRule(
-                withdrawer, BaseRules.getApprovalRule(MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER)
-            );
-            RulesVerification.verifyProcessorRule(
-                withdrawer, WithdrawerRules.getRequestWithdrawalRule(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER)
-            );
-
-            RulesVerification.verifyProcessorRule(
-                withdrawer,
-                WithdrawerRules.getClaimWithdrawalRule(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, address(withdrawer))
-            );
-        }
-
         {
             // wstETH withdrawal queue
             RulesVerification.verifyProcessorRule(
@@ -243,27 +199,9 @@ library VaultVerification {
         }
 
         {
-            // ynETH rules
-            RulesVerification.verifyProcessorRule(vault, YieldNestRules.getYnETHDepositRule(MC.YNETH, address(vault)));
-        }
-
-        {
-            // ynLSDe rules
-            address[] memory depositAssets = new address[](2);
-            depositAssets[0] = MC.WSTETH;
-            depositAssets[1] = MC.WOETH;
-
-            RulesVerification.verifyProcessorRule(
-                vault, YieldNestRules.getYnEigenDepositRule(MC.YNLSDE, depositAssets, address(vault))
-            );
-        }
-
-        {
             // approvals for wstETH
-            address[] memory strategies = new address[](3);
-            strategies[0] = MC.YNLSDE;
-            strategies[1] = address(withdrawer);
-            strategies[2] = MC.SMOKEHOUSE_WSTETH;
+            address[] memory strategies = new address[](1);
+            strategies[0] = address(withdrawer);
 
             RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.WSTETH, strategies));
         }
@@ -279,9 +217,8 @@ library VaultVerification {
 
         {
             // approvals for woETH
-            address[] memory strategies = new address[](2);
-            strategies[0] = MC.YNLSDE;
-            strategies[1] = address(withdrawer);
+            address[] memory strategies = new address[](1);
+            strategies[0] = address(withdrawer);
 
             RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.WOETH, strategies));
         }
@@ -295,28 +232,13 @@ library VaultVerification {
             RulesVerification.verifyProcessorRule(vault, BaseRules.getApprovalRule(MC.OETH, strategies));
         }
 
-        {
-            // Curve LP Strategy rules
-            RulesVerification.verifyProcessorRule(
-                vault, BaseRules.getApprovalRule(MC.CURVE_LP_YNETH_YNLSDE_STRATEGY, MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
-            );
-            RulesVerification.verifyProcessorRule(
-                vault, ConnectorRules.getConnectorDepositRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
-            );
-            RulesVerification.verifyProcessorRule(
-                vault, ConnectorRules.getConnectorWithdrawRule(MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR)
-            );
-        }
-
         // Withdrawer rules
         {
             // Verify deposit rules for all assets
-            address[] memory assets = new address[](9);
+            address[] memory assets = new address[](7);
             uint256 index = 0;
 
             assets[index++] = MC.WETH;
-            assets[index++] = MC.YNETH;
-            assets[index++] = MC.YNLSDE;
             assets[index++] = MC.WOETH;
             assets[index++] = MC.OETH;
             assets[index++] = MC.WSTETH;
@@ -356,15 +278,6 @@ library VaultVerification {
             RulesVerification.verifyProcessorRule(vault, BaseRules.getDepositRule(MC.WOETH, address(vault)));
             RulesVerification.verifyProcessorRule(vault, BaseRules.getWithdrawRule(MC.WOETH, address(vault)));
             RulesVerification.verifyProcessorRule(vault, BaseRules.getRedeemRule(MC.WOETH, address(vault)));
-        }
-
-        {
-            // Verify smoke house deposit/withdraw/redeem rules
-            RulesVerification.verifyProcessorRule(vault, BaseRules.getDepositRule(MC.SMOKEHOUSE_WSTETH, address(vault)));
-            RulesVerification.verifyProcessorRule(
-                vault, BaseRules.getWithdrawRule(MC.SMOKEHOUSE_WSTETH, address(vault))
-            );
-            RulesVerification.verifyProcessorRule(vault, BaseRules.getRedeemRule(MC.SMOKEHOUSE_WSTETH, address(vault)));
         }
 
         {

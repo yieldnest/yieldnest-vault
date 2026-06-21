@@ -80,33 +80,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
     }
 
-    function test_deposit_ynETH(uint256 depositAmount) public {
-        vm.assume(depositAmount > 10000);
-        vm.assume(depositAmount < 100_000 ether);
-
-        deal(MC.YNETH, address(this), depositAmount);
-        uint256 totalAssetBefore = vault.totalAssets();
-
-        IERC20(MC.YNETH).approve(address(vault), depositAmount);
-        vm.expectRevert();
-        vault.depositAsset(MC.YNETH, depositAmount, address(this));
-        assertEq(vault.totalAssets(), totalAssetBefore);
-    }
-
-    function test_deposit_ynLSDe(uint256 depositAmount) public {
-        vm.assume(depositAmount > 10000);
-        vm.assume(depositAmount < 100_000 ether);
-
-        uint256 totalAssetBefore = vault.totalAssets();
-
-        // Deposit YNLSDE
-        deal(MC.YNLSDE, address(this), depositAmount);
-        IERC20(MC.YNLSDE).approve(address(vault), depositAmount);
-        vm.expectRevert();
-        vault.depositAsset(MC.YNLSDE, depositAmount, address(this));
-        assertEq(vault.totalAssets(), totalAssetBefore);
-    }
-
     function test_deposit_wETH(uint256 depositAmount) public {
         vm.assume(depositAmount > 10000);
         vm.assume(depositAmount < 100_000 ether);
@@ -758,86 +731,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             vaultTotalAssetsBefore + fee,
             1e15, // withdrawal fee precision error is at 0.01% of amount
             "Vault total assets should include withdrawal fee"
-        );
-    }
-
-    function testDepositYnETHAndYnLSDeToConnector() public {
-        if (!vault.hasAsset(MC.YNETH) || !vault.hasAsset(MC.YNLSDE)) return;
-
-        uint256 depositAmount = 1000e18;
-        uint256 vaultTotalAssetsBefore = vault.totalAssets();
-        {
-            if (!vault.getAsset(MC.YNETH).active || !vault.getAsset(MC.YNLSDE).active) return;
-        }
-
-        address alice = makeAddr("alice");
-        {
-            deal(MC.YNETH, alice, depositAmount);
-            deal(MC.YNLSDE, alice, depositAmount);
-
-            // Alice deposits equal amounts of ynETH and ynLSDe
-            vm.startPrank(alice);
-            IERC20(MC.YNETH).approve(address(vault), depositAmount);
-            IERC20(MC.YNLSDE).approve(address(vault), depositAmount);
-            vault.depositAsset(MC.YNETH, depositAmount, alice);
-            vault.depositAsset(MC.YNLSDE, depositAmount, alice);
-            vm.stopPrank();
-
-            vault.processAccounting();
-        }
-
-        // Record total assets after deposits but before connector deposit
-        uint256 totalAssetsAfterDeposits = vault.totalAssets();
-        // Calculate TVL in terms of ynETH and ynLSDe rates
-        uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
-        uint256 ynLsdeRate = IProvider(vault.provider()).getRate(MC.YNLSDE);
-
-        uint256 ynEthValueInBase = depositAmount * ynEthRate / 1e18;
-        uint256 ynLsdeValueInBase = depositAmount * ynLsdeRate / 1e18;
-
-        assertApproxEqAbs(
-            totalAssetsAfterDeposits - vaultTotalAssetsBefore,
-            ynEthValueInBase + ynLsdeValueInBase,
-            3,
-            "Total assets increase should match sum of ynETH and ynLSDe values"
-        );
-
-        // Deposit equal amounts to ynETH and ynLSDe
-        {
-            address[] memory targets = new address[](3);
-            uint256[] memory values = new uint256[](3);
-            bytes[] memory data = new bytes[](3);
-
-            // Approve and deposit to ynETH
-            targets[0] = MC.YNETH;
-            values[0] = 0;
-            data[0] = abi.encodeCall(IERC20.approve, (MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, depositAmount));
-
-            targets[1] = MC.YNLSDE;
-            values[1] = 0;
-            data[1] = abi.encodeCall(IERC20.approve, (MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, depositAmount));
-
-            // Deposit to connector
-            targets[2] = MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR;
-            values[2] = 0;
-
-            data[2] = abi.encodeWithSignature("deposit(uint256,uint256,uint256)", depositAmount, depositAmount, 0);
-            // data[2] =  abi.encodeCall(ICurveLpConnector.deposit, (depositAmount, depositAmount, 0));
-
-            vm.startPrank(PROCESSOR);
-            vault.processor(targets, values, data);
-            vm.stopPrank();
-        }
-
-        // Process accounting
-        vault.processAccounting();
-
-        // Verify balances
-        assertApproxEqAbs(
-            totalAssetsAfterDeposits - vaultTotalAssetsBefore,
-            ynEthValueInBase + ynLsdeValueInBase,
-            3,
-            "Total assets increase should match sum of ynETH and ynLSDe values"
         );
     }
 }
