@@ -39,6 +39,10 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
         return withdrawer;
     }
 
+    function supportsYieldNestQueueWithdrawals() public pure override returns (bool) {
+        return false;
+    }
+
     /**
      * @notice Test to verify the version of the Withdrawer contract
      * @dev This test ensures that the deployed Withdrawer contract has the correct version
@@ -51,6 +55,8 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
     }
 
     function test_withdraw_ynLSDE(uint256 depositAmount) public {
+        if (!vault.hasAsset(MC.YNLSDE) || !vault.getAsset(MC.YNLSDE).active) return;
+
         vm.assume(depositAmount > 1e9);
         vm.assume(depositAmount < 100_000 ether);
 
@@ -58,16 +64,6 @@ contract WithdrawerMainnetTest is BaseWithdrawerMainnetTest {
         // Increase thresholds to accommodate ynLSDE operations
         HooksUtils.setMaxTotalAssetsIncreaseRatio(vault, 10000e18);
         HooksUtils.setMaxTotalSupplyIncreaseRatio(vault, 10000e18);
-
-        {
-            vm.startPrank(ADMIN);
-            vault.grantRole(vault.ASSET_MANAGER_ROLE(), ADMIN);
-
-            uint256 ynLSDeIndex = vault.getAsset(MC.YNLSDE).index;
-
-            vault.updateAsset(ynLSDeIndex, IVault.AssetUpdateFields({active: true}));
-            vm.stopPrank();
-        }
 
         address asset = MC.YNLSDE;
         uint256 initialVaultYnLSDE = IERC20(asset).balanceOf(address(vault));

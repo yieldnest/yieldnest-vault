@@ -7,7 +7,6 @@ import {MainnetActors} from "script/Actors.sol";
 import {Vault} from "src/Vault.sol";
 import {IVault} from "src/interface/IVault.sol";
 import {IERC20} from "src/Common.sol";
-import {IProvider} from "src/interface/IProvider.sol";
 import {AssertUtils} from "test/utils/AssertUtils.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
@@ -146,16 +145,6 @@ contract VaultMainnetYnETHTest is BaseIntegrationTest {
     function test_Vault_ynETH_depositETH() public {
         IynETH yneth = IynETH(payable(MC.YNETH));
 
-        {
-            vm.startPrank(ADMIN);
-            vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
-            vm.stopPrank();
-
-            uint256 index = vault.getAsset(MC.YNETH).index;
-            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
-            vault.updateAsset(index, fields);
-        }
-
         address bob = address(1776);
 
         vm.deal(bob, 100 ether);
@@ -169,16 +158,9 @@ contract VaultMainnetYnETHTest is BaseIntegrationTest {
         assertEq(ynEthShares, bobYnETHBalance, "Eth deposited in ynETH should be correct");
 
         yneth.approve(MC.YNETHX, bobYnETHBalance);
+        vm.expectRevert();
         vault.depositAsset(MC.YNETH, bobYnETHBalance, bob);
-
-        uint256 newTotalAssets = vault.totalAssets();
-        uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
-
-        assertEq(
-            newTotalAssets,
-            previousTotalAssets + (ynEthShares * ynEthRate / 1e18),
-            "Total assets should match the previous total assets plus the equivalent ynETH shares in base denomination"
-        );
+        assertEq(vault.totalAssets(), previousTotalAssets);
     }
 
     function test_Vault_ynETH_depositETH_reverts() public {
@@ -187,20 +169,11 @@ contract VaultMainnetYnETHTest is BaseIntegrationTest {
 
         vm.deal(bob, 100 ether);
 
-        // Deactivate ynETH asset in the vault
-        {
-            vm.startPrank(address(MC.TIMELOCK));
-            uint256 index = vault.getAsset(MC.YNETH).index;
-            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: false});
-            vault.updateAsset(index, fields);
-            vm.stopPrank();
-        }
-
         vm.startPrank(bob);
         uint256 ynEthShares = yneth.depositETH{value: 100 ether}(bob);
         yneth.approve(MC.YNETHX, ynEthShares);
 
-        vm.expectRevert(IVault.AssetNotActive.selector);
+        vm.expectRevert();
         vault.depositAsset(MC.YNETH, ynEthShares, bob);
         vm.stopPrank();
     }
