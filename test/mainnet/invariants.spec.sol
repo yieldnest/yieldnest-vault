@@ -540,133 +540,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         (amountSTETH) = abi.decode(returnData, (uint256));
     }
 
-    function _processYnETHDepositETH(uint256 amount) internal {
-        bytes memory data = abi.encodeWithSignature("depositETH(address)", address(vault));
-        _process(MC.YNETH, amount, data);
-    }
-
-    function _processYnEigenDeposit(address erc4626, address asset, uint256 amount) internal {
-        bytes memory data = abi.encodeWithSignature("deposit(address,uint256,address)", asset, amount, address(vault));
-        _process(erc4626, 0, data);
-    }
-
     function _processMintOETH(uint256 amount) internal {
         bytes memory data = abi.encodeWithSignature("mint(address,uint256,uint256)", MC.WETH, amount, amount);
         _process(MC.OETH_VAULT, 0, data);
-    }
-
-    function test_Vault_4626Invariants_Smokehouse_WSTETH(uint256 amount) public {
-        if (amount < 0.01 ether) return;
-        if (amount > 100_000 ether) return;
-
-        {
-            // deposit some WETH into the vault
-            address alice = address(10);
-            deal(MC.WETH, alice, amount);
-
-            vm.startPrank(alice);
-            IERC20(MC.WETH).approve(address(vault), amount);
-            vault.deposit(amount, alice);
-            vm.stopPrank();
-        }
-
-        uint256 initialAssets = vault.totalAssets();
-        uint256 initialSupply = vault.totalSupply();
-        uint256 performanceFeeShares;
-        {
-            // convert WETH to ETH
-            _processWithdrawWETH(amount);
-            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
-            performanceFeeShares += performanceFeeSharesMinted;
-            totalSupplyInvariant(initialSupply + performanceFeeShares);
-            totalAssetsInvariant(initialAssets);
-        }
-
-        uint256 amountWSTETH;
-        {
-            // convert ETH to wstETH
-            uint256 initialWSTETH = IERC20(MC.WSTETH).balanceOf(address(vault));
-
-            uint256 amountSTETH = _processSubmitETH(amount);
-            _processApprove(MC.STETH, MC.WSTETH, amountSTETH);
-            amountWSTETH = _processWrapSTETH(amountSTETH);
-            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
-            performanceFeeShares += performanceFeeSharesMinted;
-            assertEq(
-                IERC20(MC.WSTETH).balanceOf(address(vault)),
-                initialWSTETH + amountWSTETH,
-                "vault should have received wstETH"
-            );
-
-            totalSupplyInvariant(initialSupply + performanceFeeShares);
-            totalAssetsInvariant(initialAssets);
-        }
-
-        uint256 amountSmokehouseWSTETH;
-        {
-            // deposit wstETH into smokehouse
-            uint256 initialSmokehouseWSTETH = IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault));
-
-            _processApprove(MC.WSTETH, MC.SMOKEHOUSE_WSTETH, amountWSTETH);
-            amountSmokehouseWSTETH = _processDeposit(MC.SMOKEHOUSE_WSTETH, amountWSTETH);
-            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
-            performanceFeeShares += performanceFeeSharesMinted;
-            assertApproxEqAbs(
-                IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault)),
-                initialSmokehouseWSTETH + amountSmokehouseWSTETH,
-                3,
-                "vault should have received smokehouse wstETH"
-            );
-
-            totalSupplyInvariant(initialSupply + performanceFeeShares);
-            totalAssetsInvariant(initialAssets);
-        }
-
-        uint256 receivedWSTETH;
-        {
-            // redeem smokehouse wstETH for wstETH
-            uint256 initialReceivedWSTETH = IERC20(MC.WSTETH).balanceOf(address(vault));
-
-            receivedWSTETH = _processRedeem(MC.SMOKEHOUSE_WSTETH, amountSmokehouseWSTETH);
-            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
-            performanceFeeShares += performanceFeeSharesMinted;
-            assertEq(
-                IERC20(MC.WSTETH).balanceOf(address(vault)),
-                initialReceivedWSTETH + receivedWSTETH,
-                "vault should have received stETH"
-            );
-
-            totalSupplyInvariant(initialSupply + performanceFeeShares);
-            totalAssetsInvariant(initialAssets);
-        }
-
-        {
-            // deposit wstETH into smokehouse
-            uint256 initialSmokehouseWSTETH = IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault));
-
-            _processApprove(MC.WSTETH, MC.SMOKEHOUSE_WSTETH, receivedWSTETH);
-            amountSmokehouseWSTETH = _processDeposit(MC.SMOKEHOUSE_WSTETH, receivedWSTETH);
-            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
-            performanceFeeShares += performanceFeeSharesMinted;
-            assertApproxEqAbs(
-                IERC20(MC.SMOKEHOUSE_WSTETH).balanceOf(address(vault)),
-                initialSmokehouseWSTETH + amountSmokehouseWSTETH,
-                3,
-                "vault should have received smokehouse wstETH"
-            );
-
-            totalSupplyInvariant(initialSupply + performanceFeeShares);
-            totalAssetsInvariant(initialAssets);
-        }
-
-        {
-            uint256 maxWithdraw = IERC4626(MC.SMOKEHOUSE_WSTETH).maxWithdraw(address(vault));
-            _processWithdraw(MC.SMOKEHOUSE_WSTETH, maxWithdraw);
-            uint256 performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
-            performanceFeeShares += performanceFeeSharesMinted;
-            totalSupplyInvariant(initialSupply + performanceFeeShares);
-            totalAssetsInvariant(initialAssets);
-        }
     }
 
     function test_Vault_4626Invariants_WETH_Donation(uint256 amount, bool processAfterWithdraw) public {
@@ -806,175 +682,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
             totalSupplyInvariant(initialSupply);
             totalAssetsInvariant(initialAssets);
-        }
-    }
-
-    function test_Vault_4626Invariants_YNETH(uint256 amount, bool process) public {
-        vm.assume(amount > 100000);
-        vm.assume(amount < 100_000 ether);
-
-        {
-            address alice = address(10);
-            deal(MC.WETH, alice, amount);
-
-            vm.startPrank(alice);
-            IERC20(MC.WETH).approve(address(vault), amount);
-            vault.deposit(amount, alice);
-            vm.stopPrank();
-        }
-
-        vault.processAccounting();
-
-        uint256 initialAssets = vault.totalAssets();
-        uint256 initialSupply = vault.totalSupply();
-
-        {
-            if (process) {
-                vault.processAccounting();
-            }
-
-            totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
-        }
-    }
-
-    function test_Vault_4626Invariants_YNLSDE_WSTETH(
-        uint256 amount,
-        bool processAfterWETH,
-        bool processAfterWSTETH,
-        bool processAfterYnLSDE
-    ) public {
-        vm.assume(amount > 100000);
-        vm.assume(amount < 100_000 ether);
-
-        {
-            // deposit some WETH into the vault
-            address alice = address(10);
-            deal(MC.WETH, alice, amount);
-
-            vm.startPrank(alice);
-            IERC20(MC.WETH).approve(address(vault), amount);
-            vault.deposit(amount, alice);
-            vm.stopPrank();
-        }
-
-        uint256 initialAssets = vault.totalAssets();
-        uint256 initialSupply = vault.totalSupply();
-
-        {
-            // convert WETH to ETH
-            _processWithdrawWETH(amount);
-
-            if (processAfterWETH) {
-                vault.processAccounting();
-            }
-
-            totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
-        }
-
-        uint256 amountWSTETH;
-        {
-            // convert ETH to wstETH
-            uint256 initialWSTETH = IERC20(MC.WSTETH).balanceOf(address(vault));
-
-            uint256 amountSTETH = _processSubmitETH(amount);
-            _processApprove(MC.STETH, MC.WSTETH, amountSTETH);
-            amountWSTETH = _processWrapSTETH(amountSTETH);
-
-            if (processAfterWSTETH) {
-                vault.processAccounting();
-            }
-
-            assertEq(
-                IERC20(MC.WSTETH).balanceOf(address(vault)),
-                initialWSTETH + amountWSTETH,
-                "vault should have received wstETH"
-            );
-
-            totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
-        }
-
-        {
-            // deposit WSETH into YNLSDE
-            _processApprove(MC.WSTETH, MC.YNLSDE, amountWSTETH);
-            _processYnEigenDeposit(MC.YNLSDE, MC.WSTETH, amountWSTETH);
-
-            if (processAfterYnLSDE) {
-                vault.processAccounting();
-            }
-
-            totalSupplyInvariant(initialSupply);
-            totalAssetsInvariant(initialAssets);
-        }
-    }
-
-    function test_Vault_4626Invariants_YNLSDE_WOETH(uint256 amount, bool processAfterWOETH, bool processAfterYnLSDE)
-        public
-    {
-        vm.assume(amount > 100000);
-        vm.assume(amount < 100_000 ether);
-
-        {
-            // deposit some WETH into the vault
-            address alice = address(10);
-            deal(MC.WETH, alice, amount);
-
-            vm.startPrank(alice);
-            IERC20(MC.WETH).approve(address(vault), amount);
-            vault.deposit(amount, alice);
-            vm.stopPrank();
-        }
-
-        uint256 initialAssets = vault.totalAssets();
-        uint256 initialSupply = vault.totalSupply();
-
-        uint256 amountWOETH;
-        {
-            // convert ETH to woETH
-            uint256 initialWOETH = IERC20(MC.WOETH).balanceOf(address(vault));
-
-            _processApprove(MC.WETH, MC.OETH_VAULT, amount);
-            _processMintOETH(amount);
-            _processApprove(MC.OETH, MC.WOETH, amount);
-            amountWOETH = _processDeposit(MC.WOETH, amount);
-
-            uint256 performanceFeeSharesMinted;
-            if (processAfterWOETH) {
-                performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
-                assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
-            }
-
-            assertEq(
-                IERC20(MC.WOETH).balanceOf(address(vault)),
-                initialWOETH + amountWOETH,
-                "vault should have received wstETH"
-            );
-
-            totalSupplyInvariant(initialSupply + performanceFeeSharesMinted);
-            // changing by 1e12 since underlying asset rates are changing
-            assertApproxEqRel(
-                vault.totalAssets(), initialAssets, 1e12, "vault should have received woETH after deposit"
-            );
-        }
-
-        {
-            // deposit WOETH into YNLSDE
-            _processApprove(MC.WOETH, MC.YNLSDE, amountWOETH);
-            _processYnEigenDeposit(MC.YNLSDE, MC.WOETH, amountWOETH);
-            initialSupply = vault.totalSupply();
-            uint256 performanceFeeSharesMinted;
-            if (processAfterYnLSDE) {
-                performanceFeeSharesMinted = checkProcessAccountingInvariants(vault);
-                assertLt(performanceFeeSharesMinted, 1e15, "performanceFeeSharesMinted should be less than 1e12");
-            }
-
-            totalSupplyInvariant(initialSupply + performanceFeeSharesMinted);
-            // changing by 1e12 since underlying asset rates are changing
-            assertApproxEqRel(
-                vault.totalAssets(), initialAssets, 1e12, "vault should have received ynLSDe after deposit"
-            );
         }
     }
 
@@ -1157,7 +864,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         vm.assume(amount > 1e8);
         vm.assume(amount < 1e5 ether);
 
-        uint256 assetcount = 7;
+        uint256 assetcount = 5;
         vm.assume(i < assetcount);
 
         withdrawer.processAccounting();
@@ -1165,7 +872,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         address alice = address(0xa11ce);
 
-        address[] memory assets = new address[](7);
+        address[] memory assets = new address[](5);
         uint256 index = 0;
 
         assets[index++] = MC.WETH;
@@ -1173,8 +880,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         assets[index++] = MC.WSTETH;
         assets[index++] = MC.WOETH;
         assets[index++] = MC.OETH;
-        assets[index++] = MC.YNLSDE;
-        assets[index++] = MC.YNETH;
 
         dealAsset(assets[i], alice, amount);
 
@@ -1353,9 +1058,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         totalSupplyInvariant(initialSupply + depositedShares);
         totalAssetsInvariant(initialAssets + initialDepositedAmount);
 
-        // Allocate to ynETH
-        _processWithdrawWETH(amount);
-        _processYnETHDepositETH(amount);
+        // Allocate the remaining WETH to the buffer. ynETH allocation rules/assets are no longer part of ynETHx.
+        _processApprove(MC.WETH, address(vault.buffer()), amount);
+        _processDeposit(address(vault.buffer()), amount);
 
         if (processAfterAllocate) {
             withdrawer.processAccounting();

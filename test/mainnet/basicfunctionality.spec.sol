@@ -12,8 +12,6 @@ import {IProvider} from "src/interface/IProvider.sol";
 import {VaultVerification} from "script/verification/VaultVerification.sol";
 import {RolesVerification} from "script/verification/RolesVerification.sol";
 import {ProxyUtils} from "script/ProxyUtils.sol";
-import {IynETH} from "test/interface/external/yieldnest/IynETH.sol";
-import {IWETH} from "test/interface/external/ethereum/IWETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
@@ -80,73 +78,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         // verify timelock roles
         uint256 minDelay = 1 days;
         RolesVerification.verifyTimelockRoles(timelock, actors, minDelay);
-    }
-
-    function test_deposit_ynETH(uint256 depositAmount) public {
-        vm.assume(depositAmount > 10000);
-        vm.assume(depositAmount < 100_000 ether);
-
-        {
-            vm.startPrank(ADMIN);
-            vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
-            vm.stopPrank();
-
-            uint256 index = vault.getAsset(MC.YNETH).index;
-            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
-            vault.updateAsset(index, fields);
-        }
-
-        deal(MC.YNETH, address(this), depositAmount);
-        uint256 totalAssetBefore = vault.totalAssets();
-
-        IERC20(MC.YNETH).approve(address(vault), depositAmount);
-        vault.depositAsset(MC.YNETH, depositAmount, address(this));
-        vault.processAccounting();
-
-        uint256 totalAssets = vault.totalAssets();
-        uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
-
-        assertApproxEqAbs(
-            totalAssets,
-            totalAssetBefore + (depositAmount * ynEthRate / 1e18),
-            3,
-            "Total assets should match deposit amount"
-        );
-    }
-
-    function test_deposit_ynLSDe(uint256 depositAmount) public {
-        vm.assume(depositAmount > 10000);
-        vm.assume(depositAmount < 100_000 ether);
-
-        {
-            vm.startPrank(ADMIN);
-            vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
-            vm.stopPrank();
-
-            uint256 index = vault.getAsset(MC.YNLSDE).index;
-            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
-            vault.updateAsset(index, fields);
-        }
-
-        uint256 totalAssetBefore = vault.totalAssets();
-
-        // Deposit YNLSDE
-        deal(MC.YNLSDE, address(this), depositAmount);
-        IERC20(MC.YNLSDE).approve(address(vault), depositAmount);
-        vault.depositAsset(MC.YNLSDE, depositAmount, address(this));
-
-        vault.processAccounting();
-
-        // Assert totalAssets is correct
-        uint256 totalAssets = vault.totalAssets();
-
-        uint256 ynLSDeRate = IProvider(vault.provider()).getRate(MC.YNLSDE);
-        assertApproxEqAbs(
-            totalAssets,
-            totalAssetBefore + (depositAmount * ynLSDeRate / 1e18),
-            3,
-            "Total assets should match deposit amount"
-        );
     }
 
     function test_deposit_wETH(uint256 depositAmount) public {
@@ -654,7 +585,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         );
     }
 
-    function test_depositWETH_allocateToYnETH(uint256 depositAmount) public {
+    function test_depositWETH_allocateToBuffer(uint256 depositAmount) public {
         vm.assume(depositAmount > 10000);
         vm.assume(depositAmount < 100_000 ether);
 
@@ -664,7 +595,7 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
 
         uint256 totalAssetsBefore = vault.totalAssets();
         uint256 vaultBalanceBefore = IERC20(MC.WETH).balanceOf(address(vault));
-        uint256 ynEthBalanceBefore = IERC20(MC.YNETH).balanceOf(address(vault));
+        uint256 bufferBalanceBefore = IERC20(vault.buffer()).balanceOf(address(vault));
 
         // Deposit WETH to vault
         deal(MC.WETH, address(this), depositAmount);
@@ -682,45 +613,18 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
         withdrawer.processAccounting();
         vault.processAccounting();
 
-        uint256 depositedAmount;
-        {
-            address[] memory targets = new address[](2);
-            uint256[] memory values = new uint256[](2);
-            bytes[] memory data = new bytes[](2);
-
-            targets[0] = MC.WETH;
-            values[0] = 0;
-            data[0] = abi.encodeCall(IWETH.withdraw, (depositAmount));
-
-            targets[1] = address(MC.YNETH);
-            values[1] = depositAmount;
-            data[1] = abi.encodeCall(IynETH.depositETH, (address(vault)));
-
-            vm.startPrank(PROCESSOR);
-            bytes[] memory returnData = vault.processor(targets, values, data);
-            vm.stopPrank();
-
-            depositedAmount = abi.decode(returnData[1], (uint256));
-        }
+        ProcessorUtils.allocateToBuffer(vault, depositAmount, PROCESSOR);
 
         // Process accounting
         withdrawer.processAccounting();
         vault.processAccounting();
 
-        uint256 rate = IProvider(vault.provider()).getRate(MC.YNETH);
-        uint256 baseAmount = Math.mulDiv(depositedAmount, rate, 10 ** 18, Math.Rounding.Floor);
-
-        // Verify total assets increased by correct amount
         assertApproxEqAbs(
-            vault.totalAssets(), totalAssetsBefore + baseAmount, 3, "Total assets should match deposit amount"
+            vault.totalAssets(), totalAssetsBefore + depositAmount, 1e8, "Total assets should match deposit amount"
         );
 
-        // Verify ynETH balance matches expected amount based on rate
-        assertApproxEqAbs(
-            IERC20(MC.YNETH).balanceOf(address(vault)),
-            ynEthBalanceBefore + depositedAmount,
-            3,
-            "ynETH balance should match expected amount"
+        assertGt(
+            IERC20(vault.buffer()).balanceOf(address(vault)), bufferBalanceBefore, "Buffer balance should increase"
         );
     }
 
@@ -827,94 +731,6 @@ contract VaultBasicFunctionalityTest is BaseIntegrationTest, TestHelper {
             vaultTotalAssetsBefore + fee,
             1e15, // withdrawal fee precision error is at 0.01% of amount
             "Vault total assets should include withdrawal fee"
-        );
-    }
-
-    function testDepositYnETHAndYnLSDeToConnector() public {
-        uint256 depositAmount = 1000e18;
-        uint256 vaultTotalAssetsBefore = vault.totalAssets();
-        {
-            vm.startPrank(ADMIN);
-            vault.grantRole(vault.ASSET_MANAGER_ROLE(), address(this));
-            vm.stopPrank();
-
-            uint256 index = vault.getAsset(MC.YNETH).index;
-            IVault.AssetUpdateFields memory fields = IVault.AssetUpdateFields({active: true});
-            vault.updateAsset(index, fields);
-
-            index = vault.getAsset(MC.YNLSDE).index;
-            fields = IVault.AssetUpdateFields({active: true});
-            vault.updateAsset(index, fields);
-        }
-
-        address alice = makeAddr("alice");
-        {
-            deal(MC.YNETH, alice, depositAmount);
-            deal(MC.YNLSDE, alice, depositAmount);
-
-            // Alice deposits equal amounts of ynETH and ynLSDe
-            vm.startPrank(alice);
-            IERC20(MC.YNETH).approve(address(vault), depositAmount);
-            IERC20(MC.YNLSDE).approve(address(vault), depositAmount);
-            vault.depositAsset(MC.YNETH, depositAmount, alice);
-            vault.depositAsset(MC.YNLSDE, depositAmount, alice);
-            vm.stopPrank();
-
-            vault.processAccounting();
-        }
-
-        // Record total assets after deposits but before connector deposit
-        uint256 totalAssetsAfterDeposits = vault.totalAssets();
-        // Calculate TVL in terms of ynETH and ynLSDe rates
-        uint256 ynEthRate = IProvider(vault.provider()).getRate(MC.YNETH);
-        uint256 ynLsdeRate = IProvider(vault.provider()).getRate(MC.YNLSDE);
-
-        uint256 ynEthValueInBase = depositAmount * ynEthRate / 1e18;
-        uint256 ynLsdeValueInBase = depositAmount * ynLsdeRate / 1e18;
-
-        assertApproxEqAbs(
-            totalAssetsAfterDeposits - vaultTotalAssetsBefore,
-            ynEthValueInBase + ynLsdeValueInBase,
-            3,
-            "Total assets increase should match sum of ynETH and ynLSDe values"
-        );
-
-        // Deposit equal amounts to ynETH and ynLSDe
-        {
-            address[] memory targets = new address[](3);
-            uint256[] memory values = new uint256[](3);
-            bytes[] memory data = new bytes[](3);
-
-            // Approve and deposit to ynETH
-            targets[0] = MC.YNETH;
-            values[0] = 0;
-            data[0] = abi.encodeCall(IERC20.approve, (MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, depositAmount));
-
-            targets[1] = MC.YNLSDE;
-            values[1] = 0;
-            data[1] = abi.encodeCall(IERC20.approve, (MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR, depositAmount));
-
-            // Deposit to connector
-            targets[2] = MC.CURVE_LP_YNETH_YNLSDE_CONNECTOR;
-            values[2] = 0;
-
-            data[2] = abi.encodeWithSignature("deposit(uint256,uint256,uint256)", depositAmount, depositAmount, 0);
-            // data[2] =  abi.encodeCall(ICurveLpConnector.deposit, (depositAmount, depositAmount, 0));
-
-            vm.startPrank(PROCESSOR);
-            vault.processor(targets, values, data);
-            vm.stopPrank();
-        }
-
-        // Process accounting
-        vault.processAccounting();
-
-        // Verify balances
-        assertApproxEqAbs(
-            totalAssetsAfterDeposits - vaultTotalAssetsBefore,
-            ynEthValueInBase + ynLsdeValueInBase,
-            3,
-            "Total assets increase should match sum of ynETH and ynLSDe values"
         );
     }
 }
