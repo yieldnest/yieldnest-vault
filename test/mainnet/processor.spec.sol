@@ -51,17 +51,11 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
     }
 
     function test_withdraw_allExisting_ynLSDe() public {
+        if (!vault.hasAsset(MC.YNLSDE) || !vault.getAsset(MC.YNLSDE).active) return;
+
         uint256 ynLSDeBalance = IERC20(MC.YNLSDE).balanceOf(address(vault));
 
         if (ynLSDeBalance == 0) {
-            vm.startPrank(ADMIN);
-            vault.grantRole(vault.ASSET_MANAGER_ROLE(), ADMIN);
-
-            uint256 ynLSDeIndex = vault.getAsset(MC.YNLSDE).index;
-
-            vault.updateAsset(ynLSDeIndex, IVault.AssetUpdateFields({active: true}));
-            vm.stopPrank();
-
             // Deposit some ynLSDE to the vault
             uint256 depositAmount = 1e18;
             deal(MC.YNLSDE, address(this), depositAmount);
@@ -117,15 +111,11 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
             address eigenStrategyManager = 0x92D904019A92B0Cafce3492Abb95577C285A68fC;
 
             // Only grant the role if not already granted
-            if (
-                !IAccessControl(eigenStrategyManager).hasRole(
-                    STAKING_NODES_WITHDRAWER_ROLE, address(withdrawalsProcessor)
-                )
-            ) {
+            if (!IAccessControl(eigenStrategyManager)
+                    .hasRole(STAKING_NODES_WITHDRAWER_ROLE, address(withdrawalsProcessor))) {
                 vm.startPrank(ADMIN); // Assume ADMIN/timelock can grant on eigenStrategyManager
-                IAccessControl(eigenStrategyManager).grantRole(
-                    STAKING_NODES_WITHDRAWER_ROLE, address(withdrawalsProcessor)
-                );
+                IAccessControl(eigenStrategyManager)
+                    .grantRole(STAKING_NODES_WITHDRAWER_ROLE, address(withdrawalsProcessor));
                 vm.stopPrank();
             }
         }

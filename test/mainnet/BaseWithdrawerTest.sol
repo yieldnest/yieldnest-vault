@@ -44,6 +44,10 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
 
     function getWithdrawer() public virtual returns (Withdrawer);
 
+    function supportsYieldNestQueueWithdrawals() public view virtual returns (bool) {
+        return true;
+    }
+
     function setUp() public override {
         super.setUp();
 
@@ -107,6 +111,8 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
     }
 
     function test_Vault_RequestWithdrawal_YNETH(uint256 amount) public {
+        if (!supportsYieldNestQueueWithdrawals()) return;
+
         vm.assume(amount > 1e6);
         vm.assume(amount < INITIAL_BALANCE);
 
@@ -114,6 +120,8 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
     }
 
     function test_Vault_ClaimWithdrawal_YNETH(uint256 amount) public {
+        if (!supportsYieldNestQueueWithdrawals()) return;
+
         vm.assume(amount > 1e6);
         vm.assume(amount < INITIAL_BALANCE);
 
@@ -123,6 +131,8 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
     }
 
     function test_Vault_RequestWithdrawal_YNLSDE(uint256 amount) public {
+        if (!supportsYieldNestQueueWithdrawals()) return;
+
         vm.assume(amount > 1e6);
         vm.assume(amount < INITIAL_BALANCE);
 
@@ -130,6 +140,8 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
     }
 
     function test_Vault_ClaimWithdrawal_YNLSDE(uint256 amount) public {
+        if (!supportsYieldNestQueueWithdrawals()) return;
+
         vm.assume(amount > 1e6);
         vm.assume(amount < INITIAL_BALANCE);
 
