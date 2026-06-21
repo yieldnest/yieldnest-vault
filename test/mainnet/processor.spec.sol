@@ -111,11 +111,15 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
             address eigenStrategyManager = 0x92D904019A92B0Cafce3492Abb95577C285A68fC;
 
             // Only grant the role if not already granted
-            if (!IAccessControl(eigenStrategyManager)
-                    .hasRole(STAKING_NODES_WITHDRAWER_ROLE, address(withdrawalsProcessor))) {
+            if (
+                !IAccessControl(eigenStrategyManager).hasRole(
+                    STAKING_NODES_WITHDRAWER_ROLE, address(withdrawalsProcessor)
+                )
+            ) {
                 vm.startPrank(ADMIN); // Assume ADMIN/timelock can grant on eigenStrategyManager
-                IAccessControl(eigenStrategyManager)
-                    .grantRole(STAKING_NODES_WITHDRAWER_ROLE, address(withdrawalsProcessor));
+                IAccessControl(eigenStrategyManager).grantRole(
+                    STAKING_NODES_WITHDRAWER_ROLE, address(withdrawalsProcessor)
+                );
                 vm.stopPrank();
             }
         }
