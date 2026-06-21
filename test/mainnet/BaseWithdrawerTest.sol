@@ -8,11 +8,9 @@ import {MainnetActors} from "script/Actors.sol";
 import {Withdrawer} from "src/withdraws/Withdrawer.sol";
 import {IERC20, Math} from "src/Common.sol";
 import {IProvider} from "src/interface/IProvider.sol";
-import {IWithdrawalQueueManager, IRedemptionAssetsVault} from "src/interface/IWithdrawalQueueManager.sol";
 import {IWithdrawalQueue} from "src/interface/external/lido/IWithdrawalQueue.sol";
 import {IProvider} from "src/interface/IProvider.sol";
 
-import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import {IOETHVault} from "src/interface/external/origin/IOETHVault.sol";
 import {TestHelper} from "test/mainnet/helpers/TestHelper.sol";
@@ -44,10 +42,6 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
 
     function getWithdrawer() public virtual returns (Withdrawer);
 
-    function supportsYieldNestQueueWithdrawals() public view virtual returns (bool) {
-        return true;
-    }
-
     function setUp() public override {
         super.setUp();
 
@@ -57,47 +51,16 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
 
         // NOTE: donate some assets to the queue managers / redemption assets vaults
         deal(MC.WSTETH_WITHDRAWAL_QUEUE, INITIAL_BALANCE * 100);
-        deal(MC.YNETH_REDEMPTION_ASSETS_VAULT, INITIAL_BALANCE * 100);
-
-        address[] memory assets = IRedemptionAssetsVault(MC.YNLSDE_REDEMPTION_ASSETS_VAULT).assetRegistry().getAssets();
-        for (uint256 i = 0; i < assets.length; i++) {
-            deal(assets[i], address(this), INITIAL_BALANCE * 100);
-            IERC20(assets[i]).approve(MC.YNLSDE_REDEMPTION_ASSETS_VAULT, INITIAL_BALANCE * 100);
-            IRedemptionAssetsVault(MC.YNLSDE_REDEMPTION_ASSETS_VAULT).deposit(INITIAL_BALANCE * 100, assets[i]);
-        }
 
         assertGt(
             MC.WSTETH_WITHDRAWAL_QUEUE.balance,
             INITIAL_BALANCE,
             "wstETH withdrawal queue manager should have some balance"
         );
-        assertGt(
-            IRedemptionAssetsVault(MC.YNLSDE_REDEMPTION_ASSETS_VAULT).availableRedemptionAssets(),
-            INITIAL_BALANCE,
-            "ynLSDe redemption vault should have some available assets"
-        );
-        assertGt(
-            IRedemptionAssetsVault(MC.YNETH_REDEMPTION_ASSETS_VAULT).availableRedemptionAssets(),
-            INITIAL_BALANCE,
-            "ynETH redemption vault should have some available assets"
-        );
-
-        // NOTE: grant finalizer role to the admin
-        vm.startPrank(ADMIN);
-        _grantFinalizerRole(MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
-        _grantFinalizerRole(MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, ADMIN);
-        vm.stopPrank();
 
         vm.startPrank(ADMIN);
         withdrawer.grantRole(withdrawer.PROCESSOR_ROLE(), address(this));
         vm.stopPrank();
-    }
-
-    function _grantFinalizerRole(address queueManager_, address finalizer_) internal {
-        IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
-        bytes32 finalizerRole = queueManager.REQUEST_FINALIZER_ROLE();
-
-        AccessControl(queueManager_).grantRole(finalizerRole, finalizer_);
     }
 
     function _convertAssetToBase(address asset_, uint256 assets) internal view returns (uint256) {
@@ -108,46 +71,6 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
     function _convertBaseToAsset(address asset_, uint256 assets) internal view returns (uint256) {
         uint256 rate = provider.getRate(asset_);
         return assets.mulDiv(10 ** 18, rate, Math.Rounding.Floor);
-    }
-
-    function test_Vault_RequestWithdrawal_YNETH(uint256 amount) public {
-        if (!supportsYieldNestQueueWithdrawals()) return;
-
-        vm.assume(amount > 1e6);
-        vm.assume(amount < INITIAL_BALANCE);
-
-        _requestWithdrawal(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, amount);
-    }
-
-    function test_Vault_ClaimWithdrawal_YNETH(uint256 amount) public {
-        if (!supportsYieldNestQueueWithdrawals()) return;
-
-        vm.assume(amount > 1e6);
-        vm.assume(amount < INITIAL_BALANCE);
-
-        uint256 tokenId = _requestWithdrawal(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, amount);
-
-        _claimWithdrawal(MC.YNETH, MC.YNETH_WITHDRAWAL_QUEUE_MANAGER, tokenId);
-    }
-
-    function test_Vault_RequestWithdrawal_YNLSDE(uint256 amount) public {
-        if (!supportsYieldNestQueueWithdrawals()) return;
-
-        vm.assume(amount > 1e6);
-        vm.assume(amount < INITIAL_BALANCE);
-
-        _requestWithdrawal(MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, amount);
-    }
-
-    function test_Vault_ClaimWithdrawal_YNLSDE(uint256 amount) public {
-        if (!supportsYieldNestQueueWithdrawals()) return;
-
-        vm.assume(amount > 1e6);
-        vm.assume(amount < INITIAL_BALANCE);
-
-        uint256 tokenId = _requestWithdrawal(MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, amount);
-
-        _claimWithdrawal(MC.YNLSDE, MC.YNLSDE_WITHDRAWAL_QUEUE_MANAGER, tokenId);
     }
 
     function test_Vault_RequestWithdrawal_WSTETH(uint256 amount) public {
@@ -415,65 +338,6 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
         return statuses[0];
     }
 
-    function _requestWithdrawal(address asset_, address queueManager_, uint256 amount)
-        internal
-        returns (uint256 tokenId)
-    {
-        uint256 donatedAmount = _donate_single_asset(asset_, amount);
-
-        IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
-
-        uint256 assetsBefore = withdrawer.asyncWithdrawalBalance(asset_);
-        withdrawer.processAccounting();
-        uint256 totalAssets = withdrawer.totalAssets();
-
-        tokenId = _processRequestWithdrawal(withdrawer, queueManager_, asset_, donatedAmount);
-
-        IWithdrawalQueueManager.WithdrawalRequest memory request = queueManager.withdrawalRequest(tokenId);
-
-        assertEq(request.amount, donatedAmount, "Amount should match");
-
-        uint256 assetsAfter = withdrawer.asyncWithdrawalBalance(asset_);
-        uint256 baseAmount = request.amount * request.redemptionRateAtRequestTime / 1e18;
-        uint256 fee = baseAmount * request.feeAtRequestTime / 1000000;
-        uint256 amountInBase = baseAmount - fee;
-
-        // Assert that asyncWithdrawalBalance increased by the right amount
-        assertApproxEqAbs(
-            assetsAfter - assetsBefore, amountInBase, 3, "asyncWithdrawalBalance should increase by the correct amount"
-        );
-        totalAssetsInvariant(totalAssets);
-    }
-
-    function _claimWithdrawal(address asset_, address queueManager_, uint256 tokenId) internal {
-        IWithdrawalQueueManager queueManager = IWithdrawalQueueManager(queueManager_);
-        withdrawer.processAccounting();
-        uint256 totalAssets = withdrawer.totalAssets();
-
-        vm.startPrank(ADMIN);
-        queueManager.finalizeRequestsUpToIndex(tokenId + 1);
-        vm.stopPrank();
-
-        // Get the request amount in base before claiming
-        IWithdrawalQueueManager.WithdrawalRequest memory request =
-            IWithdrawalQueueManager(queueManager_).withdrawalRequest(tokenId);
-        uint256 baseAmount = request.amount * request.redemptionRateAtRequestTime / 1e18;
-        uint256 fee = baseAmount * request.feeAtRequestTime / 1000000;
-        uint256 amountInBase = baseAmount - fee;
-
-        uint256 assetsBefore = withdrawer.asyncWithdrawalBalance(asset_);
-
-        _processClaimWithdrawal(withdrawer, queueManager_, tokenId);
-
-        totalAssetsInvariant(totalAssets);
-
-        uint256 assetsAfter = withdrawer.asyncWithdrawalBalance(asset_);
-        // asyncWithdrawalBalance should decrease by the amount of the request
-        assertApproxEqAbs(
-            assetsBefore - assetsAfter, amountInBase, 3, "asyncWithdrawalBalance should decrease by the correct amount"
-        );
-    }
-
     function _getWithdrawalRequestFromQueue(uint256 requestId)
         internal
         returns (IWithdrawalQueue.WithdrawalRequest memory request)
@@ -491,39 +355,5 @@ abstract contract BaseWithdrawerMainnetTest is BaseIntegrationTest, TestHelper {
             claimed: vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 4)) != bytes32(0),
             reportTimestamp: uint40(uint256(vm.load(address(MC.WSTETH_WITHDRAWAL_QUEUE), bytes32(requestSlot + 5))))
         });
-    }
-
-    function _processRequestWithdrawal(IVault vault_, address contractAddress, address asset_, uint256 amount)
-        internal
-        returns (uint256 tokenId)
-    {
-        address[] memory targets = new address[](2);
-        targets[0] = asset_;
-        targets[1] = contractAddress;
-
-        uint256[] memory values = new uint256[](2);
-        values[0] = 0;
-        values[1] = 0;
-
-        bytes[] memory data = new bytes[](2);
-        data[0] = abi.encodeWithSignature("approve(address,uint256)", contractAddress, amount);
-        data[1] = abi.encodeWithSignature("requestWithdrawal(uint256)", amount);
-
-        bytes[] memory returnData = vault_.processor(targets, values, data);
-
-        tokenId = abi.decode(returnData[1], (uint256));
-    }
-
-    function _processClaimWithdrawal(IVault vault_, address contractAddress, uint256 tokenId) internal {
-        address[] memory targets = new address[](1);
-        targets[0] = contractAddress;
-
-        uint256[] memory values = new uint256[](1);
-        values[0] = 0;
-
-        bytes[] memory data = new bytes[](1);
-        data[0] = abi.encodeWithSignature("claimWithdrawal(uint256,address)", tokenId, address(vault_));
-
-        vault_.processor(targets, values, data);
     }
 }
