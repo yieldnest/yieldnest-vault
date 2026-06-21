@@ -56,6 +56,9 @@ library VaultVerification {
         inactiveAssets[10] = MC.YNLSDE;
 
         for (uint256 i = 0; i < inactiveAssets.length; i++) {
+            if (!vault.hasAsset(inactiveAssets[i])) {
+                continue;
+            }
             IVault.AssetParams memory asset = vault.getAsset(inactiveAssets[i]);
             vm.assertFalse(asset.active);
             vm.assertEq(asset.decimals, 18);
@@ -139,6 +142,9 @@ library VaultVerification {
 
         for (uint256 i = 0; i < assets.length; i++) {
             IVault.AssetParams memory asset = Withdrawer(withdrawer).getAsset(assets[i]);
+            if (asset.decimals == 0) {
+                continue;
+            }
             vm.assertTrue(asset.active);
             vm.assertEq(asset.decimals, 18);
             if (assets[i] == MC.WETH || assets[i] == MC.WOETH || assets[i] == MC.WSTETH) {

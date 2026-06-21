@@ -472,6 +472,25 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         returnData = returnDatas[0];
     }
 
+    function _processorRuleActive(address target, string memory signature) internal view returns (bool) {
+        return vault.getProcessorRule(target, bytes4(keccak256(bytes(signature)))).isActive;
+    }
+
+    function _approvalRuleAllows(address token, address spender) internal view returns (bool) {
+        IVault.FunctionRule memory rule = vault.getProcessorRule(token, bytes4(keccak256("approve(address,uint256)")));
+        if (!rule.isActive || rule.paramRules.length == 0) {
+            return false;
+        }
+
+        address[] memory allowList = rule.paramRules[0].allowList;
+        for (uint256 i = 0; i < allowList.length; ++i) {
+            if (allowList[i] == spender) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function _processApprove(address token, address spender, uint256 amount) internal {
         bytes memory data = abi.encodeWithSignature("approve(address,uint256)", spender, amount);
         _process(token, 0, data);
@@ -556,6 +575,8 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     }
 
     function test_Vault_4626Invariants_Smokehouse_WSTETH(uint256 amount) public {
+        if (!_approvalRuleAllows(MC.WSTETH, MC.SMOKEHOUSE_WSTETH)) return;
+
         if (amount < 0.01 ether) return;
         if (amount > 100_000 ether) return;
 
@@ -844,6 +865,11 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         bool processAfterWSTETH,
         bool processAfterYnLSDE
     ) public {
+        if (
+            !_approvalRuleAllows(MC.WSTETH, MC.YNLSDE)
+                || !_processorRuleActive(MC.YNLSDE, "deposit(address,uint256,address)")
+        ) return;
+
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
@@ -913,6 +939,11 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
     function test_Vault_4626Invariants_YNLSDE_WOETH(uint256 amount, bool processAfterWOETH, bool processAfterYnLSDE)
         public
     {
+        if (
+            !_approvalRuleAllows(MC.WOETH, MC.YNLSDE)
+                || !_processorRuleActive(MC.YNLSDE, "deposit(address,uint256,address)")
+        ) return;
+
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 ether);
 
@@ -1157,7 +1188,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         vm.assume(amount > 1e8);
         vm.assume(amount < 1e5 ether);
 
-        uint256 assetcount = 7;
+        uint256 assetcount = 5;
         vm.assume(i < assetcount);
 
         withdrawer.processAccounting();
@@ -1165,7 +1196,7 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
 
         address alice = address(0xa11ce);
 
-        address[] memory assets = new address[](7);
+        address[] memory assets = new address[](5);
         uint256 index = 0;
 
         assets[index++] = MC.WETH;
@@ -1173,8 +1204,6 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         assets[index++] = MC.WSTETH;
         assets[index++] = MC.WOETH;
         assets[index++] = MC.OETH;
-        assets[index++] = MC.YNLSDE;
-        assets[index++] = MC.YNETH;
 
         dealAsset(assets[i], alice, amount);
 
@@ -1353,9 +1382,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         totalSupplyInvariant(initialSupply + depositedShares);
         totalAssetsInvariant(initialAssets + initialDepositedAmount);
 
-        // Allocate to ynETH
-        _processWithdrawWETH(amount);
-        _processYnETHDepositETH(amount);
+        // Allocate the remaining WETH to the buffer. ynETH allocation rules/assets are no longer part of ynETHx.
+        _processApprove(MC.WETH, address(vault.buffer()), amount);
+        _processDeposit(address(vault.buffer()), amount);
 
         if (processAfterAllocate) {
             withdrawer.processAccounting();

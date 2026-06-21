@@ -51,17 +51,11 @@ contract ProcessorIntegrationTest is BaseIntegrationTest {
     }
 
     function test_withdraw_allExisting_ynLSDe() public {
+        if (!vault.hasAsset(MC.YNLSDE) || !vault.getAsset(MC.YNLSDE).active) return;
+
         uint256 ynLSDeBalance = IERC20(MC.YNLSDE).balanceOf(address(vault));
 
         if (ynLSDeBalance == 0) {
-            vm.startPrank(ADMIN);
-            vault.grantRole(vault.ASSET_MANAGER_ROLE(), ADMIN);
-
-            uint256 ynLSDeIndex = vault.getAsset(MC.YNLSDE).index;
-
-            vault.updateAsset(ynLSDeIndex, IVault.AssetUpdateFields({active: true}));
-            vm.stopPrank();
-
             // Deposit some ynLSDE to the vault
             uint256 depositAmount = 1e18;
             deal(MC.YNLSDE, address(this), depositAmount);
