@@ -52,7 +52,13 @@ YieldNest vault deployments are upgradeable proxy deployments. Distinguish these
    - An implementation deployment is not a configured vault instance.
 
 2. Proxy instance
-   - A live instance should be a `TransparentUpgradeableProxy` pointing at the implementation.
+   - A live instance should be an OpenZeppelin `TransparentUpgradeableProxy` pointing at the implementation.
+   - This repo vendors OpenZeppelin Contracts `5.0.2` and OpenZeppelin Contracts Upgradeable `5.0.2` under
+     `lib/openzeppelin-contracts` and `lib/openzeppelin-contracts-upgradeable`.
+   - Proxy reference:
+     <https://github.com/OpenZeppelin/openzeppelin-contracts/tree/v5.0.2/contracts/proxy/transparent>.
+   - Upgradeable base-contract reference:
+     <https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/tree/v5.0.2/contracts/proxy>.
    - The proxy admin owner should be the intended admin/timelock owner.
    - Verify proxy admin and owner with `script/verification/RolesVerification.sol`.
 
@@ -88,6 +94,14 @@ the missing behavior required by the intended strategy. Examples in this repo:
 
 A config validator must reject any plan that says "deploy BaseStrategy" directly. The plan must name the concrete
 strategy contract, its inheritance chain, initializer, fee behavior, and any overridden accounting/withdrawal logic.
+
+External concrete example:
+
+- `ERC4626WrapperStrategy` in
+  <https://github.com/yieldnest/yieldnest-erc4626-wrapper-strategy/blob/main/src/ERC4626WrapperStrategy.sol>
+  inherits `BaseStrategy` and `LinearWithdrawalFee`, defines an `InitParams` initializer struct, initializes via
+  `_initialize(...)` in a paused state, adds a strategy-local `FEE_MANAGER_ROLE`, and overrides `_availableAssets(...)`
+  for the wrapped ERC4626 base asset.
 
 ## Vault Instance Configuration
 
@@ -142,10 +156,17 @@ Parameter meanings and validation:
   - Use `false` for ERC20-only vaults.
 
 - `alwaysComputeTotalAssets_`
-  - If `true`, `totalBaseAssets()` computes balances and provider rates live on each read.
+  - If `true`, `totalBaseAssets()` recomputes TVL live on each read by calling `computeTotalAssets()`.
   - If `false`, `totalBaseAssets()` returns cached storage updated by deposits, withdrawals, and `processAccounting()`.
   - `false` is cheaper but requires a valid accounting process. If toggled from `true` to `false`, the contract calls
     `_processAccounting()` immediately.
+  - `processAccounting()` recomputes total TVL in base-asset units by looping over every asset returned by the internal
+    asset list, reading the vault's ERC20 balance for that asset, and converting each nonzero balance through the
+    configured provider rate. If `countNativeAsset` is enabled, native ETH balance is included before the ERC20 loop.
+  - The recomputed value replaces the cached `VaultStorage.totalAssets` value and emits `ProcessAccounting`. Hooks, if
+    configured, run before and after this cache update and receive both the old cached value and the recomputed value.
+  - A validator must verify that the provider supports every configured asset before approving cached accounting, because
+    `processAccounting()` depends on provider rates for each asset conversion.
 
 - `defaultAssetIndex_`
   - Selects `asset()` for ERC4626 default operations.
@@ -195,6 +216,10 @@ Strategy-specific configuration:
   - If `false`, allocator gating is disabled and any normal ERC4626 caller can use allowed deposit/withdraw flows.
   - Managed by `ALLOCATOR_MANAGER_ROLE` through `setHasAllocator`.
   - `BaseWithdrawer.initialize(...)` always sets this to `true`.
+  - High-risk: if the strategy should be permissioned or whitelist-only, `hasAllocators` MUST be `true`.
+  - Top-level-vault sub-strategies such as ynETHx or ynUSDX strategies are expected to be permissioned strategy
+    instances; for those deployments, `hasAllocators == false` is a configuration failure unless the deployment spec
+    explicitly says the strategy is intended to be public ERC4626 infrastructure.
 
 - `isAssetWithdrawable[asset]`
   - Controls whether an asset can be withdrawn/redeemed from the strategy.
@@ -211,6 +236,18 @@ Strategy-specific configuration:
   - Inherited default counts native asset, ERC20 balances, and provider rates.
   - Concrete strategies can override this for queued, staked, or async positions.
   - `BaseWithdrawer.computeTotalAssets()` adds `asyncWithdrawalBalance(asset)` for each listed asset.
+
+- `withdrawAsset(...)`
+  - `BaseVault.withdrawAsset(...)` is a special-purpose permissioned path protected by `ASSET_WITHDRAWER_ROLE`.
+  - `BaseStrategy` overrides `withdrawAsset(...)`; on strategy instances it is no longer an
+    `ASSET_WITHDRAWER_ROLE`-gated escape hatch.
+  - Strategy `withdrawAsset(...)` is part of the normal multi-asset withdrawal surface. It burns shares, checks
+    `maxWithdrawAsset`, uses `isAssetWithdrawable[asset]`, and is gated by allocator logic only when
+    `hasAllocators == true`.
+  - `BaseStrategy` also overrides `_withdraw(...)` to eliminate the `BaseVault` buffer path. Strategies do not withdraw
+    through a configured buffer; they withdraw directly from their own independently configured withdrawable assets.
+  - A validator must therefore review strategy withdrawability, allocator gating, and caller policy together. Do not
+    rely on `ASSET_WITHDRAWER_ROLE` as the strategy withdrawal control.
 
 Concrete strategy configuration sequence:
 
@@ -289,6 +326,30 @@ For normal vaults, a validator should check that the buffer is set before unpaus
 - `FunctionRule.paramRules` can restrict address parameters by allowlist.
 - `FunctionRule.validator` can perform custom validation; if nonzero, it is used instead of generic param-rule checks.
 - Rules are set by `PROCESSOR_MANAGER_ROLE`.
+
+Validator behavior:
+
+- Validator contracts implement [`src/interface/IValidator.sol`](src/interface/IValidator.sol).
+- `Guard.validateCall(...)` calls `validator.validate(target, value, data)` when `FunctionRule.validator != address(0)`.
+- The validator allows the processor action by returning normally and rejects it by reverting.
+- Because the validator receives the target, ETH value, and full calldata, it can introduce arbitrary custom validation
+  logic beyond the generic rule engine. Examples include decoding multiple calldata fields, enforcing amount bounds,
+  checking receiver relationships, checking current protocol state, or validating action-specific invariants.
+- When a validator is configured, the generic `paramRules` loop is skipped. A validator rule must therefore be reviewed
+  as the complete authorization logic for that target/function pair, not as an extra check layered on top of allowlists.
+
+Generic `paramRules` behavior:
+
+- The current generic rule engine only validates parameters declared as `ParamType.ADDRESS`.
+- `ParamType.ADDRESS` means the corresponding 32-byte ABI word is decoded as an address and checked against the
+  rule's `allowList`. If the allowlist is empty, that address parameter is effectively unrestricted by the generic rule.
+- `ParamType.UINT256` is only a placeholder for an unvalidated ABI word. The guard does not validate numeric bounds,
+  booleans, bytes, enum values, or any other non-address type.
+- Rule builders use `ParamType.UINT256` for every parameter the generic engine cannot validate, regardless of the
+  parameter's real Solidity type. This documents ABI position while making clear that the parameter is not checked by the
+  generic engine.
+- `ParamRule.isArray` is part of the rule shape, but the current generic guard does not implement array-specific
+  validation. Do not treat it as proof that dynamic arrays or address arrays are being decoded and checked.
 
 A validator must reject configurations with broad processor permissions that are not justified by the deployment spec.
 For every processor rule, record:
@@ -428,7 +489,10 @@ Core `BaseVault` roles:
 
 - `ASSET_WITHDRAWER_ROLE`
   - In `BaseVault`, can call the permissioned asset withdrawal path.
-  - `BaseStrategy` overrides `withdrawAsset`, so do not assume this role works the same on strategy instances.
+  - `BaseStrategy` overrides `withdrawAsset`, so this role does not control the strategy withdrawal path.
+  - On `BaseStrategy` instances, `withdrawAsset` is a normal multi-asset ERC4626-style withdrawal function controlled by
+    withdrawability and allocator gating. It no longer depends on a buffer and no longer serves as a special-purpose
+    permissioned escape hatch.
 
 `Vault` role:
 
@@ -445,6 +509,9 @@ Core `BaseVault` roles:
 - `ALLOCATOR_MANAGER_ROLE`
   - Can toggle allocator gating with `setHasAllocator`.
   - High-risk because setting `hasAllocators` to `false` opens strategy deposit/withdraw paths to normal ERC4626 callers.
+  - If the strategy should be permissioned or whitelist-only, `hasAllocators` MUST be `true`.
+  - This is expected for sub-strategies of top-level vaults such as ynETHx or ynUSDX unless a deployment spec explicitly
+    approves public ERC4626 access.
 
 Script helper expectations:
 
