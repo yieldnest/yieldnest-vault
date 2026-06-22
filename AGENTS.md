@@ -176,6 +176,22 @@ Parameter meanings and validation:
   - The base asset and default asset must not be deleted. The default asset must be the underlying asset of the base
     asset when they differ, per `BaseVault` requirements.
 
+### Vault Seeding
+
+Every YieldNest vault must be seeded with an initial deposit before it is treated as production-ready.
+
+- Seeding protects the vault against donation/inflation-style attacks on an empty or near-empty share supply.
+- The recommended minimum seed is enough deposited asset value to equal at least one whole unit of the base asset.
+  - For an 18-decimal WETH-based vault, this means at least `1e18` base-asset units of value.
+  - If the seed asset is not the base asset, convert it through the configured provider rate and confirm its base-asset
+    value is at least one whole base unit.
+- The seed deposit should be made only after provider and asset configuration are valid, because share minting and
+  base-value checks depend on correct asset decimals and provider rates.
+- The seed depositor and resulting seed shares must be intentional and documented. A validator must know whether seed
+  shares are meant to remain held, be held by a treasury, or be otherwise handled by the deployment plan.
+- For cached-accounting deployments, call `processAccounting()` after seeding if the initial cached `totalAssets` must be
+  synchronized before unpause or verification.
+
 After initialization, a vault must be configured in this order unless the deployment script proves an equivalent safe
 ordering:
 
@@ -189,9 +205,10 @@ ordering:
 6. Set hooks with `setHooks(hooks)` only if hooks are intended and `IHooks(hooks).VAULT() == vault`; for composed
    hook deployments this should usually be the periphery `MetaHooks` contract.
 7. Configure withdrawal fees and fee overrides if applicable; this requires `FEE_MANAGER_ROLE`.
-8. Call `processAccounting()` when cached accounting is used and the initial state needs synchronization.
-9. Unpause only after provider, assets, buffer/rules/hooks, roles, and accounting are verified.
-10. Renounce all temporary deployer roles, including any temporary `HOOKS_MANAGER_ROLE` or `FEE_MANAGER_ROLE` grants.
+8. Seed the vault with an initial deposit worth at least one whole unit of the base asset.
+9. Call `processAccounting()` when cached accounting is used and the initial state needs synchronization.
+10. Unpause only after provider, assets, buffer/rules/hooks, seed deposit, roles, and accounting are verified.
+11. Renounce all temporary deployer roles, including any temporary `HOOKS_MANAGER_ROLE` or `FEE_MANAGER_ROLE` grants.
 
 ## Base Strategy Configuration
 
@@ -549,10 +566,11 @@ Before considering a vault or strategy instance correctly configured:
 10. Processor rules are minimal, active only where intended, and validated.
 11. Hooks are zero or reviewed and bound to the correct vault.
 12. Fees and fee overrides match the deployment spec.
-13. Accounting mode is correct and `processAccounting()` has been run when needed.
-14. Final roles match the intended actors/timelock.
-15. Temporary deployer roles have been renounced.
-16. Mainnet or fork verification scripts pass for the touched deployment.
+13. The vault was seeded with at least one whole base-asset unit of value and seed-share ownership is documented.
+14. Accounting mode is correct and `processAccounting()` has been run when needed.
+15. Final roles match the intended actors/timelock.
+16. Temporary deployer roles have been renounced.
+17. Mainnet or fork verification scripts pass for the touched deployment.
 
 ## Working Rules
 
