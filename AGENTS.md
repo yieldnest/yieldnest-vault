@@ -679,59 +679,6 @@ FOUNDRY_PROFILE=mainnet forge test
 make cover
 ```
 
-## Validation Expectations
-
-Use the narrowest validation that actually covers the change, then widen if needed.
-
-### If you touch only documentation
-
-No Solidity tests are required unless the documentation change reveals a code/config mismatch that must be fixed.
-
-### If you touch only a small unit-scoped contract or function
-
-Run targeted tests first, for example:
-
-```bash
-FOUNDRY_PROFILE=default forge test --match-path test/unit/vault/accounting.t.sol
-```
-
-or
-
-```bash
-FOUNDRY_PROFILE=default forge test --match-contract <ContractName>
-```
-
-### If you touch vault accounting, ERC4626 flows, fees, hooks, slashing, or withdrawals
-
-Run at minimum:
-
-```bash
-FOUNDRY_PROFILE=default forge test --match-path test/unit/vault/*
-```
-
-Narrower targeted commands are acceptable during iteration, but before finalizing run the relevant suite.
-
-### If you touch strategy logic
-
-Run at minimum the relevant strategy suite, for example:
-
-```bash
-FOUNDRY_PROFILE=default forge test --match-path test/unit/strategy/*
-```
-
-### If you touch deployment scripts, provider integrations, processor flows, withdrawers, or upgrades
-
-Run the relevant mainnet-fork tests if possible, for example:
-
-```bash
-FOUNDRY_PROFILE=mainnet forge test --match-path test/mainnet/provider.spec.sol
-FOUNDRY_PROFILE=mainnet forge test --match-path test/mainnet/processor.spec.sol
-FOUNDRY_PROFILE=mainnet forge test --match-path test/mainnet/upgrade.spec.sol
-FOUNDRY_PROFILE=mainnet forge test --match-path test/mainnet/withdrawer.spec.sol
-```
-
-If RPC access is missing or flaky, say so explicitly.
-
 ## Solidity-Specific Guidance
 
 ### Vault and ERC4626 work
