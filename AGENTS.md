@@ -339,12 +339,6 @@ The vault does not protect itself from bad provider rates:
 
 - Vault conversion and accounting logic consumes `Provider.getRate(asset)` directly. It does not independently check
   staleness, sanity bounds, maximum price movement, donation sensitivity, or manipulation resistance.
-- `src/module/Provider.sol` currently prices many assets through integration-specific reads such as
-  `IERC4626(asset).convertToAssets(1e18)`, `pricePerShare()`, or `previewRedeem(...)`. Those reads can be
-  donation-sensitive or manipulable for some integrations if the underlying vault/market is thinly protected.
-- The provider has limited built-in guards. Some paths guard negative signed rates, but validators must not assume
-  protection against zero rates, spikes, stale oracle data, or stale Chainlink-style `updatedAt` values just because an
-  interface exposes that field.
 - A new provider should be treated as able to mint or burn value through share price. Bad rates change share issuance,
   withdrawals, fee/accounting deltas, and TVL; this is why provider changes are high-risk and should be timelocked.
 
