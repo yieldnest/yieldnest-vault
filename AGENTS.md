@@ -65,6 +65,14 @@ YieldNest vault deployments are upgradeable proxy deployments. Distinguish these
 3. Initializer
    - Implementations disable initializers in constructors.
    - Initialize the proxy exactly once.
+   - Deploy and initialize the proxy atomically, or otherwise prove there was no public mempool/window where the proxy
+     existed uninitialized.
+   - An uninitialized proxy is a live takeover risk: anyone can call the initializer first and choose the `admin`
+     argument. For `Vault.initialize(...)`, that caller-supplied admin receives `DEFAULT_ADMIN_ROLE`.
+   - A validator must verify that the proxy was initialized by the intended deployer/setup flow in the deployment
+     transaction or same atomic script path, not by a later front-runnable transaction.
+   - Proxies must always be deployed already initialized, or initialized atomically by the proxy constructor/setup call,
+     because role ownership and all later configuration authority depend on the first initializer call.
    - Do not call initializers on implementations.
    - Do not add new initializer paths without preserving upgrade safety.
 
@@ -176,6 +184,24 @@ Parameter meanings and validation:
   - The base asset and default asset must not be deleted. The default asset must be the underlying asset of the base
     asset when they differ, per `BaseVault` requirements.
 
+### Vault Seeding
+
+Every YieldNest vault must be seeded with an initial deposit before it is treated as production-ready.
+
+- Seeding protects the vault against donation/inflation-style attacks on an empty or near-empty share supply.
+- The recommended minimum seed is enough deposited asset value to equal at least one whole unit of the base asset.
+  - For an 18-decimal WETH-based vault, this means at least `1e18` base-asset units of value.
+  - If the seed asset is not the base asset, convert it through the configured provider rate and confirm its base-asset
+    value is at least one whole base unit.
+- The seed deposit should be made only after the vault is fully configured and verified, because share minting and
+  base-value checks depend on correct provider, asset, buffer, rule, hook, fee, role, and accounting configuration.
+- The seed depositor and resulting seed shares must be intentional and documented. A validator must know whether seed
+  shares are meant to remain held, be held by a treasury, or be otherwise handled by the deployment plan.
+- For cached-accounting deployments, call `processAccounting()` after seeding if the initial cached `totalAssets` must be
+  synchronized.
+- After the final seed deposit and any required post-seed accounting synchronization are verified, the vault can be
+  treated as production-ready.
+
 After initialization, a vault must be configured in this order unless the deployment script proves an equivalent safe
 ordering:
 
@@ -192,6 +218,9 @@ ordering:
 8. Call `processAccounting()` when cached accounting is used and the initial state needs synchronization.
 9. Unpause only after provider, assets, buffer/rules/hooks, roles, and accounting are verified.
 10. Renounce all temporary deployer roles, including any temporary `HOOKS_MANAGER_ROLE` or `FEE_MANAGER_ROLE` grants.
+11. Seed the completed vault with an initial deposit worth at least one whole unit of the base asset.
+12. Verify the seed deposit and any required post-seed accounting synchronization. Only after this step should the vault
+    be called production-ready.
 
 ## Base Strategy Configuration
 
@@ -305,6 +334,22 @@ The provider is the rate source used by conversions and accounting:
 
 Provider misconfiguration directly breaks deposits, withdrawals, share pricing, and accounting. A validator must call
 `getRate(asset)` for every configured asset and compare the result to the intended oracle/pricing model.
+
+The vault does not protect itself from bad provider rates:
+
+- Vault conversion and accounting logic consumes `Provider.getRate(asset)` directly. It does not independently check
+  staleness, sanity bounds, maximum price movement, donation sensitivity, or manipulation resistance.
+- A new provider should be treated as able to mint or burn value through share price. Bad rates change share issuance,
+  withdrawals, fee/accounting deltas, and TVL; this is why provider changes are high-risk and should be timelocked.
+
+Provider validation must therefore confirm, for each asset:
+
+- The rate source is manipulation-resistant for the expected deposit/withdraw sizes.
+- The source is not a spot LP price, unbounded `convertToAssets`, or other donation-sensitive read unless an external
+  protection layer makes that safe.
+- Staleness checks, heartbeat checks, sanity bounds, and maximum movement bounds exist where the source can become stale
+  or jump atomically.
+- The base denomination, decimals, rounding, and expected rate range match the deployment spec.
 
 ## Buffer Configuration
 
@@ -553,6 +598,10 @@ Before considering a vault or strategy instance correctly configured:
 14. Final roles match the intended actors/timelock.
 15. Temporary deployer roles have been renounced.
 16. Mainnet or fork verification scripts pass for the touched deployment.
+17. The completed vault was seeded with at least one whole base-asset unit of value and seed-share ownership is
+    documented.
+18. Any required post-seed `processAccounting()` has been run and verified.
+19. Only after every prior checklist item is true should the vault be called production-ready.
 
 ## Working Rules
 
@@ -629,59 +678,6 @@ FOUNDRY_PROFILE=mainnet forge test
 ```bash
 make cover
 ```
-
-## Validation Expectations
-
-Use the narrowest validation that actually covers the change, then widen if needed.
-
-### If you touch only documentation
-
-No Solidity tests are required unless the documentation change reveals a code/config mismatch that must be fixed.
-
-### If you touch only a small unit-scoped contract or function
-
-Run targeted tests first, for example:
-
-```bash
-FOUNDRY_PROFILE=default forge test --match-path test/unit/vault/accounting.t.sol
-```
-
-or
-
-```bash
-FOUNDRY_PROFILE=default forge test --match-contract <ContractName>
-```
-
-### If you touch vault accounting, ERC4626 flows, fees, hooks, slashing, or withdrawals
-
-Run at minimum:
-
-```bash
-FOUNDRY_PROFILE=default forge test --match-path test/unit/vault/*
-```
-
-Narrower targeted commands are acceptable during iteration, but before finalizing run the relevant suite.
-
-### If you touch strategy logic
-
-Run at minimum the relevant strategy suite, for example:
-
-```bash
-FOUNDRY_PROFILE=default forge test --match-path test/unit/strategy/*
-```
-
-### If you touch deployment scripts, provider integrations, processor flows, withdrawers, or upgrades
-
-Run the relevant mainnet-fork tests if possible, for example:
-
-```bash
-FOUNDRY_PROFILE=mainnet forge test --match-path test/mainnet/provider.spec.sol
-FOUNDRY_PROFILE=mainnet forge test --match-path test/mainnet/processor.spec.sol
-FOUNDRY_PROFILE=mainnet forge test --match-path test/mainnet/upgrade.spec.sol
-FOUNDRY_PROFILE=mainnet forge test --match-path test/mainnet/withdrawer.spec.sol
-```
-
-If RPC access is missing or flaky, say so explicitly.
 
 ## Solidity-Specific Guidance
 
