@@ -54,6 +54,6 @@ library BaseRoles {
 
     function renounceTemporaryRolesForMaxVault(BaseVault vault, address deployer) internal {
         renounceTemporaryRoles(vault, deployer);
-        vault.renounceRole(Vault(payable(address(vault))).FEE_MANAGER_ROLE(), address(this));
+        vault.renounceRole(Vault(payable(address(vault))).FEE_MANAGER_ROLE(), deployer);
     }
 }
