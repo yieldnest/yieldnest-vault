@@ -340,12 +340,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
         IHooks hooks_ = hooks();
         IHooks.WithdrawParams memory params = IHooks.WithdrawParams({
-            asset: asset(),
-            assets: assets,
-            caller: _msgSender(),
-            receiver: receiver,
-            owner: owner,
-            shares: shares
+            asset: asset(), assets: assets, caller: _msgSender(), receiver: receiver, owner: owner, shares: shares
         });
         HooksLib.beforeWithdraw(hooks_, params);
 
@@ -378,12 +373,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
 
         IHooks hooks_ = hooks();
         IHooks.RedeemParams memory params = IHooks.RedeemParams({
-            asset: asset(),
-            shares: shares,
-            caller: _msgSender(),
-            receiver: receiver,
-            owner: owner,
-            assets: assets
+            asset: asset(), shares: shares, caller: _msgSender(), receiver: receiver, owner: owner, assets: assets
         });
         HooksLib.beforeRedeem(hooks_, params);
 
@@ -846,11 +836,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param index The index of the asset to update.
      * @param fields The AssetUpdateFields struct containing the updated fields.
      */
-    function updateAsset(uint256 index, AssetUpdateFields calldata fields)
-        public
-        virtual
-        onlyRole(ASSET_MANAGER_ROLE)
-    {
+    function updateAsset(uint256 index, AssetUpdateFields calldata fields) public virtual onlyRole(ASSET_MANAGER_ROLE) {
         _updateAsset(index, fields);
     }
 
@@ -874,11 +860,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @notice Sets whether the vault should always compute total assets.
      * @param alwaysComputeTotalAssets_ Whether to always compute total assets.
      */
-    function setAlwaysComputeTotalAssets(bool alwaysComputeTotalAssets_)
-        external
-        virtual
-        onlyRole(ASSET_MANAGER_ROLE)
-    {
+    function setAlwaysComputeTotalAssets(bool alwaysComputeTotalAssets_) external virtual onlyRole(ASSET_MANAGER_ROLE) {
         bool previous = _getVaultStorage().alwaysComputeTotalAssets;
         _getVaultStorage().alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
         emit SetAlwaysComputeTotalAssets(previous, alwaysComputeTotalAssets_);

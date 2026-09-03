@@ -90,9 +90,7 @@ contract ProviderTest is Test {
         new Provider(address(wusdc), address(badUsdcStrategy));
 
         MockERC4626Strategy badUsdeStrategy = new MockERC4626Strategy(MC.USDE, 6);
-        vm.expectRevert(
-            abi.encodeWithSelector(Provider.InvalidStrategy.selector, address(badUsdeStrategy), MC.USDE, 6)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Provider.InvalidStrategy.selector, address(badUsdeStrategy), MC.USDE, 6));
         new Provider(address(wusdc), address(badUsdeStrategy));
     }
 }
