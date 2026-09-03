@@ -49,12 +49,14 @@ contract Provider is IProvider {
         }
 
         if (asset == STRATEGY) {
-            // STRATEGY has asset() = USDC, decimals() = 6
-            // and USDC has decimals() = 6
-            // Therefore to convert to WUSDC the rate conversion needs to be multiplied by 10**12
-            // We do the multiplication first for higher precision, deriving the following:
-            // IERC4626(STRATEGY).convertToAssets(1e6) * 10**12
-            // ~= IERC4626(STRATEGY).convertToAssets(1e18)
+            // The constructor guarantees STRATEGY is one of two shapes:
+            // - decimals() = 6 with a 6-decimal asset (USDC/USDT):
+            //   the 18-decimal rate is convertToAssets(1e6) * 10**12; we do the
+            //   multiplication first for higher precision, deriving the following:
+            //   IERC4626(STRATEGY).convertToAssets(1e6) * 10**12
+            //   ~= IERC4626(STRATEGY).convertToAssets(1e18)
+            // - decimals() = 18 with an 18-decimal asset (USDS/USDE):
+            //   convertToAssets(1e18) is already an 18-decimal rate
             return IERC4626(STRATEGY).convertToAssets(1e18);
         }
 
