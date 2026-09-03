@@ -11,7 +11,14 @@ contract MockWUSDC is ERC20 {
 }
 
 contract MockERC4626Strategy {
+    address public asset;
+    uint8 public decimals;
     uint256 public rate = 1.05e18;
+
+    constructor(address _asset, uint8 _decimals) {
+        asset = _asset;
+        decimals = _decimals;
+    }
 
     function convertToAssets(uint256 shares) external view returns (uint256) {
         return shares * rate / 1e18;
@@ -26,7 +33,7 @@ contract ProviderTest is Test {
 
     function setUp() public {
         wusdc = new MockWUSDC();
-        strategy = new MockERC4626Strategy();
+        strategy = new MockERC4626Strategy(MC.USDC, 6);
         provider = new Provider(address(wusdc), address(strategy));
     }
 
@@ -49,5 +56,35 @@ contract ProviderTest is Test {
         address unsupportedAsset = makeAddr("unsupported");
         vm.expectRevert(abi.encodeWithSelector(Provider.UnsupportedAsset.selector, unsupportedAsset));
         provider.getRate(unsupportedAsset);
+    }
+
+    function test_Provider_ValidStrategies() public {
+        new Provider(address(wusdc), address(new MockERC4626Strategy(MC.USDC, 6)));
+        new Provider(address(wusdc), address(new MockERC4626Strategy(MC.USDT, 6)));
+        new Provider(address(wusdc), address(new MockERC4626Strategy(MC.USDS, 18)));
+        new Provider(address(wusdc), address(new MockERC4626Strategy(MC.USDE, 18)));
+    }
+
+    function test_Provider_InvalidStrategyAsset() public {
+        address unknownAsset = makeAddr("unknownAsset");
+        MockERC4626Strategy badStrategy = new MockERC4626Strategy(unknownAsset, 18);
+        vm.expectRevert(
+            abi.encodeWithSelector(Provider.InvalidStrategy.selector, address(badStrategy), unknownAsset, 18)
+        );
+        new Provider(address(wusdc), address(badStrategy));
+    }
+
+    function test_Provider_InvalidStrategyDecimals() public {
+        MockERC4626Strategy badUsdcStrategy = new MockERC4626Strategy(MC.USDC, 18);
+        vm.expectRevert(
+            abi.encodeWithSelector(Provider.InvalidStrategy.selector, address(badUsdcStrategy), MC.USDC, 18)
+        );
+        new Provider(address(wusdc), address(badUsdcStrategy));
+
+        MockERC4626Strategy badUsdeStrategy = new MockERC4626Strategy(MC.USDE, 6);
+        vm.expectRevert(
+            abi.encodeWithSelector(Provider.InvalidStrategy.selector, address(badUsdeStrategy), MC.USDE, 6)
+        );
+        new Provider(address(wusdc), address(badUsdeStrategy));
     }
 }
