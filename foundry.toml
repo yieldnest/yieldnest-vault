@@ -29,5 +29,8 @@ fs_permissions = [
 ]
 
 
+# inherits from default; referenced by FOUNDRY_PROFILE=ci in .github/workflows/test.yml
+[profile.ci]
+
 [rpc_endpoints]
 eth_mainnet = "${ETH_MAINNET_RPC_URL}"
