@@ -59,10 +59,18 @@ contract ProviderTest is Test {
     }
 
     function test_Provider_ValidStrategies() public {
-        new Provider(address(wusdc), address(new MockERC4626Strategy(MC.USDC, 6)));
-        new Provider(address(wusdc), address(new MockERC4626Strategy(MC.USDT, 6)));
-        new Provider(address(wusdc), address(new MockERC4626Strategy(MC.USDS, 18)));
-        new Provider(address(wusdc), address(new MockERC4626Strategy(MC.USDE, 18)));
+        address[4] memory assets = [MC.USDC, MC.USDT, MC.USDS, MC.USDE];
+        uint8[4] memory decimals = [6, 6, 18, 18];
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            MockERC4626Strategy validStrategy = new MockERC4626Strategy(assets[i], decimals[i]);
+            Provider validProvider = new Provider(address(wusdc), address(validStrategy));
+            assertEq(
+                validProvider.getRate(address(validStrategy)),
+                1.05e18,
+                "Strategy rate should be its convertToAssets(1e18)"
+            );
+        }
     }
 
     function test_Provider_InvalidStrategyAsset() public {
