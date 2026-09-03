@@ -6,8 +6,9 @@ import {Script, stdJson} from "lib/forge-std/src/Script.sol";
 import {XReferralAdapter} from "src/utils/XReferralAdapter.sol";
 
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
-import {TransparentUpgradeableProxy} from
-    "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {
+    TransparentUpgradeableProxy
+} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyUtils} from "./ProxyUtils.sol";
 import {MainnetActors} from "script/Actors.sol";
 

@@ -167,9 +167,7 @@ interface IVault is IERC4626 {
     function hooks() external view returns (IHooks);
     function setHooks(address hooks) external;
     function mintShares(address recipient, uint256 shares) external;
-    function withdrawAsset(address asset_, uint256 assets, address receiver, address owner)
-        external
-        returns (uint256);
+    function withdrawAsset(address asset_, uint256 assets, address receiver, address owner) external returns (uint256);
 
     function processAccounting() external;
     function processor(address[] calldata targets, uint256[] calldata values, bytes[] calldata data)

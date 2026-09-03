@@ -56,8 +56,9 @@ library LinearWithdrawalFeeLib {
     function overrideBaseWithdrawalFee(address user_, uint64 baseWithdrawalFee_, bool toOverride_) public {
         if (baseWithdrawalFee_ > FeeMath.BASIS_POINT_SCALE) revert IVault.ExceedsMaxBasisPoints(baseWithdrawalFee_);
         IVault.FeeStorage storage fees = getFeeStorage();
-        fees.overriddenBaseWithdrawalFee[user_] =
-            IVault.OverriddenBaseWithdrawalFeeFields({baseWithdrawalFee: baseWithdrawalFee_, isOverridden: toOverride_});
+        fees.overriddenBaseWithdrawalFee[user_] = IVault.OverriddenBaseWithdrawalFeeFields({
+            baseWithdrawalFee: baseWithdrawalFee_, isOverridden: toOverride_
+        });
         emit IVault.WithdrawalFeeOverridden(user_, baseWithdrawalFee_, toOverride_);
     }
 
