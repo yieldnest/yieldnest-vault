@@ -19,9 +19,11 @@ contract Provider is IProvider {
     error RateIsNegative();
 
     address public immutable WUSDC;
+    address public immutable STRATEGY;
 
-    constructor(address _wusdc) {
+    constructor(address _wusdc, address _strategy) {
         WUSDC = _wusdc;
+        STRATEGY = _strategy;
     }
 
     function getRate(address asset) public view virtual returns (uint256) {
@@ -33,14 +35,14 @@ contract Provider is IProvider {
             return 1e18;
         }
 
-        if (asset == MC.FLEX_STRATEGY_USDC) {
-            // FLEX_STRATEGY_USDC has asset() = USDC, decimals() = 6
+        if (asset == STRATEGY) {
+            // STRATEGY has asset() = USDC, decimals() = 6
             // and USDC has decimals() = 6
             // Therefore to convert to WUSDC the rate conversion needs to be multiplied by 10**12
             // We do the multiplication first for higher precision, deriving the following:
-            // IERC4626(MC.FLEX_STRATEGY_USDC).convertToAssets(1e6) * 10**12
-            // ~= IERC4626(MC.FLEX_STRATEGY_USDC).convertToAssets(1e18)
-            return IERC4626(MC.FLEX_STRATEGY_USDC).convertToAssets(1e18);
+            // IERC4626(STRATEGY).convertToAssets(1e6) * 10**12
+            // ~= IERC4626(STRATEGY).convertToAssets(1e18)
+            return IERC4626(STRATEGY).convertToAssets(1e18);
         }
 
         revert UnsupportedAsset(asset);

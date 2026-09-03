@@ -13,6 +13,7 @@ import {TransparentUpgradeableProxy} from
 
 import {FeeMath} from "src/module/FeeMath.sol";
 import {BaseScript} from "script/BaseScript.sol";
+import {MainnetContracts as MC} from "script/Contracts.sol";
 import {SafeRules} from "script/rules/SafeRules.sol";
 import {BaseRules} from "script/rules/BaseRules.sol";
 import {BaseRoles} from "script/roles/BaseRoles.sol";
@@ -30,7 +31,7 @@ contract DeployMaxVault is BaseScript {
 
     function deployRateProvider() internal {
         if (block.chainid == 1) {
-            rateProvider = IProvider(new Provider(address(wusdc)));
+            rateProvider = IProvider(new Provider(address(wusdc), MC.FLEX_STRATEGY_USDC));
         }
     }
 

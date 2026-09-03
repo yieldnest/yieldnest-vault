@@ -10,14 +10,24 @@ contract MockWUSDC is ERC20 {
     constructor() ERC20("Wrapped USDC", "WUSDC") {}
 }
 
+contract MockERC4626Strategy {
+    uint256 public rate = 1.05e18;
+
+    function convertToAssets(uint256 shares) external view returns (uint256) {
+        return shares * rate / 1e18;
+    }
+}
+
 contract ProviderTest is Test {
     Provider public provider;
     MockWUSDC public wusdc;
+    MockERC4626Strategy public strategy;
     address public admin = makeAddr("admin");
 
     function setUp() public {
         wusdc = new MockWUSDC();
-        provider = new Provider(address(wusdc));
+        strategy = new MockERC4626Strategy();
+        provider = new Provider(address(wusdc), address(strategy));
     }
 
     function test_Provider_GetRateUSDC() public view {
@@ -28,6 +38,11 @@ contract ProviderTest is Test {
     function test_Provider_GetRateWUSDC() public view {
         uint256 rate = provider.getRate(address(wusdc));
         assertEq(rate, 1e18, "WUSDC rate should be 1e18");
+    }
+
+    function test_Provider_GetRateStrategy() public view {
+        uint256 rate = provider.getRate(address(strategy));
+        assertEq(rate, 1.05e18, "Strategy rate should be its convertToAssets(1e18)");
     }
 
     function test_Provider_GetRateUnsupportedAsset() public {
