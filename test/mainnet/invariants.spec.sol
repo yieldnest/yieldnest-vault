@@ -272,7 +272,9 @@ contract VaultMainnetInvariantsTest is BaseIntegrationTest, TestHelper {
         uint256 amount,
         bool processAfterDeposit,
         bool /* processAfterWithdraw */
-    ) public {
+    )
+        public
+    {
         vm.assume(amount > 100000);
         vm.assume(amount < 100_000 * 1e6); // USDC has 6 decimals
 

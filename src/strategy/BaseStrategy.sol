@@ -264,12 +264,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
         IHooks hooks_ = hooks();
 
         IHooks.WithdrawParams memory params = IHooks.WithdrawParams({
-            asset: asset_,
-            assets: assets,
-            caller: _msgSender(),
-            receiver: receiver,
-            owner: owner,
-            shares: shares
+            asset: asset_, assets: assets, caller: _msgSender(), receiver: receiver, owner: owner, shares: shares
         });
 
         HooksLib.beforeWithdraw(hooks_, params);
@@ -377,12 +372,7 @@ abstract contract BaseStrategy is BaseVault, IBaseStrategy {
         IHooks hooks_ = hooks();
 
         IHooks.RedeemParams memory params = IHooks.RedeemParams({
-            asset: asset_,
-            shares: shares,
-            caller: _msgSender(),
-            receiver: receiver,
-            owner: owner,
-            assets: assets
+            asset: asset_, shares: shares, caller: _msgSender(), receiver: receiver, owner: owner, assets: assets
         });
 
         HooksLib.beforeRedeem(hooks_, params);

@@ -17,6 +17,9 @@ library MainnetContracts {
     address public constant X_REFERRAL_ADAPTER = 0xdb7aa02Ee83fdE44b5F8bC24Bb1206C1898E3fC0;
     address public constant WUSDC = 0xdA7d2025c7f1f1A1d34AB3F4dF01102d0428E574;
 
+    address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address public constant USDS = 0xdC035D45d973E3EC169d2276DDab16f1e407384F;
+
     address public constant USDE = 0x4c9EDD5852cd905f086C759E8383e09bff1E68B3;
 
     address public constant FLEX_STRATEGY_USDC = 0xF6e1443e3F70724cec8C0a779C7C35A8DcDA928B;
