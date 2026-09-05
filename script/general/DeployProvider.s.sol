@@ -11,7 +11,7 @@ contract DeployProvider is Script {
     function run() public virtual {
         vm.startBroadcast();
 
-        address provider = address(new Provider(MC.WUSDC, MC.FLEX_STRATEGY_USDC));
+        address provider = address(new Provider(MC.WUSDC));
 
         vm.stopBroadcast();
 
