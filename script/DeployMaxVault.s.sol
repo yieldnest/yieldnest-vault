@@ -32,7 +32,7 @@ contract DeployMaxVault is BaseScript {
 
     function deployRateProvider() internal {
         if (block.chainid == 1) {
-            rateProvider = IProvider(new Provider(address(wusdc), MC.FLEX_STRATEGY_USDC));
+            rateProvider = IProvider(new Provider(address(wusdc)));
         }
     }
 
