@@ -7,16 +7,24 @@ contract BaseAssetProvider is IProvider {
     error UnsupportedAsset(address asset);
 
     address public immutable baseAsset;
-    uint256 public immutable rate;
+    address public immutable defaultAsset;
+    uint256 public immutable baseAssetRate;
+    uint256 public immutable defaultAssetRate;
 
-    constructor(address _baseAsset, uint256 _rate) {
+    constructor(address _baseAsset, uint256 _baseAssetRate, address _defaultAsset, uint256 _defaultAssetRate) {
         baseAsset = _baseAsset;
-        rate = _rate;
+        baseAssetRate = _baseAssetRate;
+        defaultAsset = _defaultAsset;
+        defaultAssetRate = _defaultAssetRate;
     }
 
     function getRate(address asset) public view returns (uint256) {
         if (asset == baseAsset) {
-            return rate;
+            return baseAssetRate;
+        }
+
+        if (asset == defaultAsset) {
+            return defaultAssetRate;
         }
 
         revert UnsupportedAsset(asset);
