@@ -86,6 +86,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         uint256 defaultAssetIndex_
     ) internal virtual {
         __ERC20_init(name, symbol);
+        __ERC20Permit_init(name);
         __AccessControl_init();
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);

@@ -15,6 +15,13 @@ import {MockERC20CustomDecimals} from "test/unit/mocks/MockERC20CustomDecimals.s
 import {Initializable} from "src/Common.sol";
 
 contract VaultInitializeUnitTest is Test, MainnetActors, Etches {
+    bytes32 private constant EIP712_DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 private constant PERMIT_TYPEHASH =
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+    uint256 private constant EIP712_STORAGE_LOCATION =
+        0xa16a46d94261c7517cc8ff89f61c0ce93598e3c849801011dee649a6a557d100;
+
     Vault public vault;
     WETH9 public weth;
     MockERC20 public asset;
@@ -72,6 +79,42 @@ contract VaultInitializeUnitTest is Test, MainnetActors, Etches {
 
         // The vault should start paused
         assertTrue(vault.paused(), "Vault should be paused after initialization");
+    }
+
+    function test_Vault_initialize_initializesPermitDomain() public {
+        vault.initialize(address(this), "Test Vault", "TV", 18, 0, false, true, 0);
+
+        _assertStandardPermitWorks();
+    }
+
+    function test_Vault_initializePermit_initializesPermitDomainForUpgradedVault() public {
+        vault.initialize(address(this), "Test Vault", "TV", 18, 0, false, true, 0);
+        _clearEIP712Domain();
+
+        uint256 ownerKey = 0xA11CE;
+        address owner = vm.addr(ownerKey);
+        address spender = address(0xBEEF);
+        uint256 value = 1 ether;
+        uint256 deadline = block.timestamp + 1 days;
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(ownerKey, _permitDigest("Test Vault", "1", owner, spender, value, deadline));
+
+        vm.expectRevert();
+        vault.permit(owner, spender, value, deadline, v, r, s);
+
+        vault.initializePermit();
+        vault.permit(owner, spender, value, deadline, v, r, s);
+
+        assertEq(vault.allowance(owner, spender), value);
+    }
+
+    function test_Vault_initializePermit_revertWhenAlreadyCalled() public {
+        vault.initialize(address(this), "Test Vault", "TV", 18, 0, false, true, 0);
+
+        vault.initializePermit();
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        vault.initializePermit();
     }
 
     function test_Vault_initialize_withAssets(
@@ -233,5 +276,43 @@ contract VaultInitializeUnitTest is Test, MainnetActors, Etches {
         // Try to add asset with zero address; fails on the decimals call
         vm.expectRevert();
         vault.addAsset(address(0), true);
+    }
+
+    function _assertStandardPermitWorks() private {
+        uint256 ownerKey = 0xA11CE;
+        address owner = vm.addr(ownerKey);
+        address spender = address(0xBEEF);
+        uint256 value = 1 ether;
+        uint256 deadline = block.timestamp + 1 days;
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(ownerKey, _permitDigest("Test Vault", "1", owner, spender, value, deadline));
+
+        vault.permit(owner, spender, value, deadline, v, r, s);
+
+        assertEq(vault.allowance(owner, spender), value);
+        assertEq(vault.nonces(owner), 1);
+    }
+
+    function _permitDigest(
+        string memory name,
+        string memory version,
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline
+    ) private view returns (bytes32) {
+        bytes32 domainSeparator = keccak256(
+            abi.encode(
+                EIP712_DOMAIN_TYPEHASH, keccak256(bytes(name)), keccak256(bytes(version)), block.chainid, address(vault)
+            )
+        );
+        bytes32 structHash =
+            keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, vault.nonces(owner), deadline));
+        return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+    }
+
+    function _clearEIP712Domain() private {
+        vm.store(address(vault), bytes32(EIP712_STORAGE_LOCATION + 2), bytes32(0));
+        vm.store(address(vault), bytes32(EIP712_STORAGE_LOCATION + 3), bytes32(0));
     }
 }
