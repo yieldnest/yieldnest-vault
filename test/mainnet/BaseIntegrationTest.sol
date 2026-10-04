@@ -25,6 +25,18 @@ import {DeployMaxVault} from "script/DeployMaxVault.s.sol";
 import {UpgradeUtils} from "test/utils/UpgradeUtils.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
+interface IPauserHook {
+    enum HookCall {
+        Deposit,
+        Mint,
+        Redeem,
+        Withdraw,
+        ProcessAccounting
+    }
+
+    function unpause(HookCall hookCall) external;
+}
+
 contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
     Vault public vault;
     WrappedToken public wusdc;
@@ -35,5 +47,13 @@ contract BaseIntegrationTest is Test, MainnetActors, AssertUtils {
 
         viewer = MaxVaultViewer(MC.YNRWAX_VIEWER);
         wusdc = WrappedToken(MC.WUSDC);
+
+        IPauserHook pauserHook = IPauserHook(address(vault.hooks()));
+        vm.startPrank(ADMIN);
+        pauserHook.unpause(IPauserHook.HookCall.Deposit);
+        pauserHook.unpause(IPauserHook.HookCall.Mint);
+        pauserHook.unpause(IPauserHook.HookCall.Redeem);
+        pauserHook.unpause(IPauserHook.HookCall.Withdraw);
+        vm.stopPrank();
     }
 }
