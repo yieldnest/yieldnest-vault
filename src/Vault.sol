@@ -57,14 +57,6 @@ contract Vault is BaseVault, LinearWithdrawalFee {
         _setBaseWithdrawalFee(baseWithdrawalFee_);
     }
 
-    /**
-     * @notice Initializes the ERC20 permit domain for upgraded vault proxies.
-     * @dev Only needed for proxies initialized before ERC20Permit initialization was added.
-     */
-    function initializePermit() external reinitializer(2) {
-        __ERC20Permit_init(name());
-    }
-
     //// FEES ////
 
     /**

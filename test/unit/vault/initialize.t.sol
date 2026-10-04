@@ -19,8 +19,6 @@ contract VaultInitializeUnitTest is Test, MainnetActors, Etches {
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 private constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
-    uint256 private constant EIP712_STORAGE_LOCATION =
-        0xa16a46d94261c7517cc8ff89f61c0ce93598e3c849801011dee649a6a557d100;
 
     Vault public vault;
     WETH9 public weth;
@@ -85,36 +83,6 @@ contract VaultInitializeUnitTest is Test, MainnetActors, Etches {
         vault.initialize(address(this), "Test Vault", "TV", 18, 0, false, true, 0);
 
         _assertStandardPermitWorks();
-    }
-
-    function test_Vault_initializePermit_initializesPermitDomainForUpgradedVault() public {
-        vault.initialize(address(this), "Test Vault", "TV", 18, 0, false, true, 0);
-        _clearEIP712Domain();
-
-        uint256 ownerKey = 0xA11CE;
-        address owner = vm.addr(ownerKey);
-        address spender = address(0xBEEF);
-        uint256 value = 1 ether;
-        uint256 deadline = block.timestamp + 1 days;
-        (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(ownerKey, _permitDigest("Test Vault", "1", owner, spender, value, deadline));
-
-        vm.expectRevert();
-        vault.permit(owner, spender, value, deadline, v, r, s);
-
-        vault.initializePermit();
-        vault.permit(owner, spender, value, deadline, v, r, s);
-
-        assertEq(vault.allowance(owner, spender), value);
-    }
-
-    function test_Vault_initializePermit_revertWhenAlreadyCalled() public {
-        vault.initialize(address(this), "Test Vault", "TV", 18, 0, false, true, 0);
-
-        vault.initializePermit();
-
-        vm.expectRevert(Initializable.InvalidInitialization.selector);
-        vault.initializePermit();
     }
 
     function test_Vault_initialize_withAssets(
@@ -311,8 +279,4 @@ contract VaultInitializeUnitTest is Test, MainnetActors, Etches {
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
     }
 
-    function _clearEIP712Domain() private {
-        vm.store(address(vault), bytes32(EIP712_STORAGE_LOCATION + 2), bytes32(0));
-        vm.store(address(vault), bytes32(EIP712_STORAGE_LOCATION + 3), bytes32(0));
-    }
 }
