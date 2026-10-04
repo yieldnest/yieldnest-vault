@@ -10,9 +10,8 @@ import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {BaseVaultViewer} from "src/utils/BaseVaultViewer.sol";
 import {Vault} from "src/Vault.sol";
 
-import {
-    TransparentUpgradeableProxy
-} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from
+    "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
 import {Strings} from "lib/openzeppelin-contracts/contracts/utils/Strings.sol";
