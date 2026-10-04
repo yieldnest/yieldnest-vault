@@ -8,9 +8,8 @@ import {IVault} from "src/interface/IVault.sol";
 import {IVaultViewer} from "src/interface/IVaultViewer.sol";
 import {MaxVaultViewer} from "src/utils/MaxVaultViewer.sol";
 
-import {
-    TransparentUpgradeableProxy
-} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from
+    "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {FeeMath} from "src/module/FeeMath.sol";
 import {BaseScript} from "script/BaseScript.sol";
