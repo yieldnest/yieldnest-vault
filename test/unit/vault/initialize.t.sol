@@ -278,5 +278,4 @@ contract VaultInitializeUnitTest is Test, MainnetActors, Etches {
             keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, vault.nonces(owner), deadline));
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
     }
-
 }
