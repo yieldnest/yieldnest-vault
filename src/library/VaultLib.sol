@@ -290,7 +290,7 @@ library VaultLib {
         uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
         baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
-        assets = convertBaseToAsset(asset_, baseAssets, rounding);
+        assets = IVault(address(this)).convertBaseToAsset(asset_, baseAssets, rounding);
     }
 
     /**
@@ -308,7 +308,7 @@ library VaultLib {
     {
         uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
-        baseAssets = convertAssetToBase(asset_, assets, rounding);
+        baseAssets = IVault(address(this)).convertAssetToBase(asset_, assets, rounding);
         shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
     }
 
@@ -384,7 +384,7 @@ library VaultLib {
         for (uint256 i = 0; i < assetListLength; i++) {
             uint256 balance = IERC20(assetList[i]).balanceOf(address(this));
             if (balance == 0) continue;
-            totalBaseBalance += convertAssetToBase(assetList[i], balance, Math.Rounding.Floor);
+            totalBaseBalance += IVault(address(this)).convertAssetToBase(assetList[i], balance, Math.Rounding.Floor);
         }
     }
 

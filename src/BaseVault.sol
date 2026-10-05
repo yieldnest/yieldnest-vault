@@ -714,6 +714,19 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
     }
 
     /**
+     * @notice Converts an asset amount to its base-asset denomination.
+     * @dev Used by VaultLib to preserve virtual conversion overrides.
+     */
+    function convertAssetToBase(address asset_, uint256 assets, Math.Rounding rounding)
+        external
+        view
+        virtual
+        returns (uint256)
+    {
+        return _convertAssetToBase(asset_, assets, rounding);
+    }
+
+    /**
      * @notice Internal function to convert base denominated amount to asset value.
      * @param asset_ The address of the asset.
      * @param assets The amount of the asset.
@@ -727,6 +740,19 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         returns (uint256)
     {
         return VaultLib.convertBaseToAsset(asset_, assets, rounding);
+    }
+
+    /**
+     * @notice Converts a base-asset amount to its asset denomination.
+     * @dev Used by VaultLib to preserve virtual conversion overrides.
+     */
+    function convertBaseToAsset(address asset_, uint256 baseAssets, Math.Rounding rounding)
+        external
+        view
+        virtual
+        returns (uint256)
+    {
+        return _convertBaseToAsset(asset_, baseAssets, rounding);
     }
 
     /// STORAGE ///
