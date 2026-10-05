@@ -82,7 +82,7 @@ contract VaultMainnetUpgradeWithdrawerTest is BaseIntegrationTest {
         );
 
         // Test the version function
-        assertEq(withdrawer.STRATEGY_VERSION(), "0.3.1", "Withdrawer version should be 0.3.1");
+        assertEq(withdrawer.STRATEGY_VERSION(), "0.4.0", "Withdrawer version should be 0.4.0");
     }
 
     function test_Withdrawer_Upgrade_Access_Control() public {
