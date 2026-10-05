@@ -411,7 +411,7 @@ library VaultLib {
         );
 
         // update total base assets
-        uint256 totalBaseAssetsAfterAccounting = computeTotalAssets();
+        uint256 totalBaseAssetsAfterAccounting = _vault.computeTotalAssets();
         vaultStorage.totalAssets = totalBaseAssetsAfterAccounting;
 
         // solhint-disable-next-line not-rely-on-time
