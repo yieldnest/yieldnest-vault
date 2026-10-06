@@ -545,9 +545,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert AssetNotActive();
         }
 
+        SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
+
         _addTotalAssets(baseAssets);
 
-        SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
         _mint(receiver, shares);
 
         // 4626 event
