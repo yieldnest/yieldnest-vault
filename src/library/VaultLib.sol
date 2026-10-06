@@ -367,6 +367,36 @@ library VaultLib {
         emit IVault.SetBuffer(previousBuffer, buffer_);
     }
 
+    function setAlwaysComputeTotalAssets(bool alwaysComputeTotalAssets_) public {
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+        bool previous = vaultStorage.alwaysComputeTotalAssets;
+        vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
+        emit IVault.SetAlwaysComputeTotalAssets(previous, alwaysComputeTotalAssets_);
+    }
+
+    function pause() public {
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+        if (vaultStorage.paused) {
+            revert IVault.Paused();
+        }
+
+        vaultStorage.paused = true;
+        emit IVault.Pause(true);
+    }
+
+    function unpause() public {
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+        if (!vaultStorage.paused) {
+            revert IVault.Unpaused();
+        }
+        if (vaultStorage.provider == address(0)) {
+            revert IVault.ProviderNotSet();
+        }
+
+        vaultStorage.paused = false;
+        emit IVault.Pause(false);
+    }
+
     /**
      * @notice Computes the total assets in the vault.
      * @return totalBaseBalance The total base balance of the vault.

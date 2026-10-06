@@ -907,9 +907,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         onlyRole(ASSET_MANAGER_ROLE)
     {
-        bool previous = _getVaultStorage().alwaysComputeTotalAssets;
-        _getVaultStorage().alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
-        emit SetAlwaysComputeTotalAssets(previous, alwaysComputeTotalAssets_);
+        VaultLib.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets_);
 
         if (!alwaysComputeTotalAssets_) {
             _processAccounting();
@@ -928,29 +926,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @notice Pauses the vault.
      */
     function pause() external virtual onlyRole(PAUSER_ROLE) {
-        if (paused()) {
-            revert Paused();
-        }
-
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.paused = true;
-        emit Pause(true);
+        VaultLib.pause();
     }
 
     /**
      * @notice Unpauses the vault.
      */
     function unpause() external virtual onlyRole(UNPAUSER_ROLE) {
-        if (!paused()) {
-            revert Unpaused();
-        }
-
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        if (provider() == address(0)) {
-            revert ProviderNotSet();
-        }
-        vaultStorage.paused = false;
-        emit Pause(false);
+        VaultLib.unpause();
     }
 
     /**
