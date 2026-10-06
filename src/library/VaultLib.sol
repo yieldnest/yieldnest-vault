@@ -399,7 +399,7 @@ library VaultLib {
         uint256 totalSupplyBeforeAccounting = _vault.totalSupply();
         uint256 totalBaseAssetsBeforeAccounting = vaultStorage.totalAssets;
 
-        // handle before hook call
+        // The before hook MUST NOT mint shares: totalSupplyBeforeAccounting is captured above and passed to the after hook.
         IHooks hooks_ = _vault.hooks();
         HooksLib.beforeProcessAccounting(
             hooks_,
