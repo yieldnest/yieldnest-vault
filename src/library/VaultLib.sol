@@ -59,7 +59,7 @@ library VaultLib {
      */
     function getProcessorStorage() public pure returns (IVault.ProcessorStorage storage $) {
         assembly {
-            // keccak256("yieldnest.storage.vault")
+            // keccak256("yieldnest.storage.proc")
             $.slot := 0x52bb806a772c899365572e319d3d6f49ed2259348d19ab0da8abccd4bd46abb5
         }
     }
