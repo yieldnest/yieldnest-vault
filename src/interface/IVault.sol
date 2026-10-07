@@ -57,6 +57,11 @@ interface IVault is IERC4626 {
         ADDRESS
     }
 
+    enum Conversion {
+        ASSET_TO_BASE,
+        BASE_TO_ASSET
+    }
+
     struct ParamRule {
         ParamType paramType;
         bool isArray;
@@ -152,11 +157,7 @@ interface IVault is IERC4626 {
     function buffer() external view returns (address);
     function totalBaseAssets() external view returns (uint256);
     function computeTotalAssets() external view returns (uint256);
-    function convertAssetToBase(address asset_, uint256 assets, Math.Rounding rounding)
-        external
-        view
-        returns (uint256);
-    function convertBaseToAsset(address asset_, uint256 baseAssets, Math.Rounding rounding)
+    function convert(address asset_, uint256 amount, Math.Rounding rounding, Conversion conversion)
         external
         view
         returns (uint256);

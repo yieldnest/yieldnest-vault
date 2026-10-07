@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {Vault} from "src/Vault.sol";
+import {IVault} from "src/interface/IVault.sol";
 import {Math, TransparentUpgradeableProxy} from "src/Common.sol";
 import {MockERC20} from "test/unit/mocks/MockERC20.sol";
 import {MockProvider} from "test/unit/mocks/MockProvider.sol";
@@ -76,6 +77,14 @@ contract VaultLibDispatchUnitTest is Test {
         vault.setProvider(address(provider));
         vault.addAsset(address(asset), true);
 
+        assertEq(
+            vault.convert(address(asset), 100 ether, Math.Rounding.Floor, IVault.Conversion.ASSET_TO_BASE),
+            100 ether + 1
+        );
+        assertEq(
+            vault.convert(address(asset), 100 ether, Math.Rounding.Floor, IVault.Conversion.BASE_TO_ASSET),
+            100 ether + 1
+        );
         assertEq(vault.convertToShares(100 ether), 100 ether + 1);
         assertEq(vault.convertToAssets(100 ether), 100 ether + 1);
 
