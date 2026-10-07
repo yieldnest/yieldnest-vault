@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import {IERC4626} from "src/Common.sol";
+import {IERC4626, Math} from "src/Common.sol";
 import {IValidator} from "src/interface/IValidator.sol";
 import {IHooks} from "src/interface/IHooks.sol";
 
@@ -55,6 +55,11 @@ interface IVault is IERC4626 {
     enum ParamType {
         UINT256,
         ADDRESS
+    }
+
+    enum Conversion {
+        ASSET_TO_BASE,
+        BASE_TO_ASSET
     }
 
     struct ParamRule {
@@ -152,6 +157,10 @@ interface IVault is IERC4626 {
     function buffer() external view returns (address);
     function totalBaseAssets() external view returns (uint256);
     function computeTotalAssets() external view returns (uint256);
+    function convert(address asset_, uint256 amount, Math.Rounding rounding, Conversion conversion)
+        external
+        view
+        returns (uint256);
     function alwaysComputeTotalAssets() external view returns (bool);
 
     // ADMIN

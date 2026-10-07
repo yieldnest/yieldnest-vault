@@ -24,7 +24,7 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Foundry
+      - name: Install Foundry for formatting
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: v1.3.1
@@ -46,6 +46,11 @@ jobs:
         run: |
           forge fmt --check
         id: fmt_mainnet
+
+      - name: Install Foundry for build and test
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.6.0-rc1
 
       - name: Run Forge build
         run: |

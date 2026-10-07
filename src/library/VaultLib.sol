@@ -54,12 +54,22 @@ library VaultLib {
     }
 
     /**
+     * @notice Returns whether an asset exists in the vault asset list.
+     * @param asset_ The address of the asset.
+     */
+    function hasAsset(address asset_) public view returns (bool) {
+        IVault.AssetStorage storage assetStorage = getAssetStorage();
+        IVault.AssetParams memory assetParams = assetStorage.assets[asset_];
+        return assetStorage.list[assetParams.index] == asset_;
+    }
+
+    /**
      * @notice Get the processor storage.
      * @return $ The processor storage.
      */
     function getProcessorStorage() public pure returns (IVault.ProcessorStorage storage $) {
         assembly {
-            // keccak256("yieldnest.storage.vault")
+            // keccak256("yieldnest.storage.proc")
             $.slot := 0x52bb806a772c899365572e319d3d6f49ed2259348d19ab0da8abccd4bd46abb5
         }
     }
@@ -290,7 +300,7 @@ library VaultLib {
         uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
         baseAssets = shares.mulDiv(totalAssets + 1, totalSupply + 1, rounding);
-        assets = convertBaseToAsset(asset_, baseAssets, rounding);
+        assets = IVault(address(this)).convert(asset_, baseAssets, rounding, IVault.Conversion.BASE_TO_ASSET);
     }
 
     /**
@@ -308,7 +318,7 @@ library VaultLib {
     {
         uint256 totalAssets = IVault(address(this)).totalBaseAssets();
         uint256 totalSupply = getERC20Storage().totalSupply;
-        baseAssets = convertAssetToBase(asset_, assets, rounding);
+        baseAssets = IVault(address(this)).convert(asset_, assets, rounding, IVault.Conversion.ASSET_TO_BASE);
         shares = baseAssets.mulDiv(totalSupply + 1, totalAssets + 1, rounding);
     }
 
@@ -367,6 +377,42 @@ library VaultLib {
         emit IVault.SetBuffer(previousBuffer, buffer_);
     }
 
+    function setAlwaysComputeTotalAssets(bool alwaysComputeTotalAssets_) public {
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+        bool previous = vaultStorage.alwaysComputeTotalAssets;
+        vaultStorage.alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
+        emit IVault.SetAlwaysComputeTotalAssets(previous, alwaysComputeTotalAssets_);
+    }
+
+    /**
+     * @notice Pauses vault operations.
+     */
+    function pause() public {
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+        if (vaultStorage.paused) {
+            revert IVault.Paused();
+        }
+
+        vaultStorage.paused = true;
+        emit IVault.Pause(true);
+    }
+
+    /**
+     * @notice Resumes vault operations after confirming a provider is configured.
+     */
+    function unpause() public {
+        IVault.VaultStorage storage vaultStorage = getVaultStorage();
+        if (!vaultStorage.paused) {
+            revert IVault.Unpaused();
+        }
+        if (vaultStorage.provider == address(0)) {
+            revert IVault.ProviderNotSet();
+        }
+
+        vaultStorage.paused = false;
+        emit IVault.Pause(false);
+    }
+
     /**
      * @notice Computes the total assets in the vault.
      * @return totalBaseBalance The total base balance of the vault.
@@ -384,7 +430,9 @@ library VaultLib {
         for (uint256 i = 0; i < assetListLength; i++) {
             uint256 balance = IERC20(assetList[i]).balanceOf(address(this));
             if (balance == 0) continue;
-            totalBaseBalance += convertAssetToBase(assetList[i], balance, Math.Rounding.Floor);
+            totalBaseBalance += IVault(address(this)).convert(
+                assetList[i], balance, Math.Rounding.Floor, IVault.Conversion.ASSET_TO_BASE
+            );
         }
     }
 
@@ -399,7 +447,7 @@ library VaultLib {
         uint256 totalSupplyBeforeAccounting = _vault.totalSupply();
         uint256 totalBaseAssetsBeforeAccounting = vaultStorage.totalAssets;
 
-        // handle before hook call
+        // The before hook MUST NOT mint shares: totalSupplyBeforeAccounting is captured above and passed to the after hook.
         IHooks hooks_ = _vault.hooks();
         HooksLib.beforeProcessAccounting(
             hooks_,
@@ -411,7 +459,7 @@ library VaultLib {
         );
 
         // update total base assets
-        uint256 totalBaseAssetsAfterAccounting = computeTotalAssets();
+        uint256 totalBaseAssetsAfterAccounting = _vault.computeTotalAssets();
         vaultStorage.totalAssets = totalBaseAssetsAfterAccounting;
 
         // solhint-disable-next-line not-rely-on-time

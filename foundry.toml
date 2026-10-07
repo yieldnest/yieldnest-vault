@@ -14,6 +14,8 @@ fs_permissions = [
   { access = "read", path = "./" },
 ]
 
+[profile.ci]
+
 [profile.mainnet]
 src = "src"
 out = "out"

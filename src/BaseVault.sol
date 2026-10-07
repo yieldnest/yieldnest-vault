@@ -86,6 +86,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         uint256 defaultAssetIndex_
     ) internal virtual {
         __ERC20_init(name, symbol);
+        __ERC20Permit_init(name);
         __AccessControl_init();
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -416,9 +417,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param asset_ The address of the asset.
      */
     function hasAsset(address asset_) public view virtual returns (bool) {
-        AssetStorage storage assetStorage = _getAssetStorage();
-        AssetParams memory assetParams = assetStorage.assets[asset_];
-        return assetStorage.list[assetParams.index] == asset_;
+        return VaultLib.hasAsset(asset_);
     }
 
     /**
@@ -544,9 +543,10 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
             revert AssetNotActive();
         }
 
+        SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
+
         _addTotalAssets(baseAssets);
 
-        SafeERC20.safeTransferFrom(IERC20(asset_), caller, address(this), assets);
         _mint(receiver, shares);
 
         // 4626 event
@@ -710,6 +710,22 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         returns (uint256)
     {
         return VaultLib.convertAssetToBase(asset_, assets, rounding);
+    }
+
+    /**
+     * @notice Converts between an asset amount and its base-asset denomination.
+     * @dev Used by VaultLib to preserve virtual conversion overrides.
+     */
+    function convert(address asset_, uint256 amount, Math.Rounding rounding, Conversion conversion)
+        external
+        view
+        virtual
+        returns (uint256)
+    {
+        if (conversion == Conversion.ASSET_TO_BASE) {
+            return _convertAssetToBase(asset_, amount, rounding);
+        }
+        return _convertBaseToAsset(asset_, amount, rounding);
     }
 
     /**
@@ -879,9 +895,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
         virtual
         onlyRole(ASSET_MANAGER_ROLE)
     {
-        bool previous = _getVaultStorage().alwaysComputeTotalAssets;
-        _getVaultStorage().alwaysComputeTotalAssets = alwaysComputeTotalAssets_;
-        emit SetAlwaysComputeTotalAssets(previous, alwaysComputeTotalAssets_);
+        VaultLib.setAlwaysComputeTotalAssets(alwaysComputeTotalAssets_);
 
         if (!alwaysComputeTotalAssets_) {
             _processAccounting();
@@ -900,29 +914,14 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @notice Pauses the vault.
      */
     function pause() external virtual onlyRole(PAUSER_ROLE) {
-        if (paused()) {
-            revert Paused();
-        }
-
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        vaultStorage.paused = true;
-        emit Pause(true);
+        VaultLib.pause();
     }
 
     /**
      * @notice Unpauses the vault.
      */
     function unpause() external virtual onlyRole(UNPAUSER_ROLE) {
-        if (!paused()) {
-            revert Unpaused();
-        }
-
-        VaultStorage storage vaultStorage = _getVaultStorage();
-        if (provider() == address(0)) {
-            revert ProviderNotSet();
-        }
-        vaultStorage.paused = false;
-        emit Pause(false);
+        VaultLib.unpause();
     }
 
     /**
