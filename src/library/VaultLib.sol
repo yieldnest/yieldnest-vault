@@ -384,6 +384,9 @@ library VaultLib {
         emit IVault.SetAlwaysComputeTotalAssets(previous, alwaysComputeTotalAssets_);
     }
 
+    /**
+     * @notice Pauses vault operations.
+     */
     function pause() public {
         IVault.VaultStorage storage vaultStorage = getVaultStorage();
         if (vaultStorage.paused) {
@@ -394,6 +397,9 @@ library VaultLib {
         emit IVault.Pause(true);
     }
 
+    /**
+     * @notice Resumes vault operations after confirming a provider is configured.
+     */
     function unpause() public {
         IVault.VaultStorage storage vaultStorage = getVaultStorage();
         if (!vaultStorage.paused) {
