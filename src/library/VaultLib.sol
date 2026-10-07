@@ -54,6 +54,16 @@ library VaultLib {
     }
 
     /**
+     * @notice Returns whether an asset exists in the vault asset list.
+     * @param asset_ The address of the asset.
+     */
+    function hasAsset(address asset_) public view returns (bool) {
+        IVault.AssetStorage storage assetStorage = getAssetStorage();
+        IVault.AssetParams memory assetParams = assetStorage.assets[asset_];
+        return assetStorage.list[assetParams.index] == asset_;
+    }
+
+    /**
      * @notice Get the processor storage.
      * @return $ The processor storage.
      */

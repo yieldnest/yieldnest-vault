@@ -417,9 +417,7 @@ abstract contract BaseVault is IVault, ERC20PermitUpgradeable, AccessControlUpgr
      * @param asset_ The address of the asset.
      */
     function hasAsset(address asset_) public view virtual returns (bool) {
-        AssetStorage storage assetStorage = _getAssetStorage();
-        AssetParams memory assetParams = assetStorage.assets[asset_];
-        return assetStorage.list[assetParams.index] == asset_;
+        return VaultLib.hasAsset(asset_);
     }
 
     /**
